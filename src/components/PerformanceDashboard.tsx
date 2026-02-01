@@ -15,47 +15,29 @@ import { cn } from './ui/utils';
 
 export function PerformanceDashboard() {
   const [isOpen, setIsOpen] = useState(false);
-  const [stats, setStats] = useState<Record<string, ReturnType<typeof perfMonitor.getStats>>>({});
+  const [allCategoryStats, setAllCategoryStats] = useState<Record<string, ReturnType<typeof perfMonitor.getStats>>>({});
   const [cacheStats, setCacheStats] = useState(cacheManager.getStats());
   const [prefetchStats, setPrefetchStats] = useState(prefetchManager.getStats());
 
-  // Update stats every 2 seconds
   useEffect(() => {
-    if (!isOpen) return;
-
     const interval = setInterval(() => {
+      // Get stats for all categories
       const categories = Object.keys(SLA_TARGETS) as SLACategory[];
-      const newStats: Record<string, ReturnType<typeof perfMonitor.getStats>> = {};
+      const statsMap: Record<string, ReturnType<typeof perfMonitor.getStats>> = {};
       
       for (const category of categories) {
-        newStats[category] = perfMonitor.getStats(category);
+        statsMap[category] = perfMonitor.getStats(category);
       }
       
-      setStats(newStats);
+      setAllCategoryStats(statsMap);
       setCacheStats(cacheManager.getStats());
       setPrefetchStats(prefetchManager.getStats());
-    }, 2000);
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen]);
+  }, []);
 
-  // Only show in development
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
-
-  // Floating button to toggle dashboard
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-[9999] bg-[#6E59A5] text-white p-3 rounded-full shadow-lg hover:bg-[#5a4885] transition-colors"
-        title="Open Performance Dashboard"
-      >
-        <Activity className="size-5" />
-      </button>
-    );
-  }
+  if (!isOpen) return null;
 
   // Get overall stats
   const overallStats = perfMonitor.getStats();
@@ -134,7 +116,7 @@ export function PerformanceDashboard() {
         <div className="space-y-2">
           <div className="text-sm font-semibold">SLA Performance</div>
           <div className="space-y-1 text-xs">
-            {Object.entries(stats)
+            {Object.entries(allCategoryStats)
               .filter(([_, s]) => s.total > 0)
               .sort((a, b) => b[1].violationRate - a[1].violationRate)
               .slice(0, 10) // Top 10

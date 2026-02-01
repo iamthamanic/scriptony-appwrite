@@ -4792,12 +4792,6 @@
   }
 
   @media (hover: hover) {
-    .hover\:bg-\[\#5a4885\]:hover {
-      background-color: #5a4885;
-    }
-  }
-
-  @media (hover: hover) {
     .hover\:bg-\[\#5a4887\]:hover {
       background-color: #5a4887;
     }
