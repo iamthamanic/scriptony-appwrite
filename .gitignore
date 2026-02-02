@@ -1,0 +1,4 @@
+# Supabase backups: alle SQL/Dump ignorieren, nur LATEST versionieren
+supabase/backups/*.sql
+supabase/backups/*.dump
+!supabase/backups/schema_and_data_LATEST.sql
