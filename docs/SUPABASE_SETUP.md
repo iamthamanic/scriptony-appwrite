@@ -39,7 +39,7 @@ supabase link --project-ref "$PROJECT_REF"
 - **Nur Schema:** `supabase db dump -f supabase/backups/schema_$(date +%Y%m%d_%H%M%S).sql`
 - **Nur Data:** `supabase db dump --data-only -f supabase/backups/data_$(date +%Y%m%d_%H%M%S).sql`
 
-Die Datei `supabase/backups/schema_and_data_LATEST.sql` wird versioniert (Ausnahme in `.gitignore`), damit ein Restore-Snapshot immer im Repo liegt.
+Die Datei `supabase/backups/schema_and_data_LATEST.sql` wird versioniert (Ausnahme in `.gitignore`), damit ein Restore-Snapshot immer im Repo liegt. **Hinweis:** OpenAI-/OpenRouter-API-Keys sind im Dump als Platzhalter redigiert (`REDACTED_OPENAI_API_KEY`, `REDACTED_OPENROUTER_KEY`); nach Restore müssen sie in der App bzw. in `user_ai_settings` wieder gesetzt werden.
 
 ## Restore (neues Projekt / nach Löschen)
 
