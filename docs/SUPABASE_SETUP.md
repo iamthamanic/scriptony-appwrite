@@ -41,6 +41,23 @@ supabase link --project-ref "$PROJECT_REF"
 
 Die Datei `supabase/backups/schema_and_data_LATEST.sql` wird versioniert (Ausnahme in `.gitignore`), damit ein Restore-Snapshot immer im Repo liegt. **Hinweis:** OpenAI-/OpenRouter-API-Keys sind im Dump als Platzhalter redigiert (`REDACTED_OPENAI_API_KEY`, `REDACTED_OPENROUTER_KEY`); nach Restore müssen sie in der App bzw. in `user_ai_settings` wieder gesetzt werden.
 
+### Storage (Bilder, Uploads, Audio)
+
+Alle Storage-Buckets werden ins Repo unter `supabase/backups/storage/<bucket-name>/` gesichert. Nach `supabase link` und mit `--experimental`:
+
+```bash
+# Bucket-Liste anzeigen
+supabase storage ls ss:/// --experimental
+
+# Alle Buckets ins lokale Backup kopieren (aus Repo-Root)
+mkdir -p supabase/backups/storage
+for bucket in make-3b52693b-world-images make-3b52693b-project-images make-3b52693b-shots make-3b52693b-audio-files make-3b52693b-shot-images make-3b52693b-shot-audio make-3b52693b-shots-audio; do
+  supabase storage cp -r "ss:///$bucket" "supabase/backups/storage/$bucket" --experimental
+done
+```
+
+Oder Script ausführen: `./scripts/backup-storage.sh` (siehe dort).
+
 ## Restore (neues Projekt / nach Löschen)
 
 1. Neues Supabase-Projekt anlegen oder bestehendes leeren.
@@ -51,6 +68,7 @@ Die Datei `supabase/backups/schema_and_data_LATEST.sql` wird versioniert (Ausnah
    ```
    Oder über Dashboard: SQL Editor → Inhalt von `schema_and_data_LATEST.sql` ausführen (bei sehr großen Dateien in Chunks oder per `psql`).
 4. Edge Functions deployen: `supabase functions deploy` (aus Repo-Root).
+5. **Storage wiederherstellen:** Buckets im neuen Projekt anlegen (gleiche Namen wie in `supabase/backups/storage/`), dann Dateien per Dashboard (Storage → Upload) oder per Script/CLI hochladen. Die Ordnerstruktur in `supabase/backups/storage/<bucket>/` entspricht den Bucket-Pfaden.
 
 ## Im Repo vs. separat sichern
 
@@ -60,6 +78,7 @@ Die Datei `supabase/backups/schema_and_data_LATEST.sql` wird versioniert (Ausnah
 | `supabase/migrations/*.sql` | Service Role Key (Dashboard) |
 | `supabase/functions/*` (Edge Functions Source) | Anon Key (optional, auch in `src/utils/supabase/info.tsx`) |
 | `supabase/backups/schema_and_data_LATEST.sql` (Schema + Data) | Weitere Backup-Dateien (timestamped) nur lokal/Backup-Storage |
+| `supabase/backups/storage/<bucket>/` (Bilder, Audio, Uploads) | |
 | `docs/SUPABASE_SETUP.md` | |
 | PROJECT_REF in `src/utils/supabase/info.tsx` | |
 
