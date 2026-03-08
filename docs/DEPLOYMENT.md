@@ -97,6 +97,19 @@ Danach ist die App unter **https://raccoova.scriptony.com** erreichbar (Free Tie
 
 ---
 
+## Sicherheit (Checkliste)
+
+| Bereich | Erledigt? |
+|--------|------------|
+| **HTTPS** | Vercel stellt SSL für die Domain bereit – aktiv, sobald die Domain verbunden ist. |
+| **Security-Header** | In `vercel.json` sind gesetzt: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`. Nach dem nächsten Deploy aktiv. |
+| **Nhost Redirect-URLs** | Nur deine echte App-URL (z. B. `https://scriptony.raccoova.com`) eintragen – keine Wildcards für unbekannte Domains. |
+| **Keine Secrets im Frontend** | Nur `VITE_*`-Variablen in Vercel setzen; keine Admin-Keys, keine DB-Passwörter. Nhost-Anon/Public-Key im Frontend ist vorgesehen. |
+| **Nhost / Hasura** | In Nhost: Row Level Security (RLS) für alle Tabellen prüfen, damit Nutzer nur eigene Daten sehen. Hasura Admin Secret nur in Backend/Functions, nie im Frontend. |
+| **Abhängigkeiten** | Gelegentlich `npm audit` ausführen und kritische Updates einspielen. |
+
+---
+
 ## Später auf eigenen Server (z. B. Hetzner)
 
 Wenn du Scriptony kommerziell nutzen willst und Kosten vorhersehbar halten möchtest, kannst du Frontend und Backend auf einen eigenen Server (z. B. Hetzner) umziehen – **ohne die App umzubauen**. Alle Backend-URLs kommen aus der Umgebung; du stellst nur die Env auf deine eigenen URLs um.

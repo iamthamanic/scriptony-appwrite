@@ -9,20 +9,19 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { toast } from "sonner@2.0.3";
-import { Loader2, Mail, AlertCircle } from "lucide-react";
+import { Loader2, Mail, AlertCircle, Eye, EyeOff } from "lucide-react";
 import scriptonyLogo from '../../assets/scriptony-logo.png';
 
 export function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, resetPassword } = useAuth();
   const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,27 +34,15 @@ export function AuthPage() {
       return;
     }
 
-    if (!isLogin && !name) {
-      toast.error(t("common.error"), {
-        description: "Name ist erforderlich",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
-      if (isLogin) {
-        await signIn(email, password);
-        toast.success(t("auth.loginSuccess"));
-      } else {
-        await signUp(email, password, name);
-        toast.success(t("auth.signupSuccess"));
-      }
+      await signIn(email, password);
+      toast.success(t("auth.loginSuccess"));
     } catch (error: any) {
       console.error("Auth error:", error);
       toast.error(t("auth.error"), {
-        description: error.message || "Ein Fehler ist aufgetreten",
+        description: "Passwort oder ID falsch",
       });
     } finally {
       setLoading(false);
@@ -104,31 +91,15 @@ export function AuthPage() {
             />
           </div>
           <CardTitle className="text-2xl">
-            {isLogin ? t("auth.welcome") : t("auth.signup")}
+            {t("auth.welcome")}
           </CardTitle>
           <CardDescription>
-            {isLogin ? t("auth.loginSubtitle") : t("auth.signupSubtitle")}
+            {t("auth.loginSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="name">{t("auth.name")}</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Max Mustermann"
-                  required={!isLogin}
-                  disabled={loading}
-                  className="h-11"
-                />
-              </div>
-            )}
-            
             <div className="space-y-2">
               <Label htmlFor="email">{t("auth.email")}</Label>
               <Input
@@ -146,27 +117,40 @@ export function AuthPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">{t("auth.password")}</Label>
-                {isLogin && (
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-xs text-primary hover:underline"
-                    disabled={loading}
-                  >
-                    Passwort vergessen?
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-xs text-primary hover:underline"
+                  disabled={loading}
+                >
+                  Passwort vergessen?
+                </button>
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                disabled={loading}
-                className="h-11"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  disabled={loading}
+                  className="h-11 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <Button
@@ -180,20 +164,9 @@ export function AuthPage() {
                   {t("common.loading")}
                 </>
               ) : (
-                isLogin ? t("auth.login") : t("auth.signup")
+                t("auth.login")
               )}
             </Button>
-
-            <div className="text-center text-sm">
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-primary hover:underline"
-                disabled={loading}
-              >
-                {isLogin ? t("auth.noAccount") : t("auth.hasAccount")}
-              </button>
-            </div>
           </form>
         </CardContent>
       </Card>
