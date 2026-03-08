@@ -28,11 +28,8 @@ export {
 // =============================================================================
 
 export {
-  supabaseConfig,
   appConfig,
-  getSupabaseConfig,
   getAppConfig,
-  type SupabaseConfig,
   type AppConfig,
 } from './env';
 

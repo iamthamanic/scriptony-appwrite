@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
-import { supabaseConfig } from "../../lib/env";
-import { API_CONFIG } from "../../lib/config";
+import { backendConfig } from "../../lib/env";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import { EdgeFunctionDebugPanel } from "../EdgeFunctionDebugPanel";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../../lib/api-gateway";
 
 interface TestResult {
   name: string;
@@ -35,8 +35,8 @@ export function ApiTestPage() {
     // Test 1: Environment Config
     updateTest('Environment Config', { status: 'running' });
     try {
-      const url = supabaseConfig.url;
-      const hasKey = supabaseConfig.publicAnonKey.length > 0;
+      const url = backendConfig.functionsBaseUrl;
+      const hasKey = backendConfig.provider === "nhost" || backendConfig.publicAuthToken.length > 0;
       
       if (url && hasKey) {
         updateTest('Environment Config', { 
@@ -58,7 +58,7 @@ export function ApiTestPage() {
 
     // Test 2: Health Check (No Auth)
     updateTest('Health Check', { status: 'running' });
-    const healthUrl = `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}/health`;
+    const healthUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/health");
     const healthStart = Date.now();
     
     try {
@@ -101,7 +101,7 @@ export function ApiTestPage() {
 
         // Test 4: Projects API (With Auth)
         updateTest('Projects API', { status: 'running' });
-        const projectsUrl = `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}/projects`;
+        const projectsUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/projects");
         const projectsStart = Date.now();
         
         try {
@@ -226,7 +226,7 @@ export function ApiTestPage() {
           </CardContent>
         </Card>
 
-        {/* Edge Function Debug Panel */}
+        {/* Backend Function Debug Panel */}
         <EdgeFunctionDebugPanel />
 
         <Card>
@@ -236,16 +236,16 @@ export function ApiTestPage() {
           <CardContent className="space-y-2 text-sm font-mono">
             <div>
               <span className="text-muted-foreground">Base URL:</span>
-              <div className="break-all">{supabaseConfig.url}</div>
+              <div className="break-all">{backendConfig.functionsBaseUrl}</div>
             </div>
             <div>
-              <span className="text-muted-foreground">Server Path:</span>
-              <div>{API_CONFIG.SERVER_BASE_PATH}</div>
+              <span className="text-muted-foreground">Backend Provider:</span>
+              <div>{backendConfig.provider}</div>
             </div>
             <div>
               <span className="text-muted-foreground">Full URL:</span>
               <div className="break-all">
-                {supabaseConfig.url}/functions/v1{API_CONFIG.SERVER_BASE_PATH}
+                {buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER)}
               </div>
             </div>
           </CardContent>

@@ -2,18 +2,15 @@ import { useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, XCircle, ExternalLink, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
-import { supabaseConfig } from "../lib/env";
-import { API_CONFIG } from "../lib/config";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 
 export function ServerStatusBanner() {
-  // 🎯 DEAKTIVIERT - Multi-Function Architektur hat keine zentrale /health endpoint mehr
-  // Jede Edge Function hat ihren eigenen Health Check
+  // Disabled: the backend now exposes per-function health checks instead of one central endpoint.
   const [status, setStatus] = useState<'checking' | 'online' | 'offline' | 'hidden'>('hidden');
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
-    // Health Check deaktiviert - Multi-Function Architektur
-    // Falls benötigt, kann jede Function einzeln getestet werden
+    // Health check disabled for the provider-neutral multi-function backend.
     return;
     
     // // Verzögerter Health Check (gibt dem Server Zeit zum Cold Start)
@@ -25,7 +22,7 @@ export function ServerStatusBanner() {
   }, []);
 
   const checkServerStatus = async () => {
-    const healthUrl = `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}/health`;
+    const healthUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/health");
     
     try {
       const controller = new AbortController();
@@ -59,7 +56,7 @@ export function ServerStatusBanner() {
       <Alert className="m-4 border-blue-500 bg-blue-50 dark:bg-blue-950">
         <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
         <AlertDescription className="ml-2">
-          Prüfe Server-Verbindung...
+          Prüfe Backend-Verbindung...
         </AlertDescription>
       </Alert>
     );
@@ -70,7 +67,7 @@ export function ServerStatusBanner() {
       <Alert className="m-4 border-green-500 bg-green-50 dark:bg-green-950">
         <CheckCircle2 className="h-4 w-4 text-green-500" />
         <AlertDescription className="ml-2">
-          ✅ Server ist online und bereit!
+          ✅ Backend ist online und bereit!
         </AlertDescription>
       </Alert>
     );
@@ -85,7 +82,7 @@ export function ServerStatusBanner() {
           <div>
             <strong className="font-semibold">Server nicht erreichbar</strong>
             <p className="text-sm mt-1">
-              Die Supabase Edge Function ist nicht deployed oder offline.
+              Die Backend Function ist nicht deployed oder offline.
             </p>
           </div>
 
@@ -103,7 +100,7 @@ export function ServerStatusBanner() {
               <div className="bg-card p-3 rounded-lg border">
                 <h4 className="font-semibold mb-2">📋 Schnelle Lösung:</h4>
                 <ol className="list-decimal list-inside space-y-1">
-                  <li>Öffne das Supabase Dashboard</li>
+                  <li>Öffne dein Backend-Dashboard</li>
                   <li>Gehe zu Functions</li>
                   <li>Deploye die Function "make-server-3b52693b"</li>
                   <li>Lade diese Seite neu</li>
@@ -114,11 +111,11 @@ export function ServerStatusBanner() {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => window.open('https://supabase.com/dashboard/project/ctkouztastyirjywiduc/functions', '_blank')}
+                  onClick={() => window.open('https://app.nhost.io', '_blank')}
                   className="gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Supabase Dashboard öffnen
+                  Backend Dashboard öffnen
                 </Button>
                 
                 <Button
@@ -155,7 +152,7 @@ export function ServerStatusBanner() {
                   <div>
                     <span className="text-muted-foreground">URL:</span>
                     <div className="break-all">
-                      {supabaseConfig.url}/functions/v1{API_CONFIG.SERVER_BASE_PATH}
+                      {buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER)}
                     </div>
                   </div>
                   <div>

@@ -4,6 +4,7 @@ import { Card } from './ui/card';
 import { projectId as supabaseProjectId, publicAnonKey } from '../utils/supabase/info';
 import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from '../lib/auth/getAuthToken';
+import { backendConfig } from '../lib/env';
 
 /**
  * 🔍 PROJECT DEBUGGER
@@ -17,7 +18,11 @@ export function ProjectDebugger() {
   const fetchAllProjects = async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
+      if (backendConfig.provider !== 'supabase') {
+        throw new Error('Project Debugger ist aktuell nur im Legacy-Supabase-Modus verfügbar.');
+      }
+
+      const token = await getAuthToken();
       
       // Direct Supabase query to get ALL projects (bypass organization filter)
       const response = await fetch(
@@ -48,7 +53,11 @@ export function ProjectDebugger() {
 
   const restoreProject = async (projectId: string) => {
     try {
-      const token = getAuthToken();
+      if (backendConfig.provider !== 'supabase') {
+        throw new Error('Project Debugger ist aktuell nur im Legacy-Supabase-Modus verfügbar.');
+      }
+
+      const token = await getAuthToken();
       
       const response = await fetch(
         `https://${supabaseProjectId}.supabase.co/rest/v1/projects?id=eq.${projectId}`,

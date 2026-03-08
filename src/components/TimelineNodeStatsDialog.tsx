@@ -49,7 +49,7 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { Separator } from './ui/separator';
 import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from '../lib/auth/getAuthToken';
-import { supabaseConfig } from '../lib/env';
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../lib/api-gateway';
 import { 
   BarChart, 
   Bar, 
@@ -206,7 +206,7 @@ export function TimelineNodeStatsDialog({
 
       // Load basic stats
       const basicRes = await fetch(
-        `${supabaseConfig.url}/functions/v1/scriptony-stats/stats/${nodeType}/${node.id}`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/${nodeType}/${node.id}`),
         {
           headers: { 'Authorization': `Bearer ${token}` },
         }
@@ -223,7 +223,7 @@ export function TimelineNodeStatsDialog({
       if (nodeType !== 'shot') {
         try {
           const detailedRes = await fetch(
-            `${supabaseConfig.url}/functions/v1/scriptony-stats/stats/${nodeType}/${node.id}/detailed`,
+            buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/${nodeType}/${node.id}/detailed`),
             {
               headers: { 'Authorization': `Bearer ${token}` },
             }
@@ -257,7 +257,7 @@ export function TimelineNodeStatsDialog({
         throw new Error('Not authenticated');
       }
 
-      const url = `${supabaseConfig.url}/functions/v1/scriptony-logs/logs/${nodeType}/${node.id}/recent`;
+      const url = buildFunctionRouteUrl(EDGE_FUNCTIONS.LOGS, `/logs/${nodeType}/${node.id}/recent`);
       console.log('[TimelineNodeStatsDialog] 📡 Fetching logs from:', url);
 
       const response = await fetch(url, {
@@ -948,7 +948,7 @@ export function TimelineNodeStatsDialog({
                     <div>
                       <div className="font-semibold mb-1">{logsError}</div>
                       <div className="text-sm text-muted-foreground">
-                        Die scriptony-logs Edge Function ist noch nicht deployed.
+                        Die Route `scriptony-logs` ist aktuell nicht erreichbar.
                       </div>
                       <div className="text-xs text-muted-foreground mt-2">
                         Siehe: <code className="bg-muted px-1 py-0.5 rounded">DEPLOY_LOGS_TIMELINE_NODE_ROUTES_FIX.md</code>

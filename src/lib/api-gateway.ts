@@ -1,20 +1,20 @@
 /**
  * 🎯 API GATEWAY - Multi-Function Router
  * 
- * Routes API calls to the correct Edge Function based on the resource type.
- * This allows us to split the monolithic server into multiple smaller functions.
+ * Routes API calls to the correct backend function based on the resource type.
+ * The transport is provider-neutral so the same frontend can target Supabase or Nhost.
  */
 
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { backendConfig } from './env';
 
 // =============================================================================
-// EDGE FUNCTION DEFINITIONS
+// BACKEND FUNCTION DEFINITIONS
 // =============================================================================
 
 /**
- * Edge Function Names (deployed in Supabase Dashboard)
+ * Backend function names exposed by the current provider.
  */
-export const EDGE_FUNCTIONS = {
+export const BACKEND_FUNCTIONS = {
   MAIN_SERVER: 'make-server-3b52693b', // Main unified server (fallback/special routes)
   PROJECTS: 'scriptony-projects',
   PROJECT_NODES: 'scriptony-project-nodes', // Generic Template Engine (Nodes) ✅ REFACTORED!
@@ -33,47 +33,65 @@ export const EDGE_FUNCTIONS = {
   LOGS: 'scriptony-logs', // Activity Logging & Audit Trail ✅ PHASE 2!
 } as const;
 
+export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
+
 /**
- * Edge Function Base URLs
+ * Backend function base URLs
  */
-const getFunctionUrl = (functionName: string) => 
-  `https://${projectId}.supabase.co/functions/v1/${functionName}`;
+export function buildFunctionBaseUrl(functionName: string): string {
+  if (!backendConfig.functionsBaseUrl) {
+    throw new Error("Backend functions base URL is not configured.");
+  }
+
+  return `${backendConfig.functionsBaseUrl.replace(/\/+$/, '')}/${functionName}`;
+}
+
+export function buildFunctionRouteUrl(functionName: string, route = ''): string {
+  const baseUrl = buildFunctionBaseUrl(functionName);
+  if (!route) {
+    return baseUrl;
+  }
+
+  return route.startsWith('/')
+    ? `${baseUrl}${route}`
+    : `${baseUrl}/${route}`;
+}
 
 // =============================================================================
 // ROUTE MAPPING
 // =============================================================================
 
 /**
- * Maps route prefixes to their corresponding Edge Function
+ * Maps route prefixes to their corresponding backend function.
  */
 const ROUTE_MAP: Record<string, string> = {
   // Auth & Account Management
-  '/signup': EDGE_FUNCTIONS.AUTH,
-  '/create-demo-user': EDGE_FUNCTIONS.AUTH,
-  '/profile': EDGE_FUNCTIONS.AUTH,
-  '/organizations': EDGE_FUNCTIONS.AUTH,
-  '/storage': EDGE_FUNCTIONS.AUTH,
+  '/signup': BACKEND_FUNCTIONS.AUTH,
+  '/create-demo-user': BACKEND_FUNCTIONS.AUTH,
+  '/profile': BACKEND_FUNCTIONS.AUTH,
+  '/organizations': BACKEND_FUNCTIONS.AUTH,
+  '/storage': BACKEND_FUNCTIONS.AUTH,
   
   // Projects
-  '/projects': EDGE_FUNCTIONS.PROJECTS,
+  '/projects': BACKEND_FUNCTIONS.PROJECTS,
   
   // Project Nodes (Generic Template Engine) ✅ REFACTORED!
-  '/nodes': EDGE_FUNCTIONS.PROJECT_NODES,
-  '/initialize-project': EDGE_FUNCTIONS.PROJECT_NODES,
+  '/nodes': BACKEND_FUNCTIONS.PROJECT_NODES,
+  '/initialize-project': BACKEND_FUNCTIONS.PROJECT_NODES,
   
   // Shots Microservice ✅ NEW!
-  '/shots': EDGE_FUNCTIONS.SHOTS,
+  '/shots': BACKEND_FUNCTIONS.SHOTS,
   
   // Characters Microservice ✅ NEW!
-  '/characters': EDGE_FUNCTIONS.CHARACTERS,
-  '/timeline-characters': EDGE_FUNCTIONS.CHARACTERS, // Legacy compatibility
+  '/characters': BACKEND_FUNCTIONS.CHARACTERS,
+  '/timeline-characters': BACKEND_FUNCTIONS.CHARACTERS, // Legacy compatibility
   
   // Inspiration (Visual References) ✅ NEW!
-  '/inspirations': EDGE_FUNCTIONS.INSPIRATION,
+  '/inspirations': BACKEND_FUNCTIONS.INSPIRATION,
   
   // Stats & Logs ✅ PHASE 2!
-  '/stats': EDGE_FUNCTIONS.STATS,
-  '/logs': EDGE_FUNCTIONS.LOGS,
+  '/stats': BACKEND_FUNCTIONS.STATS,
+  '/logs': BACKEND_FUNCTIONS.LOGS,
   
   // Audio (Upload, Waveform, Trim, Fade)
   // Note: /shots/:id/upload-audio routes to AUDIO function
@@ -81,39 +99,39 @@ const ROUTE_MAP: Record<string, string> = {
   // Note: /shots/audio/:id routes to AUDIO function
   
   // Beats (Save the Cat, Hero's Journey, etc.) ✅ NEW!
-  '/beats': EDGE_FUNCTIONS.BEATS,
+  '/beats': BACKEND_FUNCTIONS.BEATS,
   
   // Worldbuilding
-  '/worlds': EDGE_FUNCTIONS.WORLDBUILDING,
-  '/locations': EDGE_FUNCTIONS.WORLDBUILDING,
+  '/worlds': BACKEND_FUNCTIONS.WORLDBUILDING,
+  '/locations': BACKEND_FUNCTIONS.WORLDBUILDING,
   
   // Assistant (AI + RAG + MCP)
-  '/ai': EDGE_FUNCTIONS.ASSISTANT,
-  '/conversations': EDGE_FUNCTIONS.ASSISTANT,
-  '/rag': EDGE_FUNCTIONS.ASSISTANT,
-  '/mcp': EDGE_FUNCTIONS.ASSISTANT,
+  '/ai': BACKEND_FUNCTIONS.ASSISTANT,
+  '/conversations': BACKEND_FUNCTIONS.ASSISTANT,
+  '/rag': BACKEND_FUNCTIONS.ASSISTANT,
+  '/mcp': BACKEND_FUNCTIONS.ASSISTANT,
   
   // Creative Gym
-  '/exercises': EDGE_FUNCTIONS.GYM,
-  '/progress': EDGE_FUNCTIONS.GYM,
-  '/achievements': EDGE_FUNCTIONS.GYM,
-  '/categories': EDGE_FUNCTIONS.GYM,
-  '/daily-challenge': EDGE_FUNCTIONS.GYM,
+  '/exercises': BACKEND_FUNCTIONS.GYM,
+  '/progress': BACKEND_FUNCTIONS.GYM,
+  '/achievements': BACKEND_FUNCTIONS.GYM,
+  '/categories': BACKEND_FUNCTIONS.GYM,
+  '/daily-challenge': BACKEND_FUNCTIONS.GYM,
   
   // Superadmin
-  '/superadmin': EDGE_FUNCTIONS.SUPERADMIN,
+  '/superadmin': BACKEND_FUNCTIONS.SUPERADMIN,
 };
 
 /**
- * Determines which Edge Function to use for a given route
+ * Determines which backend function to use for a given route.
  */
-function getEdgeFunctionForRoute(route: string): string {
+function getBackendFunctionForRoute(route: string): string {
   // Special routing for Audio endpoints
   // These have specific patterns that need to override the general /shots prefix
   if (route.includes('/upload-audio') || 
       route.includes('/shots/audio/') || 
       route.match(/\/shots\/[^/]+\/audio$/)) {
-    return EDGE_FUNCTIONS.AUDIO;
+    return BACKEND_FUNCTIONS.AUDIO;
   }
   
   // Find the matching route prefix
@@ -122,9 +140,9 @@ function getEdgeFunctionForRoute(route: string): string {
   );
   
   if (!matchedPrefix) {
-    console.warn(`[API Gateway] No Edge Function found for route: ${route}`);
+    console.warn(`[API Gateway] No backend function found for route: ${route}`);
     // Fallback to projects function for unknown routes
-    return EDGE_FUNCTIONS.PROJECTS;
+    return BACKEND_FUNCTIONS.PROJECTS;
   }
   
   return ROUTE_MAP[matchedPrefix];
@@ -145,7 +163,7 @@ export interface ApiGatewayOptions {
 /**
  * Makes an API call through the API Gateway
  * 
- * Automatically routes the request to the correct Edge Function
+ * Automatically routes the request to the correct backend function
  * based on the route prefix.
  * 
  * @example
@@ -171,9 +189,9 @@ export async function apiGateway<T = any>(
 ): Promise<T> {
   const { method, route, body, headers = {}, accessToken } = options;
   
-  // Determine which Edge Function to use
-  const functionName = getEdgeFunctionForRoute(route);
-  const baseUrl = getFunctionUrl(functionName);
+  // Determine which backend function to use
+  const functionName = getBackendFunctionForRoute(route);
+  const baseUrl = buildFunctionBaseUrl(functionName);
   
   console.log(`[API Gateway] ${method} ${route} → ${functionName}`);
   
@@ -183,9 +201,13 @@ export async function apiGateway<T = any>(
   // Build headers
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${accessToken || publicAnonKey}`,
     ...headers,
   };
+
+  const bearerToken = accessToken || backendConfig.publicAuthToken;
+  if (bearerToken) {
+    requestHeaders.Authorization = `Bearer ${bearerToken}`;
+  }
   
   console.log(`[API Gateway] Fetching ${url}`);
   console.log(`[API Gateway] Headers:`, requestHeaders);
@@ -207,10 +229,10 @@ export async function apiGateway<T = any>(
       error: fetchError.message,
     });
     console.error(`[API Gateway] Possible causes:`);
-    console.error(`  1. Edge Function "${functionName}" is not deployed`);
+    console.error(`  1. Backend function "${functionName}" is not deployed`);
     console.error(`  2. CORS issue (check function CORS settings)`);
     console.error(`  3. Network/internet connection issue`);
-    console.error(`  4. Supabase project offline`);
+    console.error(`  4. Backend host offline or unreachable`);
     throw new Error(`Cannot connect to ${functionName}: ${fetchError.message}`);
   }
   
@@ -329,7 +351,7 @@ export async function apiPatch<T = any>(
  * @deprecated Use apiGateway() instead for automatic routing
  */
 export function getApiBase(functionName: keyof typeof EDGE_FUNCTIONS): string {
-  return getFunctionUrl(EDGE_FUNCTIONS[functionName]);
+  return buildFunctionBaseUrl(EDGE_FUNCTIONS[functionName]);
 }
 
-// Legacy API removed - all endpoints now use specialized Edge Functions via apiGateway()
+// Legacy API removed - all endpoints now use specialized backend functions via apiGateway()

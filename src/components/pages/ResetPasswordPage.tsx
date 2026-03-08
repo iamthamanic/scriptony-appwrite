@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner@2.0.3";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import scriptonyLogo from 'figma:asset/762fa3b0c4bc468cb3c0661e6181aee92a01370d.png';
+import scriptonyLogo from '../../assets/scriptony-logo.png';
 
 interface ResetPasswordPageProps {
   onNavigate: (page: string) => void;

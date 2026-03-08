@@ -1,11 +1,12 @@
 import { Home, Film, Globe, Dumbbell, Upload, ShieldCheck, Settings, Moon, Sun, User, Presentation, Layers, Database, Trash2, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
-import scriptonyLogo from 'figma:asset/762fa3b0c4bc468cb3c0661e6181aee92a01370d.png';
+import scriptonyLogo from '../assets/scriptony-logo.png';
 import { useState } from "react";
 import { toast } from "sonner@2.0.3";
 import { getAuthToken } from "../lib/auth/getAuthToken";
-import { supabase } from "../lib/supabase";
 import { useIsMobile } from "./ui/use-mobile";
+import * as BeatsAPI from "../lib/api/beats-api";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 
 interface NavigationProps {
   currentPage: string;
@@ -27,8 +28,6 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
     setIsRecalculating(true);
     
     try {
-      console.log('📦 Importing projectId...');
-      const { projectId } = await import("../utils/supabase/info");
       console.log('🔑 Getting auth token...');
       const token = await getAuthToken();
       console.log('✅ Auth token:', token ? 'EXISTS' : 'NULL');
@@ -45,7 +44,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
       console.log('📞 Fetching projects...');
       // Get all book projects
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3b52693b/projects`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/projects"),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -82,7 +81,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
       for (const project of bookProjects) {
         console.log(`🔄 Recalculating for project: ${project.title} (${project.id})`);
         const recalcResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3b52693b/projects/${project.id}/recalculate-word-counts`,
+          buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, `/projects/${project.id}/recalculate-word-counts`),
           {
             method: 'POST',
             headers: {
@@ -135,18 +134,8 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
     console.log('🧹 Starting cleanup for project:', currentProjectId);
 
     try {
-      // Fetch all beats directly from Supabase (bypass Edge Function)
-      console.log('📡 Fetching beats directly from Supabase...');
-      const { data: beats, error: fetchError } = await supabase
-        .from('story_beats')
-        .select('*')
-        .eq('project_id', currentProjectId)
-        .order('created_at', { ascending: true });
-
-      if (fetchError) {
-        console.error('❌ Error fetching beats:', fetchError);
-        throw fetchError;
-      }
+      console.log('📡 Fetching beats through API...');
+      const beats = await BeatsAPI.getBeats(currentProjectId);
 
       console.log(`📊 Found ${beats?.length || 0} beats total`);
 
@@ -191,16 +180,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
 
       console.log(`🗑️ Deleting ${idsToDelete.length} duplicate beats...`);
 
-      // Delete all duplicates in one query
-      const { error: deleteError } = await supabase
-        .from('story_beats')
-        .delete()
-        .in('id', idsToDelete);
-
-      if (deleteError) {
-        console.error('❌ Error deleting beats:', deleteError);
-        throw deleteError;
-      }
+      await Promise.all(idsToDelete.map((id) => BeatsAPI.deleteBeat(id)));
 
       console.log(`✅ Cleanup complete! Deleted ${idsToDelete.length} duplicate beats`);
       console.log(`📊 Remaining: ${beats.length - idsToDelete.length} unique beats`);

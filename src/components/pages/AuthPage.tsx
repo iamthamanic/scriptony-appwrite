@@ -10,7 +10,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { toast } from "sonner@2.0.3";
 import { Loader2, Mail, AlertCircle } from "lucide-react";
-import scriptonyLogo from 'figma:asset/762fa3b0c4bc468cb3c0661e6181aee92a01370d.png';
+import scriptonyLogo from '../../assets/scriptony-logo.png';
 
 export function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);

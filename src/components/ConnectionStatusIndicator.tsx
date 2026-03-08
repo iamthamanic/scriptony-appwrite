@@ -1,7 +1,7 @@
 /**
  * 🔌 Connection Status Indicator
  * 
- * Shows a small indicator if Edge Functions are not reachable.
+ * Shows a small indicator if essential backend functions are not reachable.
  * Helps users immediately see if there's a connectivity problem.
  */
 
@@ -9,8 +9,8 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, WifiOff, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
-import { EDGE_FUNCTIONS } from '../lib/api-gateway';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { EDGE_FUNCTIONS, buildFunctionRouteUrl } from '../lib/api-gateway';
+import { backendConfig } from '../lib/env';
 
 export function ConnectionStatusIndicator() {
   const [status, setStatus] = useState<'checking' | 'ok' | 'error'>('checking');
@@ -35,12 +35,14 @@ export function ConnectionStatusIndicator() {
     try {
       const results = await Promise.allSettled(
         essentialFunctions.map(async (funcName) => {
-          const url = `https://${projectId}.supabase.co/functions/v1/${funcName}/health`;
+          const url = buildFunctionRouteUrl(funcName, '/health');
           
           const response = await fetch(url, {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
+              ...(backendConfig.publicAuthToken
+                ? { 'Authorization': `Bearer ${backendConfig.publicAuthToken}` }
+                : {}),
             },
             signal: AbortSignal.timeout(5000), // 5 second timeout
           });

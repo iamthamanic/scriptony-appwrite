@@ -1,20 +1,21 @@
 import { projectsApi, worldsApi, categoriesApi, itemsApi } from "./api";
-import { publicAnonKey } from "./supabase/info";
-import { apiGateway } from "../lib/api-gateway";
+import { backendConfig } from "../lib/env";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 
 export async function seedTestUser() {
   try {
     console.log("🔗 Calling create-demo-user endpoint...");
     
     // Use the existing /create-demo-user endpoint
-    const { projectId } = await import("./supabase/info");
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/scriptony-auth/create-demo-user`,
+      buildFunctionRouteUrl(EDGE_FUNCTIONS.AUTH, "/create-demo-user"),
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${publicAnonKey}`,
+          ...(backendConfig.publicAuthToken
+            ? { Authorization: `Bearer ${backendConfig.publicAuthToken}` }
+            : {}),
         },
       }
     );

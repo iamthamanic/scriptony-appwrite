@@ -10,11 +10,11 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-client';
 import type { Shot, ShotAudio } from '../types';
-import { projectId } from '../../utils/supabase/info';
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
 
 // API Base URLs for direct file uploads
-const TIMELINE_API_BASE = `https://${projectId}.supabase.co/functions/v1/scriptony-timeline-v2`;
-const AUDIO_API_BASE = `https://${projectId}.supabase.co/functions/v1/scriptony-audio`;
+const TIMELINE_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.TIMELINE_V2);
+const AUDIO_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUDIO);
 
 // =============================================================================
 // SHOT CRUD

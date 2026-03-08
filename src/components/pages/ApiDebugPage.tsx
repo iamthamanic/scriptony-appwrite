@@ -1,7 +1,7 @@
 /**
- * 🔍 API DEBUG PAGE - Multi-Function Testing
+ * 🔍 API DEBUG PAGE - Backend Function Testing
  * 
- * Tests all 7 Edge Functions individually to see which ones work
+ * Tests backend functions individually to see which ones work.
  */
 
 import { useState } from 'react';
@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge';
 import { CheckCircle2, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import { getAuthToken } from '../../lib/auth/getAuthToken';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { backendConfig } from '../../lib/env';
+import { buildFunctionRouteUrl } from '../../lib/api-gateway';
 
 interface TestResult {
   name: string;
@@ -20,7 +21,7 @@ interface TestResult {
   responseTime?: number;
 }
 
-const EDGE_FUNCTIONS = [
+const BACKEND_FUNCTIONS = [
   { name: 'scriptony-auth', route: '/storage/usage' },
   { name: 'scriptony-projects', route: '/projects' },
   { name: 'scriptony-timeline-v2', route: '/timeline' },
@@ -32,12 +33,12 @@ const EDGE_FUNCTIONS = [
 
 export function ApiDebugPage() {
   const [results, setResults] = useState<TestResult[]>(
-    EDGE_FUNCTIONS.map(fn => ({ name: fn.name, status: 'idle' as const }))
+    BACKEND_FUNCTIONS.map(fn => ({ name: fn.name, status: 'idle' as const }))
   );
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   const testFunction = async (index: number) => {
-    const fn = EDGE_FUNCTIONS[index];
+    const fn = BACKEND_FUNCTIONS[index];
     
     // Update status to loading
     setResults(prev => prev.map((r, i) => 
@@ -45,7 +46,7 @@ export function ApiDebugPage() {
     ));
 
     const startTime = Date.now();
-    const url = `https://${projectId}.supabase.co/functions/v1/${fn.name}${fn.route}`;
+    const url = buildFunctionRouteUrl(fn.name, fn.route);
 
     try {
       console.log(`[DEBUG] Testing ${fn.name} at ${url}`);
@@ -61,7 +62,9 @@ export function ApiDebugPage() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token || publicAnonKey}`,
+          ...(token || backendConfig.publicAuthToken
+            ? { 'Authorization': `Bearer ${token || backendConfig.publicAuthToken}` }
+            : {}),
         },
       });
 
@@ -109,7 +112,7 @@ export function ApiDebugPage() {
   };
 
   const testAll = async () => {
-    for (let i = 0; i < EDGE_FUNCTIONS.length; i++) {
+    for (let i = 0; i < BACKEND_FUNCTIONS.length; i++) {
       await testFunction(i);
       // Small delay between tests
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -138,9 +141,9 @@ export function ApiDebugPage() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
-        <h1 className="mb-2">🔍 Edge Functions Debug Test</h1>
+        <h1 className="mb-2">🔍 Backend Functions Debug Test</h1>
         <p className="text-muted-foreground">
-          Test all 7 Edge Functions individually to diagnose connection issues
+          Test the configured backend functions individually to diagnose connection issues
         </p>
       </div>
 
@@ -149,7 +152,7 @@ export function ApiDebugPage() {
         <CardHeader>
           <CardTitle>Test Summary</CardTitle>
           <CardDescription>
-            Overall status of all Edge Functions
+            Overall status of all backend functions
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -258,7 +261,7 @@ export function ApiDebugPage() {
           <div>
             <strong>If specific functions fail:</strong>
             <ul className="list-disc list-inside ml-4 mt-1 text-muted-foreground">
-              <li>Go to Supabase Dashboard → Edge Functions</li>
+              <li>Check the deployed backend functions in your active provider dashboard</li>
               <li>Check if the function is deployed</li>
               <li>Check function logs for errors</li>
               <li>Redeploy the function if needed</li>

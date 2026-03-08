@@ -33,7 +33,6 @@ import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
 import { toast } from "sonner@2.0.3";
 import { deleteCharacter as deleteCharacterApi, getCharacters, createCharacter as createCharacterApi, updateCharacter as updateCharacterApi } from "../../lib/api/characters-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
-import { projectId } from "../../utils/supabase/info";
 import { uploadProjectImage, validateImageFile } from "../../lib/api/image-upload-api";
 import * as TimelineAPI from "../../lib/api/timeline-api";
 import { nodeToAct, nodeToSequence, nodeToScene } from "../../lib/api/timeline-api"; // 🔥 Import converters
@@ -374,9 +373,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       // Graceful fallback: Set empty array instead of crashing
       setInspirations([]);
       
-      // Check if it's a "Failed to fetch" error (Edge Function not deployed)
+      // Check if it's a "Failed to fetch" error (backend route not reachable)
       if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] ⚠️ Edge Function "scriptony-inspiration" might not be deployed yet');
+        console.warn('[Inspirations] ⚠️ Backend route "scriptony-inspiration" might not be reachable yet');
         console.warn('[Inspirations] 📝 Please deploy /DEPLOY_READY_scriptony-inspiration.txt to Supabase Dashboard');
         toast.error('Inspirations Feature noch nicht deployed. Siehe Console für Details.');
       } else {
@@ -426,8 +425,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       
       // Check if it's a deployment error
       if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] ⚠️ Edge Function "scriptony-inspiration" might not be deployed yet');
-        toast.error('Inspirations Feature noch nicht deployed. Bitte Edge Function deployen.');
+        console.warn('[Inspirations] ⚠️ Backend route "scriptony-inspiration" might not be reachable yet');
+        toast.error('Inspirations Feature ist aktuell nicht erreichbar. Bitte Backend-Funktion pruefen.');
       } else {
         toast.error('Fehler beim Speichern');
       }
@@ -457,8 +456,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       
       // Check if it's a deployment error
       if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] ⚠️ Edge Function "scriptony-inspiration" might not be deployed yet');
-        toast.error('Inspirations Feature noch nicht deployed. Bitte Edge Function deployen.');
+        console.warn('[Inspirations] ⚠️ Backend route "scriptony-inspiration" might not be reachable yet');
+        toast.error('Inspirations Feature ist aktuell nicht erreichbar. Bitte Backend-Funktion pruefen.');
       } else {
         toast.error('Fehler beim Löschen');
       }
@@ -2884,7 +2883,7 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
       // Show loading toast
       toast.loading('Bild wird hochgeladen...');
 
-      // Upload to Supabase Storage
+      // Upload through the backend storage adapter
       const imageUrl = await uploadProjectImage(project.id, file);
 
       // Update local state immediately (optimistic UI)

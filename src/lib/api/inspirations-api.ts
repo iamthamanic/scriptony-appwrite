@@ -1,7 +1,7 @@
 /**
  * 🎨 INSPIRATIONS API CLIENT
  * 
- * Client for scriptony-inspiration Edge Function
+ * Client for the `scriptony-inspiration` backend function
  * Manages visual references/inspiration images for projects
  */
 

@@ -6,6 +6,7 @@ import { projectId as supabaseProjectId, publicAnonKey } from '../../utils/supab
 import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from '../../lib/auth/getAuthToken';
 import { Badge } from '../ui/badge';
+import { backendConfig } from '../../lib/env';
 
 /**
  * 🔧 PROJECT RECOVERY PAGE
@@ -21,7 +22,11 @@ export function ProjectRecoveryPage({ onBack }: { onBack: () => void }) {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const token = getAuthToken();
+      if (backendConfig.provider !== 'supabase') {
+        throw new Error('Project Recovery ist aktuell nur im Legacy-Supabase-Modus verfügbar.');
+      }
+
+      const token = await getAuthToken();
       
       // Fetch ALL projects (including deleted)
       const projectsResponse = await fetch(
@@ -68,7 +73,11 @@ export function ProjectRecoveryPage({ onBack }: { onBack: () => void }) {
 
   const restoreProject = async (projectId: string) => {
     try {
-      const token = getAuthToken();
+      if (backendConfig.provider !== 'supabase') {
+        throw new Error('Project Recovery ist aktuell nur im Legacy-Supabase-Modus verfügbar.');
+      }
+
+      const token = await getAuthToken();
       
       const response = await fetch(
         `https://${supabaseProjectId}.supabase.co/rest/v1/projects?id=eq.${projectId}`,
@@ -105,7 +114,11 @@ export function ProjectRecoveryPage({ onBack }: { onBack: () => void }) {
     }
 
     try {
-      const token = getAuthToken();
+      if (backendConfig.provider !== 'supabase') {
+        throw new Error('Project Recovery ist aktuell nur im Legacy-Supabase-Modus verfügbar.');
+      }
+
+      const token = await getAuthToken();
       
       // Assign to first user org
       const response = await fetch(

@@ -11,7 +11,7 @@
 
 export const API_CONFIG = {
   /**
-   * Base path for all Supabase Edge Function routes
+   * Base path for all backend function routes
    * DEPRECATED: Now using API Gateway with multi-function routing
    * Keep empty for direct function calls via API Gateway
    */
@@ -38,7 +38,7 @@ export const API_CONFIG = {
 
 export const STORAGE_CONFIG = {
   /**
-   * Supabase Storage bucket prefix
+   * Legacy storage bucket prefix used by older paths
    */
   BUCKET_PREFIX: 'make-3b52693b',
   

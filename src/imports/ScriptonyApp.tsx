@@ -1,5 +1,5 @@
 import svgPaths from "./svg-x1psj2qnic";
-import imgImageScriptonyLogo from "figma:asset/762fa3b0c4bc468cb3c0661e6181aee92a01370d.png";
+import imgImageScriptonyLogo from '../assets/scriptony-logo.png';
 
 function Paragraph() {
   return (

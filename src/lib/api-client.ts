@@ -1,15 +1,15 @@
 /**
  * Centralized API Client for Scriptony Backend
  * 
- * Provides a unified interface for making HTTP requests to the Supabase Edge Functions.
+ * Provides a unified interface for making HTTP requests to the provider-neutral backend functions.
  * Handles authentication, error handling, logging, and request/response transformation.
  * 
- * NOTE: This now uses API Gateway for automatic routing to the correct Edge Function.
+ * NOTE: This now uses API Gateway for automatic routing to the correct backend function.
  */
 
-import { supabaseConfig } from './env';
 import { API_CONFIG } from './config';
 import { apiGateway as internalApiGateway } from './api-gateway';
+import { backendConfig } from './env';
 
 // =============================================================================
 // Types
@@ -43,8 +43,7 @@ interface RequestOptions extends RequestInit {
 // Configuration
 // =============================================================================
 
-// LEGACY: Keep for backward compatibility with old auth routes
-const API_BASE_URL_LEGACY = `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}`;
+const API_BASE_URL_LEGACY = `${backendConfig.functionsBaseUrl}${API_CONFIG.SERVER_BASE_PATH}`;
 
 // NEW: Use API Gateway for multi-function routing
 const USE_API_GATEWAY = true;
@@ -125,7 +124,7 @@ export async function apiRequest<T = any>(
 
   const method = fetchOptions.method || 'GET';
 
-  // Use API Gateway for automatic routing to correct Edge Function
+  // Use API Gateway for automatic routing to the correct backend function
   if (USE_API_GATEWAY) {
     console.log(`[API Client] Using API Gateway for ${method} ${endpoint}`);
     
@@ -243,7 +242,7 @@ export async function apiRequest<T = any>(
       // Provide more helpful error message
       let message = 'Network error or server unreachable.';
       if (fetchError.message === 'Failed to fetch') {
-        message = 'Cannot connect to server. Please check:\n1. Is your internet working?\n2. Is the Supabase Edge Function deployed?\n3. Check browser console for CORS errors';
+          message = 'Cannot connect to backend. Please check:\n1. Is your internet working?\n2. Is the backend function deployed?\n3. Check browser console for CORS errors';
       }
       
       return {

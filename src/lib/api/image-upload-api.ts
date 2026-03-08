@@ -1,15 +1,14 @@
 /**
  * Image Upload API Client
  * 
- * Helper functions for uploading images to Supabase Storage
- * via Edge Functions with persistent URLs.
+ * Helper functions for uploading images through the backend storage adapter.
  */
 
-import { projectId } from '../../utils/supabase/info';
 import { getAuthToken } from '../auth/getAuthToken';
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
 
-const PROJECTS_API_BASE = `https://${projectId}.supabase.co/functions/v1/scriptony-projects`;
-const WORLDBUILDING_API_BASE = `https://${projectId}.supabase.co/functions/v1/scriptony-worldbuilding`;
+const PROJECTS_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS);
+const WORLDBUILDING_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDING);
 
 /**
  * Upload project cover image

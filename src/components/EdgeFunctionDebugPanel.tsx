@@ -1,7 +1,7 @@
 /**
- * 🔍 Edge Function Debug Panel
+ * 🔍 Backend Function Debug Panel
  * 
- * Tests connectivity to all Edge Functions and displays status.
+ * Tests connectivity to all backend functions and displays status.
  * Helps diagnose "Failed to fetch" errors.
  */
 
@@ -10,8 +10,8 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { RefreshCw, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { EDGE_FUNCTIONS } from '../lib/api-gateway';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { EDGE_FUNCTIONS, buildFunctionRouteUrl } from '../lib/api-gateway';
+import { backendConfig } from '../lib/env';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 interface FunctionStatus {
@@ -28,7 +28,7 @@ export function EdgeFunctionDebugPanel() {
   const [expandedFunctions, setExpandedFunctions] = useState<Set<string>>(new Set());
 
   const testFunction = async (name: string): Promise<FunctionStatus> => {
-    const url = `https://${projectId}.supabase.co/functions/v1/${name}/health`;
+    const url = buildFunctionRouteUrl(name, '/health');
     const startTime = Date.now();
 
     try {
@@ -37,7 +37,9 @@ export function EdgeFunctionDebugPanel() {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          ...(backendConfig.publicAuthToken
+            ? { 'Authorization': `Bearer ${backendConfig.publicAuthToken}` }
+            : {}),
         },
         // Add timeout
         signal: AbortSignal.timeout(10000), // 10 second timeout
@@ -148,9 +150,9 @@ export function EdgeFunctionDebugPanel() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold">Edge Function Connectivity Test</h3>
+            <h3 className="font-semibold">Backend Function Connectivity Test</h3>
             <p className="text-sm text-muted-foreground">
-              Test all Supabase Edge Functions to diagnose "Failed to fetch" errors
+              Test all backend functions to diagnose connectivity errors
             </p>
           </div>
           <Button
@@ -176,8 +178,8 @@ export function EdgeFunctionDebugPanel() {
         <div className="p-3 bg-muted/50 rounded-lg text-sm">
           <div className="font-medium mb-1">Project Configuration:</div>
           <div className="text-muted-foreground space-y-1">
-            <div>Project ID: <code className="text-xs bg-muted px-1 py-0.5 rounded">{projectId}</code></div>
-            <div>Base URL: <code className="text-xs bg-muted px-1 py-0.5 rounded">https://{projectId}.supabase.co/functions/v1</code></div>
+            <div>Provider: <code className="text-xs bg-muted px-1 py-0.5 rounded">{backendConfig.provider}</code></div>
+            <div>Base URL: <code className="text-xs bg-muted px-1 py-0.5 rounded">{backendConfig.functionsBaseUrl}</code></div>
           </div>
         </div>
 
@@ -282,7 +284,7 @@ export function EdgeFunctionDebugPanel() {
         {/* Help Text */}
         {!testing && results.length === 0 && (
           <div className="text-sm text-muted-foreground text-center py-8">
-            Click "Test All" to check connectivity to all Edge Functions
+            Click "Test All" to check connectivity to all backend functions
           </div>
         )}
       </div>

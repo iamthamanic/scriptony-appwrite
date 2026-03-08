@@ -8,7 +8,17 @@
 export interface AuthSession {
   accessToken: string | null;
   userId: string | null;
+  profile?: AuthUserProfile | null;
   raw?: unknown;
+}
+
+export interface AuthUserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: "user" | "admin" | "superadmin";
+  avatar?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AuthClient {
@@ -16,6 +26,11 @@ export interface AuthClient {
    * Get the current session (if any)
    */
   getSession(): Promise<AuthSession | null>;
+
+  /**
+   * Sign up with email and password
+   */
+  signUp(email: string, password: string, options?: Record<string, any>): Promise<AuthSession | null>;
 
   /**
    * Sign in with email and password

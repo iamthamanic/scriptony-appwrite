@@ -32,7 +32,7 @@ import { getAuthClient } from "./lib/auth/getAuthClient";
 import { STORAGE_KEYS } from "./lib/config";
 import { setupUndoKeyboardShortcuts } from "./lib/undo-manager";
 import { queryClient } from "./lib/react-query";
-import scriptonyLogo from "figma:asset/762fa3b0c4bc468cb3c0661e6181aee92a01370d.png";
+import scriptonyLogo from './assets/scriptony-logo.png';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();

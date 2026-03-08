@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { backendConfig } from "../../lib/env";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../../lib/api-gateway";
 
 export function AdminPage() {
   const [selectedTab, setSelectedTab] = useState("overview");
@@ -18,15 +20,13 @@ export function AdminPage() {
     setRecalculateResult(null);
     
     try {
-      const { projectId, publicAnonKey } = await import("../../utils/supabase/info");
-      
       // Get all book projects
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3b52693b/projects`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/projects"),
         {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
+          headers: backendConfig.publicAuthToken
+            ? { 'Authorization': `Bearer ${backendConfig.publicAuthToken}` }
+            : undefined,
         }
       );
       
@@ -42,12 +42,14 @@ export function AdminPage() {
       // Recalculate word counts for each book project
       for (const project of bookProjects) {
         const recalcResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3b52693b/projects/${project.id}/recalculate-word-counts`,
+          buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, `/projects/${project.id}/recalculate-word-counts`),
           {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              ...(backendConfig.publicAuthToken
+                ? { 'Authorization': `Bearer ${backendConfig.publicAuthToken}` }
+                : {}),
             },
           }
         );

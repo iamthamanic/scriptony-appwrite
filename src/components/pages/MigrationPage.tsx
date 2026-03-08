@@ -4,8 +4,7 @@ import { Card } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
 import { CheckCircle2, AlertCircle, Loader2, Database, ArrowRight } from "lucide-react";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
-import { supabaseConfig } from "../../lib/env";
-import { API_CONFIG } from "../../lib/config";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../../lib/api-gateway";
 
 interface MigrationStats {
   organizations: number;
@@ -50,7 +49,7 @@ export function MigrationPage() {
 
       // Call migration endpoint
       const response = await fetch(
-        `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}/migrate`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/migrate"),
         {
           method: "POST",
           headers: {
@@ -93,7 +92,7 @@ export function MigrationPage() {
 
       // Call SQL migration endpoint
       const response = await fetch(
-        `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}/migrate-sql`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/migrate-sql"),
         {
           method: "POST",
           headers: {

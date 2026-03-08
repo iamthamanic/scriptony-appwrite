@@ -1,8 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabaseConfig } from "../lib/env";
-import { API_CONFIG } from "../lib/config";
+import {
+  getAuthRedirectUrl,
+  getCapacitorCallbackUrl,
+  getPasswordResetRedirectUrl,
+} from "../lib/env";
 import { getAuthClient } from "../lib/auth/getAuthClient";
 import { getAuthToken } from "../lib/auth/getAuthToken";
+import { buildAuthProfileFromSession } from "../lib/auth/auth-profile";
+import { isNativePlatform } from "../lib/capacitor/platform";
 
 interface User {
   id: string;
@@ -31,6 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const getOAuthRedirectTarget = () =>
+    isNativePlatform() ? getCapacitorCallbackUrl() : getAuthRedirectUrl();
+
+  const getResetPasswordRedirectTarget = () =>
+    isNativePlatform()
+      ? getCapacitorCallbackUrl("reset-password")
+      : getPasswordResetRedirectUrl();
+
   // Check for existing session on mount and listen for auth changes
   useEffect(() => {
     checkSession();
@@ -38,23 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes via adapter
     const unsubscribe = getAuthClient().onAuthStateChange(async (session) => {
       console.log("Auth state changed:", session ? "SIGNED_IN" : "SIGNED_OUT");
-      
-      if (session && session.raw) {
-        // Extract user metadata from raw Supabase session
-        const rawSession = session.raw as any;
-        const metadata = rawSession?.user?.user_metadata || {};
-        const email = rawSession?.user?.email || "";
-        
-        setUser({
-          id: session.userId!,
-          email,
-          name: metadata?.name || "User",
-          role: metadata?.role || "user",
-          avatar: metadata?.avatar,
-        });
-      } else {
-        setUser(null);
-      }
+
+      const profile = buildAuthProfileFromSession(session);
+      setUser(profile);
     });
 
     // Cleanup subscription on unmount
@@ -72,22 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (session.raw) {
-        // Extract user metadata from raw Supabase session
-        const rawSession = session.raw as any;
-        const metadata = rawSession?.user?.user_metadata || {};
-        const email = rawSession?.user?.email || "";
-        
-        setUser({
-          id: session.userId!,
-          email,
-          name: metadata?.name || "User",
-          role: metadata?.role || "user",
-          avatar: metadata?.avatar,
-        });
-      } else {
-        setUser(null);
-      }
+      setUser(buildAuthProfileFromSession(session));
     } catch (error) {
       console.error("Error checking session:", error);
       setUser(null);
@@ -99,28 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
+      const session = await getAuthClient().signUp(email, password, {
+        displayName: name,
+        metadata: {
+          name,
+          role: "user",
+        },
+        redirectTo: getOAuthRedirectTarget(),
+      });
 
-      // Call server to create user with email confirmation
-      const response = await fetch(
-        `${supabaseConfig.url}/functions/v1${API_CONFIG.SERVER_BASE_PATH}/auth/signup`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseConfig.publicAnonKey}`,
-          },
-          body: JSON.stringify({ email, password, name }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Sign up failed");
+      if (session) {
+        const profile = buildAuthProfileFromSession(session);
+        setUser(profile);
+        return;
       }
 
-      const data = await response.json();
-
-      // Now sign in
       await signIn(email, password);
     } catch (error) {
       console.error("Sign up error:", error);
@@ -135,20 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
 
       const session = await getAuthClient().signInWithPassword(email, password);
-
-      if (session && session.raw) {
-        const rawSession = session.raw as any;
-        const metadata = rawSession?.user?.user_metadata || {};
-        const userEmail = rawSession?.user?.email || "";
-        
-        setUser({
-          id: session.userId!,
-          email: userEmail,
-          name: metadata?.name || "User",
-          role: metadata?.role || "user",
-          avatar: metadata?.avatar,
-        });
-      }
+      setUser(buildAuthProfileFromSession(session));
     } catch (error) {
       console.error("Sign in error:", error);
       throw error;
@@ -162,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
 
       await getAuthClient().signInWithOAuth(provider, {
-        redirectTo: window.location.origin,
+        redirectTo: getOAuthRedirectTarget(),
       });
 
       // OAuth redirects to provider, so no need to update state here
@@ -210,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await getAuthClient().resetPasswordForEmail(
         email,
-        `${window.location.origin}/reset-password`
+        getResetPasswordRedirectTarget()
       );
     } catch (error) {
       console.error("Password reset error:", error);

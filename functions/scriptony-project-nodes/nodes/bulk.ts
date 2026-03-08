@@ -1,0 +1,91 @@
+/**
+ * Timeline node bulk creation route for the Nhost compatibility layer.
+ */
+
+import { requireUserBootstrap } from "../../../_shared/auth";
+import { requestGraphql } from "../../../_shared/hasura";
+import {
+  readJsonBody,
+  sendBadRequest,
+  sendJson,
+  sendMethodNotAllowed,
+  sendUnauthorized,
+  sendServerError,
+  type RequestLike,
+  type ResponseLike,
+} from "../../../_shared/http";
+import { mapNode, normalizeNodeInput } from "../../../_shared/timeline";
+
+export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+  try {
+    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    if (!bootstrap) {
+      sendUnauthorized(res);
+      return;
+    }
+
+    if (req.method !== "POST") {
+      sendMethodNotAllowed(res, ["POST"]);
+      return;
+    }
+
+    const body = await readJsonBody<{ nodes?: Array<Record<string, any>> }>(req);
+    const rawNodes = Array.isArray(body.nodes) ? body.nodes : [];
+    const nodes = rawNodes.map(normalizeNodeInput);
+
+    if (
+      nodes.length === 0 ||
+      nodes.some(
+        (node) =>
+          !node.project_id ||
+          !node.template_id ||
+          !node.level ||
+          node.node_number === undefined ||
+          !node.title
+      )
+    ) {
+      sendBadRequest(
+        res,
+        "nodes must contain project_id, template_id, level, node_number, and title"
+      );
+      return;
+    }
+
+    const created = await requestGraphql<{
+      insert_timeline_nodes: { returning: Array<Record<string, any>> };
+    }>(
+      `
+        mutation BulkCreateTimelineNodes($objects: [timeline_nodes_insert_input!]!) {
+          insert_timeline_nodes(objects: $objects) {
+            returning {
+              id
+              project_id
+              template_id
+              level
+              parent_id
+              node_number
+              title
+              description
+              color
+              order_index
+              metadata
+              created_at
+              updated_at
+            }
+          }
+        }
+      `,
+      {
+        objects: nodes.map((node) => ({
+          ...node,
+          order_index: node.order_index ?? node.node_number ?? 0,
+          metadata: node.metadata ?? {},
+        })),
+      }
+    );
+
+    sendJson(res, 201, { nodes: created.insert_timeline_nodes.returning.map(mapNode) });
+  } catch (error) {
+    sendServerError(res, error);
+  }
+}

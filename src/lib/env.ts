@@ -1,20 +1,30 @@
 /**
- * Environment Variable Validation & Type-Safe Access
- * 
- * This module provides centralized, type-safe access to all environment variables.
- * All environment access should go through this module to ensure runtime validation.
+ * Backend and platform configuration.
+ *
+ * Nhost + Capacitor setup. All runtime config flows through this file.
  */
 
-import { projectId as rawProjectId, publicAnonKey as rawPublicAnonKey } from '../utils/supabase/info';
+export interface NhostConfig {
+  subdomain: string;
+  region: string;
+  authUrl: string;
+  storageUrl: string;
+  graphqlUrl: string;
+  functionsUrl: string;
+}
 
-// =============================================================================
-// Types
-// =============================================================================
+export interface CapacitorConfig {
+  appId: string;
+  urlScheme: string;
+  callbackHost: string;
+}
 
-export interface SupabaseConfig {
-  projectId: string;
-  publicAnonKey: string;
-  url: string;
+export interface BackendConfig {
+  provider: 'nhost';
+  functionsBaseUrl: string;
+  publicAuthToken: string;
+  nhost: NhostConfig;
+  capacitor: CapacitorConfig;
 }
 
 export interface AppConfig {
@@ -22,109 +32,109 @@ export interface AppConfig {
   isProduction: boolean;
 }
 
-// =============================================================================
-// Validation Helpers
-// =============================================================================
+const env = import.meta.env;
 
-/**
- * Validates that a value is a non-empty string
- */
-function validateString(value: unknown, name: string): string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new Error(
-      `Environment validation failed: ${name} must be a non-empty string. ` +
-      `Got: ${typeof value === 'string' ? '(empty string)' : typeof value}`
-    );
-  }
-  return value.trim();
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
 }
 
-/**
- * Validates a Supabase Project ID format
- */
-function validateProjectId(value: string): string {
-  // Supabase project IDs are lowercase alphanumeric strings
-  if (!/^[a-z0-9]{20}$/.test(value)) {
-    console.warn(
-      `⚠️ Project ID doesn't match expected format (20 lowercase alphanumeric chars). ` +
-      `This might still work, but please verify.`
-    );
-  }
-  return value;
+function trimLeadingSlash(value: string): string {
+  return value.replace(/^\/+/, '');
 }
 
-/**
- * Validates a Supabase Anon Key format (JWT)
- */
-function validateAnonKey(value: string): string {
-  // JWT tokens have 3 parts separated by dots
-  const parts = value.split('.');
-  if (parts.length !== 3) {
-    throw new Error(
-      `Environment validation failed: publicAnonKey must be a valid JWT token. ` +
-      `Expected 3 parts separated by dots, got ${parts.length}.`
-    );
-  }
-  return value;
+function validateString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
-// =============================================================================
-// Supabase Configuration
-// =============================================================================
-
-let _supabaseConfig: SupabaseConfig | null = null;
-
-/**
- * Returns validated Supabase configuration.
- * Validates on first access and caches the result.
- */
-export function getSupabaseConfig(): SupabaseConfig {
-  if (_supabaseConfig) {
-    return _supabaseConfig;
-  }
-
-  try {
-    const projectId = validateString(rawProjectId, 'SUPABASE_PROJECT_ID');
-    validateProjectId(projectId);
-
-    const publicAnonKey = validateString(rawPublicAnonKey, 'SUPABASE_ANON_KEY');
-    validateAnonKey(publicAnonKey);
-
-    const url = `https://${projectId}.supabase.co`;
-
-    _supabaseConfig = {
-      projectId,
-      publicAnonKey,
-      url,
-    };
-
-    return _supabaseConfig;
-  } catch (error) {
-    console.error('❌ Supabase Configuration Validation Failed:', error);
-    throw error;
-  }
+function joinUrl(base: string, path: string): string {
+  if (!base) return path;
+  if (!path) return base;
+  return `${trimTrailingSlash(base)}/${trimLeadingSlash(path)}`;
 }
 
-// =============================================================================
-// App Configuration
-// =============================================================================
+let _backendConfig: BackendConfig | null = null;
+
+export function getBackendConfig(): BackendConfig {
+  if (_backendConfig) {
+    return _backendConfig;
+  }
+
+  const subdomain = validateString(env.VITE_NHOST_SUBDOMAIN);
+  const region = validateString(env.VITE_NHOST_REGION) || 'eu-central-1';
+  const base = subdomain && region ? `https://${subdomain}` : '';
+
+  const nhost: NhostConfig = {
+    subdomain,
+    region,
+    authUrl: trimTrailingSlash(
+      validateString(env.VITE_NHOST_AUTH_URL) || (base ? `${base}.auth.${region}.nhost.run/v1` : '')
+    ),
+    storageUrl: trimTrailingSlash(
+      validateString(env.VITE_NHOST_STORAGE_URL) || (base ? `${base}.storage.${region}.nhost.run/v1` : '')
+    ),
+    graphqlUrl: trimTrailingSlash(
+      validateString(env.VITE_NHOST_GRAPHQL_URL) || (base ? `${base}.graphql.${region}.nhost.run/v1` : '')
+    ),
+    functionsUrl: trimTrailingSlash(
+      validateString(env.VITE_NHOST_FUNCTIONS_URL) || (base ? `${base}.functions.${region}.nhost.run/v1` : '')
+    ),
+  };
+
+  const functionsBaseUrl = trimTrailingSlash(
+    validateString(env.VITE_BACKEND_API_BASE_URL) || nhost.functionsUrl
+  );
+
+  _backendConfig = {
+    provider: 'nhost',
+    functionsBaseUrl,
+    publicAuthToken: validateString(env.VITE_BACKEND_PUBLIC_TOKEN) || '',
+    nhost,
+    capacitor: {
+      appId: validateString(env.VITE_CAPACITOR_APP_ID) || 'ai.scriptony.app',
+      urlScheme: validateString(env.VITE_CAPACITOR_URL_SCHEME) || 'scriptony',
+      callbackHost: validateString(env.VITE_CAPACITOR_CALLBACK_HOST) || 'auth-callback',
+    },
+  };
+
+  return _backendConfig;
+}
+
+export function getMissingNhostConfig(config = getBackendConfig().nhost): string[] {
+  const missing: string[] = [];
+
+  if (!config.authUrl && !config.subdomain) {
+    missing.push('VITE_NHOST_AUTH_URL or VITE_NHOST_SUBDOMAIN');
+  }
+
+  if (!config.functionsUrl && !validateString(env.VITE_BACKEND_API_BASE_URL)) {
+    missing.push('VITE_NHOST_FUNCTIONS_URL or VITE_BACKEND_API_BASE_URL');
+  }
+
+  if (!config.graphqlUrl && !config.subdomain) {
+    missing.push('VITE_NHOST_GRAPHQL_URL or VITE_NHOST_SUBDOMAIN');
+  }
+
+  if (!config.storageUrl && !config.subdomain) {
+    missing.push('VITE_NHOST_STORAGE_URL or VITE_NHOST_SUBDOMAIN');
+  }
+
+  return missing;
+}
 
 let _appConfig: AppConfig | null = null;
 
-/**
- * Returns validated app configuration.
- * Determines environment based on available signals.
- */
 export function getAppConfig(): AppConfig {
   if (_appConfig) {
     return _appConfig;
   }
 
-  // In browser environments, we can check for development indicators
-  const isDevelopment = 
-    typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || 
-     window.location.hostname.startsWith('127.0.0.1'));
+  const hostname =
+    typeof window !== 'undefined' ? window.location.hostname : '';
+
+  const isDevelopment =
+    hostname === 'localhost' ||
+    hostname.startsWith('127.0.0.1') ||
+    validateString(env.MODE) === 'development';
 
   _appConfig = {
     isDevelopment,
@@ -134,34 +144,43 @@ export function getAppConfig(): AppConfig {
   return _appConfig;
 }
 
-// =============================================================================
-// Convenience Exports
-// =============================================================================
+export function getAuthRedirectUrl(): string {
+  const custom = validateString(env.VITE_AUTH_REDIRECT_URL);
+  if (custom) return custom;
 
-/**
- * Validated Supabase configuration.
- * Use this instead of importing from utils/supabase/info directly.
- */
-export const supabaseConfig = getSupabaseConfig();
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
 
-/**
- * Validated app configuration.
- */
+  return validateString(env.VITE_APP_WEB_URL) || 'http://localhost:5173';
+}
+
+export function getPasswordResetRedirectUrl(): string {
+  const custom = validateString(env.VITE_PASSWORD_RESET_REDIRECT_URL);
+  if (custom) return custom;
+
+  return joinUrl(getAuthRedirectUrl(), 'reset-password');
+}
+
+export function getCapacitorCallbackUrl(path = ''): string {
+  const { urlScheme, callbackHost } = getBackendConfig().capacitor;
+  if (!path) {
+    return `${urlScheme}://${callbackHost}`;
+  }
+
+  return `${urlScheme}://${callbackHost}/${trimLeadingSlash(path)}`;
+}
+
+export const backendConfig = getBackendConfig();
 export const appConfig = getAppConfig();
 
-// =============================================================================
-// Debug Logging (Development Only)
-// =============================================================================
-
 if (appConfig.isDevelopment) {
-  console.log('✅ Environment Validation Complete:', {
-    supabase: {
-      projectId: supabaseConfig.projectId,
-      url: supabaseConfig.url,
-      hasAnonKey: supabaseConfig.publicAnonKey.length > 0,
-    },
-    app: {
-      environment: appConfig.isDevelopment ? 'development' : 'production',
-    },
+  const missingNhostConfig = getMissingNhostConfig(backendConfig.nhost);
+
+  console.log('Environment ready:', {
+    functionsBaseUrl: backendConfig.functionsBaseUrl,
+    nhostSubdomain: backendConfig.nhost.subdomain || '(unset)',
+    nhostAuthUrl: backendConfig.nhost.authUrl || '(unset)',
+    missingNhostConfig,
   });
 }

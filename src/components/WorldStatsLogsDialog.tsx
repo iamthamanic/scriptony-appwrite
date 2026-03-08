@@ -52,7 +52,7 @@ import {
 } from './ui/select';
 import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from '../lib/auth/getAuthToken';
-import { supabaseConfig } from '../lib/env';
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../lib/api-gateway';
 import { 
   BarChart, 
   Bar, 
@@ -147,7 +147,7 @@ export function WorldStatsLogsDialog({
       
       // Load world categories
       const categoriesRes = await fetch(
-        `${supabaseConfig.url}/functions/v1/scriptony-worldbuilding/worlds/${world.id}/categories`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDING, `/worlds/${world.id}/categories`),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -170,7 +170,7 @@ export function WorldStatsLogsDialog({
 
       // Load characters linked to this world
       const charactersRes = await fetch(
-        `${supabaseConfig.url}/functions/v1/scriptony-worldbuilding/characters?world_id=${world.id}`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDING, `/characters?world_id=${world.id}`),
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -207,7 +207,7 @@ export function WorldStatsLogsDialog({
       // NOTE: Activity logs für Worlds sind noch nicht im Backend implementiert
       // Das wird hier vorbereitet für zukünftige Implementation
       const response = await fetch(
-        `${supabaseConfig.url}/functions/v1/scriptony-logs/worlds/${world.id}`,
+        buildFunctionRouteUrl(EDGE_FUNCTIONS.LOGS, `/worlds/${world.id}`),
         {
           headers: {
             'Authorization': `Bearer ${token}`,

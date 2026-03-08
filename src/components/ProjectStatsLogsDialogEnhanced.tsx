@@ -59,7 +59,7 @@ import {
 } from './ui/select';
 import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from '../lib/auth/getAuthToken';
-import { supabaseConfig } from '../lib/env';
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../lib/api-gateway';
 import { 
   BarChart, 
   Bar, 
@@ -263,16 +263,16 @@ export function ProjectStatsLogsDialog({
 
       // Load all stats in parallel
       const [overviewRes, shotRes, characterRes, mediaRes] = await Promise.all([
-        fetch(`${supabaseConfig.url}/functions/v1/scriptony-stats/stats/project/${project.id}/overview`, {
+        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/overview`), {
           headers: { 'Authorization': `Bearer ${token}` },
         }),
-        fetch(`${supabaseConfig.url}/functions/v1/scriptony-stats/stats/project/${project.id}/shots`, {
+        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/shots`), {
           headers: { 'Authorization': `Bearer ${token}` },
         }),
-        fetch(`${supabaseConfig.url}/functions/v1/scriptony-stats/stats/project/${project.id}/characters`, {
+        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/characters`), {
           headers: { 'Authorization': `Bearer ${token}` },
         }),
-        fetch(`${supabaseConfig.url}/functions/v1/scriptony-stats/stats/project/${project.id}/media`, {
+        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/media`), {
           headers: { 'Authorization': `Bearer ${token}` },
         }),
       ]);
@@ -307,7 +307,7 @@ export function ProjectStatsLogsDialog({
 
       // Show warning if no data
       if (!overview && !shots && !characters && !media) {
-        setError('Keine Statistiken verfügbar. Bitte stelle sicher, dass die scriptony-stats Edge Function deployed ist.');
+        setError('Keine Statistiken verfügbar. Bitte stelle sicher, dass die Route `scriptony-stats` erreichbar ist.');
         toast.error('Stats Backend nicht verfügbar');
       }
 
@@ -331,7 +331,7 @@ export function ProjectStatsLogsDialog({
         throw new Error('Not authenticated');
       }
 
-      const url = `${supabaseConfig.url}/functions/v1/scriptony-logs/logs/project/${project.id}/recent?limit=100`;
+      const url = buildFunctionRouteUrl(EDGE_FUNCTIONS.LOGS, `/logs/project/${project.id}/recent?limit=100`);
       console.log('[ProjectStatsLogsDialog] 📡 Fetching logs from:', url);
 
       const response = await fetch(url, {
@@ -627,7 +627,7 @@ export function ProjectStatsLogsDialog({
                     <div>
                       <div className="font-semibold mb-1">{error}</div>
                       <div className="text-sm text-muted-foreground">
-                        Bitte stelle sicher, dass die Edge Functions deployed sind:
+                        Bitte stelle sicher, dass die benoetigten Backend-Funktionen erreichbar sind:
                       </div>
                       <ul className="text-xs text-muted-foreground mt-2 space-y-1 ml-4 list-disc">
                         <li>scriptony-stats</li>
@@ -642,7 +642,7 @@ export function ProjectStatsLogsDialog({
                 <CardContent className="pt-6 text-center">
                   <div className="text-muted-foreground mb-2">Keine Statistiken verfügbar</div>
                   <div className="text-sm text-muted-foreground">
-                    Die Backend Edge Functions sind möglicherweise noch nicht deployed.
+                    Die benoetigten Backend-Funktionen sind moeglicherweise noch nicht bereit.
                   </div>
                 </CardContent>
               </Card>
@@ -855,7 +855,7 @@ export function ProjectStatsLogsDialog({
                     <div>
                       <div className="font-semibold mb-1">{logsError}</div>
                       <div className="text-sm text-muted-foreground">
-                        Die scriptony-logs Edge Function ist noch nicht deployed.
+                        Die Route `scriptony-logs` ist aktuell nicht erreichbar.
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { apiGateway } from "../lib/api-gateway";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 
 interface UploadResult {
   url: string;
@@ -7,7 +8,7 @@ interface UploadResult {
 }
 
 /**
- * Upload an image to Supabase Storage
+ * Upload an image through the backend storage adapter
  * @param file - The file to upload
  * @param userId - The user ID
  * @param folder - Optional folder name (e.g., 'avatars', 'characters', 'worlds')
@@ -31,11 +32,10 @@ export async function uploadImage(
     formData.append("userId", userId);
     formData.append("folder", folder);
 
-    // Note: apiGateway doesn't support FormData yet, so we use fetch directly
-    // but with the correct Edge Function URL from the gateway
-    const { projectId } = await import("./supabase/info");
+    // apiGateway doesn't support FormData yet, so this uses fetch directly
+    // with the correct backend route URL from the gateway.
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/scriptony-auth/storage/upload`,
+      buildFunctionRouteUrl(EDGE_FUNCTIONS.AUTH, "/storage/upload"),
       {
         method: "POST",
         headers: {
@@ -106,7 +106,7 @@ export function formatBytes(bytes: number): string {
 
 /**
  * Get the storage limit for the free tier
- * Supabase free tier: 1 GB
+ * Current app storage soft limit: 1 GB
  */
 export const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
 export const STORAGE_LIMIT_MB = 1024; // 1 GB in MB

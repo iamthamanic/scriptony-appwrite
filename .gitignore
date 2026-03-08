@@ -2,3 +2,19 @@
 supabase/backups/*.sql
 supabase/backups/*.dump
 !supabase/backups/schema_and_data_LATEST.sql
+
+# Env / secrets (never commit)
+.env
+.env.local
+.env.migration
+.env.*.local
+scripts/.env
+scripts/.env.migration
+
+# Build output & dependencies
+build/
+node_modules/
+functions/node_modules/
+
+# OS
+.DS_Store

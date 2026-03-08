@@ -913,7 +913,7 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
       // Show loading toast
       toast.loading('Bild wird hochgeladen...');
 
-      // Upload to Supabase Storage
+      // Upload through the backend storage adapter
       const imageUrl = await uploadWorldImage(world.id, file);
 
       // Update local state immediately (optimistic UI)

@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { TimelineData } from './FilmDropdown';
 import { EditableParagraph } from './EditableParagraph';
 import { toast } from 'sonner@2.0.3';
-import scriptonyLogo from 'figma:asset/762fa3b0c4bc468cb3c0661e6181aee92a01370d.png';
+import scriptonyLogo from '../assets/scriptony-logo.png';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**

@@ -1,0 +1,25 @@
+{
+  "buildCommand": "npm run build",
+  "outputDir": "build",
+  "staticSite": true,
+  "spaRouting": true,
+  "envFile": ".env.example",
+  "requiredEnv": [
+    "VITE_NHOST_SUBDOMAIN",
+    "VITE_NHOST_REGION"
+  ],
+  "optionalEnv": [
+    "VITE_NHOST_AUTH_URL",
+    "VITE_NHOST_GRAPHQL_URL",
+    "VITE_NHOST_STORAGE_URL",
+    "VITE_NHOST_FUNCTIONS_URL",
+    "VITE_APP_WEB_URL",
+    "VITE_AUTH_REDIRECT_URL",
+    "VITE_PASSWORD_RESET_REDIRECT_URL",
+    "VITE_BACKEND_API_BASE_URL",
+    "VITE_BACKEND_PUBLIC_TOKEN",
+    "VITE_CAPACITOR_APP_ID",
+    "VITE_CAPACITOR_URL_SCHEME",
+    "VITE_CAPACITOR_CALLBACK_HOST"
+  ]
+}

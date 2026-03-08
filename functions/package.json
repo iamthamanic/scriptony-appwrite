@@ -1,0 +1,8 @@
+{
+  "name": "scriptony-nhost-functions",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@nhost/nhost-js": "^4.5.0"
+  }
+}

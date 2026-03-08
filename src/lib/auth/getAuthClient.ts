@@ -1,11 +1,10 @@
 /**
  * Auth Client Factory
- * 
- * Returns a singleton instance of the configured auth client.
- * Currently uses SupabaseAuthAdapter, but can be switched to other providers.
+ *
+ * Returns a singleton instance of the Nhost auth client.
  */
 
-import { SupabaseAuthAdapter } from "./SupabaseAuthAdapter";
+import { NhostAuthAdapter } from "./NhostAuthAdapter";
 import type { AuthClient } from "./AuthClient";
 
 let _client: AuthClient | null = null;
@@ -15,16 +14,8 @@ let _client: AuthClient | null = null;
  */
 export function getAuthClient(): AuthClient {
   if (_client) return _client;
-  
-  // In the future, this could switch based on environment variable:
-  // const provider = process.env.NEXT_PUBLIC_AUTH_PROVIDER || 'supabase';
-  // switch (provider) {
-  //   case 'auth0': return new Auth0Adapter();
-  //   case 'clerk': return new ClerkAdapter();
-  //   default: return new SupabaseAuthAdapter();
-  // }
-  
-  _client = new SupabaseAuthAdapter();
+
+  _client = new NhostAuthAdapter();
   return _client;
 }
 
