@@ -3,8 +3,10 @@
  *
  * These helpers verify the current Nhost bearer token and lazily ensure that
  * the app-specific `users` and `organization_members` records exist.
+ * Supports long-lived integration tokens (user_integration_tokens) for external tools.
  */
 
+import { createHash } from "crypto";
 import { getAuthBaseUrl } from "./env";
 import { requestGraphql } from "./hasura";
 
@@ -59,6 +61,77 @@ export async function getUserFromAuthHeader(authHeader?: string): Promise<NhostU
   }
 
   return getUserFromToken(token);
+}
+
+/** Hash a plain integration token for storage/lookup (SHA-256 hex). */
+export function hashIntegrationToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+/**
+ * Resolve a long-lived integration token to a user.
+ * Returns a NhostUser-like object built from the app's users table, or null if invalid.
+ * Requires user_integration_tokens (and users) to be tracked in Hasura.
+ */
+export async function resolveIntegrationToken(token: string): Promise<NhostUser | null> {
+  if (!token || token.length < 16) {
+    return null;
+  }
+
+  const tokenHash = hashIntegrationToken(token);
+
+  try {
+    const data = await requestGraphql<{
+      user_integration_tokens: Array<{ user_id: string }>;
+    }>(
+      `
+        query GetUserByIntegrationToken($tokenHash: String!) {
+          user_integration_tokens(
+            where: { token_hash: { _eq: $tokenHash } }
+            limit: 1
+          ) {
+            user_id
+          }
+        }
+      `,
+      { tokenHash }
+    );
+
+    const row = data?.user_integration_tokens?.[0];
+    if (!row?.user_id) {
+      return null;
+    }
+
+    const profile = await requestGraphql<{
+      users_by_pk: { id: string; name: string | null; email: string | null; avatar_url: string | null } | null;
+    }>(
+      `
+        query GetUserProfile($userId: uuid!) {
+          users_by_pk(id: $userId) {
+            id
+            name
+            email
+            avatar_url
+          }
+        }
+      `,
+      { userId: row.user_id }
+    );
+
+    const u = profile?.users_by_pk;
+    if (!u) {
+      return null;
+    }
+
+    return {
+      id: u.id,
+      displayName: u.name ?? undefined,
+      email: u.email ?? undefined,
+      avatarUrl: u.avatar_url ?? undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function ensureUserBootstrap(user: NhostUser): Promise<BootstrapResult> {
@@ -172,7 +245,13 @@ export async function ensureUserBootstrap(user: NhostUser): Promise<BootstrapRes
 }
 
 export async function requireUserBootstrap(authHeader?: string): Promise<BootstrapResult | null> {
-  const user = await getUserFromAuthHeader(authHeader);
+  let user = await getUserFromAuthHeader(authHeader);
+  if (!user) {
+    const token = getBearerToken(authHeader);
+    if (token) {
+      user = await resolveIntegrationToken(token);
+    }
+  }
   if (!user) {
     return null;
   }

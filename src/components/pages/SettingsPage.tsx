@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, CreditCard, Shield, Cloud, Key, Bot, Globe, LogOut, Moon, Sun } from "lucide-react";
+import { User, CreditCard, Shield, Cloud, Key, Bot, Globe, LogOut, Moon, Sun, Copy, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -14,6 +14,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { getStorageUsage, formatBytes, STORAGE_LIMIT_BYTES } from "../../utils/storage";
 import { toast } from "sonner@2.0.3";
 import { Progress } from "../ui/progress";
+import { apiGet, apiPost, apiDelete, unwrapApiResult } from "../../lib/api-client";
 
 export function SettingsPage() {
   const { user, signOut, updateProfile } = useAuth();
@@ -31,6 +32,12 @@ export function SettingsPage() {
     return "light";
   });
   const isDemoMode = localStorage.getItem("scriptony_demo_mode") === "true";
+
+  // Integration tokens (for external tools: Blender/ComfyUI etc.)
+  const [integrationTokens, setIntegrationTokens] = useState<Array<{ id: string; name: string; created_at: string }>>([]);
+  const [integrationTokensLoading, setIntegrationTokensLoading] = useState(false);
+  const [newTokenName, setNewTokenName] = useState("");
+  const [createdTokenOneTime, setCreatedTokenOneTime] = useState<string | null>(null);
 
   // Load storage usage
   useEffect(() => {
@@ -61,6 +68,27 @@ export function SettingsPage() {
       });
     }
   };
+
+  const loadIntegrationTokens = async () => {
+    if (!user || isDemoMode) return;
+    setIntegrationTokensLoading(true);
+    try {
+      const result = await apiGet<{ tokens: Array<{ id: string; name: string; created_at: string }> }>("/integration-tokens");
+      const data = unwrapApiResult(result);
+      setIntegrationTokens(data?.tokens ?? []);
+    } catch (error) {
+      console.error("Error loading integration tokens:", error);
+      toast.error("Token-Liste konnte nicht geladen werden.");
+    } finally {
+      setIntegrationTokensLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && !isDemoMode) {
+      loadIntegrationTokens();
+    }
+  }, [user, isDemoMode]);
 
   const handleSaveProfile = async () => {
     try {
@@ -119,11 +147,12 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full px-4">
-        <TabsList className="w-full grid grid-cols-4 mb-6">
+        <TabsList className="w-full grid grid-cols-5 mb-6">
           <TabsTrigger value="profile" className="text-xs">{t("settings.profile")}</TabsTrigger>
           <TabsTrigger value="preferences" className="text-xs">Präferenzen</TabsTrigger>
           <TabsTrigger value="subscription" className="text-xs">Abo</TabsTrigger>
           <TabsTrigger value="security" className="text-xs">Sicherheit</TabsTrigger>
+          <TabsTrigger value="integrations" className="text-xs">Integrationen</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -399,6 +428,127 @@ export function SettingsPage() {
                 </div>
                 <Button variant="outline" size="sm" className="shrink-0 h-8 text-xs">Logout</Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Integrationen Tab – API-Tokens für externe Tools (Blender/ComfyUI) */}
+        <TabsContent value="integrations" className="space-y-4">
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Key className="size-4" />
+                API-Tokens für externe Tools
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Erzeuge einen Token, um z. B. Blender oder ComfyUI mit Scriptony zu verbinden. Token nur einmal sichtbar – sicher aufbewahren.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-4">
+              {isDemoMode ? (
+                <p className="text-sm text-muted-foreground">In der Demo-Version können keine Tokens erstellt werden.</p>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Name (z. B. Blender / ComfyUI)"
+                      value={newTokenName}
+                      onChange={(e) => setNewTokenName(e.target.value)}
+                      className="h-11 flex-1"
+                    />
+                    <Button
+                      className="h-11"
+                      onClick={async () => {
+                        try {
+                          const result = await apiPost<{ id: string; name: string; token: string; created_at: string }>(
+                            "/integration-tokens",
+                            { name: newTokenName.trim() || "External Tool" }
+                          );
+                          const data = unwrapApiResult(result);
+                          if (data?.token) {
+                            setCreatedTokenOneTime(data.token);
+                            setNewTokenName("");
+                            loadIntegrationTokens();
+                            toast.success("Token erstellt. Bitte jetzt kopieren – er wird nicht erneut angezeigt.");
+                          }
+                        } catch (e) {
+                          toast.error("Token konnte nicht erstellt werden.");
+                        }
+                      }}
+                    >
+                      Token erzeugen
+                    </Button>
+                  </div>
+                  {createdTokenOneTime && (
+                    <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+                      <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Token nur einmal sichtbar – kopieren und sicher speichern:</p>
+                      <div className="flex gap-2">
+                        <code className="flex-1 break-all text-xs bg-background px-2 py-2 rounded border overflow-x-auto">
+                          {createdTokenOneTime}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(createdTokenOneTime);
+                            toast.success("Token kopiert.");
+                          }}
+                        >
+                          <Copy className="size-4" />
+                        </Button>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setCreatedTokenOneTime(null)}>Schließen</Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base">Deine Tokens</CardTitle>
+              <CardDescription className="text-xs">Vorhandene Tokens. Widerrufen entfernt den Zugriff sofort.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              {integrationTokensLoading ? (
+                <p className="text-sm text-muted-foreground">Lade …</p>
+              ) : integrationTokens.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine Tokens. Erzeuge einen oben.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {integrationTokens.map((tok) => (
+                    <li
+                      key={tok.id}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{tok.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Erstellt: {new Date(tok.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive shrink-0 h-8"
+                        onClick={async () => {
+                          try {
+                            await apiDelete(`/integration-tokens/${tok.id}`);
+                            toast.success("Token wurde widerrufen.");
+                            loadIntegrationTokens();
+                          } catch {
+                            toast.error("Token konnte nicht widerrufen werden.");
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -70,6 +70,7 @@ const ROUTE_MAP: Record<string, string> = {
   '/create-demo-user': BACKEND_FUNCTIONS.AUTH,
   '/profile': BACKEND_FUNCTIONS.AUTH,
   '/organizations': BACKEND_FUNCTIONS.AUTH,
+  '/integration-tokens': BACKEND_FUNCTIONS.AUTH,
   '/storage': BACKEND_FUNCTIONS.AUTH,
   
   // Projects

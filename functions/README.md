@@ -15,6 +15,7 @@ This folder contains the first Nhost-compatible backend surface for Scriptony.
   - `GET /organizations/:id`
   - `PUT /organizations/:id`
   - `DELETE /organizations/:id`
+  - `GET /integration-tokens` (list), `POST /integration-tokens` (create), `DELETE /integration-tokens/:id` (revoke)
   - `GET /storage/usage`
 - `scriptony-projects`
   - `GET /health`
