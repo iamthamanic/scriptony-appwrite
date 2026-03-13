@@ -16,11 +16,6 @@ value = '{{ secrets.SCRIPTONY_OAUTH_GOOGLE_DRIVE_CLIENT_SECRET }}'
 name = 'scriptony_oauth_allowed_redirect_origins'
 value = 'https://scriptony.raccoova.com,http://localhost:3000'
 
-# Minimal [graphql] for deployment (ConfigGraphqlInsertInput has no 'hasura' field)
-[graphql.security]
-forbidAdminSecret = false
-maxDepthQueries = 10
-
 [hasura]
 version = 'v2.48.5-ce'
 adminSecret = '{{ secrets.HASURA_GRAPHQL_ADMIN_SECRET }}'
