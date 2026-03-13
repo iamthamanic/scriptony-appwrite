@@ -1,2 +1,6 @@
+# Minimal graphql.hasura required by Nhost deployment config validation
+[graphql.hasura]
+version = "v2.33.4-ce"
+
 [functions.node]
 version = 20
