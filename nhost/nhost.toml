@@ -16,24 +16,10 @@ value = '{{ secrets.SCRIPTONY_OAUTH_GOOGLE_DRIVE_CLIENT_SECRET }}'
 name = 'scriptony_oauth_allowed_redirect_origins'
 value = 'https://scriptony.raccoova.com,http://localhost:3000'
 
-# Required by Nhost deployment validator (expects graphql.hasura)
-[graphql.hasura]
-version = 'v2.48.5-ce'
-adminSecret = '{{ secrets.HASURA_GRAPHQL_ADMIN_SECRET }}'
-webhookSecret = '{{ secrets.NHOST_WEBHOOK_SECRET }}'
-
-[[graphql.hasura.jwtSecrets]]
-type = 'RS256'
-key = '{{ secrets.NHOST_JWT_PUBLIC_KEY }}'
-signingKey = '{{ secrets.NHOST_JWT_PRIVATE_KEY }}'
-kid = '{{ secrets.NHOST_JWT_KID }}'
-
-[graphql.hasura.settings]
-corsDomain = ['*']
-devMode = true
-enableAllowList = false
-enableConsole = true
-enabledAPIs = ['metadata', 'graphql', 'pgdump', 'config']
+# Minimal [graphql] for deployment (ConfigGraphqlInsertInput has no 'hasura' field)
+[graphql.security]
+forbidAdminSecret = false
+maxDepthQueries = 10
 
 [hasura]
 version = 'v2.48.5-ce'
