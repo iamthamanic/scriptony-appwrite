@@ -7,11 +7,7 @@ value = 'https://mthatsgmfklegprnulnn.functions.eu-central-1.nhost.run/v1/script
 name = 'scriptony_oauth_google_drive_client_id'
 value = '205764916663-pp4510oeennpuj72jto2dcgf398h8ceb.apps.googleusercontent.com'
 
-[[global.environment]]
-name = 'scriptony_oauth_google_drive_client_secret'
-# Set in Nhost Dashboard or .secrets – do not commit real value
-value = '{{ secrets.SCRIPTONY_OAUTH_GOOGLE_DRIVE_CLIENT_SECRET }}'
-
+# scriptony_oauth_google_drive_client_secret: set in Nhost Dashboard (Project Env) – do not put in repo
 [[global.environment]]
 name = 'scriptony_oauth_allowed_redirect_origins'
 value = 'https://scriptony.raccoova.com,http://localhost:3000'
