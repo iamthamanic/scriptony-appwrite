@@ -80,6 +80,8 @@
             "migrate:db": "node scripts/migrate-supabase-to-nhost.js",
             "migrate:db:dry": "node scripts/migrate-supabase-to-nhost.js --dry-run",
             "migrate:storage": "node scripts/migrate-supabase-storage-to-nhost.js",
-            "migrate:storage:dry": "node scripts/migrate-supabase-storage-to-nhost.js --dry-run"
+            "migrate:storage:dry": "node scripts/migrate-supabase-storage-to-nhost.js --dry-run",
+            "deploy:nhost": "nhost deployments new $(git branch --show-current) --follow",
+            "deploy:nhost:config": "nhost config apply --yes"
       }
 }

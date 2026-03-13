@@ -17,6 +17,8 @@ This folder contains the first Nhost-compatible backend surface for Scriptony.
   - `DELETE /organizations/:id`
   - `GET /integration-tokens` (list), `POST /integration-tokens` (create), `DELETE /integration-tokens/:id` (revoke)
   - `GET /storage/usage`
+  - `GET /storage-providers/oauth/authorize` (query: `provider`, `redirect_uri`) – redirects to provider OAuth
+  - `GET /storage-providers/oauth/callback` (query: `code`, `state`) – exchanges code for tokens, redirects to app with hash
 - `scriptony-projects`
   - `GET /health`
   - `GET /projects`
@@ -65,6 +67,12 @@ Optional storage bucket overrides:
 - `SCRIPTONY_STORAGE_BUCKET_WORLD_IMAGES`
 - `SCRIPTONY_STORAGE_BUCKET_SHOT_IMAGES`
 - `SCRIPTONY_STORAGE_BUCKET_AUDIO_FILES`
+
+Optional storage provider OAuth (for Einstellungen → Speicher). Nhost reserves names starting with `STORAGE_`, so we use lowercase `scriptony_oauth_*`:
+
+- `scriptony_oauth_callback_url` – full URL of this callback (e.g. `https://<subdomain>.functions.<region>.nhost.run/v1/scriptony-auth/storage-providers/oauth/callback`). Must be registered as redirect URI in each provider’s console.
+- Google Drive: `scriptony_oauth_google_drive_client_id`, `scriptony_oauth_google_drive_client_secret`
+- Dropbox: `scriptony_oauth_dropbox_app_key`, `scriptony_oauth_dropbox_app_secret`
 
 Optional local test vars:
 

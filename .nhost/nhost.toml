@@ -1,0 +1,4 @@
+# Nhost project link (scriptony) – subdomain/region from CLI workspace list
+[[projects]]
+subdomain = "mthatsgmfklegprnulnn"
+region = "eu-central-1"

@@ -174,6 +174,11 @@ export function getCapacitorCallbackUrl(path = ''): string {
 export const backendConfig = getBackendConfig();
 export const appConfig = getAppConfig();
 
+/** True if the backend API base URL is set (required for projects, shots, etc.). */
+export function isBackendConfigured(): boolean {
+  return Boolean(backendConfig.functionsBaseUrl?.trim());
+}
+
 if (appConfig.isDevelopment) {
   const missingNhostConfig = getMissingNhostConfig(backendConfig.nhost);
 

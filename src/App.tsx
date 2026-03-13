@@ -20,6 +20,8 @@ import { Toaster } from "./components/ui/sonner";
 import { ScriptonyAssistant } from "./components/ScriptonyAssistant";
 import { ServerStatusBanner } from "./components/ServerStatusBanner";
 import { ConnectionStatusIndicator } from "./components/ConnectionStatusIndicator";
+import { BackendNotConfiguredBanner } from "./components/BackendNotConfiguredBanner";
+import { isBackendConfigured } from "./lib/env";
 import { PerformanceDashboard } from "./components/PerformanceDashboard";
 import { useIsMobile } from "./components/ui/use-mobile";
 import {
@@ -242,6 +244,12 @@ function AppContent() {
         currentProjectId={selectedId || null}
       />
       <ServerStatusBanner />
+      {!isBackendConfigured() &&
+        typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        !window.location.hostname.startsWith("127.0.0.1") && (
+          <BackendNotConfiguredBanner />
+        )}
       {/* 
         Desktop: content below top nav
         Mobile: full width with bottom nav spacing 

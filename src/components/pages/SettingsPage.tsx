@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, CreditCard, Shield, Cloud, Key, Bot, Globe, LogOut, Moon, Sun, Copy, Trash2 } from "lucide-react";
+import { User, CreditCard, Shield, Key, Bot, Globe, LogOut, Moon, Sun, Copy, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -11,21 +11,15 @@ import { Badge } from "../ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
-import { getStorageUsage, formatBytes, STORAGE_LIMIT_BYTES } from "../../utils/storage";
 import { toast } from "sonner@2.0.3";
-import { Progress } from "../ui/progress";
 import { apiGet, apiPost, apiDelete, unwrapApiResult } from "../../lib/api-client";
+import { StorageSettingsSection } from "../StorageSettingsSection";
 
 export function SettingsPage() {
   const { user, signOut, updateProfile } = useAuth();
   const { language, setLanguage, t } = useTranslation();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [name, setName] = useState(user?.name || "");
-  const [storageUsage, setStorageUsage] = useState<{
-    totalSize: number;
-    fileCount: number;
-    files: Array<{ name: string; size: number; createdAt: string }>;
-  } | null>(null);
   const [theme, setThemeState] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") return saved;
@@ -38,36 +32,6 @@ export function SettingsPage() {
   const [integrationTokensLoading, setIntegrationTokensLoading] = useState(false);
   const [newTokenName, setNewTokenName] = useState("");
   const [createdTokenOneTime, setCreatedTokenOneTime] = useState<string | null>(null);
-
-  // Load storage usage
-  useEffect(() => {
-    if (user && !isDemoMode) {
-      loadStorageUsage();
-    } else if (isDemoMode) {
-      // Set mock storage data for demo mode
-      setStorageUsage({
-        totalSize: 0,
-        fileCount: 0,
-        files: [],
-      });
-    }
-  }, [user, isDemoMode]);
-
-  const loadStorageUsage = async () => {
-    if (!user || isDemoMode) return;
-    try {
-      const usage = await getStorageUsage(user.id);
-      setStorageUsage(usage);
-    } catch (error) {
-      console.error("Error loading storage usage:", error);
-      // Set fallback data on error
-      setStorageUsage({
-        totalSize: 0,
-        fileCount: 0,
-        files: [],
-      });
-    }
-  };
 
   const loadIntegrationTokens = async () => {
     if (!user || isDemoMode) return;
@@ -136,10 +100,6 @@ export function SettingsPage() {
     }
   };
 
-  const storagePercentage = storageUsage 
-    ? Math.min((storageUsage.totalSize / STORAGE_LIMIT_BYTES) * 100, 100)
-    : 0;
-
   return (
     <div className="min-h-screen pb-24">
       <div className="px-4 py-6 bg-gradient-to-b from-primary/5 to-transparent">
@@ -147,12 +107,13 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full px-4">
-        <TabsList className="w-full grid grid-cols-5 mb-6">
-          <TabsTrigger value="profile" className="text-xs">{t("settings.profile")}</TabsTrigger>
-          <TabsTrigger value="preferences" className="text-xs">Präferenzen</TabsTrigger>
-          <TabsTrigger value="subscription" className="text-xs">Abo</TabsTrigger>
-          <TabsTrigger value="security" className="text-xs">Sicherheit</TabsTrigger>
-          <TabsTrigger value="integrations" className="text-xs">Integrationen</TabsTrigger>
+        <TabsList className="w-full flex flex-wrap gap-2 mb-6 h-auto min-h-9">
+          <TabsTrigger value="profile" className="text-xs flex-none">{t("settings.profile")}</TabsTrigger>
+          <TabsTrigger value="preferences" className="text-xs flex-none">Präferenzen</TabsTrigger>
+          <TabsTrigger value="subscription" className="text-xs flex-none">Abo</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs flex-none">Sicherheit</TabsTrigger>
+          <TabsTrigger value="storage" className="text-xs flex-none">Speicher</TabsTrigger>
+          <TabsTrigger value="integrations" className="text-xs flex-none">Integrationen</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -206,34 +167,6 @@ export function SettingsPage() {
               </div>
 
               <Button onClick={handleSaveProfile} className="w-full h-11">{t("common.save")}</Button>
-            </CardContent>
-          </Card>
-
-          {/* Storage */}
-          <Card>
-            <CardHeader className="p-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Cloud className="size-4" />
-                {t("settings.storage")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 space-y-3">
-              {storageUsage ? (
-                <>
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span>{formatBytes(storageUsage.totalSize)} verwendet</span>
-                      <span className="text-muted-foreground">von 1 GB</span>
-                    </div>
-                    <Progress value={storagePercentage} className="h-2" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {storageUsage.fileCount} Dateien hochgeladen
-                  </p>
-                </>
-              ) : (
-                <div className="text-sm text-muted-foreground">Lade Speichernutzung...</div>
-              )}
             </CardContent>
           </Card>
 
@@ -430,6 +363,11 @@ export function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Speicher Tab – Speicherort (Nhost / Google Drive / lokal in Kürze) */}
+        <TabsContent value="storage" className="space-y-4">
+          <StorageSettingsSection />
         </TabsContent>
 
         {/* Integrationen Tab – API-Tokens für externe Tools (Blender/ComfyUI) */}

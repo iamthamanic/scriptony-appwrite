@@ -21,8 +21,22 @@ cd "/Users/halteverbotsocialmacpro/Desktop/arsvivai/2) DEV PROJEKTE/scriptony_fi
 nhost login
 ```
 
-- E-Mail und Passwort von deinem **Nhost-Konto** eingeben.
-- Wenn du dich bei Nhost nur mit GitHub einloggst: Im [Nhost Dashboard](https://app.nhost.io) unter **Settings → Account** ein Passwort setzen, dann dasselbe bei `nhost login` nutzen.
+- **Mit E-Mail + Passwort:** E-Mail und Passwort von deinem Nhost-Konto eingeben.
+- **Nur GitHub-Login / Passwort wird abgelehnt:** Statt Passwort einen **Personal Access Token (PAT)** verwenden (siehe unten).
+
+### Login mit Personal Access Token (PAT)
+
+Wenn du dich bei Nhost nur mit GitHub anmeldest oder das gesetzte Passwort bei `nhost login` als „falsch“ gemeldet wird:
+
+1. Im [Nhost Dashboard](https://app.nhost.io) einloggen → **Profil/Settings** → **Personal Access Tokens** (oder [direkt](https://app.nhost.io/settings)).
+2. **Create token** – Namen vergeben (z.B. „CLI“), Token erstellen und **kopieren** (wird nur einmal angezeigt).
+3. Im Terminal:
+   ```bash
+   nhost login --pat DEIN_TOKEN
+   ```
+   (Token einfügen statt `DEIN_TOKEN`; E-Mail ggf. trotzdem eingeben, wenn gefragt.)
+
+Damit umgehst du das E-Mail/Passwort-Login; der PAT reicht für die CLI.
 
 ## 3. Projekt verknüpfen
 
@@ -62,3 +76,21 @@ App z.B. unter `http://localhost:3001` öffnen – Login läuft dann gegen dein 
 
 **Kurz:**  
 `nhost login` → `nhost link` → `nhost config pull` → `npm run env:from-nhost` → `npm run dev`
+
+---
+
+## 7. Deploy per CLI (Functions)
+
+Nhost baut Deployments aus dem **verbundenen GitHub-Repo**. Du kannst ein Deployment von der CLI aus anstoßen:
+
+1. **Änderungen pushen:**  
+   `git add .` → `git commit -m "..."` → `git push origin main` (bzw. dein Branch).
+
+2. **Deployment starten (im Scriptony-App-Ordner):**  
+   ```bash
+   cd "/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony_figma make/Scriptonyapp"
+   npm run deploy:nhost
+   ```
+   Das nutzt den aktuellen Git-Branch und wartet auf den Deployment-Abschluss (`--follow`).
+
+**Hinweis:** Nur die **Funktionen (Code)** werden so deployed. **Env-Variablen** (z. B. `scriptony_oauth_callback_url`, Google/Dropbox-Keys) legst du im Nhost Dashboard an; sie werden nicht aus dem Repo deployed. Nach dem Anlegen neuer Env-Vars reicht oft ein erneutes Deployment oder ein Neustart der Functions, damit sie geladen werden.

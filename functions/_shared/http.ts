@@ -62,3 +62,8 @@ export function getQuery(req: RequestLike, name: string): string | undefined {
   const value = req.query?.[name];
   return Array.isArray(value) ? value[0] : value;
 }
+
+export function sendRedirect(res: ResponseLike, status: 302 | 303, url: string): void {
+  res.setHeader("Location", url);
+  res.status(status).end();
+}

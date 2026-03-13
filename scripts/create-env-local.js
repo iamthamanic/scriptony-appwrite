@@ -4,7 +4,7 @@
  * Usage:
  *   VITE_NHOST_SUBDOMAIN=xxx VITE_NHOST_REGION=eu-central-1 node scripts/create-env-local.js
  *   node scripts/create-env-local.js <subdomain> [region]
- *   npm run env:local -- vmthatsgmfklegprnulnn eu-central-1
+ *   npm run env:local -- mthatsgmfklegprnulnn eu-central-1
  */
 const fs = require('fs');
 const path = require('path');

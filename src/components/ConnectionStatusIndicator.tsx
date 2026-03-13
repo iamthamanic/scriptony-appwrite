@@ -10,7 +10,7 @@ import { AlertCircle, WifiOff, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { EDGE_FUNCTIONS, buildFunctionRouteUrl } from '../lib/api-gateway';
-import { backendConfig } from '../lib/env';
+import { backendConfig, isBackendConfigured } from '../lib/env';
 
 export function ConnectionStatusIndicator() {
   const [status, setStatus] = useState<'checking' | 'ok' | 'error'>('checking');
@@ -18,12 +18,21 @@ export function ConnectionStatusIndicator() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    if (!isBackendConfigured()) {
+      setStatus('ok');
+      return;
+    }
     checkConnection();
   }, []);
 
   const checkConnection = async () => {
     setStatus('checking');
     setErrorDetails(null);
+
+    if (!isBackendConfigured()) {
+      setStatus('ok');
+      return;
+    }
 
     // Test essential functions
     const essentialFunctions = [

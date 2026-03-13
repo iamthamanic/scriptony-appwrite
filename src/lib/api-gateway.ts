@@ -72,6 +72,7 @@ const ROUTE_MAP: Record<string, string> = {
   '/organizations': BACKEND_FUNCTIONS.AUTH,
   '/integration-tokens': BACKEND_FUNCTIONS.AUTH,
   '/storage': BACKEND_FUNCTIONS.AUTH,
+  '/storage-providers': BACKEND_FUNCTIONS.AUTH,
   
   // Projects
   '/projects': BACKEND_FUNCTIONS.PROJECTS,
