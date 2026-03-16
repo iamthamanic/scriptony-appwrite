@@ -12,6 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - ./backend/auth/migrations:/docker-entrypoint-initdb.d-auth:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -40,6 +41,29 @@ services:
       - "8080:8080"
     networks:
       - scriptony-network
+
+  auth:
+    build:
+      context: ./backend/auth
+      dockerfile: Dockerfile
+    container_name: scriptony-auth
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-scriptony}:${POSTGRES_PASSWORD:-scriptony_secret}@postgres:5432/${POSTGRES_DB:-scriptony}
+      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "3001:3001"
+    networks:
+      - scriptony-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
