@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: scriptony-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scriptony}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scriptony_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-scriptony}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scriptony}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scriptony-network
+
+  hasura:
+    image: hasura/graphql-engine:v2.48.5-ce
+    container_name: scriptony-hasura
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-scriptony}:${POSTGRES_PASSWORD:-scriptony_secret}@postgres:5432/${POSTGRES_DB:-scriptony}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-admin_secret}
+      HASURA_GRAPHQL_JWT_SECRET: ${HASURA_JWT_SECRET:-{"type":"HS256","key":"your-jwt-secret-key"}}
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+    ports:
+      - "8080:8080"
+    networks:
+      - scriptony-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  scriptony-network:
+    driver: bridge
