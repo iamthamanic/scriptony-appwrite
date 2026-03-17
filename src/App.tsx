@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "./components/ui/sonner";
 import { AppContent } from "./components/AppContent";
 import { AuthProvider } from "./hooks/useAuth";
 import { TranslationProvider } from "./hooks/useTranslation";
 import { queryClient } from "./lib/react-query";
 import { STORAGE_KEYS } from "./lib/config";
 import scriptonyLogo from './assets/scriptony-logo.png';
-import {
-  seedTestUser,
-} from "./utils/seedData";
+import { seedTestUser } from "./utils/seedData";
 
 export default function App() {
   const [migrationComplete, setMigrationComplete] = useState(false);
@@ -17,6 +14,8 @@ export default function App() {
   // Auto-setup on first app load
   useEffect(() => {
     const runAutoSetup = async () => {
+      if (typeof window === "undefined") return;
+      
       const hasMigrated = localStorage.getItem(STORAGE_KEYS.HAS_MIGRATED);
 
       if (hasMigrated) {

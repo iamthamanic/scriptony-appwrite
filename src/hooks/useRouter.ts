@@ -19,6 +19,10 @@ export function useRouter(): {
   navigate: (page: ValidPage, id?: string, categoryId?: string) => void;
 } {
   const getInitialState = useCallback((): RouterState => {
+    if (typeof window === "undefined") {
+      return { page: "home" };
+    }
+    
     // Check reset password path first
     if (
       window.location.pathname === "/reset-password" ||
@@ -40,10 +44,14 @@ export function useRouter(): {
   const [state, setState] = useState<RouterState>(getInitialState);
 
   const navigate = useCallback((page: ValidPage, id?: string, categoryId?: string) => {
-    window.location.hash = [page, id, categoryId].filter(Boolean).join('/');
+    if (typeof window !== "undefined") {
+      window.location.hash = [page, id, categoryId].filter(Boolean).join('/');
+    }
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
       const [page, id, categoryId] = hash.split('/');
