@@ -113,6 +113,19 @@ cd /pfad/zu/Scriptonyapp   # dein Mac-Clone
 
 ---
 
+## Migration mittendrin abgebrochen (ohne komplettes Volume-Reset)
+
+```bash
+cd /root/Scriptonyapp
+git pull origin main
+# Beispiel: 0012 war fehlerhaft — Tabelle ggf. droppen, dann ab 0012 weitermachen
+docker exec -i "$(docker ps --format '{{.Names}}' | grep -E 'postgres' | grep -v migrate | head -n1)" \
+  psql -U postgres -d postgres -c "DROP TABLE IF EXISTS timeline_nodes CASCADE;"
+bash scripts/hostinger-resume-migrations.sh 2020010100000012
+```
+
+---
+
 ## Wenn Schritt 2 mit Fehler abbricht
 
 - Nicht erneut blind ausführen — DB kann halb migriert sein.
