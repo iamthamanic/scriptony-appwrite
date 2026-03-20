@@ -59,7 +59,7 @@ jobs:
           echo "🚀 Deploying to PRODUCTION..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "
             set -e
-            cd /root/scriptony-prod || (mkdir -p /root/scriptony-prod && cd /root/scriptony-prod && git clone git@github.com:iamthamanic/scriptonyapp.git .)
+            cd /root/scriptony-prod || (mkdir -p /root/scriptony-prod && cd /root/scriptony-prod && git clone git@github.com:iamthamanic/Scriptonyapp.git .)
             git pull origin main
             umask 077
             printf '%s\n' \
@@ -98,7 +98,7 @@ jobs:
           echo "🧪 Deploying to TEST environment..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "
             set -e
-            cd /root/scriptony-test || (mkdir -p /root/scriptony-test && cd /root/scriptony-test && git clone -b develop git@github.com:iamthamanic/scriptonyapp.git .)
+            cd /root/scriptony-test || (mkdir -p /root/scriptony-test && cd /root/scriptony-test && git clone -b develop git@github.com:iamthamanic/Scriptonyapp.git .)
             git pull origin develop
             umask 077
             printf '%s\n' \
