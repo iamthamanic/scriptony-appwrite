@@ -1,99 +1,54 @@
-# Docker Setup für Scriptony
+# Docker und Scriptony
 
-## PostgreSQL + Hasura
+Es gibt **zwei** verschiedene Docker-Themen — bitte nicht vermischen.
 
-Dieses Docker Compose Setup ersetzt Nhost durch Self-Hosted PostgreSQL und Hasura.
+## 1) Volles Backend in Docker = **Nhost Self-Hosted**
 
-## Schnellstart
+**Auth, Hasura, Storage, Functions-Runtime** laufen dort als **offizieller Nhost-Docker-Stack** (nicht diese eine `docker-compose.yml` im Repo).
 
-```bash
-# 1. Environment-Variablen kopieren
-cp .env.docker.example .env.docker
+**Anleitung:** [docs/NHOST_ALL_IN_DOCKER.md](docs/NHOST_ALL_IN_DOCKER.md) und [Nhost Self-Hosting](https://docs.nhost.io/platform/self-hosting/overview).
 
-# 2. Secrets anpassen (wichtig für Produktion!)
-nano .env.docker
+---
 
-# 3. Container starten
-docker-compose up -d
+## 2) Nur dieses Repo: **optionaler Local-Dev-Stack**
 
-# 4. Status prüfen
-docker-compose ps
-```
+Die Datei **`docker-compose.yml`** im Projektroot startet **kein** vollständiges Nhost-Backend. Sie startet nur:
 
-## Services
+- Postgres  
+- Hasura (einzeln)  
+- Lucia **backend/auth** (nicht der Nhost-Auth der Web-App)
 
-| Service | Port | Beschreibung |
-|---------|------|--------------|
-| PostgreSQL | 5432 | Datenbank |
-| Hasura | 8080 | GraphQL API + Console |
-
-## Zugriff
-
-- **Hasura Console**: http://localhost:8080/console
-- **Admin Secret**: Wie in `.env.docker` definiert
-
-## Datenbank-Verbindung
-
-```
-Host: localhost
-Port: 5432
-Database: scriptony
-User: scriptony
-Password: (aus .env.docker)
-```
-
-## Migrationen
-
-Migrationen werden mit Hasura CLI verwaltet:
+**Start:**
 
 ```bash
-# Hasura CLI installieren
-curl -L https://github.com/hasura/graphql-engine/raw/stable/cli/get.sh | bash
-
-# Projekt initialisieren (einmalig)
-hasura init hasura-migrations
-
-# Migrationen anwenden
-hasura migrate apply --endpoint http://localhost:8080 --admin-secret <your-admin-secret>
+docker compose --profile local-dev up -d --build
 ```
 
-## Backup
+**Stop:**
 
 ```bash
-# PostgreSQL Backup
+docker compose --profile local-dev down
+```
+
+Env für Compose-Substitution: **`.env.docker.example`** → eigene `.env` im Root.
+
+**Status prüfen:**
+
+```bash
+npm run docker:local-dev:ps
+npm run docker:local-dev:verify
+```
+
+---
+
+## Datenbank / Backups (nur Local-Dev-Stack)
+
+```bash
 docker exec scriptony-postgres pg_dump -U scriptony scriptony > backup.sql
-
-# Restore
-docker exec -i scriptony-postgres psql -U scriptony scriptony < backup.sql
 ```
 
-## Troubleshooting
+---
 
-### Container starten nicht
-```bash
-docker-compose logs postgres
-docker-compose logs hasura
-```
+## Veraltete Befehle
 
-### Datenbank-Verbindung fehlgeschlagen
-- Prüfe ob PostgreSQL läuft: `docker-compose ps`
-- Prüfe Credentials in `.env.docker`
-- Warte 10 Sekunden nach PostgreSQL-Start (Hasura hat Healthcheck)
-
-### Port bereits belegt
-```bash
-# Prüfe ob Port 5432 oder 8080 frei ist
-sudo lsof -i :5432
-sudo lsof -i :8080
-
-# Oder ändere Ports in docker-compose.yml
-```
-
-## Produktion
-
-Für Produktion:
-1. Starke Passwörter verwenden
-2. SSL/TLS einrichten
-3. Firewall-Regeln konfigurieren
-4. Regelmäßige Backups einrichten
-5. Monitoring hinzufügen
+Früher stand hier `docker-compose up` ohne Profil — **ungültig** seit Einführung von `profiles: [local-dev]`. Immer **`--profile local-dev`** verwenden.
