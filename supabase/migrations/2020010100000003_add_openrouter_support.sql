@@ -1,28 +1,16 @@
 -- =====================================================
 -- ADD OPENROUTER SUPPORT - Migration
 -- =====================================================
--- Fügt OpenRouter Support zu existierenden AI Settings hinzu
+-- Table is ai_chat_settings (renamed from user_ai_settings in 0002).
+-- Fresh installs from 0002 already include openrouter; this stays idempotent.
 -- =====================================================
 
--- Add openrouter_api_key column if it doesn't exist
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'user_ai_settings' 
-    AND column_name = 'openrouter_api_key'
-  ) THEN
-    ALTER TABLE user_ai_settings ADD COLUMN openrouter_api_key TEXT;
-  END IF;
-END $$;
+ALTER TABLE ai_chat_settings ADD COLUMN IF NOT EXISTS openrouter_api_key TEXT;
 
--- Update active_provider check constraint to include openrouter
-ALTER TABLE user_ai_settings 
-  DROP CONSTRAINT IF EXISTS user_ai_settings_active_provider_check;
+ALTER TABLE ai_chat_settings DROP CONSTRAINT IF EXISTS ai_chat_settings_active_provider_check;
 
-ALTER TABLE user_ai_settings 
-  ADD CONSTRAINT user_ai_settings_active_provider_check 
-  CHECK (active_provider IN ('openai', 'anthropic', 'google', 'openrouter'));
+ALTER TABLE ai_chat_settings
+  ADD CONSTRAINT ai_chat_settings_active_provider_check
+  CHECK (active_provider IN ('openai', 'anthropic', 'google', 'openrouter', 'deepseek'));
 
--- Update timestamp
-UPDATE user_ai_settings SET updated_at = NOW() WHERE updated_at IS NULL;
+UPDATE ai_chat_settings SET updated_at = NOW() WHERE updated_at IS NULL;

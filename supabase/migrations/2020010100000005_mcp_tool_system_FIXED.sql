@@ -36,8 +36,8 @@ CREATE INDEX IF NOT EXISTS idx_rag_sync_queue_org
 -- Store AI tool call history for debugging/analytics
 CREATE TABLE IF NOT EXISTS tool_call_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
-  message_id UUID NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+  conversation_id UUID NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+  message_id UUID NOT NULL REFERENCES ai_chat_messages(id) ON DELETE CASCADE,
   tool_name TEXT NOT NULL,
   parameters JSONB NOT NULL,
   result JSONB NOT NULL,
@@ -79,7 +79,7 @@ CREATE POLICY "Users can view their own tool calls"
   FOR SELECT
   USING (
     conversation_id IN (
-      SELECT id FROM chat_conversations
+      SELECT id FROM ai_conversations
       WHERE user_id = auth.uid()
     )
   );

@@ -55,7 +55,9 @@ Dann reicht `git clone https://github.com/iamthamanic/Scriptonyapp.git` ohne Tok
 
 ## 2. Skript ausführbar machen und Schema einspielen
 
-**Wenn eine frühere Migration mitten drin abgebrochen ist** (z. B. `role "authenticated" does not exist`), einmal **public leeren** und neu anlegen:
+**Vorsicht `SCRIPTONY_DB_RESET=1`:** `DROP SCHEMA public CASCADE` kann auf manchen Postgres-Setups **Extensions** (z. B. `citext`, `pgcrypto`) mit entfernen und **Nhost `auth.*`** beschädigen. Sicherer für einen „wirklich leeren“ Start: Nhost-Compose **stoppen**, **Postgres-Volume löschen**, Compose wieder **hochfahren**, dann Schema-Skript **ohne** Reset ausführen.
+
+**Wenn eine frühere Migration mitten drin abgebrochen ist** und du die DB trotzdem per Reset bereinigen willst:
 
 ```bash
 cd /root/Scriptonyapp
