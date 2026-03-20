@@ -1,5 +1,7 @@
 # Scriptony — Source of Truth (Architektur & Deploy)
 
+**Schritt-für-Schritt (Server, CI, Webapp):** [EXACT_STEPS.md](EXACT_STEPS.md)
+
 **Dieses Dokument ist die einzige maßgebliche Beschreibung**, welches Backend gilt, welche Artefakte wofür da sind und wie lokaler Stack vs. Produktion zusammenspielen. Änderungen an Deploy oder Erwartungen bitte hier zuerst festhalten, dann Code/Docs anpassen.
 
 ---

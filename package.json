@@ -93,6 +93,11 @@
             "migrate:storage": "node scripts/migrate-supabase-storage-to-nhost.js",
             "migrate:storage:dry": "node scripts/migrate-supabase-storage-to-nhost.js --dry-run",
             "deploy:nhost": "nhost deployments new $(git branch --show-current) --follow",
-            "deploy:nhost:config": "nhost config apply --yes"
+            "deploy:nhost:config": "nhost config apply --yes",
+            "docker:local-dev:up": "docker compose --profile local-dev up -d --build",
+            "docker:local-dev:down": "docker compose --profile local-dev down",
+            "docker:local-dev:logs": "docker compose --profile local-dev logs -f --tail=100",
+            "docker:local-dev:ps": "docker compose --profile local-dev ps",
+            "docker:local-dev:verify": "bash scripts/verify-local-dev-stack.sh"
       }
 }
