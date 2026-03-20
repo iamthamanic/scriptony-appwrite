@@ -100,6 +100,7 @@
             "docker:local-dev:down": "docker compose --profile local-dev down",
             "docker:local-dev:logs": "docker compose --profile local-dev logs -f --tail=100",
             "docker:local-dev:ps": "docker compose --profile local-dev ps",
-            "docker:local-dev:verify": "bash scripts/verify-local-dev-stack.sh"
+            "docker:local-dev:verify": "bash scripts/verify-local-dev-stack.sh",
+            "verify:test-env": "node scripts/verify-remote-nhost-test-env.mjs"
       }
 }

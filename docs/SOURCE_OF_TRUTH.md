@@ -90,6 +90,19 @@ Env für Container: **`.env.docker.example`** / eigene `.env` im Projektroot fü
 
 ---
 
+## 6a. Testumgebung: Vite auf dem Mac + Nhost auf dem VPS
+
+Das ist **kein zweites Backend**, sondern **dieselbe** Nhost-Instanz auf dem Server, angesprochen vom lokalen Browser/Vite:
+
+- **Mac:** nur `npm run dev` (Port 3000) + **`.env.local`** mit **`VITE_NHOST_*`** auf die Server-URLs.
+- **VPS:** Postgres, Auth, Hasura, Storage, Functions (Nhost Docker Compose).
+- Der Mac öffnet **keine** TCP-Verbindung zu Postgres; nur **HTTP(S)** zu Auth und GraphQL.
+
+Verifikation im Repo-Root: **`npm run verify:test-env`**.  
+Ausführlich: **[TEST_ENV_REMOTE_NHOST.md](TEST_ENV_REMOTE_NHOST.md)**.
+
+---
+
 ## 7. Migration vom bisherigen Server (`scriptony-prod`)
 
 Falls dort nur `docker compose --profile local-dev` lief:
@@ -106,7 +119,8 @@ Falls dort nur `docker compose --profile local-dev` lief:
 
 - [ ] Produktions-Backend = **Nhost** (Self-Hosted), **ein** Hasura darin.  
 - [ ] Frontend = **Build + `VITE_*`** auf dieses Backend.  
-- [ ] Root-**`docker-compose.yml`** nur mit **`local-dev`**-Profil — nie als alleinige Scriptony-Prod-Architektur verkaufen.  
+- [ ] Root-**`docker-compose.yml`** nur mit **`local-dev`**-Profil — nie als alleinige Scriptony-Prod-Architektur verkaufen (das ist **nicht** dieselbe DB wie Nhost auf dem VPS).  
+- [ ] Tages-Dev gegen Nhost-VPS: **`.env.local`** + **`npm run verify:test-env`**.  
 - [ ] Änderungen an Deploy-Strategie **hier** dokumentieren, dann `ci.yml` / README / `.env.example` anpassen.
 
 ---

@@ -16,7 +16,7 @@ Der **volle** Nhost-Stack kommt aus dem **offiziellen Nhost Self-Hosting** — e
 |------|-------------|
 | **Nhost (Auth, Hasura, Storage, Functions-Runtime)** | Offizielles **Nhost Self-Hosting** → Container auf deinem Server |
 | **Deine Business-Functions** (`functions/*`) | Deploy mit **Nhost CLI** gegen diese Instanz (`npm run deploy:nhost` o. ä.) |
-| **Konfiguration** | `nhost/nhost.toml` + Secrets (Dashboard/Env des Nhost-Stacks) |
+| **Konfiguration** | `nhost/nhost.toml` + **Env im Docker-Compose** des Nhost-Stacks (Self-Hosted-Dashboard ≠ Cloud: oft **kein** Menü „Authentication → URLs“) — siehe [NHOST_SELFHOSTED_DASHBOARD.md](NHOST_SELFHOSTED_DASHBOARD.md) |
 | **Frontend** | Weiterhin **Vite-Build** (`build/`). Du **kannst** den statischen Inhalt auch in Docker ausliefern (nginx/Caddy-Container) — das ist aber **optional**; technisch ist es nur statische Dateien. |
 
 ---

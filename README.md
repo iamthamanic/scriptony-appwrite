@@ -15,7 +15,11 @@ npm install
 npm run dev
 ```
 
-Copy `.env.example` → `.env.local` (or use `npm run env:local` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
+Copy **`.env.local.example`** → **`.env.local`** (Nhost-URLs auf euren Server zeigen lassen).
+
+**Testumgebung (Frontend auf dem Mac, Auth/DB auf dem VPS):** nach dem Start **`npm run verify:test-env`** — siehe [docs/TEST_ENV_REMOTE_NHOST.md](docs/TEST_ENV_REMOTE_NHOST.md).
+
+Weitere Env-Hilfen: `npm run env:local`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Build
 
@@ -38,6 +42,8 @@ npm run docker:local-dev:down
 | Doc | Purpose |
 |-----|---------|
 | [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md) | **Exact commands** (server, CI, app) |
+| [docs/TEST_ENV_REMOTE_NHOST.md](docs/TEST_ENV_REMOTE_NHOST.md) | **Mac + VPS Nhost** (was wohin geht, `verify:test-env`) |
+| [docs/HOSTINGER_CONSOLE_COMMANDS.md](docs/HOSTINGER_CONSOLE_COMMANDS.md) | **Copy-Paste SSH** auf Hostinger: Schema + Hinweis Hasura |
 | [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) | **Canonical** deploy & backend model |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Nhost, Vercel, env checklist |
 | [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Own server + Nhost self-hosted URLs |

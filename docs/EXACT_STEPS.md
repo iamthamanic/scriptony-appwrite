@@ -56,7 +56,7 @@ npm run docker:local-dev:verify
 
 1. Projekt in [Nhost](https://nhost.io) anlegen / bestehendes nutzen.
 2. **`nhost/`** + **Functions** deployen: lokal `nhost login`, dann z. B. `npm run deploy:nhost` (Branch beachten).
-3. **Nhost Dashboard → Authentication → URLs:** Redirect/Site-URL = deine Frontend-URL (lokal z. B. `http://localhost:5173`).
+3. **Nhost Dashboard → Authentication → URLs:** Redirect/Site-URL = deine Frontend-URL (lokal z. B. `http://localhost:3000` — Vite-Port im Repo).
 4. **Frontend `.env.local`:**  
    `npm run env:local -- DEINE_SUBDOMAIN eu-central-1`  
    oder Werte aus `.env.example` manuell setzen.
@@ -76,10 +76,14 @@ ping -c 1 local.auth.local.nhost.run
 
 ### Variante B2 — Nhost **Self-Hosted** (Hasura bei dir)
 
-1. Offizielle Anleitung: [Nhost Self-Hosting](https://docs.nhost.io/platform/self-hosting/overview) auf deinem VPS (oder eigenem Host) umsetzen.
-2. DNS/TLS für Auth-, GraphQL-, Storage-, Functions-URLs.
-3. **`VITE_NHOST_*`** (oder Subdomain+Region) im **Frontend-Build** auf **deine** Hostnames setzen — siehe [SELF_HOSTING.md](SELF_HOSTING.md).
-4. **Docker Local-Dev-Stack** (`--profile local-dev`) auf dem **gleichen** Server nur nutzen, wenn du ihn wirklich brauchst; für die echte App ist **ein** Nhost-Stack maßgeblich.
+1. Offizielle Anleitung: [Nhost Self-Hosting](https://docs.nhost.io/platform/self-hosting/overview) auf deinem VPS (oder eigenem Host) umsetzen — z. B. Repo **`nhost/nhost`**, Ordner **`examples/docker-compose`**: `.env` aus `.env.example`, dann `docker compose up -d`.
+2. **Auth-Redirects (kein Cloud-Dashboard-Menü):** Im **gleichen Ordner** wie die offizielle `docker-compose.yaml` die Datei **`docker-compose.override.yml`** aus diesem Repo legen:  
+   `infra/nhost-official-docker-compose/docker-compose.override.yml` → kopieren nach z. B. `/root/nhost-upstream/examples/docker-compose/`, dann dort `docker compose up -d`. Details: [NHOST_SELFHOSTED_DASHBOARD.md](NHOST_SELFHOSTED_DASHBOARD.md).
+3. DNS/TLS für Auth-, GraphQL-, Storage-, Functions-URLs (oder Demo-Hosts `local.*.local.nhost.run` + `/etc/hosts` / Firewall).
+4. **Auf dem Mac:** Wenn `ping local.auth.local.nhost.run` **127.0.0.1** zeigt, VPS-IP erzwingen (Abschnitt **„Mac: ping …“** oben).
+5. **Im Scriptony-Repo (Mac):** `.env.local` aus `.env.local.example` — **`VITE_NHOST_*`** auf deine Nhost-URLs, **`VITE_*_REDIRECT_*`** und **`VITE_APP_WEB_URL`** = `http://localhost:3000`. **`npm run verify:test-env`** (prüft Auth + GraphQL vom Mac zum VPS). Dann `npm install` → `npm run dev` → Browser `http://localhost:3000`. Siehe [TEST_ENV_REMOTE_NHOST.md](TEST_ENV_REMOTE_NHOST.md).
+6. **`VITE_NHOST_*`** im **Production-Build** auf **deine** Hostnames setzen — siehe [SELF_HOSTING.md](SELF_HOSTING.md).
+7. **Docker Local-Dev-Stack** (`--profile local-dev`) auf dem **gleichen** Server nur nutzen, wenn du ihn wirklich brauchst; für die echte App ist **ein** Nhost-Stack maßgeblich.
 
 ---
 

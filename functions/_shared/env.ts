@@ -86,7 +86,7 @@ export function getDemoUserCredentials(): {
 } {
   return {
     email: process.env.SCRIPTONY_DEMO_EMAIL?.trim() || "demo@scriptony.app",
-    password: process.env.SCRIPTONY_DEMO_PASSWORD?.trim() || "demo123456",
+    password: process.env.SCRIPTONY_DEMO_PASSWORD?.trim() || "DemoUser999",
     displayName: process.env.SCRIPTONY_DEMO_NAME?.trim() || "Scriptony Demo",
   };
 }
