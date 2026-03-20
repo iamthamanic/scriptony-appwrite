@@ -90,9 +90,9 @@ CREATE POLICY timeline_nodes_select ON timeline_nodes
       SELECT p.id 
       FROM projects p
       WHERE p.organization_id IN (
-        SELECT organization_id 
-        FROM users 
-        WHERE id = auth.uid()
+        SELECT organization_id
+        FROM organization_members
+        WHERE user_id = auth.uid()
       )
     )
   );
@@ -105,9 +105,9 @@ CREATE POLICY timeline_nodes_insert ON timeline_nodes
       SELECT p.id 
       FROM projects p
       WHERE p.organization_id IN (
-        SELECT organization_id 
-        FROM users 
-        WHERE id = auth.uid()
+        SELECT organization_id
+        FROM organization_members
+        WHERE user_id = auth.uid()
       )
     )
   );
@@ -120,9 +120,9 @@ CREATE POLICY timeline_nodes_update ON timeline_nodes
       SELECT p.id 
       FROM projects p
       WHERE p.organization_id IN (
-        SELECT organization_id 
-        FROM users 
-        WHERE id = auth.uid()
+        SELECT organization_id
+        FROM organization_members
+        WHERE user_id = auth.uid()
       )
     )
   );
@@ -135,9 +135,9 @@ CREATE POLICY timeline_nodes_delete ON timeline_nodes
       SELECT p.id 
       FROM projects p
       WHERE p.organization_id IN (
-        SELECT organization_id 
-        FROM users 
-        WHERE id = auth.uid()
+        SELECT organization_id
+        FROM organization_members
+        WHERE user_id = auth.uid()
       )
     )
   );
@@ -158,7 +158,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER timeline_nodes_updated_at
   BEFORE UPDATE ON timeline_nodes
   FOR EACH ROW
-  EXECUTE FUNCTION update_timeline_nodes_updated_at();
+  EXECUTE PROCEDURE update_timeline_nodes_updated_at();
 
 -- ============================================================================
 -- HELPER FUNCTIONS
