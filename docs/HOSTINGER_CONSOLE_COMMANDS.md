@@ -1,5 +1,7 @@
 # Hostinger (VPS): Befehle zum Abhaken
 
+**Hinweis:** Skripte wie `scripts/hostinger-apply-schema.sh` liegen im GitHub-Repo auf **`main`**. Nach einem frühen Clone unbedingt **`git pull`** im Projektordner ausführen.
+
 Alles hier läuft in der **SSH-Konsole auf dem Server** (root), **wenn** der Nhost-Stack aus `~/nhost-upstream/examples/docker-compose` bereits mit `docker compose up -d` läuft.
 
 **Wichtig:** Danach **einmal** im **Browser auf deinem Mac** Hasura öffnen und Tabellen tracken (Schritt 4) — das geht nicht sinnvoll rein über die Server-Konsole.
