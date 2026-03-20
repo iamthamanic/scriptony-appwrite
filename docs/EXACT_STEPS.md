@@ -63,6 +63,17 @@ npm run docker:local-dev:verify
 5. **Lokal:** `npm install` → `npm run dev` → Browser öffnen.  
 6. **Production-Frontend:** `npm run build`, Ordner **`build/`** auf nginx/Caddy/Vercel ausliefern; in der Build-Umgebung alle **`VITE_*`** für **Production** setzen (siehe `.env.example`).
 
+### Mac: `ping` zeigt 127.0.0.1 für `local.*.local.nhost.run`
+
+Öffentliches DNS für diese Namen zeigt oft auf **127.0.0.1** (Nhost-Demo). Dein Mac muss stattdessen die **VPS-IP** nutzen — einmalig:
+
+```bash
+cd /pfad/zu/Scriptonyapp
+sudo bash scripts/macos-override-nhost-local-hosts.sh DEINE_VPS_IPV4
+sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+ping -c 1 local.auth.local.nhost.run
+```
+
 ### Variante B2 — Nhost **Self-Hosted** (Hasura bei dir)
 
 1. Offizielle Anleitung: [Nhost Self-Hosting](https://docs.nhost.io/platform/self-hosting/overview) auf deinem VPS (oder eigenem Host) umsetzen.
