@@ -27,9 +27,12 @@ fi
 
 echo "Resume from $MIN using container $PG_CONTAINER"
 
+min16="${MIN:0:16}"
+
 while IFS= read -r -d '' f; do
   base="$(basename "$f")"
-  if [[ "$base" < "$MIN" ]]; then
+  pref="${base:0:16}"
+  if [[ "$pref" < "$min16" ]]; then
     continue
   fi
   echo "    === $base ==="
