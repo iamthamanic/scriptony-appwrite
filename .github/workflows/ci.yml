@@ -59,17 +59,18 @@ jobs:
           echo "🚀 Deploying to PRODUCTION..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "
             set -e
-            cd /root/scriptony-prod || (mkdir -p /root/scriptony-prod && cd /root/scriptony-prod && git clone git@github.com:iamthamanic/Scriptonyapp.git .)
+            cd /root/scriptony-prod || (mkdir -p /root/scriptony-prod && cd /root/scriptony-prod && git clone git@github.com:iamthamanic/scriptonyapp.git .)
             git pull origin main
-            cat > .env << 'ENVEOF'
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}
-          DOMAIN=${{ secrets.DOMAIN }}
-          POSTGRES_DB=scriptony
-          ENVEOF
-            docker-compose down || true
-            docker-compose up -d --build
+            umask 077
+            printf '%s\n' \
+              'DATABASE_URL=${{ secrets.DATABASE_URL }}' \
+              'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
+              'MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}' \
+              'DOMAIN=${{ secrets.DOMAIN }}' \
+              'POSTGRES_DB=scriptony' \
+              > .env
+            docker compose down || true
+            docker compose up -d --build
             docker system prune -f || true
             echo '✅ Production deployment complete!'
           "
@@ -97,19 +98,20 @@ jobs:
           echo "🧪 Deploying to TEST environment..."
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "
             set -e
-            cd /root/scriptony-test || (mkdir -p /root/scriptony-test && cd /root/scriptony-test && git clone -b develop git@github.com:iamthamanic/Scriptonyapp.git .)
+            cd /root/scriptony-test || (mkdir -p /root/scriptony-test && cd /root/scriptony-test && git clone -b develop git@github.com:iamthamanic/scriptonyapp.git .)
             git pull origin develop
-            cat > .env << 'ENVEOF'
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}
-          DOMAIN=test.scriptony.raccoova.com
-          POSTGRES_DB=scriptony_test
-          ENVEOF
+            umask 077
+            printf '%s\n' \
+              'DATABASE_URL=${{ secrets.DATABASE_URL }}' \
+              'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
+              'MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}' \
+              'DOMAIN=test.scriptony.raccoova.com' \
+              'POSTGRES_DB=scriptony_test' \
+              > .env
             sed -i 's/scriptony_postgres/scriptony_postgres_test/g' docker-compose.yml || true
             sed -i 's/scriptony-minio/scriptony-minio-test/g' docker-compose.yml || true
-            docker-compose down || true
-            docker-compose up -d --build
+            docker compose down || true
+            docker compose up -d --build
             docker system prune -f || true
             echo '✅ Test deployment complete!'
           "
