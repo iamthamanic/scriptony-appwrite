@@ -1,5 +1,7 @@
 # Scriptonyapp Deployment-Analyse
 
+**Aktuelle Ziel-Architektur & Single Source of Truth:** [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) (Nhost Self-Hosted + statisches Frontend; Root-`docker-compose.yml` nur optional `local-dev`).
+
 ## Datum: 2026-03-16
 
 ## Aktuelle Architektur
@@ -31,7 +33,8 @@
 
 ### Konfiguration
 - **Nhost Config**: `nhost/nhost.toml`
-- **Easyploy**: `easyploy.json` (nur statisches Hosting)
+- **Easyploy**: `easyploy.json` (nur statisches Hosting — siehe [SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md))
+- **Docker (optional)**: `docker compose --profile local-dev` — nicht Production-Backend
 - **Secrets**: In Nhost Dashboard (nicht im Repo)
 
 ## Umgebungsvariablen

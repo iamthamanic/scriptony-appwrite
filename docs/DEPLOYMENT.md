@@ -1,5 +1,7 @@
 # Scriptony: Lokal starten & deployen
 
+**Maßgebliche Architektur (Prod vs. Local-Compose):** [SOURCE_OF_TRUTH.md](SOURCE_OF_TRUTH.md)
+
 ## Deploy-Descriptor (`easyploy.json`)
 
 Im Projektroot liegt **`easyploy.json`** – eine **tool-agnostische** Beschreibung, wie die App gebaut und ausgeliefert wird (Build-Befehl, Output-Ordner, benötigte Env-Variablen). Das Format ist generisch; **easyploy** und andere Deploy-Tools können diese Datei lesen, um die App automatisch zu bauen und zu deployen. Scriptony hängt nicht von einem bestimmten Tool ab; mit easyploy nutzt du den Descriptor optimal.

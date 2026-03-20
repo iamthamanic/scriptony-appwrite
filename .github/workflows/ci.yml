@@ -1,3 +1,5 @@
+# Deploy jobs start the OPTIONAL local-dev Docker stack (--profile local-dev), not Nhost production.
+# Canonical architecture: docs/SOURCE_OF_TRUTH.md
 name: scriptony CI/CD with Deployment
 
 on:
@@ -69,10 +71,10 @@ jobs:
               'DOMAIN=${{ secrets.DOMAIN }}' \
               'POSTGRES_DB=scriptony' \
               > .env
-            docker compose down || true
-            docker compose up -d --build
+            docker compose --profile local-dev down || true
+            docker compose --profile local-dev up -d --build
             docker system prune -f || true
-            echo '✅ Production deployment complete!'
+            echo '✅ Production deployment complete (local-dev stack only — see docs/SOURCE_OF_TRUTH.md)!'
           "
 
   deploy-test:
@@ -110,8 +112,8 @@ jobs:
               > .env
             sed -i 's/scriptony_postgres/scriptony_postgres_test/g' docker-compose.yml || true
             sed -i 's/scriptony-minio/scriptony-minio-test/g' docker-compose.yml || true
-            docker compose down || true
-            docker compose up -d --build
+            docker compose --profile local-dev down || true
+            docker compose --profile local-dev up -d --build
             docker system prune -f || true
-            echo '✅ Test deployment complete!'
+            echo '✅ Test deployment complete (local-dev stack only)!'
           "

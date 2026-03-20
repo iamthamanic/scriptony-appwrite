@@ -1,5 +1,7 @@
 # Scriptony: Später auf eigenen Server (z. B. Hetzner)
 
+**Zuerst lesen:** [SOURCE_OF_TRUTH.md](SOURCE_OF_TRUTH.md) — dort ist festgelegt, dass **Produktions-Backend = Nhost Self-Hosted** (Hasura inklusive) ist; das Root-`docker-compose.yml` ist nur **optionaler Local-Dev** (`--profile local-dev`).
+
 Scriptony ist so gebaut, dass du **ohne Code-Änderung** von Nhost + Vercel auf einen eigenen Server wechseln kannst – z. B. für kommerzielle Nutzung und vorhersehbare Kosten.
 
 ---

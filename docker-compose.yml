@@ -1,5 +1,17 @@
+# =============================================================================
+# OPTIONAL local development only — NOT the Scriptony production backend.
+# Production: Nhost (self-hosted). Hasura lives inside Nhost.
+# See: docs/SOURCE_OF_TRUTH.md
+#
+# Start:  docker compose --profile local-dev up -d --build
+# Stop:   docker compose --profile local-dev down
+# =============================================================================
+
+name: scriptony-local-dev
+
 services:
   postgres:
+    profiles: ["local-dev"]
     image: postgres:14-alpine
     container_name: scriptony-postgres
     restart: unless-stopped
@@ -22,6 +34,7 @@ services:
       - scriptony-network
 
   hasura:
+    profiles: ["local-dev"]
     image: hasura/graphql-engine:v2.48.5-ce
     container_name: scriptony-hasura
     restart: unless-stopped
@@ -48,6 +61,7 @@ services:
       - scriptony-network
 
   auth:
+    profiles: ["local-dev"]
     build:
       context: ./backend/auth
       dockerfile: Dockerfile

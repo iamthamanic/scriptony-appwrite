@@ -1,5 +1,7 @@
 # Auth Service
 
+Lucia Auth Service — **only** for the optional **Docker local-dev** stack (`docker compose --profile local-dev`). The main Scriptony app uses **Nhost** (`NhostAuthAdapter`). See [docs/SOURCE_OF_TRUTH.md](../../docs/SOURCE_OF_TRUTH.md).
+
 Lucia Auth Service für Scriptonyapp.
 
 ## Features
