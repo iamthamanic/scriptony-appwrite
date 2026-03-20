@@ -21,6 +21,26 @@ fi
 
 echo "Using Postgres container: $PG_CONTAINER"
 
+if [[ "${SCRIPTONY_DB_RESET:-}" == "1" ]]; then
+  echo ">>> SCRIPTONY_DB_RESET=1 — leert Schema public (nur Dev; auth.* bleibt)"
+  docker exec -i "$PG_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <<'EOSQL'
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+EOSQL
+fi
+
+PRELUDE="$REPO_ROOT/scripts/sql/nhost-pg-prelude.sql"
+if [[ ! -f "$PRELUDE" ]]; then
+  echo "Missing $PRELUDE" >&2
+  exit 1
+fi
+
+echo ">>> Supabase-Rollen (anon / authenticated / service_role) + Schema-Grants"
+docker exec -i "$PG_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <"$PRELUDE"
+
 echo ">>> Stub auth.uid() (Supabase-RLS in migrations; Hasura nutzt JWT — Stub nur damit SQL läuft)"
 docker exec -i "$PG_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <<'EOSQL'
 CREATE OR REPLACE FUNCTION auth.uid()

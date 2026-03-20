@@ -243,17 +243,17 @@ CREATE INDEX idx_rag_sync_queue_processed ON rag_sync_queue(processed, created_a
 CREATE TRIGGER update_ai_chat_settings_updated_at
   BEFORE UPDATE ON ai_chat_settings
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+  EXECUTE PROCEDURE update_updated_at_column();
 
 CREATE TRIGGER update_ai_conversations_updated_at
   BEFORE UPDATE ON ai_conversations
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+  EXECUTE PROCEDURE update_updated_at_column();
 
 CREATE TRIGGER update_rag_knowledge_updated_at
   BEFORE UPDATE ON rag_knowledge
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+  EXECUTE PROCEDURE update_updated_at_column();
 
 -- =====================================================
 -- 7. FUNCTION: Update Conversation Stats
@@ -277,7 +277,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_ai_conversation_on_message
   AFTER INSERT ON ai_chat_messages
   FOR EACH ROW
-  EXECUTE FUNCTION update_ai_conversation_stats();
+  EXECUTE PROCEDURE update_ai_conversation_stats();
 
 -- =====================================================
 -- COMPLETE ✅

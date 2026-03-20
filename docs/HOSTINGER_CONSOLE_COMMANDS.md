@@ -55,12 +55,26 @@ Dann reicht `git clone https://github.com/iamthamanic/Scriptonyapp.git` ohne Tok
 
 ## 2. Skript ausführbar machen und Schema einspielen
 
+**Wenn eine frühere Migration mitten drin abgebrochen ist** (z. B. `role "authenticated" does not exist`), einmal **public leeren** und neu anlegen:
+
 ```bash
-chmod +x /root/Scriptonyapp/scripts/hostinger-apply-schema.sh
-bash /root/Scriptonyapp/scripts/hostinger-apply-schema.sh
+cd /root/Scriptonyapp
+git pull origin main
+export SCRIPTONY_DB_RESET=1   # einmalig: DROP SCHEMA public CASCADE + uuid-ossp
+chmod +x scripts/hostinger-apply-schema.sh
+bash scripts/hostinger-apply-schema.sh
+unset SCRIPTONY_DB_RESET
 ```
 
-Das spielt alle Dateien unter **`supabase/migrations/`** in die **Nhost-Postgres**-DB ein und setzt vorher eine Stub-Funktion **`auth.uid()`**, damit alte Supabase-RLS-SQL durchläuft (Hasura-Rechte kommen ohnehin aus JWT/Metadata, nicht aus dieser Stub-Funktion).
+Beim **ersten erfolgreichen Lauf** auf einer leeren DB reicht ohne Reset:
+
+```bash
+cd /root/Scriptonyapp
+git pull origin main
+bash scripts/hostinger-apply-schema.sh
+```
+
+Das Skript legt zuerst die Supabase-Rollen **`anon`**, **`authenticated`**, **`service_role`** an (fehlen auf Nhost-Postgres), dann Stub **`auth.uid()`**, dann alle **`supabase/migrations/`**.
 
 ---
 
