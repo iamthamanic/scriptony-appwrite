@@ -2,7 +2,7 @@
 
 **Entscheidung im Repo:** Kanonisches Produktionsverzeichnis ist **`/root/scriptony-prod`** (Branch `main`). Test: **`/root/scriptony-test`** (Branch `develop`). Das entspricht [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
-**GitHub-Repo in den `git clone`-Zeilen:** Standard ist `iamthamanic/Scriptonyapp`. Bei einem **Fork** überall durch `DEIN_USER/Scriptonyapp` ersetzen.
+**GitHub-Repo in den `git clone`-Zeilen:** Standard ist **`iamthamanic/scriptony-appwrite`** ([Repo](https://github.com/iamthamanic/scriptony-appwrite)). Bei einem **Fork** überall durch `DEIN_USER/scriptony-appwrite` ersetzen.
 
 Der Ordner **`/root/Scriptonyapp`** ist **kein** Deploy-Ziel — nach der Migration nur noch Archiv löschen oder umbenennen, damit es keine Verwechslung gibt.
 
@@ -45,7 +45,7 @@ docker ps -a
 
 ```bash
 cd /root
-test -d scriptony-prod/.git || git clone -b main "git@github.com:iamthamanic/Scriptonyapp.git" scriptony-prod
+test -d scriptony-prod/.git || git clone -b main "git@github.com:iamthamanic/scriptony-appwrite.git" scriptony-prod
 cd /root/scriptony-prod
 git fetch origin
 git checkout main
@@ -142,7 +142,7 @@ test -d /root/Scriptonyapp && mv /root/Scriptonyapp "/root/Scriptonyapp.bak.$(da
 
 ```bash
 cd /root
-test -d scriptony-test/.git || git clone -b develop "git@github.com:iamthamanic/Scriptonyapp.git" scriptony-test
+test -d scriptony-test/.git || git clone -b develop "git@github.com:iamthamanic/scriptony-appwrite.git" scriptony-test
 cd /root/scriptony-test
 git pull origin develop
 cp infra/appwrite/.env.example infra/appwrite/.env
