@@ -89,14 +89,26 @@ docker exec -i "$(docker ps --format '{{.Names}}' | grep -E 'postgres' | grep -v
 
 ---
 
-## 4. Hasura: Tabellen tracken (auf dem Mac, Browser)
+## 4. Hasura: Tabellen tracken
 
-1. Öffnen: **`http://local.graphql.local.nhost.run/console`**  
-   (Hosts-Datei auf dem Mac muss wie bisher zur VPS-IP zeigen.)
-2. Mit **Admin Secret** einloggen (aus Schritt 0).
-3. **Data** → Default-Datenbank → Schema **`public`** → **Track all** (oder einzeln tracken).
+### A) Nur Hostinger-SSH (ohne Mac-Browser)
 
-Ohne diesen Schritt liefert GraphQL für Scriptony noch keine Tabellen.
+Im **Scriptony**-Repo auf dem Server (nach `git pull`):
+
+```bash
+cd /root/Scriptonyapp
+bash scripts/nhost-hasura-track-all-public.sh ~/nhost-upstream/examples/docker-compose/.env
+```
+
+Das ruft Hasura auf **`http://127.0.0.1:80`** mit **`Host: local.graphql.local.nhost.run`** und dem **Admin Secret** aus der Nhost-`.env` auf und trackt alle **`public.*`**-Tabellen.
+
+### B) Klassisch: Browser auf dem Mac
+
+1. **`http://local.graphql.local.nhost.run/console`** (Hosts → VPS-IP).
+2. **Admin Secret** (aus Schritt 0).
+3. **Data** → Default → **`public`** → **Track all**.
+
+Ohne getrackte Tabellen liefert GraphQL für Scriptony keine Daten.
 
 **Rechte (Permissions):** Standard-Hasura ist restriktiv. Für echte Nutzerrechte brauchst du später Nhost/Hasura-Permissions mit JWT (`x-hasura-user-id` etc.) — das ist mehr als „ein Klick“; für einen ersten Smoke-Test reicht oft Rolle **admin** in der Console.
 
