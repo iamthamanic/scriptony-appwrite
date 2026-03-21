@@ -8,5 +8,5 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Create schemas
 CREATE SCHEMA IF NOT EXISTS public;
 
--- Note: Hasura will create its own metadata schema automatically
--- Additional migrations should be handled via Hasura CLI or migration files
+-- Optional: the local-dev compose profile may run a GraphQL engine container against this DB.
+-- Production data lives in Appwrite; do not treat this Postgres as the app source of truth.

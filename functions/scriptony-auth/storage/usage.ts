@@ -1,5 +1,5 @@
 /**
- * Storage usage endpoint for the Nhost-backed auth compatibility layer.
+ * Storage usage endpoint for the Scriptony auth service.
  */
 
 import {
@@ -10,7 +10,7 @@ import {
   type ResponseLike,
 } from "../../_shared/http";
 import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/hasura";
+import { requestGraphql } from "../../_shared/graphql-compat";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   if (req.method !== "GET") {

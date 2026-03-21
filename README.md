@@ -2,11 +2,13 @@
 
 Design reference: [Figma — Scriptony App](https://www.figma.com/design/JAb6EMCafJJlDiwV0Rt8na/Scriptony-App).
 
-## Architecture (single source of truth)
+## Architecture
 
-**Read first:** [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) — production backend is **Nhost (self-hosted)** with Hasura inside; optional Docker stack is **local-dev only** (`docker compose --profile local-dev`).
+**Read first:** [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) — **Appwrite** (auth + data platform) and deployte **`functions/`** HTTP services.
 
-**Exact commands (server, CI, app):** [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md)
+**Self-hosted & codebase orientation:** [docs/ENTWICKLER_HANDBUCH.md](docs/ENTWICKLER_HANDBUCH.md), [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md), [docs/SERVER_ROLLOUT.md](docs/SERVER_ROLLOUT.md), [docs/DEVOPS_EMPFEHLUNG.md](docs/DEVOPS_EMPFEHLUNG.md), [docs/GITHUB_ACTIONS_DEPLOY.md](docs/GITHUB_ACTIONS_DEPLOY.md), [infra/appwrite/README.md](infra/appwrite/README.md).
+
+**Exact commands:** [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md)
 
 ## Run locally (frontend)
 
@@ -15,11 +17,11 @@ npm install
 npm run dev
 ```
 
-Copy **`.env.local.example`** → **`.env.local`** (Nhost-URLs auf euren Server zeigen lassen).
+Copy **`.env.local.example`** → **`.env.local`** and set `VITE_APPWRITE_*` plus functions base URL.
 
-**Testumgebung (Frontend auf dem Mac, Auth/DB auf dem VPS):** nach dem Start **`npm run verify:test-env`** — siehe [docs/TEST_ENV_REMOTE_NHOST.md](docs/TEST_ENV_REMOTE_NHOST.md).
+**Checks:** `npm run verify:test-env` (reads `.env.local`).
 
-Weitere Env-Hilfen: `npm run env:local`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+More: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), `npm run env:local`.
 
 ## Build
 
@@ -29,21 +31,23 @@ npm run build
 
 Output: `build/` — see `vercel.json` and `easyploy.json`.
 
-## Docker (optional local dev only)
+## Docker (optional local backend)
+
+- **Appwrite** (matches `infra/appwrite/`): `npm run docker:appwrite:up` → Traefik on **8080**; copy `infra/appwrite/.env.example` → `infra/appwrite/.env` first.
+- **Legacy** Postgres + GraphQL console + Lucia auth: `npm run docker:local-dev:*` (uses `docker-compose.legacy.yml`; **8080** conflicts with Appwrite if both run).
 
 ```bash
-npm run docker:local-dev:up    # Postgres + Hasura + Lucia auth
-npm run docker:local-dev:verify
-npm run docker:local-dev:down
+npm run docker:appwrite:up
+npm run docker:appwrite:verify
+npm run docker:appwrite:down
 ```
 
 ## Docs
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md) | **Exact commands** (server, CI, app) |
-| [docs/TEST_ENV_REMOTE_NHOST.md](docs/TEST_ENV_REMOTE_NHOST.md) | **Mac + VPS Nhost** (was wohin geht, `verify:test-env`) |
-| [docs/HOSTINGER_CONSOLE_COMMANDS.md](docs/HOSTINGER_CONSOLE_COMMANDS.md) | **Copy-Paste SSH** auf Hostinger: Schema + Hinweis Hasura |
-| [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) | **Canonical** deploy & backend model |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Nhost, Vercel, env checklist |
-| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Own server + Nhost self-hosted URLs |
+| [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md) | Local dev steps |
+| [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) | Canonical architecture |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Env vars, Vercel, security |
+| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Own hosting |
+| [functions/README.md](functions/README.md) | Backend functions + `APPWRITE_*` |

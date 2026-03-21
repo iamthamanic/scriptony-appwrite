@@ -1,9 +1,9 @@
 /**
- * Single-project routes for the Nhost-backed projects compatibility layer.
+ * Single-project routes (Scriptony HTTP API).
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/hasura";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
@@ -47,6 +47,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     if (req.method === "PUT") {
       const body = await readJsonBody<Record<string, any>>(req);
       const changes = normalizeProjectInput(body);
+      if (typeof body.is_deleted === "boolean") {
+        changes.is_deleted = body.is_deleted;
+      }
+      if (typeof body.organization_id === "string" && body.organization_id.trim()) {
+        changes.organization_id = body.organization_id.trim();
+      }
 
       const updated = await requestGraphql<{
         update_projects_by_pk: Record<string, any> | null;

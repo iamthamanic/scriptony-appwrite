@@ -333,21 +333,19 @@ A complete AI-powered chat interface providing contextual writing assistance, st
 
 ### 7.1 Storage Strategy
 
-#### 7.1.1 Supabase Backend
-**Architecture:** Three-tier (Frontend → Server → Database)
+#### 7.1.1 Appwrite + Scriptony HTTP functions
+**Architecture:** Three-tier (SPA → Scriptony `functions/*` → Appwrite Databases & Storage)
 
 **Server:**
-- Supabase Edge Function (Hono web server)
-- Path: `/supabase/functions/server/index.tsx`
-- Endpoint: `https://${projectId}.supabase.co/functions/v1/make-server-3b52693b/<route>`
-- Authorization: `Bearer ${publicAnonKey}`
+- Deployed Node (or host-specific) handlers under `functions/` (e.g. `scriptony-projects`, `scriptony-auth`, …)
+- Frontend calls them via `VITE_BACKEND_API_BASE_URL` / `VITE_APPWRITE_FUNCTIONS_BASE_URL` and `src/lib/api-gateway.ts`
+- Authorization: user **JWT from Appwrite** (`Bearer`), plus optional public token where configured
 
-**Database:**
-- Pre-defined key-value table: `kv_store_3b52693b`
-- Utility functions in `/supabase/functions/server/kv_store.tsx`
-- Operations: get, set, del, mget, mset, mdel, getByPrefix
+**Database / storage:**
+- **Appwrite Databases** collections mirror former relational entities (projects, shots, timeline nodes, …)
+- **Appwrite Storage** buckets for images, audio, etc. (server-side API key only)
 
-**Data Stored in Supabase:**
+**Data stored (examples):**
 - Project metadata
 - Project content (acts, scenes, chapters)
 - Beat configurations
@@ -448,28 +446,23 @@ interface TrackHeights {
 ## 9. Deployment & Infrastructure
 
 ### 9.1 Deployment Strategy
-**Edge Functions:**
-- Manual deployment via Supabase Dashboard
-- Copy-paste deployment (NOT CLI)
-- Version control in codebase
-- Deployment checklist required
+**Functions:**
+- Deploy `functions/` services to your host (e.g. Appwrite Functions or a Node gateway)
+- Server env: `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, optional bucket/database IDs
 
 **Frontend:**
-- Automated builds
-- CDN distribution
-- Environment-based configs
+- `npm run build` → static `build/`
+- Set `VITE_APPWRITE_*` and functions base URL at build time (see `docs/DEPLOYMENT.md`)
 
 ### 9.2 Environment Variables
-**Required Secrets:**
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_DB_URL`
+**Frontend (`VITE_*`):**
+- `VITE_APPWRITE_ENDPOINT`, `VITE_APPWRITE_PROJECT_ID`
+- `VITE_BACKEND_API_BASE_URL` or `VITE_APPWRITE_FUNCTIONS_BASE_URL`
+- Redirect URLs for auth
 
 **Security:**
-- Service role key NEVER exposed to frontend
-- Anon key used for client-side auth
-- API routes protected with auth middleware
+- Appwrite API keys and function secrets only on the server
+- Browser uses Appwrite project ID + endpoint only (no service key in the SPA)
 
 ---
 
@@ -484,11 +477,9 @@ interface TrackHeights {
 - **Animations:** motion/react (Motion)
 
 ### 10.2 Backend
-- **Runtime:** Deno (Supabase Edge Functions)
-- **Web Framework:** Hono
-- **Database:** Supabase Postgres
-- **Auth:** Supabase Auth
-- **Storage:** Supabase Storage (if needed)
+- **Runtime:** Node (typical) for `functions/*` handlers
+- **Data:** Appwrite Databases + Appwrite Storage (via server SDK)
+- **Auth:** Appwrite Auth (SPA SDK); Functions validate JWT / session as implemented in `functions/_shared/auth.ts`
 
 ### 10.3 Development
 - **Language:** TypeScript
@@ -558,7 +549,7 @@ interface TrackHeights {
 **Constraint:** No DDL/migration files in codebase
 **Rationale:**
 - Single KV table sufficient for prototyping
-- Users may modify DB via Supabase UI
+- Admins manage schema/data via Appwrite Console (or custom tooling)
 - Avoid sync issues between code and DB schema
 - Flexible schema in KV store
 
@@ -608,7 +599,7 @@ interface TrackHeights {
 - ✅ Fullscreen Playbook mode
 - ✅ Magnetic snapping system
 - ✅ AI chat integration
-- ✅ Persistent storage (Supabase + localStorage)
+- ✅ Persistent storage (Appwrite + Scriptony functions + localStorage where used)
 
 ### 14.3 User Experience Goals
 - ✅ "Übertrieben schnell" performance

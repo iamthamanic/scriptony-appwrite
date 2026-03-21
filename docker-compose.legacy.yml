@@ -1,0 +1,93 @@
+# =============================================================================
+# OPTIONAL legacy local stack — Postgres, Hasura-style GraphQL console, Lucia auth.
+# NOT the primary Scriptony backend (production uses Appwrite + functions).
+#
+# Start:  docker compose -f docker-compose.legacy.yml --profile local-dev up -d --build
+# Stop:   docker compose -f docker-compose.legacy.yml --profile local-dev down
+# =============================================================================
+
+name: scriptony-local-dev
+
+services:
+  postgres:
+    profiles: ["local-dev"]
+    image: postgres:14-alpine
+    container_name: scriptony-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scriptony}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scriptony_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-scriptony}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - ./backend/auth/migrations:/docker-entrypoint-initdb.d-auth:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scriptony}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - scriptony-network
+
+  # Optional local GraphQL console (Hasura image); not used by production Appwrite.
+  local_graphql_console:
+    profiles: ["local-dev"]
+    image: hasura/graphql-engine:v2.48.5-ce
+    container_name: scriptony-local-graphql-console
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://${POSTGRES_USER:-scriptony}:${POSTGRES_PASSWORD:-scriptony_secret}@postgres:5432/${POSTGRES_DB:-scriptony}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-admin_secret}
+      # HS256 "key" must be >= 32 chars (Hasura 2.48+). No ${VAR:-{...}} — Compose breaks JSON at ":".
+      HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256","key":"scriptony_dev_only_hs256_secret_at_least_32_characters_long"}'
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+    networks:
+      - scriptony-network
+
+  auth:
+    profiles: ["local-dev"]
+    build:
+      context: ./backend/auth
+      dockerfile: Dockerfile
+    container_name: scriptony-auth
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-scriptony}:${POSTGRES_PASSWORD:-scriptony_secret}@postgres:5432/${POSTGRES_DB:-scriptony}
+      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "3001:3001"
+    networks:
+      - scriptony-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  scriptony-network:
+    driver: bridge

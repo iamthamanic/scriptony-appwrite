@@ -1,6 +1,6 @@
 /**
  * Vercel Edge Middleware: block known AI crawler user-agents to avoid
- * unnecessary Nhost and Vercel usage from training/citation bots.
+ * unnecessary backend and edge usage from training/citation bots.
  * Does not block normal browsers or search engine crawlers (e.g. Googlebot).
  */
 import { next } from "@vercel/functions";

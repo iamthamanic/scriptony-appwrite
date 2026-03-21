@@ -365,7 +365,7 @@ export function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Speicher Tab – Speicherort (Nhost / Google Drive / lokal in Kürze) */}
+        {/* Speicher Tab – Speicherort (Scriptony Cloud / weitere Anbieter in Kürze) */}
         <TabsContent value="storage" className="space-y-4">
           <StorageSettingsSection />
         </TabsContent>

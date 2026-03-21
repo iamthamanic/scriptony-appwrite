@@ -13,8 +13,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   sendJson(res, 200, {
     status: "ok",
     service: "make-server-3b52693b",
-    provider: "nhost",
-    message: "Legacy compatibility surface is running on Nhost functions.",
+    provider: "appwrite",
+    message: "Legacy main-server routes; data plane is Appwrite-backed Scriptony functions.",
     timestamp: new Date().toISOString(),
   });
 }

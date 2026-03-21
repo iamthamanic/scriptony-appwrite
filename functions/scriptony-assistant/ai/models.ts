@@ -1,5 +1,5 @@
 /**
- * AI models route for the Nhost compatibility layer.
+ * AI models route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";
@@ -12,7 +12,7 @@ import {
   type ResponseLike,
 } from "../../../_shared/http";
 import { getProviderModels } from "./settings";
-import { requestGraphql } from "../../../_shared/hasura";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {

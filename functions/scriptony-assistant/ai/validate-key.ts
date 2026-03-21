@@ -1,5 +1,5 @@
 /**
- * AI API key validation route for the Nhost compatibility layer.
+ * AI API key validation route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";

@@ -1,9 +1,9 @@
 /**
- * Batch shot audio route for the Nhost compatibility layer.
+ * Batch shot audio route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../_shared/auth";
-import { requestGraphql } from "../../../../_shared/hasura";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getQuery,
   sendBadRequest,

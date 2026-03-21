@@ -2,7 +2,7 @@
 
 Damit Nutzer in Einstellungen → Speicher ihren **Google Drive** oder **Dropbox** per OAuth verbinden können, müssen die Backend-Env und die Provider-Apps konfiguriert werden.
 
-## Backend (Nhost / Vercel Functions)
+## Backend (Scriptony `scriptony-auth` function)
 
 ### 1. Redirect-URI-Allowlist (Sicherheit)
 
@@ -13,15 +13,16 @@ Damit Nutzer in Einstellungen → Speicher ihren **Google Drive** oder **Dropbox
 
 Ohne `VITE_APP_WEB_URL` und ohne `scriptony_oauth_allowed_redirect_origins` schlagen Authorize/Callback mit „redirect_uri not allowed“ bzw. „Invalid state“ fehl.
 
-**Hinweis (Nhost):** Nhost erlaubt keine Namen mit `STORAGE_` und nur Kleinbuchstaben, Ziffern und Unterstriche. Daher: `scriptony_oauth_*` (alles klein).
+**Hinweis:** Secret-Namen im Backend-Hosting oft ohne `STORAGE_` und nur Kleinbuchstaben, Ziffern und Unterstriche — daher Präfix `scriptony_oauth_*`.
 
 ### 2. Callback-URL setzen
 
 Die Callback-URL ist die Route, an die der Anbieter (Google/Dropbox) nach der Anmeldung zurückleitet. Das ist euer Backend, nicht die Frontend-URL.
 
 - **Env-Variable:** `scriptony_oauth_callback_url`
-- **Wert (Beispiel Nhost):**  
-  `https://<DEINE_SUBDOMAIN>.functions.<REGION>.nhost.run/v1/scriptony-auth/storage-providers/oauth/callback`
+- **Wert (Beispiel):**  
+  `{VITE_BACKEND_API_BASE_URL oder Functions-Gateway}/scriptony-auth/storage-providers/oauth/callback`  
+  (exakt die öffentliche URL, unter der `scriptony-auth` erreichbar ist)
 - Diese exakte URL muss in **Google Cloud Console** und **Dropbox App Console** als „Authorized redirect URI“ eingetragen werden.
 
 ### 3. Google Drive

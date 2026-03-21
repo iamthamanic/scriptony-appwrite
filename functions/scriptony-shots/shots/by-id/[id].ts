@@ -1,5 +1,5 @@
 /**
- * Direct shot lookup route for the Nhost compatibility layer.
+ * Direct shot lookup route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../_shared/auth";

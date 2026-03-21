@@ -1,0 +1,14 @@
+---
+description: Appwrite + Scriptony HTTP functions — local frontend env and verification
+alwaysApply: true
+---
+
+# Appwrite + Scriptony (Merksatz)
+
+**Frontend (Mac):** Projektroot `.env.local` aus `.env.local.example`: `VITE_APPWRITE_ENDPOINT`, `VITE_APPWRITE_PROJECT_ID`, sowie `VITE_APPWRITE_FUNCTIONS_BASE_URL` oder `VITE_BACKEND_API_BASE_URL` (Basis-URL der deployten `scriptony-*` Funktionen). Redirects/Web-URL auf **Port 3000** (`vite.config.ts`): `VITE_APP_WEB_URL`, `VITE_AUTH_REDIRECT_URL`, `VITE_PASSWORD_RESET_REDIRECT_URL`.
+
+**Appwrite Console:** OAuth- und Web-Redirects müssen die gleichen Origins enthalten wie die Vite-App (lokal und Production).
+
+**Testumgebung:** `npm run dev` + erreichbare Appwrite-Instanz + Functions-Basis-URL. Prüfen: `npm run verify:test-env` (liest `.env.local`).
+
+**Backend-Code:** `functions/` — gemeinsame GraphQL-kompatible Schicht unter `functions/_shared/` spricht mit Appwrite Databases/Storage (kein Hasura/Postgres im Browser).

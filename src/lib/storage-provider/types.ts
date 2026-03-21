@@ -1,7 +1,7 @@
 /**
  * Storage Provider Types
  *
- * Generic types for pluggable storage backends (Option A: Nhost on backend,
+ * Generic types for pluggable storage backends (Scriptony Cloud on backend,
  * other providers client-only). Used by Einstellungen → Speicher tab and
  * future storage adapter implementations.
  */
@@ -57,7 +57,7 @@ export interface StorageProviderMeta {
   id: string;
   name: string;
   description: string;
-  /** If true, backend uses this (Nhost). If false, client-only (e.g. Google Drive). */
+  /** If true, backend uses this (Scriptony Cloud). If false, client-only (e.g. Google Drive). */
   backendSupported: boolean;
   /** Shown in UI when provider is not yet implemented */
   comingSoon?: boolean;

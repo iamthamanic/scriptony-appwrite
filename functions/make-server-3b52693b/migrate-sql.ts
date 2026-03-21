@@ -12,6 +12,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   sendNotImplemented(
     res,
-    "SQL migration execution should happen through Nhost CLI migrations, not runtime functions."
+    "SQL migration execution is not supported from this endpoint; apply schema in Appwrite or your database tooling."
   );
 }

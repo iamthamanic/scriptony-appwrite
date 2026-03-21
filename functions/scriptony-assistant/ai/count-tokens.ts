@@ -1,5 +1,5 @@
 /**
- * Token counting route for the Nhost compatibility layer.
+ * Token counting route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";

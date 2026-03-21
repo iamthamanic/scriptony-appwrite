@@ -1,8 +1,8 @@
 /**
- * Superadmin organizations route for the Nhost compatibility layer.
+ * Superadmin organizations route for the Scriptony HTTP API.
  */
 
-import { requestGraphql } from "../../_shared/hasura";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import { sendJson, sendMethodNotAllowed, sendServerError, type RequestLike, type ResponseLike } from "../../_shared/http";
 import { requireSuperadmin } from "../_shared";
 

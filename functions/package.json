@@ -1,8 +1,8 @@
 {
-  "name": "scriptony-nhost-functions",
+  "name": "scriptony-appwrite-functions",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@nhost/nhost-js": "^4.5.0"
+    "node-appwrite": "^22.1.3"
   }
 }

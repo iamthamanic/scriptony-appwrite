@@ -1,10 +1,16 @@
 /**
- * Auth Client Factory
+ * Auth client factory (singleton).
  *
- * Returns a singleton instance of the Nhost auth client.
+ * Returns `AppwriteAuthAdapter` implementing `AuthClient` — the only supported production path.
+ * Configuration comes from `src/lib/env.ts` (`VITE_APPWRITE_*`). Factory keeps call sites decoupled
+ * from the concrete adapter (useful for tests via `resetAuthClient`).
+ *
+ * Location: src/lib/auth/getAuthClient.ts
  */
 
-import { NhostAuthAdapter } from "./NhostAuthAdapter";
+import { resetAppwriteClient } from "../appwrite/client";
+import { getMissingAppwriteConfig } from "../env";
+import { AppwriteAuthAdapter } from "./AppwriteAuthAdapter";
 import type { AuthClient } from "./AuthClient";
 
 let _client: AuthClient | null = null;
@@ -15,7 +21,12 @@ let _client: AuthClient | null = null;
 export function getAuthClient(): AuthClient {
   if (_client) return _client;
 
-  _client = new NhostAuthAdapter();
+  const missing = getMissingAppwriteConfig();
+  if (missing.length > 0) {
+    throw new Error(`Appwrite auth requires: ${missing.join(", ")}`);
+  }
+  _client = new AppwriteAuthAdapter();
+
   return _client;
 }
 
@@ -24,4 +35,5 @@ export function getAuthClient(): AuthClient {
  */
 export function resetAuthClient(): void {
   _client = null;
+  resetAppwriteClient();
 }

@@ -1,9 +1,9 @@
 /**
- * Organization collection routes for the Nhost-backed auth compatibility layer.
+ * Organization collection routes for the Scriptony auth service.
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/hasura";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,

@@ -1,9 +1,9 @@
 /**
- * Project media analytics route for the Nhost compatibility layer.
+ * Project media analytics route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/hasura";
+import { requestGraphql } from "../../../../../_shared/graphql-compat";
 import { getProjectStatsPayload } from "../../../../../_shared/observability";
 import {
   getParam,

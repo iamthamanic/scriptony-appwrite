@@ -375,9 +375,11 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       
       // Check if it's a "Failed to fetch" error (backend route not reachable)
       if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] ⚠️ Backend route "scriptony-inspiration" might not be reachable yet');
-        console.warn('[Inspirations] 📝 Please deploy /DEPLOY_READY_scriptony-inspiration.txt to Supabase Dashboard');
-        toast.error('Inspirations Feature noch nicht deployed. Siehe Console für Details.');
+        console.warn('[Inspirations] Backend route "scriptony-inspiration" might not be reachable yet');
+        console.warn(
+          '[Inspirations] Deploy the scriptony-inspiration function (Appwrite or your gateway) and check VITE_BACKEND_API_BASE_URL / VITE_APPWRITE_FUNCTIONS_BASE_URL'
+        );
+        toast.error('Inspirations: Backend nicht erreichbar. Siehe Konsole (Deployment / Env).');
       } else {
         toast.error('Fehler beim Laden der Inspirationen');
       }

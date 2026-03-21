@@ -2,8 +2,8 @@
  * StorageSettingsSection
  *
  * Renders the "Speicher" tab content in Einstellungen. Each provider is
- * expandable to show storage usage and connection UI. Option A: Nhost only
- * on backend; other providers client-only when implemented.
+ * expandable to show storage usage and connection UI. Scriptony Cloud is the
+ * backend-supported option; other providers are client-only when implemented.
  */
 
 import { useState, useEffect, useMemo } from "react";
@@ -34,7 +34,7 @@ import { useAuth } from "../hooks/useAuth";
 import { getStorageUsage, formatBytes, STORAGE_LIMIT_BYTES } from "../utils/storage";
 
 const providerIcons: Record<string, React.ReactNode> = {
-  nhost: <Cloud className="size-4" />,
+  scriptony_cloud: <Cloud className="size-4" />,
   google_drive: <Cloud className="size-4" />,
   dropbox: <Cloud className="size-4" />,
   onedrive: <Cloud className="size-4" />,
@@ -127,7 +127,7 @@ export function StorageSettingsSection() {
           </div>
           <CardDescription className="text-xs">
             Wähle, wo deine Projekte und Dateien gespeichert werden. Aktuell:{" "}
-            <strong>{getStorageProviderMeta(selectedId)?.name ?? "Scriptony Cloud (Nhost)"}</strong>.
+            <strong>{getStorageProviderMeta(selectedId)?.name ?? "Scriptony Cloud"}</strong>.
             Weitere Anbieter kommen in Kürze – deine Datenhoheit bleibt gewährleistet.
           </CardDescription>
         </CardHeader>
@@ -147,8 +147,8 @@ export function StorageSettingsSection() {
                   if (provider.comingSoon) return;
                   setSelectedId(provider.id);
                 }}
-                storageUsage={provider.id === "nhost" ? storageUsage : null}
-                storagePercentage={provider.id === "nhost" ? storagePercentage : 0}
+                storageUsage={provider.id === "scriptony_cloud" ? storageUsage : null}
+                storagePercentage={provider.id === "scriptony_cloud" ? storagePercentage : 0}
               />
             ))
           )}
@@ -246,12 +246,12 @@ function ProviderUsageBlock({
   storageUsage: { totalSize: number; fileCount: number } | null;
   storagePercentage: number;
 }) {
-  const isNhost = provider.id === "nhost";
+  const isScriptonyCloud = provider.id === "scriptony_cloud";
 
   return (
     <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
       <p className="text-sm font-medium">{provider.name} – Speichernutzung</p>
-      {isNhost ? (
+      {isScriptonyCloud ? (
         storageUsage ? (
           <>
             <div>
@@ -278,14 +278,14 @@ function ProviderUsageBlock({
 }
 
 function ProviderConnectionBlock({ provider }: { provider: StorageProviderMeta }) {
-  const isNhost = provider.id === "nhost";
+  const isScriptonyCloud = provider.id === "scriptony_cloud";
   const isHetzner = provider.id === "hetzner";
   const [hetznerEndpoint, setHetznerEndpoint] = useState("");
   const [hetznerBucket, setHetznerBucket] = useState("");
   const [hetznerAccessKey, setHetznerAccessKey] = useState("");
   const [hetznerSecretKey, setHetznerSecretKey] = useState("");
 
-  if (isNhost) {
+  if (isScriptonyCloud) {
     return (
       <div className="rounded-lg border border-dashed bg-muted/20 p-3">
         <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">

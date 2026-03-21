@@ -12,6 +12,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   sendNotImplemented(
     res,
-    "KV-to-Postgres migration is obsolete in the Nhost backend. Use Nhost migrations instead."
+    "KV-to-Postgres migration is obsolete. Use Appwrite schema changes or your own migration tooling, not this endpoint."
   );
 }

@@ -1,9 +1,9 @@
 /**
- * Beat collection routes for the Nhost-backed beats compatibility layer.
+ * Beat collection routes for the Scriptony beats service.
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/hasura";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,

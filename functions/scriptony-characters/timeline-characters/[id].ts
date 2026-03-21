@@ -1,9 +1,9 @@
 /**
- * Timeline character item routes for the Nhost compatibility layer.
+ * Timeline character item routes for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/hasura";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,

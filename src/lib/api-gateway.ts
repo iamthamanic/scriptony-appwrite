@@ -1,11 +1,14 @@
 /**
- * 🎯 API GATEWAY - Multi-Function Router
- * 
- * Routes API calls to the correct backend function based on the resource type.
- * The transport is provider-neutral so the same frontend can target Supabase or Nhost.
+ * API gateway: maps SPA routes to deployed Scriptony HTTP functions.
+ *
+ * Responsibility (single): choose which `scriptony-*` function serves a path (`ROUTE_MAP` +
+ * small special cases). URL joining uses `joinUrl` from `env.ts` (DRY).
+ * Adding a feature surface: extend `ROUTE_MAP` and implement the handler under `functions/`.
+ *
+ * Location: src/lib/api-gateway.ts
  */
 
-import { backendConfig } from './env';
+import { backendConfig, joinUrl } from './env';
 
 // =============================================================================
 // BACKEND FUNCTION DEFINITIONS
@@ -15,22 +18,22 @@ import { backendConfig } from './env';
  * Backend function names exposed by the current provider.
  */
 export const BACKEND_FUNCTIONS = {
-  MAIN_SERVER: 'make-server-3b52693b', // Main unified server (fallback/special routes)
+  MAIN_SERVER: 'make-server-3b52693b', // legacy unified server / special routes
   PROJECTS: 'scriptony-projects',
-  PROJECT_NODES: 'scriptony-project-nodes', // Generic Template Engine (Nodes) ✅ REFACTORED!
-  TIMELINE_V2: 'scriptony-timeline-v2', // DEPRECATED: Use PROJECT_NODES instead
-  SHOTS: 'scriptony-shots', // Shots Microservice (Film-specific) ✅ NEW!
-  CHARACTERS: 'scriptony-characters', // Characters Microservice (Universal) ✅ NEW!
-  INSPIRATION: 'scriptony-inspiration', // Visual References & Inspiration ✅ NEW!
-  AUDIO: 'scriptony-audio', // Audio Processing (Upload, Waveform, Trim, Fade)
-  BEATS: 'scriptony-beats', // Story Beats (Save the Cat, Hero's Journey, etc.) ✅ NEW!
+  PROJECT_NODES: 'scriptony-project-nodes', // template engine / nodes
+  TIMELINE_V2: 'scriptony-timeline-v2', // deprecated: prefer PROJECT_NODES
+  SHOTS: 'scriptony-shots',
+  CHARACTERS: 'scriptony-characters',
+  INSPIRATION: 'scriptony-inspiration',
+  AUDIO: 'scriptony-audio', // selected in getBackendFunctionForRoute for paths under /shots/... (audio)
+  BEATS: 'scriptony-beats',
   WORLDBUILDING: 'scriptony-worldbuilding',
   ASSISTANT: 'scriptony-assistant',
   GYM: 'scriptony-gym',
   AUTH: 'scriptony-auth',
   SUPERADMIN: 'scriptony-superadmin',
-  STATS: 'scriptony-stats', // Statistics & Analytics ✅ PHASE 2!
-  LOGS: 'scriptony-logs', // Activity Logging & Audit Trail ✅ PHASE 2!
+  STATS: 'scriptony-stats',
+  LOGS: 'scriptony-logs',
 } as const;
 
 export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
@@ -43,18 +46,12 @@ export function buildFunctionBaseUrl(functionName: string): string {
     throw new Error("Backend functions base URL is not configured.");
   }
 
-  return `${backendConfig.functionsBaseUrl.replace(/\/+$/, '')}/${functionName}`;
+  return joinUrl(backendConfig.functionsBaseUrl, functionName);
 }
 
 export function buildFunctionRouteUrl(functionName: string, route = ''): string {
   const baseUrl = buildFunctionBaseUrl(functionName);
-  if (!route) {
-    return baseUrl;
-  }
-
-  return route.startsWith('/')
-    ? `${baseUrl}${route}`
-    : `${baseUrl}/${route}`;
+  return route ? joinUrl(baseUrl, route) : baseUrl;
 }
 
 // =============================================================================
@@ -62,10 +59,12 @@ export function buildFunctionRouteUrl(functionName: string, route = ''): string 
 // =============================================================================
 
 /**
- * Maps route prefixes to their corresponding backend function.
+ * Maps URL path prefixes (SPA route argument to apiGateway) → function slug.
+ * Resolution: first prefix in insertion order where `route.startsWith(prefix)`; see getBackendFunctionForRoute
+ * for exceptions (e.g. audio under /shots/* → AUDIO before this map is used for /shots).
  */
 const ROUTE_MAP: Record<string, string> = {
-  // Auth & Account Management
+  // scriptony-auth
   '/signup': BACKEND_FUNCTIONS.AUTH,
   '/create-demo-user': BACKEND_FUNCTIONS.AUTH,
   '/profile': BACKEND_FUNCTIONS.AUTH,
@@ -73,54 +72,49 @@ const ROUTE_MAP: Record<string, string> = {
   '/integration-tokens': BACKEND_FUNCTIONS.AUTH,
   '/storage': BACKEND_FUNCTIONS.AUTH,
   '/storage-providers': BACKEND_FUNCTIONS.AUTH,
-  
-  // Projects
+
+  // scriptony-projects
   '/projects': BACKEND_FUNCTIONS.PROJECTS,
-  
-  // Project Nodes (Generic Template Engine) ✅ REFACTORED!
+
+  // scriptony-project-nodes
   '/nodes': BACKEND_FUNCTIONS.PROJECT_NODES,
   '/initialize-project': BACKEND_FUNCTIONS.PROJECT_NODES,
-  
-  // Shots Microservice ✅ NEW!
+
+  // scriptony-shots (audio-specific paths handled in getBackendFunctionForRoute → AUDIO)
   '/shots': BACKEND_FUNCTIONS.SHOTS,
-  
-  // Characters Microservice ✅ NEW!
+
+  // scriptony-characters
   '/characters': BACKEND_FUNCTIONS.CHARACTERS,
-  '/timeline-characters': BACKEND_FUNCTIONS.CHARACTERS, // Legacy compatibility
-  
-  // Inspiration (Visual References) ✅ NEW!
+  '/timeline-characters': BACKEND_FUNCTIONS.CHARACTERS,
+
+  // scriptony-inspiration
   '/inspirations': BACKEND_FUNCTIONS.INSPIRATION,
-  
-  // Stats & Logs ✅ PHASE 2!
+
+  // scriptony-stats, scriptony-logs
   '/stats': BACKEND_FUNCTIONS.STATS,
   '/logs': BACKEND_FUNCTIONS.LOGS,
-  
-  // Audio (Upload, Waveform, Trim, Fade)
-  // Note: /shots/:id/upload-audio routes to AUDIO function
-  // Note: /shots/:id/audio routes to AUDIO function  
-  // Note: /shots/audio/:id routes to AUDIO function
-  
-  // Beats (Save the Cat, Hero's Journey, etc.) ✅ NEW!
+
+  // scriptony-beats
   '/beats': BACKEND_FUNCTIONS.BEATS,
-  
-  // Worldbuilding
+
+  // scriptony-worldbuilding
   '/worlds': BACKEND_FUNCTIONS.WORLDBUILDING,
   '/locations': BACKEND_FUNCTIONS.WORLDBUILDING,
-  
-  // Assistant (AI + RAG + MCP)
+
+  // scriptony-assistant
   '/ai': BACKEND_FUNCTIONS.ASSISTANT,
   '/conversations': BACKEND_FUNCTIONS.ASSISTANT,
   '/rag': BACKEND_FUNCTIONS.ASSISTANT,
   '/mcp': BACKEND_FUNCTIONS.ASSISTANT,
-  
-  // Creative Gym
+
+  // scriptony-gym
   '/exercises': BACKEND_FUNCTIONS.GYM,
   '/progress': BACKEND_FUNCTIONS.GYM,
   '/achievements': BACKEND_FUNCTIONS.GYM,
   '/categories': BACKEND_FUNCTIONS.GYM,
   '/daily-challenge': BACKEND_FUNCTIONS.GYM,
-  
-  // Superadmin
+
+  // scriptony-superadmin
   '/superadmin': BACKEND_FUNCTIONS.SUPERADMIN,
 };
 
@@ -128,8 +122,7 @@ const ROUTE_MAP: Record<string, string> = {
  * Determines which backend function to use for a given route.
  */
 function getBackendFunctionForRoute(route: string): string {
-  // Special routing for Audio endpoints
-  // These have specific patterns that need to override the general /shots prefix
+  // Audio routes live under /shots/... but must hit scriptony-audio, not scriptony-shots.
   if (route.includes('/upload-audio') || 
       route.includes('/shots/audio/') || 
       route.match(/\/shots\/[^/]+\/audio$/)) {
@@ -197,8 +190,7 @@ export async function apiGateway<T = any>(
   
   console.log(`[API Gateway] ${method} ${route} → ${functionName}`);
   
-  // Build full URL
-  const url = `${baseUrl}${route}`;
+  const url = joinUrl(baseUrl, route);
   
   // Build headers
   const requestHeaders: Record<string, string> = {

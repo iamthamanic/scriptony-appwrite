@@ -1,8 +1,8 @@
 /**
- * Legacy-compatible signup endpoint backed by Nhost Auth.
+ * Legacy-compatible signup HTTP route (Appwrite-backed data layer).
  *
- * This preserves the old `/signup` route while the frontend moves to the
- * direct Nhost SDK signup flow.
+ * The SPA typically signs up via the Appwrite Web SDK; this route remains for
+ * older clients that POST to `/signup`.
  */
 
 import { ensureUserBootstrap, getUserFromToken } from "../_shared/auth";

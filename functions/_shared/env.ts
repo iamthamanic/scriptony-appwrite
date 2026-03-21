@@ -1,7 +1,10 @@
 /**
- * Shared environment helpers for Nhost functions.
+ * Server-side environment for Scriptony HTTP functions (Node / Appwrite Functions).
  *
- * This keeps runtime config consistent across all route handlers.
+ * Reads `process.env` only here and in thin wrappers — keeps handlers free of duplicated
+ * `process.env` access (DRY). Values like `APPWRITE_API_KEY` must never be imported from frontend code.
+ *
+ * Location: functions/_shared/env.ts
  */
 
 function trimTrailingSlash(value: string): string {
@@ -18,34 +21,23 @@ export function getRequiredEnv(name: string): string {
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
-
   return value;
 }
 
-export function getAuthBaseUrl(): string {
-  return trimTrailingSlash(getRequiredEnv("NHOST_AUTH_URL"));
+export function getAppwriteEndpoint(): string {
+  return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
 }
 
-export function getGraphqlUrl(): string {
-  const direct = getOptionalEnv("NHOST_GRAPHQL_URL");
-  if (direct) {
-    return trimTrailingSlash(direct);
-  }
-
-  const hasuraUrl = trimTrailingSlash(getRequiredEnv("NHOST_HASURA_URL"));
-  if (hasuraUrl.endsWith("/v1/graphql")) {
-    return hasuraUrl;
-  }
-
-  if (hasuraUrl.endsWith("/v1")) {
-    return `${hasuraUrl}/graphql`;
-  }
-
-  return `${hasuraUrl}/v1/graphql`;
+export function getAppwriteProjectId(): string {
+  return getRequiredEnv("APPWRITE_PROJECT_ID");
 }
 
-export function getStorageBaseUrl(): string {
-  return trimTrailingSlash(getRequiredEnv("NHOST_STORAGE_URL"));
+export function getAppwriteApiKey(): string {
+  return getRequiredEnv("APPWRITE_API_KEY");
+}
+
+export function getAppwriteDatabaseId(): string {
+  return getOptionalEnv("APPWRITE_DATABASE_ID") || "scriptony";
 }
 
 export type StorageBucketKind =
@@ -56,11 +48,11 @@ export type StorageBucketKind =
   | "audioFiles";
 
 const STORAGE_BUCKET_DEFAULTS: Record<StorageBucketKind, string> = {
-  general: "make-3b52693b-general",
-  projectImages: "make-3b52693b-project-images",
-  worldImages: "make-3b52693b-world-images",
-  shotImages: "make-3b52693b-shots",
-  audioFiles: "make-3b52693b-audio-files",
+  general: "general",
+  projectImages: "project-images",
+  worldImages: "world-images",
+  shotImages: "shots",
+  audioFiles: "audio-files",
 };
 
 export function getStorageBucketId(kind: StorageBucketKind): string {
@@ -73,10 +65,6 @@ export function getStorageBucketId(kind: StorageBucketKind): string {
   };
 
   return getOptionalEnv(envMap[kind]) || STORAGE_BUCKET_DEFAULTS[kind];
-}
-
-export function getAdminSecret(): string {
-  return getRequiredEnv("NHOST_ADMIN_SECRET");
 }
 
 export function getDemoUserCredentials(): {

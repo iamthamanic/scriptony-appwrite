@@ -1,5 +1,7 @@
-# Deploy jobs start the OPTIONAL local-dev Docker stack (--profile local-dev), not Nhost production.
-# Canonical architecture: docs/SOURCE_OF_TRUTH.md
+# CI: lint/typecheck/tests/build + validate Appwrite compose merge.
+# Deploy: SSH to VPS — git pull + Appwrite stack (root docker-compose + infra/appwrite/.env).
+# Optional: build static frontend and rsync (repo vars — see docs/GITHUB_ACTIONS_DEPLOY.md).
+# Legacy Postgres/Lucia: docker-compose.legacy.yml — manual only, not used here.
 name: scriptony CI/CD with Deployment
 
 on:
@@ -7,6 +9,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   ci:
@@ -14,6 +17,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Validate Docker Compose (Appwrite include merge)
+        run: docker compose --env-file infra/appwrite/.env.example config --quiet
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -53,29 +59,69 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Deploy to production server
+      - name: Setup Bun
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (static deploy)
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
+        run: bun install
+
+      - name: Build production frontend
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
+        env:
+          VITE_APPWRITE_ENDPOINT: ${{ secrets.VITE_APPWRITE_ENDPOINT }}
+          VITE_APPWRITE_PROJECT_ID: ${{ secrets.VITE_APPWRITE_PROJECT_ID }}
+          VITE_APPWRITE_FUNCTIONS_BASE_URL: ${{ secrets.VITE_APPWRITE_FUNCTIONS_BASE_URL }}
+          VITE_BACKEND_API_BASE_URL: ${{ secrets.VITE_BACKEND_API_BASE_URL }}
+          VITE_APP_WEB_URL: ${{ secrets.VITE_APP_WEB_URL }}
+          VITE_AUTH_REDIRECT_URL: ${{ secrets.VITE_AUTH_REDIRECT_URL }}
+          VITE_PASSWORD_RESET_REDIRECT_URL: ${{ secrets.VITE_PASSWORD_RESET_REDIRECT_URL }}
+          VITE_BACKEND_PUBLIC_TOKEN: ${{ secrets.VITE_BACKEND_PUBLIC_TOKEN }}
+        run: bun run build
+
+      - name: Rsync static site to production server
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
+          WEB_ROOT: ${{ vars.SCRIPTONY_WEB_ROOT_PROD }}
         run: |
-          echo "🚀 Deploying to PRODUCTION..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "
-            set -e
-            cd /root/scriptony-prod || (mkdir -p /root/scriptony-prod && cd /root/scriptony-prod && git clone git@github.com:iamthamanic/Scriptonyapp.git .)
-            git pull origin main
-            umask 077
-            printf '%s\n' \
-              'DATABASE_URL=${{ secrets.DATABASE_URL }}' \
-              'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
-              'MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}' \
-              'DOMAIN=${{ secrets.DOMAIN }}' \
-              'POSTGRES_DB=scriptony' \
-              > .env
-            docker compose --profile local-dev down || true
-            docker compose --profile local-dev up -d --build
-            docker system prune -f || true
-            echo '✅ Production deployment complete (local-dev stack only — see docs/SOURCE_OF_TRUTH.md)!'
-          "
+          if [ -z "$WEB_ROOT" ]; then
+            echo "Set repository variable SCRIPTONY_WEB_ROOT_PROD (e.g. /var/www/scriptony)"
+            exit 1
+          fi
+          rsync -avz --delete -e "ssh -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            build/ "${SSH_USER}@${SSH_HOST}:${WEB_ROOT}/"
+
+      - name: Deploy Appwrite stack on production server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REPO_FULL: ${{ github.repository }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" \
+            "REPO_FULL='${REPO_FULL}' APP_ROOT=/root/scriptony-prod BRANCH=main bash -s" <<'REMOTE'
+          set -euo pipefail
+          if [ ! -d "$APP_ROOT/.git" ]; then
+            mkdir -p "$APP_ROOT"
+            git clone -b "$BRANCH" "git@github.com:${REPO_FULL}.git" "$APP_ROOT"
+          fi
+          cd "$APP_ROOT"
+          git fetch origin
+          git checkout "$BRANCH"
+          git pull origin "$BRANCH"
+          if [ ! -f infra/appwrite/.env ]; then
+            echo "ERROR: Missing infra/appwrite/.env on server (copy from infra/appwrite/.env.example)."
+            exit 1
+          fi
+          docker compose --env-file infra/appwrite/.env pull || true
+          docker compose --env-file infra/appwrite/.env up -d
+          docker image prune -f || true
+          echo "OK: production Appwrite stack updated"
+          REMOTE
 
   deploy-test:
     needs: ci
@@ -92,28 +138,66 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Deploy to test server
+      - name: Setup Bun
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (static deploy)
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
+        run: bun install
+
+      - name: Build frontend (test/staging)
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
+        env:
+          VITE_APPWRITE_ENDPOINT: ${{ secrets.VITE_APPWRITE_ENDPOINT }}
+          VITE_APPWRITE_PROJECT_ID: ${{ secrets.VITE_APPWRITE_PROJECT_ID }}
+          VITE_APPWRITE_FUNCTIONS_BASE_URL: ${{ secrets.VITE_APPWRITE_FUNCTIONS_BASE_URL }}
+          VITE_BACKEND_API_BASE_URL: ${{ secrets.VITE_BACKEND_API_BASE_URL }}
+          VITE_APP_WEB_URL: ${{ secrets.VITE_APP_WEB_URL }}
+          VITE_AUTH_REDIRECT_URL: ${{ secrets.VITE_AUTH_REDIRECT_URL }}
+          VITE_PASSWORD_RESET_REDIRECT_URL: ${{ secrets.VITE_PASSWORD_RESET_REDIRECT_URL }}
+          VITE_BACKEND_PUBLIC_TOKEN: ${{ secrets.VITE_BACKEND_PUBLIC_TOKEN }}
+        run: bun run build
+
+      - name: Rsync static site to test server
+        if: vars.DEPLOY_STATIC_FRONTEND == 'true'
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
+          WEB_ROOT: ${{ vars.SCRIPTONY_WEB_ROOT_TEST }}
         run: |
-          echo "🧪 Deploying to TEST environment..."
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "
-            set -e
-            cd /root/scriptony-test || (mkdir -p /root/scriptony-test && cd /root/scriptony-test && git clone -b develop git@github.com:iamthamanic/Scriptonyapp.git .)
-            git pull origin develop
-            umask 077
-            printf '%s\n' \
-              'DATABASE_URL=${{ secrets.DATABASE_URL }}' \
-              'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
-              'MINIO_SECRET_KEY=${{ secrets.MINIO_SECRET_KEY }}' \
-              'DOMAIN=test.scriptony.raccoova.com' \
-              'POSTGRES_DB=scriptony_test' \
-              > .env
-            sed -i 's/scriptony_postgres/scriptony_postgres_test/g' docker-compose.yml || true
-            sed -i 's/scriptony-minio/scriptony-minio-test/g' docker-compose.yml || true
-            docker compose --profile local-dev down || true
-            docker compose --profile local-dev up -d --build
-            docker system prune -f || true
-            echo '✅ Test deployment complete (local-dev stack only)!'
-          "
+          if [ -z "$WEB_ROOT" ]; then
+            echo "Set repository variable SCRIPTONY_WEB_ROOT_TEST (e.g. /var/www/scriptony-test)"
+            exit 1
+          fi
+          rsync -avz --delete -e "ssh -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            build/ "${SSH_USER}@${SSH_HOST}:${WEB_ROOT}/"
+
+      - name: Deploy Appwrite stack on test server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REPO_FULL: ${{ github.repository }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" \
+            "REPO_FULL='${REPO_FULL}' APP_ROOT=/root/scriptony-test BRANCH=develop bash -s" <<'REMOTE'
+          set -euo pipefail
+          if [ ! -d "$APP_ROOT/.git" ]; then
+            mkdir -p "$APP_ROOT"
+            git clone -b "$BRANCH" "git@github.com:${REPO_FULL}.git" "$APP_ROOT"
+          fi
+          cd "$APP_ROOT"
+          git fetch origin
+          git checkout "$BRANCH"
+          git pull origin "$BRANCH"
+          if [ ! -f infra/appwrite/.env ]; then
+            echo "ERROR: Missing infra/appwrite/.env on server (copy from infra/appwrite/.env.example)."
+            exit 1
+          fi
+          docker compose --env-file infra/appwrite/.env pull || true
+          docker compose --env-file infra/appwrite/.env up -d
+          docker image prune -f || true
+          echo "OK: test Appwrite stack updated"
+          REMOTE

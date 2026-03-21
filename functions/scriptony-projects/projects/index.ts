@@ -1,9 +1,9 @@
 /**
- * Project collection routes for the Nhost-backed projects compatibility layer.
+ * Project collection routes (Scriptony HTTP API).
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/hasura";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,
@@ -63,6 +63,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               season_engine
               organization_id
               user_id
+              is_deleted
               created_at
               updated_at
             }

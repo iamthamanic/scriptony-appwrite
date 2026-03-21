@@ -1,11 +1,11 @@
 /**
- * Shared timeline helpers for Nhost function compatibility routes.
+ * Shared timeline helpers for Scriptony HTTP routes.
  *
  * This module normalizes node, character, shot, and audio payloads so multiple
  * file-based handlers can stay small and consistent.
  */
 
-import { requestGraphql } from "./hasura";
+import { requestGraphql } from "./graphql-compat";
 
 type JsonRecord = Record<string, any>;
 

@@ -1,18 +1,25 @@
 /**
- * Shared Nhost Storage helpers for file-backed compatibility routes.
- *
- * These helpers normalize multipart inputs from the Node runtime, upload files
- * through the Nhost Storage API using an admin session, and return presigned
- * URLs that match the current frontend contract.
+ * Appwrite Storage helpers for multipart uploads from function routes.
  */
 
-import { createClient, withAdminSession } from "@nhost/nhost-js";
-import { getAdminSecret, getAuthBaseUrl, getGraphqlUrl, getStorageBaseUrl } from "./env";
+import { Client, ID, InputFile, Storage } from "node-appwrite";
+import {
+  getAppwriteApiKey,
+  getAppwriteEndpoint,
+  getAppwriteProjectId,
+} from "./env";
 import { sendBadRequest, type RequestLike, type ResponseLike } from "./http";
 
 type JsonRecord = Record<string, any>;
 
-let nhostStorageClient: ReturnType<typeof createClient> | null = null;
+function getStorageService(): Storage {
+  return new Storage(
+    new Client()
+      .setEndpoint(getAppwriteEndpoint())
+      .setProject(getAppwriteProjectId())
+      .setKey(getAppwriteApiKey())
+  );
+}
 
 interface UploadedStorageFile {
   id: string;
@@ -20,19 +27,6 @@ interface UploadedStorageFile {
   name: string;
   size: number;
   mimeType: string;
-}
-
-function getNhostStorageClient() {
-  if (!nhostStorageClient) {
-    nhostStorageClient = createClient({
-      authUrl: getAuthBaseUrl(),
-      graphqlUrl: getGraphqlUrl(),
-      storageUrl: getStorageBaseUrl(),
-      configure: [withAdminSession({ adminSecret: getAdminSecret() })],
-    });
-  }
-
-  return nhostStorageClient;
 }
 
 function asArray<T>(value: T | T[] | undefined | null): T[] {
@@ -149,7 +143,7 @@ export function ensureFile(
     return null;
   }
 
-  if (options?.maxSizeBytes && file.size > options.maxSizeBytes) {
+  if (options?.maxSizeBytes && file.size > options?.maxSizeBytes) {
     sendBadRequest(
       res,
       `File too large: ${(file.size / 1024 / 1024).toFixed(2)} MB (max ${(options.maxSizeBytes / 1024 / 1024).toFixed(0)} MB)`
@@ -174,35 +168,20 @@ export async function uploadFileToStorage(options: {
   metadata?: JsonRecord;
   name?: string;
 }): Promise<UploadedStorageFile> {
-  const client = getNhostStorageClient();
-  const uploadResponse = await client.storage.uploadFiles({
-    "bucket-id": options.bucketId,
-    "file[]": [options.file],
-    "metadata[]": [
-      {
-        name: options.name || options.file.name,
-        metadata: options.metadata || {},
-      },
-    ],
-  });
-
-  const uploaded = uploadResponse.body?.processedFiles?.[0];
-  if (!uploaded?.id) {
-    throw new Error("Storage upload completed without a file id");
-  }
-
-  const presigned = await client.storage.getFilePresignedURL(uploaded.id);
-  const url = presigned.body?.url;
-  if (!url) {
-    throw new Error("Storage upload succeeded but presigned URL generation failed");
-  }
+  const storage = getStorageService();
+  const buffer = Buffer.from(await options.file.arrayBuffer());
+  const fileName = options.name || options.file.name;
+  const input = InputFile.fromBuffer(buffer, fileName);
+  const created = await storage.createFile(options.bucketId, ID.unique(), input);
+  const project = getAppwriteProjectId();
+  const url = `${getAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
 
   return {
-    id: uploaded.id,
+    id: created.$id,
     url,
-    name: uploaded.name,
-    size: uploaded.size,
-    mimeType: uploaded.mimeType,
+    name: created.name,
+    size: created.sizeOriginal,
+    mimeType: created.mimeType,
   };
 }
 
@@ -210,9 +189,8 @@ export function extractStorageFileId(fileUrl?: string | null): string | null {
   if (!fileUrl) {
     return null;
   }
-
-  const match = fileUrl.match(/\/files\/([0-9a-f-]{16,})/i);
-  return match?.[1] || null;
+  const m = fileUrl.match(/\/files\/([a-zA-Z0-9_-]+)\//);
+  return m?.[1] || null;
 }
 
 export async function deleteStorageFileByUrl(fileUrl?: string | null): Promise<void> {
@@ -220,9 +198,14 @@ export async function deleteStorageFileByUrl(fileUrl?: string | null): Promise<v
   if (!fileId) {
     return;
   }
-
-  const client = getNhostStorageClient();
-  await client.storage.deleteFile(fileId).catch((error) => {
-    console.error("[Storage] Failed to delete file from Nhost Storage:", error);
-  });
+  const bucketMatch = fileUrl?.match(/\/buckets\/([a-zA-Z0-9_-]+)\//);
+  const bucketId = bucketMatch?.[1];
+  if (!bucketId) {
+    return;
+  }
+  try {
+    await getStorageService().deleteFile(bucketId, fileId);
+  } catch (error) {
+    console.error("[Storage] Failed to delete Appwrite file:", error);
+  }
 }

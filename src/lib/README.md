@@ -27,7 +27,7 @@ lib/
 
 ### `api-client.ts` - HTTP Client
 
-**Purpose:** Centralized HTTP client for making requests to the Supabase Edge Functions backend.
+**Purpose:** Centralized HTTP client for requests to Scriptony backend functions (via configured base URL).
 
 **Usage:**
 ```typescript
@@ -60,7 +60,7 @@ try {
 ```
 
 **Key Features:**
-- ✅ Automatic authentication with Supabase session
+- ✅ Automatic authentication with the current session JWT (Appwrite)
 - ✅ Request/response logging
 - ✅ Timeout handling (configurable)
 - ✅ Standardized error formatting
@@ -79,14 +79,11 @@ try {
 
 **Usage:**
 ```typescript
-import { supabaseConfig, appConfig } from './lib/env';
+import { backendConfig, appConfig, getAppwritePublicConfig } from './lib/env';
 
-// Access validated Supabase credentials
-console.log(supabaseConfig.url);        // https://xxx.supabase.co
-console.log(supabaseConfig.projectId);  // xxx
-console.log(supabaseConfig.publicAnonKey); // eyJ...
+console.log(backendConfig.functionsBaseUrl);
+console.log(getAppwritePublicConfig()?.endpoint);
 
-// Check environment
 if (appConfig.isDevelopment) {
   console.log('Running in development mode');
 }
@@ -96,12 +93,11 @@ if (appConfig.isDevelopment) {
 - ✅ Runtime validation with clear error messages
 - ✅ Type-safe access to environment variables
 - ✅ Singleton pattern for efficient caching
-- ✅ Supabase JWT token format validation
+- ✅ Backend URL and Appwrite public config validation where applicable
 - ✅ Development mode detection
 
 **Rules:**
-- ❌ Never import from `utils/supabase/info` directly
-- ✅ Always use `supabaseConfig` from `lib/env`
+- ✅ Always use `getBackendConfig()` / `getAppwritePublicConfig()` from `lib/env`
 
 ### `config.ts` - Application Configuration
 
@@ -332,13 +328,10 @@ Planned additions:
 
 ## 📖 Best Practices
 
-1. **Import from lib, not utils:**
+1. **Import from lib, not ad-hoc env reads:**
    ```typescript
-   // ❌ Bad
-   import { projectId } from '../utils/supabase/info';
-   
    // ✅ Good
-   import { supabaseConfig } from './lib/env';
+   import { backendConfig, getAppwritePublicConfig } from './lib/env';
    ```
 
 2. **Use typed constants:**
@@ -366,21 +359,11 @@ Planned additions:
 Environment validation logs to console in development mode:
 
 ```
-✅ Environment Validation Complete: {
-  supabase: {
-    projectId: "ctkouztastyirjywiduc",
-    url: "https://ctkouztastyirjywiduc.supabase.co",
-    hasAnonKey: true
-  },
-  app: {
-    environment: "development"
-  }
+Environment ready: {
+  functionsBaseUrl: "...",
+  appwriteEndpoint: "...",
+  missingAppwriteConfig: []
 }
 ```
 
-If validation fails, you'll see detailed error messages:
-
-```
-❌ Supabase Configuration Validation Failed:
-Environment validation failed: SUPABASE_PROJECT_ID must be a non-empty string.
-```
+If Appwrite or functions base URL is misconfigured, fix `VITE_*` in `.env.local` (see `docs/DEPLOYMENT.md`).

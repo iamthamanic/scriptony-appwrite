@@ -1,7 +1,7 @@
 /**
- * Root endpoint for the Nhost-backed auth compatibility surface.
+ * Root endpoint for the Scriptony auth service.
  *
- * Keeps the old `scriptony-auth` base path alive during the migration.
+ * Keeps the `scriptony-auth` base path alive for routing probes.
  */
 
 import { sendJson, sendMethodNotAllowed, type RequestLike, type ResponseLike } from "../_shared/http";
@@ -15,7 +15,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   sendJson(res, 200, {
     status: "ok",
     service: "scriptony-auth",
-    provider: "nhost",
+    provider: "appwrite",
     timestamp: new Date().toISOString(),
   });
 }

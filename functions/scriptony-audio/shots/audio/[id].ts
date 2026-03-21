@@ -1,9 +1,9 @@
 /**
- * Shot audio item routes for the Nhost compatibility layer.
+ * Shot audio item routes for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/hasura";
+import { requestGraphql } from "../../../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,

@@ -1,17 +1,18 @@
 /**
  * Storage Provider Registry
  *
- * Central list of storage providers for the Speicher tab. Option A: Nhost is
- * the only backend-supported provider; others will be client-only when added.
+ * Central list of storage providers for the Speicher tab. Scriptony Cloud is
+ * the backend-supported provider; others are client-only when implemented.
  */
 
 import type { StorageProviderMeta } from "./types";
 
 const PROVIDERS: StorageProviderMeta[] = [
   {
-    id: "nhost",
-    name: "Scriptony Cloud (Nhost)",
-    description: "Projekte und Dateien werden in der Scriptony-Cloud gespeichert. Standard für alle Nutzer.",
+    id: "scriptony_cloud",
+    name: "Scriptony Cloud",
+    description:
+      "Projekte und Dateien werden in der Scriptony-Cloud gespeichert. Standard für alle Nutzer.",
     backendSupported: true,
     comingSoon: false,
   },
@@ -39,7 +40,8 @@ const PROVIDERS: StorageProviderMeta[] = [
   {
     id: "kdrive",
     name: "KDrive (Infomaniak)",
-    description: "Projekte in deinem KDrive-Cloudspeicher (Infomaniak) speichern – europäische Server.",
+    description:
+      "Projekte in deinem KDrive-Cloudspeicher (Infomaniak) speichern – europäische Server.",
     backendSupported: false,
     comingSoon: true,
   },
@@ -59,7 +61,7 @@ const PROVIDERS: StorageProviderMeta[] = [
   },
 ];
 
-const DEFAULT_PROVIDER_ID = "nhost";
+const DEFAULT_PROVIDER_ID = "scriptony_cloud";
 
 const STORAGE_PREF_KEY = "scriptony_storage_provider_id";
 
@@ -79,7 +81,9 @@ export function getDefaultStorageProviderId(): string {
 export function getSelectedStorageProviderId(): string {
   if (typeof window === "undefined") return DEFAULT_PROVIDER_ID;
   const saved = localStorage.getItem(STORAGE_PREF_KEY);
-  if (saved && PROVIDERS.some((p) => p.id === saved)) return saved;
+  const normalized =
+    saved === "nhost" ? DEFAULT_PROVIDER_ID : saved;
+  if (normalized && PROVIDERS.some((p) => p.id === normalized)) return normalized;
   return DEFAULT_PROVIDER_ID;
 }
 

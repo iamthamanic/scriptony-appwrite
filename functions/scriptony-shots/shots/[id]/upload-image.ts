@@ -1,10 +1,10 @@
 /**
- * Shot image upload route for the Nhost compatibility layer.
+ * Shot image upload route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../_shared/auth";
 import { getStorageBucketId } from "../../../../_shared/env";
-import { requestGraphql } from "../../../../_shared/hasura";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   sendBadRequest,

@@ -1,5 +1,5 @@
 /**
- * Project shot analytics route for the Nhost compatibility layer.
+ * Project shot analytics route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";

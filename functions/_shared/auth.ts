@@ -1,16 +1,13 @@
 /**
- * Shared auth and bootstrap helpers for Nhost functions.
- *
- * These helpers verify the current Nhost bearer token and lazily ensure that
- * the app-specific `users` and `organization_members` records exist.
- * Supports long-lived integration tokens (user_integration_tokens) for external tools.
+ * Auth and bootstrap helpers for Appwrite JWT and integration tokens.
  */
 
+import { Account, Client } from "node-appwrite";
 import { createHash } from "crypto";
-import { getAuthBaseUrl } from "./env";
-import { requestGraphql } from "./hasura";
+import { getAppwriteEndpoint, getAppwriteProjectId } from "./env";
+import { requestGraphql } from "./graphql-compat";
 
-export interface NhostUser {
+export interface AuthUser {
   id: string;
   email?: string;
   displayName?: string;
@@ -20,66 +17,70 @@ export interface NhostUser {
 }
 
 export interface BootstrapResult {
-  user: NhostUser;
+  user: AuthUser;
   organizationId: string;
 }
 
 function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40) || "scriptony";
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "scriptony"
+  );
 }
 
 export function getBearerToken(authHeader?: string): string | null {
   if (!authHeader?.startsWith("Bearer ")) {
     return null;
   }
-
   return authHeader.slice("Bearer ".length).trim();
 }
 
-export async function getUserFromToken(token: string): Promise<NhostUser | null> {
-  const response = await fetch(`${getAuthBaseUrl()}/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
+export async function getUserFromToken(token: string): Promise<AuthUser | null> {
+  const client = new Client()
+    .setEndpoint(getAppwriteEndpoint())
+    .setProject(getAppwriteProjectId())
+    .setJWT(token);
+  try {
+    const account = new Account(client);
+    const u = await account.get();
+    const prefs = (u.prefs || {}) as Record<string, unknown>;
+    return {
+      id: u.$id,
+      email: u.email,
+      displayName: u.name,
+      avatarUrl: typeof prefs.avatar === "string" ? prefs.avatar : undefined,
+      defaultRole: u.labels?.includes("superadmin")
+        ? "superadmin"
+        : u.labels?.includes("admin")
+          ? "admin"
+          : "user",
+      metadata: { ...prefs, labels: u.labels },
+    };
+  } catch {
     return null;
   }
-
-  return (await response.json()) as NhostUser;
 }
 
-export async function getUserFromAuthHeader(authHeader?: string): Promise<NhostUser | null> {
+export async function getUserFromAuthHeader(authHeader?: string): Promise<AuthUser | null> {
   const token = getBearerToken(authHeader);
   if (!token) {
     return null;
   }
-
   return getUserFromToken(token);
 }
 
-/** Hash a plain integration token for storage/lookup (SHA-256 hex). */
 export function hashIntegrationToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
-/**
- * Resolve a long-lived integration token to a user.
- * Returns a NhostUser-like object built from the app's users table, or null if invalid.
- * Requires user_integration_tokens (and users) to be tracked in Hasura.
- */
-export async function resolveIntegrationToken(token: string): Promise<NhostUser | null> {
+export async function resolveIntegrationToken(token: string): Promise<AuthUser | null> {
   if (!token || token.length < 16) {
     return null;
   }
-
   const tokenHash = hashIntegrationToken(token);
-
   try {
     const data = await requestGraphql<{
       user_integration_tokens: Array<{ user_id: string }>;
@@ -96,14 +97,17 @@ export async function resolveIntegrationToken(token: string): Promise<NhostUser 
       `,
       { tokenHash }
     );
-
     const row = data?.user_integration_tokens?.[0];
     if (!row?.user_id) {
       return null;
     }
-
     const profile = await requestGraphql<{
-      users_by_pk: { id: string; name: string | null; email: string | null; avatar_url: string | null } | null;
+      users_by_pk: {
+        id: string;
+        name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+      } | null;
     }>(
       `
         query GetUserProfile($userId: uuid!) {
@@ -117,12 +121,10 @@ export async function resolveIntegrationToken(token: string): Promise<NhostUser 
       `,
       { userId: row.user_id }
     );
-
     const u = profile?.users_by_pk;
     if (!u) {
       return null;
     }
-
     return {
       id: u.id,
       displayName: u.name ?? undefined,
@@ -134,8 +136,8 @@ export async function resolveIntegrationToken(token: string): Promise<NhostUser 
   }
 }
 
-export async function ensureUserBootstrap(user: NhostUser): Promise<BootstrapResult> {
-  const existing = await requestGraphql<{
+export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResult> {
+  const data = await requestGraphql<{
     users_by_pk: { id: string; organization_id?: string | null } | null;
     organization_members: Array<{ organization_id: string }>;
   }>(
@@ -157,9 +159,7 @@ export async function ensureUserBootstrap(user: NhostUser): Promise<BootstrapRes
   );
 
   let organizationId =
-    existing.users_by_pk?.organization_id ||
-    existing.organization_members[0]?.organization_id ||
-    null;
+    data.users_by_pk?.organization_id || data.organization_members[0]?.organization_id || null;
 
   if (!organizationId) {
     const displayName =
@@ -238,10 +238,7 @@ export async function ensureUserBootstrap(user: NhostUser): Promise<BootstrapRes
     }
   );
 
-  return {
-    user,
-    organizationId,
-  };
+  return { user, organizationId };
 }
 
 export async function requireUserBootstrap(authHeader?: string): Promise<BootstrapResult | null> {
@@ -255,6 +252,5 @@ export async function requireUserBootstrap(authHeader?: string): Promise<Bootstr
   if (!user) {
     return null;
   }
-
   return ensureUserBootstrap(user);
 }

@@ -1,97 +1,12 @@
-# Exakt: Was du tun musst (damit etwas „läuft“)
+# Exact steps — local development
 
-Kontext: **[SOURCE_OF_TRUTH.md](SOURCE_OF_TRUTH.md)**  
-Dieses Dokument ist die **Schritt-für-Schritt-Anleitung**. Es gibt **zwei** sinnvolle Ziele:
+1. Copy **`.env.local.example`** → **`.env.local`** and fill in:
+   - `VITE_APPWRITE_ENDPOINT`, `VITE_APPWRITE_PROJECT_ID`
+   - `VITE_APPWRITE_FUNCTIONS_BASE_URL` or `VITE_BACKEND_API_BASE_URL`
+   - Redirect URLs pointing at `http://localhost:3000` (this repo’s dev port)
+2. In **Appwrite Console**, add the same origins to allowed URLs for web/OAuth as needed.
+3. `npm install` (use `npm install --legacy-peer-deps` if the resolver complains about peers).
+4. `npm run verify:test-env` — checks Appwrite `/health` and `scriptony-projects/health` if URLs are set.
+5. `npm run dev` → open `http://localhost:3000`.
 
-| Ziel | Was „läuft“ |
-|------|----------------|
-| **A – Local-Dev-Stack** | Postgres + Hasura + Lucia-Auth in Docker (Ports 5432 / 8080 / 3001) |
-| **B – Scriptony-Webapp** | Frontend + **Nhost** (Auth, GraphQL, Storage, Functions) — Cloud oder Self-Hosted |
-
-Die Web-App **funktioniert nicht** nur mit Ziel A; sie braucht **Nhost** (Ziel B).
-
----
-
-## Ziel A — Docker-Stack auf dem Server (z. B. `srv1097719`)
-
-**Einmalig / nach jedem `git pull`:**
-
-```bash
-cd ~/scriptony-prod
-git pull origin main
-docker compose --profile local-dev down
-docker compose --profile local-dev up -d --build
-sleep 25
-docker compose --profile local-dev ps
-curl -sS -o /dev/null -w "Hasura HTTP %{http_code}\n" http://127.0.0.1:8080/healthz
-curl -sS http://127.0.0.1:3001/health
-```
-
-**Erwartung:** Alle drei Container `healthy` oder `Up`; Hasura **HTTP 200**; Auth JSON `{"status":"ok",...}`.
-
-**Optional (im Repo auf dem Rechner):**
-
-```bash
-npm run docker:local-dev:verify
-```
-
-(ruft `scripts/verify-local-dev-stack.sh` auf — nur sinnvoll, wenn Docker lokal gleich wie auf dem Server läuft.)
-
-**Wichtig:** Ohne `--profile local-dev` startet **nichts**.
-
----
-
-## Ziel A — Über GitHub Actions (automatisch)
-
-1. In GitHub: **Settings → Secrets and variables → Actions** — diese Secrets setzen:  
-   `SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `DATABASE_URL`, `JWT_SECRET`, `MINIO_SECRET_KEY`, `DOMAIN`
-2. Auf dem Server: **SSH-Deploy-Key** für `git@github.com:iamthamanic/Scriptonyapp.git`, damit `git pull` klappt.
-3. **Push auf `main`** → Workflow **scriptony CI/CD** → nach grünem **ci**-Job läuft **deploy-prod** → führt auf dem Server `docker compose --profile local-dev up -d --build` aus.
-
----
-
-## Ziel B — Scriptony-Webapp (das, was Nutzer im Browser sehen)
-
-### Variante B1 — Schnellstart: Nhost **Cloud**
-
-1. Projekt in [Nhost](https://nhost.io) anlegen / bestehendes nutzen.
-2. **`nhost/`** + **Functions** deployen: lokal `nhost login`, dann z. B. `npm run deploy:nhost` (Branch beachten).
-3. **Nhost Dashboard → Authentication → URLs:** Redirect/Site-URL = deine Frontend-URL (lokal z. B. `http://localhost:3000` — Vite-Port im Repo).
-4. **Frontend `.env.local`:**  
-   `npm run env:local -- DEINE_SUBDOMAIN eu-central-1`  
-   oder Werte aus `.env.example` manuell setzen.
-5. **Lokal:** `npm install` → `npm run dev` → Browser öffnen.  
-6. **Production-Frontend:** `npm run build`, Ordner **`build/`** auf nginx/Caddy/Vercel ausliefern; in der Build-Umgebung alle **`VITE_*`** für **Production** setzen (siehe `.env.example`).
-
-### Mac: `ping` zeigt 127.0.0.1 für `local.*.local.nhost.run`
-
-Öffentliches DNS für diese Namen zeigt oft auf **127.0.0.1** (Nhost-Demo). Dein Mac muss stattdessen die **VPS-IP** nutzen — einmalig:
-
-```bash
-cd /pfad/zu/Scriptonyapp
-sudo bash scripts/macos-override-nhost-local-hosts.sh DEINE_VPS_IPV4
-sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
-ping -c 1 local.auth.local.nhost.run
-```
-
-### Variante B2 — Nhost **Self-Hosted** (Hasura bei dir)
-
-1. Offizielle Anleitung: [Nhost Self-Hosting](https://docs.nhost.io/platform/self-hosting/overview) auf deinem VPS (oder eigenem Host) umsetzen — z. B. Repo **`nhost/nhost`**, Ordner **`examples/docker-compose`**: `.env` aus `.env.example`, dann `docker compose up -d`.
-2. **Auth-Redirects (kein Cloud-Dashboard-Menü):** Im **gleichen Ordner** wie die offizielle `docker-compose.yaml` die Datei **`docker-compose.override.yml`** aus diesem Repo legen:  
-   `infra/nhost-official-docker-compose/docker-compose.override.yml` → kopieren nach z. B. `/root/nhost-upstream/examples/docker-compose/`, dann dort `docker compose up -d`. Details: [NHOST_SELFHOSTED_DASHBOARD.md](NHOST_SELFHOSTED_DASHBOARD.md).
-3. DNS/TLS für Auth-, GraphQL-, Storage-, Functions-URLs (oder Demo-Hosts `local.*.local.nhost.run` + `/etc/hosts` / Firewall).
-4. **Auf dem Mac:** Wenn `ping local.auth.local.nhost.run` **127.0.0.1** zeigt, VPS-IP erzwingen (Abschnitt **„Mac: ping …“** oben).
-5. **Im Scriptony-Repo (Mac):** `.env.local` aus `.env.local.example` — **`VITE_NHOST_*`** auf deine Nhost-URLs, **`VITE_*_REDIRECT_*`** und **`VITE_APP_WEB_URL`** = `http://localhost:3000`. **`npm run verify:test-env`** (prüft Auth + GraphQL vom Mac zum VPS). Dann `npm install` → `npm run dev` → Browser `http://localhost:3000`. Siehe [TEST_ENV_REMOTE_NHOST.md](TEST_ENV_REMOTE_NHOST.md).
-6. **`VITE_NHOST_*`** im **Production-Build** auf **deine** Hostnames setzen — siehe [SELF_HOSTING.md](SELF_HOSTING.md).
-7. **Docker Local-Dev-Stack** (`--profile local-dev`) auf dem **gleichen** Server nur nutzen, wenn du ihn wirklich brauchst; für die echte App ist **ein** Nhost-Stack maßgeblich.
-
----
-
-## Kurz-Entscheidung
-
-- Nur **API/DB/Hasura zum Testen** → **Ziel A** reicht.  
-- **Scriptony wie im Repo gedacht** → **Ziel B** (Nhost Cloud oder Self-Hosted) **plus** gebautes Frontend.
-
----
-
-*Siehe auch: [SOURCE_OF_TRUTH.md](SOURCE_OF_TRUTH.md), [DEPLOYMENT.md](DEPLOYMENT.md)*
+Deploy **`functions/`** according to your Appwrite Functions or gateway setup; set the functions base URL in Vercel (or host) to match.

@@ -1,5 +1,5 @@
 /**
- * Scene-scoped shot routes for the Nhost compatibility layer.
+ * Scene-scoped shot routes for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";

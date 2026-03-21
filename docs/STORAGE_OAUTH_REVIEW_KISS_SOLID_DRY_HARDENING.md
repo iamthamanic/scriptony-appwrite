@@ -4,7 +4,7 @@
 
 **Was gut ist:**
 - Klare Trennung: authorize → Redirect, callback → Token-Tausch → Redirect mit Hash.
-- Frontend: eine Komponente pro „Block“ (Usage, Connection), klare Reihenfolge (Nhost → OAuth → comingSoon → Hetzner → Fallback).
+- Frontend: eine Komponente pro „Block“ (Usage, Connection), klare Reihenfolge (Scriptony Cloud → OAuth → comingSoon → Hetzner → Fallback).
 - OAuth-Logik in `oauth.ts` gebündelt, UI bleibt dünn.
 
 **Vereinfachungen:**

@@ -1,9 +1,8 @@
 /**
  * Legacy word-count recalculation endpoint.
  *
- * The original Supabase function recalculated book scene counts server-side.
- * During the Nhost migration this remains a no-op compatibility endpoint so the
- * admin UI can continue to call it without crashing.
+ * Historical no-op: book scene word counts were once recalculated server-side.
+ * This endpoint remains so older admin UI calls do not hard-fail until ported.
  */
 
 import { getParam, sendBadRequest, sendJson, sendMethodNotAllowed, type RequestLike, type ResponseLike } from "../../../_shared/http";
@@ -24,6 +23,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     success: true,
     updated: 0,
     projectId,
-    note: "Word-count recalculation has not been ported to the Nhost backend yet.",
+    note: "Word-count recalculation has not been ported to the Appwrite-backed stack yet.",
   });
 }

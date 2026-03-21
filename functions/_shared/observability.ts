@@ -2,7 +2,7 @@
  * Shared observability helpers for stats, logs, and admin compatibility routes.
  */
 
-import { requestGraphql } from "./hasura";
+import { requestGraphql } from "./graphql-compat";
 
 type JsonRecord = Record<string, any>;
 

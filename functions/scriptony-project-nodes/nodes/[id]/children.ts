@@ -1,5 +1,5 @@
 /**
- * Timeline node children routes for the Nhost compatibility layer.
+ * Timeline node children routes for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../_shared/auth";

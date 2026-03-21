@@ -1,9 +1,9 @@
 /**
- * World category routes for the Nhost-backed worldbuilding compatibility layer.
+ * World category routes for the Scriptony worldbuilding service.
  */
 
 import { requireUserBootstrap } from "../../../../_shared/auth";
-import { requestGraphql } from "../../../../_shared/hasura";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,

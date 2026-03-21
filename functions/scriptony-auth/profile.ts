@@ -3,7 +3,7 @@
  */
 
 import { requireUserBootstrap } from "../_shared/auth";
-import { requestGraphql } from "../_shared/hasura";
+import { requestGraphql } from "../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,

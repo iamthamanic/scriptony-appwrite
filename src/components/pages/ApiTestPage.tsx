@@ -36,8 +36,9 @@ export function ApiTestPage() {
     updateTest('Environment Config', { status: 'running' });
     try {
       const url = backendConfig.functionsBaseUrl;
-      const hasKey = backendConfig.provider === "nhost" || backendConfig.publicAuthToken.length > 0;
-      
+      const hasKey =
+        backendConfig.provider === "appwrite" || backendConfig.publicAuthToken.length > 0;
+
       if (url && hasKey) {
         updateTest('Environment Config', { 
           status: 'success', 
@@ -58,7 +59,7 @@ export function ApiTestPage() {
 
     // Test 2: Health Check (No Auth)
     updateTest('Health Check', { status: 'running' });
-    const healthUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/health");
+    const healthUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS, "/health");
     const healthStart = Date.now();
     
     try {
@@ -101,7 +102,7 @@ export function ApiTestPage() {
 
         // Test 4: Projects API (With Auth)
         updateTest('Projects API', { status: 'running' });
-        const projectsUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/projects");
+        const projectsUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS, "/projects");
         const projectsStart = Date.now();
         
         try {
@@ -116,7 +117,11 @@ export function ApiTestPage() {
           const data = await response.json();
           
           if (response.ok) {
-            const projectCount = data.projects?.length || 0;
+            const projectCount = Array.isArray(data.projects)
+              ? data.projects.length
+              : Array.isArray(data)
+                ? data.length
+                : 0;
             updateTest('Projects API', { 
               status: 'success', 
               message: `${projectCount} projects found (${duration}ms)`,
@@ -243,9 +248,9 @@ export function ApiTestPage() {
               <div>{backendConfig.provider}</div>
             </div>
             <div>
-              <span className="text-muted-foreground">Full URL:</span>
+              <span className="text-muted-foreground">Beispiel (scriptony-projects):</span>
               <div className="break-all">
-                {buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER)}
+                {buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS)}
               </div>
             </div>
           </CardContent>

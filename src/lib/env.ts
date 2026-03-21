@@ -1,16 +1,17 @@
 /**
- * Backend and platform configuration.
+ * Frontend runtime configuration (Vite `import.meta.env`).
  *
- * Nhost + Capacitor setup. All runtime config flows through this file.
+ * Single place for public, browser-safe settings: Appwrite endpoint/project, functions base URL,
+ * auth redirect URLs, Capacitor deep links. Never put API keys here — they would ship to clients.
+ *
+ * Self-hosted: point `VITE_APPWRITE_*` at your Docker/VPS Appwrite URL (see docs/SELF_HOSTING.md).
+ * Location: src/lib/env.ts
  */
 
-export interface NhostConfig {
-  subdomain: string;
-  region: string;
-  authUrl: string;
-  storageUrl: string;
-  graphqlUrl: string;
-  functionsUrl: string;
+export interface AppwritePublicConfig {
+  /** Appwrite API endpoint, e.g. https://cloud.appwrite.io/v1 */
+  endpoint: string;
+  projectId: string;
 }
 
 export interface CapacitorConfig {
@@ -20,10 +21,11 @@ export interface CapacitorConfig {
 }
 
 export interface BackendConfig {
-  provider: 'nhost';
+  provider: "appwrite";
+  appwrite: AppwritePublicConfig | null;
+  /** Base URL of deployed Scriptony functions (path prefix before function name). */
   functionsBaseUrl: string;
   publicAuthToken: string;
-  nhost: NhostConfig;
   capacitor: CapacitorConfig;
 }
 
@@ -35,18 +37,18 @@ export interface AppConfig {
 const env = import.meta.env;
 
 function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, '');
+  return value.replace(/\/+$/, "");
 }
 
 function trimLeadingSlash(value: string): string {
-  return value.replace(/^\/+/, '');
+  return value.replace(/^\/+/, "");
 }
 
 function validateString(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === "string" ? value.trim() : "";
 }
 
-function joinUrl(base: string, path: string): string {
+export function joinUrl(base: string, path: string): string {
   if (!base) return path;
   if (!path) return base;
   return `${trimTrailingSlash(base)}/${trimLeadingSlash(path)}`;
@@ -54,71 +56,56 @@ function joinUrl(base: string, path: string): string {
 
 let _backendConfig: BackendConfig | null = null;
 
+/**
+ * Appwrite endpoint + project for the web SDK (no API keys in the browser).
+ */
+export function getAppwritePublicConfig(): AppwritePublicConfig | null {
+  const endpointRaw = validateString(env.VITE_APPWRITE_ENDPOINT);
+  const projectId = validateString(env.VITE_APPWRITE_PROJECT_ID);
+  if (!endpointRaw || !projectId) {
+    return null;
+  }
+
+  return {
+    endpoint: trimTrailingSlash(endpointRaw),
+    projectId,
+  };
+}
+
+export function getMissingAppwriteConfig(): string[] {
+  const missing: string[] = [];
+  if (!validateString(env.VITE_APPWRITE_ENDPOINT)) {
+    missing.push("VITE_APPWRITE_ENDPOINT");
+  }
+  if (!validateString(env.VITE_APPWRITE_PROJECT_ID)) {
+    missing.push("VITE_APPWRITE_PROJECT_ID");
+  }
+  return missing;
+}
+
 export function getBackendConfig(): BackendConfig {
   if (_backendConfig) {
     return _backendConfig;
   }
 
-  const subdomain = validateString(env.VITE_NHOST_SUBDOMAIN);
-  const region = validateString(env.VITE_NHOST_REGION) || 'eu-central-1';
-  const base = subdomain && region ? `https://${subdomain}` : '';
-
-  const nhost: NhostConfig = {
-    subdomain,
-    region,
-    authUrl: trimTrailingSlash(
-      validateString(env.VITE_NHOST_AUTH_URL) || (base ? `${base}.auth.${region}.nhost.run/v1` : '')
-    ),
-    storageUrl: trimTrailingSlash(
-      validateString(env.VITE_NHOST_STORAGE_URL) || (base ? `${base}.storage.${region}.nhost.run/v1` : '')
-    ),
-    graphqlUrl: trimTrailingSlash(
-      validateString(env.VITE_NHOST_GRAPHQL_URL) || (base ? `${base}.graphql.${region}.nhost.run/v1` : '')
-    ),
-    functionsUrl: trimTrailingSlash(
-      validateString(env.VITE_NHOST_FUNCTIONS_URL) || (base ? `${base}.functions.${region}.nhost.run/v1` : '')
-    ),
-  };
-
   const functionsBaseUrl = trimTrailingSlash(
-    validateString(env.VITE_BACKEND_API_BASE_URL) || nhost.functionsUrl
+    validateString(env.VITE_APPWRITE_FUNCTIONS_BASE_URL) ||
+      validateString(env.VITE_BACKEND_API_BASE_URL)
   );
 
   _backendConfig = {
-    provider: 'nhost',
+    provider: "appwrite",
+    appwrite: getAppwritePublicConfig(),
     functionsBaseUrl,
-    publicAuthToken: validateString(env.VITE_BACKEND_PUBLIC_TOKEN) || '',
-    nhost,
+    publicAuthToken: validateString(env.VITE_BACKEND_PUBLIC_TOKEN) || "",
     capacitor: {
-      appId: validateString(env.VITE_CAPACITOR_APP_ID) || 'ai.scriptony.app',
-      urlScheme: validateString(env.VITE_CAPACITOR_URL_SCHEME) || 'scriptony',
-      callbackHost: validateString(env.VITE_CAPACITOR_CALLBACK_HOST) || 'auth-callback',
+      appId: validateString(env.VITE_CAPACITOR_APP_ID) || "ai.scriptony.app",
+      urlScheme: validateString(env.VITE_CAPACITOR_URL_SCHEME) || "scriptony",
+      callbackHost: validateString(env.VITE_CAPACITOR_CALLBACK_HOST) || "auth-callback",
     },
   };
 
   return _backendConfig;
-}
-
-export function getMissingNhostConfig(config = getBackendConfig().nhost): string[] {
-  const missing: string[] = [];
-
-  if (!config.authUrl && !config.subdomain) {
-    missing.push('VITE_NHOST_AUTH_URL or VITE_NHOST_SUBDOMAIN');
-  }
-
-  if (!config.functionsUrl && !validateString(env.VITE_BACKEND_API_BASE_URL)) {
-    missing.push('VITE_NHOST_FUNCTIONS_URL or VITE_BACKEND_API_BASE_URL');
-  }
-
-  if (!config.graphqlUrl && !config.subdomain) {
-    missing.push('VITE_NHOST_GRAPHQL_URL or VITE_NHOST_SUBDOMAIN');
-  }
-
-  if (!config.storageUrl && !config.subdomain) {
-    missing.push('VITE_NHOST_STORAGE_URL or VITE_NHOST_SUBDOMAIN');
-  }
-
-  return missing;
 }
 
 let _appConfig: AppConfig | null = null;
@@ -129,12 +116,12 @@ export function getAppConfig(): AppConfig {
   }
 
   const hostname =
-    typeof window !== 'undefined' ? window.location.hostname : '';
+    typeof window !== "undefined" ? window.location.hostname : "";
 
   const isDevelopment =
-    hostname === 'localhost' ||
-    hostname.startsWith('127.0.0.1') ||
-    validateString(env.MODE) === 'development';
+    hostname === "localhost" ||
+    hostname.startsWith("127.0.0.1") ||
+    validateString(env.MODE) === "development";
 
   _appConfig = {
     isDevelopment,
@@ -148,21 +135,21 @@ export function getAuthRedirectUrl(): string {
   const custom = validateString(env.VITE_AUTH_REDIRECT_URL);
   if (custom) return custom;
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window.location.origin;
   }
 
-  return validateString(env.VITE_APP_WEB_URL) || 'http://localhost:5173';
+  return validateString(env.VITE_APP_WEB_URL) || "http://localhost:5173";
 }
 
 export function getPasswordResetRedirectUrl(): string {
   const custom = validateString(env.VITE_PASSWORD_RESET_REDIRECT_URL);
   if (custom) return custom;
 
-  return joinUrl(getAuthRedirectUrl(), 'reset-password');
+  return joinUrl(getAuthRedirectUrl(), "reset-password");
 }
 
-export function getCapacitorCallbackUrl(path = ''): string {
+export function getCapacitorCallbackUrl(path = ""): string {
   const { urlScheme, callbackHost } = getBackendConfig().capacitor;
   if (!path) {
     return `${urlScheme}://${callbackHost}`;
@@ -180,12 +167,10 @@ export function isBackendConfigured(): boolean {
 }
 
 if (appConfig.isDevelopment) {
-  const missingNhostConfig = getMissingNhostConfig(backendConfig.nhost);
-
-  console.log('Environment ready:', {
-    functionsBaseUrl: backendConfig.functionsBaseUrl,
-    nhostSubdomain: backendConfig.nhost.subdomain || '(unset)',
-    nhostAuthUrl: backendConfig.nhost.authUrl || '(unset)',
-    missingNhostConfig,
+  const missingAppwrite = getMissingAppwriteConfig();
+  console.log("Environment ready:", {
+    functionsBaseUrl: backendConfig.functionsBaseUrl || "(unset)",
+    appwriteEndpoint: backendConfig.appwrite?.endpoint || "(unset)",
+    missingAppwriteConfig: missingAppwrite,
   });
 }

@@ -1,5 +1,5 @@
 /**
- * Batch timeline load route for the Nhost compatibility layer.
+ * Batch timeline load route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";

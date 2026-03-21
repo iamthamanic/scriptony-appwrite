@@ -1,10 +1,10 @@
 /**
- * AI chat route for the Nhost compatibility layer.
+ * AI chat route for the Scriptony HTTP API.
  */
 
 import { generateAiResponse } from "../../../_shared/ai";
 import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/hasura";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,

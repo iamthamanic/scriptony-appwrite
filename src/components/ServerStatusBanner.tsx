@@ -111,7 +111,7 @@ export function ServerStatusBanner() {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => window.open('https://app.nhost.io', '_blank')}
+                  onClick={() => window.open('https://cloud.appwrite.io', '_blank')}
                   className="gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />

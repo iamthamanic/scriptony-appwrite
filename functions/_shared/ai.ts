@@ -1,5 +1,5 @@
 /**
- * Shared AI provider helpers for the Nhost compatibility layer.
+ * Shared AI provider helpers for the Scriptony HTTP API.
  *
  * The goal is to keep provider-specific request/response mapping in one place
  * while the route handler focuses on persistence and auth.

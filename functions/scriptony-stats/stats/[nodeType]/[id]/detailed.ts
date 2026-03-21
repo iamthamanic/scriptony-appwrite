@@ -1,5 +1,5 @@
 /**
- * Detailed node stats route for the Nhost compatibility layer.
+ * Detailed node stats route for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../../../_shared/auth";

@@ -1,7 +1,7 @@
 /**
- * Shared HTTP helpers for Nhost functions.
+ * Shared HTTP helpers for Scriptony functions.
  *
- * Nhost functions expose Express-like request and response objects.
+ * Handlers use Express-like request and response objects.
  */
 
 export type RequestLike = any;

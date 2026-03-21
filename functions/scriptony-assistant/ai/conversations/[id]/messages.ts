@@ -1,9 +1,9 @@
 /**
- * AI conversation messages routes for the Nhost compatibility layer.
+ * AI conversation messages routes for the Scriptony HTTP API.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/hasura";
+import { requestGraphql } from "../../../../../_shared/graphql-compat";
 import {
   getParam,
   sendBadRequest,

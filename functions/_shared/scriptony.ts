@@ -1,10 +1,10 @@
 /**
- * Shared Scriptony data helpers for Nhost functions.
+ * Shared Scriptony data helpers for HTTP functions.
  *
  * These helpers normalize request payloads and centralize access checks.
  */
 
-import { requestGraphql } from "./hasura";
+import { requestGraphql } from "./graphql-compat";
 
 export function normalizeProjectInput(body: Record<string, any>): Record<string, any> {
   const project = {

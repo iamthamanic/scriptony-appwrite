@@ -1,16 +1,16 @@
 # Speicheranbieter – Implementierung & Datenmodell
 
-Option A: **Backend nutzt nur Nhost.** Alle anderen Anbieter (Google Drive, Dropbox, OneDrive, KDrive, Hetzner, Lokal) laufen **rein im Client** – OAuth-Token bleibt beim Nutzer, die App spricht direkt mit der API des Anbieters.
+Option A: **Backend nutzt nur Scriptony Cloud (Appwrite).** Alle anderen Anbieter (Google Drive, Dropbox, OneDrive, KDrive, Hetzner, Lokal) laufen **rein im Client** – OAuth-Token bleibt beim Nutzer, die App spricht direkt mit der API des Anbieters.
 
 ---
 
 ## 1. Was wird wo gespeichert?
 
-### Bei Nhost (wie heute)
+### Bei Scriptony Cloud (Standard)
 
-- **Hasura/PostgreSQL:** Projekte, Welten, Episodes, Characters, Scenes, Shots, Nodes, Beats, Organisationen, User, etc.
-- **Nhost Storage (Buckets):** Bilder (Projekt-Cover, World-Cover, Shot-Bilder, Character-Avatare), Audio-Dateien.
-- Ablage ist pro Ressource (z.B. `projects.cover_image_url` → URL zu Nhost Storage).
+- **Appwrite Databases:** Projekte, Welten, Episodes, Characters, Scenes, Shots, Nodes, Beats, Organisationen, User, etc.
+- **Appwrite Storage (Buckets):** Bilder (Projekt-Cover, World-Cover, Shot-Bilder, Character-Avatare), Audio-Dateien.
+- Ablage ist pro Ressource (z.B. `projects.cover_image_url` → URL zu Appwrite Storage).
 
 ### Bei externen Anbietern (Google Drive, KDrive, Hetzner, Lokal, …)
 
@@ -32,7 +32,7 @@ Optional: Welten, Characters etc. als weitere JSON-Dateien oder in einem `data/`
 
 ## 2. Was muss pro Anbieter gemacht werden?
 
-Gemeinsam für alle (außer Nhost):
+Gemeinsam für alle (außer Scriptony Cloud):
 
 1. **Storage-Adapter** implementieren (Interface aus `src/lib/storage-provider/types.ts`):
    - `connect(config)` – OAuth-Token oder Zugangsdaten setzen
@@ -42,7 +42,7 @@ Gemeinsam für alle (außer Nhost):
    - `readJson`, `writeJson` – für Projekt-/Struktur-JSON
    - **`getStorageUsage()`** (optional) – liefert `StorageUsageInfo` (usedBytes, totalBytes?, fileCount?), damit im Speicher-Tab die belegte Speichermenge angezeigt werden kann, sobald der Anbieter verbunden ist.
 2. **UI:** Beim ersten Nutzen des Anbieters: OAuth (oder Ordner-Auswahl bei Lokal), dann Token/Handle nur im Speicher der App (z.B. SessionStorage oder Memory), **nicht** ans Backend senden.
-3. **App-Logik:** Wenn der gewählte Speicher **nicht** Nhost ist: Lade/Speichere Projekte und Dateien **nur** über den jeweiligen Adapter (kein Aufruf von Nhost-Projekt-/Storage-Routen für diese Projekte).
+3. **App-Logik:** Wenn der gewählte Speicher **nicht** Scriptony Cloud ist: Lade/Speichere Projekte und Dateien **nur** über den jeweiligen Adapter (kein Aufruf von Scriptony-Projekt-/Storage-Routen für diese Projekte).
 
 ---
 
@@ -131,7 +131,7 @@ Gemeinsam für alle (außer Nhost):
 2. **Adapter pro Anbieter:** z.B. `src/lib/storage-provider/adapters/google-drive.ts`, `dropbox.ts`, `onedrive.ts`, `kdrive.ts`, `local.ts` – jede Klasse implementiert das Interface.
 3. **Registry:** Adapter in der Registry registrieren; UI liest `listStorageProviders()` und zeigt nur Anbieter mit `comingSoon: false` als wählbar.
 4. **OAuth-/Connect-UI:** Im Speicher-Tab oder beim ersten Speichern: „Mit [Anbieter] verbinden“ → Token/Handle setzen → `adapter.connect(config)`.
-5. **Projekt-Lade-/Speicher-Logik:** Wenn `getSelectedStorageProviderId() !== 'nhost'`: Projektliste und Projektinhalte ausschließlich über den gewählten Adapter laden/speichern; keine Nhost-Projekt-/Storage-API für diese Projekte aufrufen.
+5. **Projekt-Lade-/Speicher-Logik:** Wenn `getSelectedStorageProviderId() !== 'scriptony_cloud'`: Projektliste und Projektinhalte ausschließlich über den gewählten Adapter laden/speichern; keine Scriptony-Projekt-/Storage-API für diese Projekte aufrufen.
 
 ---
 
@@ -141,7 +141,7 @@ Wenn ein Anbieter verbunden ist, kann die App die **belegte Speichermenge** anze
 
 | Anbieter | Wie die Nutzung ermittelt wird |
 |----------|---------------------------------|
-| **Nhost** | Bereits umgesetzt: Backend-API `/storage/usage` liefert Gesamtgröße und Dateianzahl. |
+| **Scriptony Cloud** | Bereits umgesetzt: Backend-API `/storage/usage` liefert Gesamtgröße und Dateianzahl. |
 | **Google Drive** | [About – storageQuota](https://developers.google.com/drive/api/reference/v3/about#resource-representations): `storageQuota.limit` und `storageQuota.usage` (in Bytes). Oder nur unser Scriptony-Ordner: `listFiles` rekursiv und Größen summieren. |
 | **Dropbox** | [space_usage](https://www.dropbox.com/developers/documentation/http/documentation#users-space_usage): `used` und `allocation.allocated` (in Bytes). Optional nur unser Ordner: Dateien auflisten und summieren. |
 | **OneDrive** | [Drive quota](https://learn.microsoft.com/en-us/graph/api/drive-get?view=graph-rest-1.0): `quota.used` und `quota.total`. |
@@ -149,7 +149,7 @@ Wenn ein Anbieter verbunden ist, kann die App die **belegte Speichermenge** anze
 | **Hetzner (S3)** | Kein Kontingent im klassischen Sinn. Nur **von Scriptony belegt**: Liste aller Objekte unter Prefix `Scriptony/` und Summe der `ContentLength` → „Scriptony belegt X MB“. |
 | **Lokal** | File System Access: Größe des gewählten Ordners (rekursiv summieren) oder geschätzt. IndexedDB: `navigator.storage.estimate().usage` oder Summe der gespeicherten Blob-Größen. |
 
-Die UI im Speicher-Tab zeigt bei Nhost die aktuelle Nutzung; bei anderen Anbietern einen Hinweis, dass die Nutzung angezeigt wird, sobald der Anbieter verbunden ist. Sobald ein Adapter `getStorageUsage()` implementiert und der Nutzer verbunden ist, kann dieselbe Anzeige („X verwendet von Y“, Fortschrittsbalken, Dateianzahl) für diesen Anbieter genutzt werden.
+Die UI im Speicher-Tab zeigt bei Scriptony Cloud die aktuelle Nutzung; bei anderen Anbietern einen Hinweis, dass die Nutzung angezeigt wird, sobald der Anbieter verbunden ist. Sobald ein Adapter `getStorageUsage()` implementiert und der Nutzer verbunden ist, kann dieselbe Anzeige („X verwendet von Y“, Fortschrittsbalken, Dateianzahl) für diesen Anbieter genutzt werden.
 
 ---
 
