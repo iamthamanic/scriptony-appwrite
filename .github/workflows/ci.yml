@@ -96,7 +96,7 @@ jobs:
           rsync -avz --delete -e "ssh -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no" \
             build/ "${SSH_USER}@${SSH_HOST}:${WEB_ROOT}/"
 
-      - name: Deploy Appwrite stack on production server
+      - name: Git sync on server (production)
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -113,10 +113,32 @@ jobs:
           git fetch origin
           git checkout "$BRANCH"
           git pull origin "$BRANCH"
-          if [ ! -f infra/appwrite/.env ]; then
-            echo "ERROR: Missing infra/appwrite/.env on server (copy from infra/appwrite/.env.example)."
-            exit 1
+          echo "OK: git sync production"
+          REMOTE
+
+      - name: Write infra/appwrite/.env from GitHub Secret (production, optional)
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APPWRITE_INFRA_ENV: ${{ secrets.APPWRITE_INFRA_ENV }}
+        run: |
+          if [ -n "${APPWRITE_INFRA_ENV}" ]; then
+            echo "$APPWRITE_INFRA_ENV" | ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" \
+              "mkdir -p /root/scriptony-prod/infra/appwrite && cat > /root/scriptony-prod/infra/appwrite/.env.tmp && mv /root/scriptony-prod/infra/appwrite/.env.tmp /root/scriptony-prod/infra/appwrite/.env && chmod 600 /root/scriptony-prod/infra/appwrite/.env"
+            echo "OK: wrote /root/scriptony-prod/infra/appwrite/.env from secret APPWRITE_INFRA_ENV"
+          else
+            echo "APPWRITE_INFRA_ENV not set — using existing infra/appwrite/.env on server if present"
           fi
+
+      - name: Appwrite Docker Compose up (production)
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /root/scriptony-prod
+          test -f infra/appwrite/.env || { echo "ERROR: Missing infra/appwrite/.env — set secret APPWRITE_INFRA_ENV or create file on server."; exit 1; }
           docker compose --env-file infra/appwrite/.env pull || true
           docker compose --env-file infra/appwrite/.env up -d
           docker image prune -f || true
@@ -175,7 +197,7 @@ jobs:
           rsync -avz --delete -e "ssh -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no" \
             build/ "${SSH_USER}@${SSH_HOST}:${WEB_ROOT}/"
 
-      - name: Deploy Appwrite stack on test server
+      - name: Git sync on server (test)
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -192,10 +214,32 @@ jobs:
           git fetch origin
           git checkout "$BRANCH"
           git pull origin "$BRANCH"
-          if [ ! -f infra/appwrite/.env ]; then
-            echo "ERROR: Missing infra/appwrite/.env on server (copy from infra/appwrite/.env.example)."
-            exit 1
+          echo "OK: git sync test"
+          REMOTE
+
+      - name: Write infra/appwrite/.env from GitHub Secret (staging, optional)
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APPWRITE_INFRA_ENV_STAGING: ${{ secrets.APPWRITE_INFRA_ENV_STAGING }}
+        run: |
+          if [ -n "${APPWRITE_INFRA_ENV_STAGING}" ]; then
+            echo "$APPWRITE_INFRA_ENV_STAGING" | ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" \
+              "mkdir -p /root/scriptony-test/infra/appwrite && cat > /root/scriptony-test/infra/appwrite/.env.tmp && mv /root/scriptony-test/infra/appwrite/.env.tmp /root/scriptony-test/infra/appwrite/.env && chmod 600 /root/scriptony-test/infra/appwrite/.env"
+            echo "OK: wrote /root/scriptony-test/infra/appwrite/.env from secret APPWRITE_INFRA_ENV_STAGING"
+          else
+            echo "APPWRITE_INFRA_ENV_STAGING not set — using existing infra/appwrite/.env on test server if present"
           fi
+
+      - name: Appwrite Docker Compose up (test)
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /root/scriptony-test
+          test -f infra/appwrite/.env || { echo "ERROR: Missing infra/appwrite/.env — set APPWRITE_INFRA_ENV_STAGING or create file on server."; exit 1; }
           docker compose --env-file infra/appwrite/.env pull || true
           docker compose --env-file infra/appwrite/.env up -d
           docker image prune -f || true

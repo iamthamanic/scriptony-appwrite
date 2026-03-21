@@ -11,11 +11,28 @@ Der frühere Deploy mit **`docker-compose.legacy.yml`** (Postgres/Lucia) ist **n
 
 ---
 
+## Appwrite `infra/appwrite/.env` nur in GitHub (empfohlen, kein nano auf dem Server)
+
+Du kannst den **kompletten Inhalt** der Datei `infra/appwrite/.env` als **ein** mehrzeiliges Secret ablegen. Bei jedem Deploy schreibt der Workflow die Datei per SSH auf den Server (**nach** `git pull`).
+
+| Secret | Wann |
+|--------|------|
+| **`APPWRITE_INFRA_ENV`** | Push auf **`main`** → `/root/scriptony-prod/infra/appwrite/.env` |
+| **`APPWRITE_INFRA_ENV_STAGING`** | Push auf **`develop`** → `/root/scriptony-test/infra/appwrite/.env` |
+
+**Anlegen in GitHub:** Repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** → Name z. B. `APPWRITE_INFRA_ENV` → Wert: gesamten Text aus einer lokal erzeugten `.env` (aus `infra/appwrite/.env.example` kopieren, alle Werte ausfüllen, dann Inhalt einfügen).
+
+**Limit:** GitHub Secrets sind groß genug für typische Appwrite-`.env`-Dateien (unter der Secret-Größengrenze bleiben).
+
+Wenn das Secret **nicht** gesetzt ist, muss `infra/appwrite/.env` **weiterhin manuell** auf dem VPS existieren.
+
+---
+
 ## Einmalig auf dem VPS
 
 1. Verzeichnis anlegen (entspricht dem im Workflow, z. B. `/root/scriptony-prod` oder `/root/scriptony-test`).
-2. Repo klonen **oder** ersten Deploy laufen lassen (der Remote-Script legt das Verzeichnis an und klont per SSH).
-3. **`infra/appwrite/.env`** auf dem Server erzeugen (von `infra/appwrite/.env.example` kopieren, **alle** `_APP_*` für Produktion setzen). Diese Datei **nicht** ins Git committen.
+2. Repo klonen **oder** ersten Deploy laufen lassen (der Workflow klont per SSH).
+3. Entweder **`APPWRITE_INFRA_ENV`** (bzw. Staging-Secret) in GitHub setzen **oder** **`infra/appwrite/.env`** auf dem Server anlegen — **nicht** ins Git committen.
 4. Server braucht **Docker** + **Docker Compose v2** und einen **SSH-Deploy-Key** mit Repo-Zugriff (`git@github.com:…`).
 
 ---
@@ -79,7 +96,7 @@ Andere Pfade gewünscht: **`.github/workflows/ci.yml`** anpassen (Variablen `APP
 
 ## Fehler „Missing infra/appwrite/.env“
 
-Der Deploy bricht absichtlich ab, wenn auf dem Server **`infra/appwrite/.env`** fehlt — damit kein Stack mit Beispiel-Passwörtern hochfährt.
+Der Deploy bricht ab, wenn nach dem Schritt **Write … from GitHub Secret** auf dem Server **`infra/appwrite/.env`** fehlt — setze **`APPWRITE_INFRA_ENV`** oder lege die Datei auf dem VPS an.
 
 ---
 
