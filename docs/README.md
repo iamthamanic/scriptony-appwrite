@@ -6,6 +6,7 @@
 - **[SELF_HOSTING.md](SELF_HOSTING.md)** — eigenes Frontend + Appwrite + Functions (inkl. Docker-Appwrite im Repo)
 - **[SERVER_ROLLOUT.md](SERVER_ROLLOUT.md)** — Checkliste VPS; Abgleich mit GitHub Actions Deploy
 - **[SERVER_MIGRATION_RUNBOOK.md](SERVER_MIGRATION_RUNBOOK.md)** — Terminal-Befehle: Nhost runter, Appwrite hoch (`/root/scriptony-prod`)
+- **[HOSTINGER_VPS_EINMAL_SETUP.md](HOSTINGER_VPS_EINMAL_SETUP.md)** — alle Schritte für Hostinger VPS in einem Dokument
 - **[GITHUB_ACTIONS_DEPLOY.md](GITHUB_ACTIONS_DEPLOY.md)** — Secrets, Variablen, optional statisches Frontend per rsync
 - **[DEVOPS_EMPFEHLUNG.md](DEVOPS_EMPFEHLUNG.md)** — empfohlene Architektur (Umgebungen, Domains, CI vs. VPS)
 - **[EXACT_STEPS.md](EXACT_STEPS.md)** — minimal runbook for local dev

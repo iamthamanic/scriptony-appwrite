@@ -2,7 +2,7 @@
 
 Lucia Auth Service — **only** for the optional **Docker legacy** stack (`docker compose -f docker-compose.legacy.yml --profile local-dev`). The main Scriptony app uses **Appwrite** (`AppwriteAuthAdapter`). See [docs/SOURCE_OF_TRUTH.md](../../docs/SOURCE_OF_TRUTH.md).
 
-Lucia Auth Service für Scriptonyapp.
+Lucia Auth Service für das Scriptony-Repo (scriptony-appwrite).
 
 ## Features
 
