@@ -20,7 +20,21 @@ Du kannst den **kompletten Inhalt** der Datei `infra/appwrite/.env` als **ein** 
 | **`APPWRITE_INFRA_ENV`** | Push auf **`main`** → `/root/scriptony-prod/infra/appwrite/.env` |
 | **`APPWRITE_INFRA_ENV_STAGING`** | Push auf **`develop`** → `/root/scriptony-test/infra/appwrite/.env` |
 
-**Anlegen in GitHub:** Repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** → Name z. B. `APPWRITE_INFRA_ENV` → Wert: gesamten Text aus einer lokal erzeugten `.env` (aus `infra/appwrite/.env.example` kopieren, alle Werte ausfüllen, dann Inhalt einfügen).
+**Anlegen in GitHub:** Repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** → Name z. B. `APPWRITE_INFRA_ENV` → Wert: gesamten Text der generierten `.env` (siehe unten).
+
+**Lokal generieren (empfohlen, kein manuelles Tippen von Keys):** im Repo-Root, mit deiner **echten** Appwrite-Hostnames (ohne `https://`):
+
+```bash
+npm run appwrite:env:generate -- --domain=appwrite.deinedomain.de --write
+```
+
+Erzeugt **`infra/appwrite/.env`** mit zufälligen Passwörtern und Keys. Dann Datei öffnen, ggf. SMTP/E-Mail anpassen, **gesamten Inhalt** kopieren → Secret **`APPWRITE_INFRA_ENV`** einfügen.
+
+Ohne `--write` schreibt das Skript nach **stdout** (zum Weiterleiten):
+
+```bash
+npm run appwrite:env:generate -- --domain=appwrite.deinedomain.de > /tmp/appwrite-env.txt
+```
 
 **Limit:** GitHub Secrets sind groß genug für typische Appwrite-`.env`-Dateien (unter der Secret-Größengrenze bleiben).
 

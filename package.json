@@ -98,6 +98,7 @@
             "docker:local-dev:logs": "docker compose -f docker-compose.legacy.yml --profile local-dev logs -f --tail=100",
             "docker:local-dev:ps": "docker compose -f docker-compose.legacy.yml --profile local-dev ps",
             "docker:local-dev:verify": "bash scripts/verify-local-dev-stack.sh",
-            "verify:test-env": "node scripts/verify-appwrite-test-env.mjs"
+            "verify:test-env": "node scripts/verify-appwrite-test-env.mjs",
+            "appwrite:env:generate": "node scripts/generate-infra-appwrite-env.mjs"
       }
 }
