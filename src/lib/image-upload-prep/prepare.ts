@@ -61,21 +61,38 @@ export async function prepareImageFileForUpload(
 
   if (isEligibleForLosslessWebpConversion(file)) {
     const overBudget = file.size > maxBytes;
+    console.debug('[image-upload-prep] JPEG/PNG path', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      pref,
+      overBudget,
+      maxBytes,
+    });
     if (!pref && !overBudget) {
       return file;
     }
     if (pref) {
       try {
-        return await rasterFileToLosslessWebpFile(file);
+        const lossless = await rasterFileToLosslessWebpFile(file);
+        console.debug('[image-upload-prep] Lossless WebP OK', lossless.size);
+        return lossless;
       } catch (err) {
         console.warn('[image-upload-prep] Lossless WebP failed, trying budget encode', err);
       }
     }
     // Budget encode: either lossless failed, or file exceeds server upload limit
     try {
-      return await rasterFileToWebpUnderMaxBytes(file, maxBytes);
+      const budgeted = await rasterFileToWebpUnderMaxBytes(file, maxBytes);
+      console.debug('[image-upload-prep] Budget WebP OK', budgeted.size);
+      return budgeted;
     } catch (e2) {
-      console.warn('[image-upload-prep] Budget WebP failed, using original', e2);
+      console.error('[image-upload-prep] Budget WebP FAILED:', e2);
+      if (overBudget) {
+        throw new Error(
+          `Bild konnte nicht auf unter ${(maxBytes / 1024 / 1024).toFixed(0)} MB komprimiert werden. WebP-Encoder-Fehler: ${e2 instanceof Error ? e2.message : e2}`
+        );
+      }
       return file;
     }
   }

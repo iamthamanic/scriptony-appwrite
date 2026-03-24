@@ -99,6 +99,15 @@ export function getMultipartField(req: RequestLike, field: string): string | nul
 }
 
 export function extractUploadedFile(req: RequestLike, field = "file"): File | null {
+  // Base64 JSON upload: { fileBase64, fileName, mimeType }
+  const b64 = req.body?.fileBase64;
+  if (typeof b64 === "string" && b64.length > 0) {
+    const buf = Buffer.from(b64, "base64");
+    const name = req.body?.fileName || `${field}.bin`;
+    const type = req.body?.mimeType || "application/octet-stream";
+    return new File([buf], name, { type });
+  }
+
   const bodyFile = normalizeIncomingFile(req.body?.[field], `${field}.bin`);
   if (bodyFile) {
     return bodyFile;

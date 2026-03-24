@@ -5,6 +5,7 @@ import {
   prepareImageFileForUpload,
   type PrepareImageFileOptions,
 } from "../lib/image-upload-prep";
+import { fileToBase64 } from "../lib/api/image-upload-api";
 
 interface UploadResult {
   url: string;
@@ -33,22 +34,23 @@ export async function uploadImage(
     }
 
     const ready = await prepareImageFileForUpload(file, prepOptions);
+    const base64 = await fileToBase64(ready);
 
-    const formData = new FormData();
-    formData.append("file", ready);
-    formData.append("userId", userId);
-    formData.append("folder", folder);
-
-    // apiGateway doesn't support FormData yet, so this uses fetch directly
-    // with the correct backend route URL from the gateway.
     const response = await fetch(
       buildFunctionRouteUrl(EDGE_FUNCTIONS.AUTH, "/storage/upload"),
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: formData,
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileName: ready.name,
+          mimeType: ready.type,
+          userId,
+          folder,
+        }),
       }
     );
 

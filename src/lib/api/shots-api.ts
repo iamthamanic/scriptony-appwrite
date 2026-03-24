@@ -12,7 +12,7 @@ import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-clie
 import type { Shot, ShotAudio } from '../types';
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
 import { prepareImageFileForUpload, type ImageUploadGifMode } from '../image-upload-prep';
-import { assertPreparedImageWithinUploadLimit } from './image-upload-api';
+import { assertPreparedImageWithinUploadLimit, fileToBase64 } from './image-upload-api';
 
 // API Base URLs for direct file uploads
 const TIMELINE_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.TIMELINE_V2);
@@ -128,15 +128,19 @@ export async function uploadShotImage(
 ): Promise<string> {
   const ready = await prepareImageFileForUpload(file, prepOptions);
   assertPreparedImageWithinUploadLimit(ready, 5);
-  const formData = new FormData();
-  formData.append('file', ready);
+  const base64 = await fileToBase64(ready);
 
   const response = await fetch(`${TIMELINE_API_BASE}/shots/${shotId}/upload-image`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
-    body: formData,
+    body: JSON.stringify({
+      fileBase64: base64,
+      fileName: ready.name,
+      mimeType: ready.type,
+    }),
   });
 
   if (!response.ok) {
@@ -159,32 +163,26 @@ export async function uploadShotAudio(
   fadeOut?: number
 ): Promise<ShotAudio> {
   console.log(`[Shots API] Uploading audio to scriptony-audio function:`, { shotId, fileName: file.name, type });
-  
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('type', type);
-  if (label) {
-    formData.append('label', label);
-  }
-  if (startTime !== undefined) {
-    formData.append('startTime', startTime.toString());
-  }
-  if (endTime !== undefined) {
-    formData.append('endTime', endTime.toString());
-  }
-  if (fadeIn !== undefined) {
-    formData.append('fadeIn', fadeIn.toString());
-  }
-  if (fadeOut !== undefined) {
-    formData.append('fadeOut', fadeOut.toString());
-  }
+
+  const base64 = await fileToBase64(file);
 
   const response = await fetch(`${AUDIO_API_BASE}/shots/${shotId}/upload-audio`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
-    body: formData,
+    body: JSON.stringify({
+      fileBase64: base64,
+      fileName: file.name,
+      mimeType: file.type,
+      type,
+      ...(label !== undefined && { label }),
+      ...(startTime !== undefined && { startTime }),
+      ...(endTime !== undefined && { endTime }),
+      ...(fadeIn !== undefined && { fadeIn }),
+      ...(fadeOut !== undefined && { fadeOut }),
+    }),
   });
 
   if (!response.ok) {

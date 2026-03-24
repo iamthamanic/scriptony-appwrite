@@ -1,10 +1,12 @@
 
   import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react-swc';
+  import wasm from 'vite-plugin-wasm';
+  import topLevelAwait from 'vite-plugin-top-level-await';
   import path from 'path';
 
   export default defineConfig({
-    plugins: [react()],
+    plugins: [react(), wasm(), topLevelAwait()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       /** One copy of React — avoids "Invalid hook call" / useState from null in dev. */
@@ -71,6 +73,7 @@
         'buffer',
         'cfb',
       ],
+      exclude: ['@jsquash/webp'],
     },
     build: {
       target: 'esnext',

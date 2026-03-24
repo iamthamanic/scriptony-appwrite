@@ -82,7 +82,9 @@
             "eslint": "^10.0.3",
             "eslint-plugin-react-hooks": "^7.0.1",
             "typescript": "^5.9.3",
-            "vite": "^6.4.1"
+            "vite": "^6.4.1",
+            "vite-plugin-top-level-await": "^1.6.0",
+            "vite-plugin-wasm": "^3.6.0"
       },
       "scripts": {
             "dev": "vite",

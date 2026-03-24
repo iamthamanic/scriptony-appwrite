@@ -23,6 +23,16 @@ export type ClientImageUploadPrepOptions = {
   gifMode?: ImageUploadGifMode;
 };
 
+export async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 function maxInputBytesForClientValidation(file: File, maxUploadMB: number): number {
   if (usesWebpPrepPipeline(file)) {
     return STORAGE_CONFIG.MAX_IMAGE_INPUT_BYTES_WITH_WEBP_PREP;
@@ -61,19 +71,21 @@ export async function uploadProjectImage(
   const ready = await prepareImageFileForUpload(file, prepOptions);
   assertPreparedImageWithinUploadLimit(ready, 5);
 
-  // Create FormData
-  const formData = new FormData();
-  formData.append('file', ready);
+  const base64 = await fileToBase64(ready);
 
-  // Upload to backend
   const response = await fetch(
     `${PROJECTS_API_BASE}/projects/${projectIdParam}/upload-image`,
     {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        fileBase64: base64,
+        fileName: ready.name,
+        mimeType: ready.type,
+      }),
     }
   );
 
@@ -106,19 +118,21 @@ export async function uploadWorldImage(
   const ready = await prepareImageFileForUpload(file, prepOptions);
   assertPreparedImageWithinUploadLimit(ready, 5);
 
-  // Create FormData
-  const formData = new FormData();
-  formData.append('file', ready);
+  const base64 = await fileToBase64(ready);
 
-  // Upload to backend
   const response = await fetch(
     `${WORLDBUILDING_API_BASE}/worlds/${worldId}/upload-image`,
     {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        fileBase64: base64,
+        fileName: ready.name,
+        mimeType: ready.type,
+      }),
     }
   );
 
