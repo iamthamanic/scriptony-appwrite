@@ -1,5 +1,6 @@
 # CI: lint/typecheck/tests/build + validate Appwrite compose merge.
 # Deploy: SSH to VPS — git pull + Appwrite stack (root docker-compose + infra/appwrite/.env).
+#   Runs only when repo variable VPS_DEPLOY_ENABLED == 'true' (see docs/GITHUB_ACTIONS_DEPLOY.md).
 # Optional: build static frontend and rsync (repo vars — see docs/GITHUB_ACTIONS_DEPLOY.md).
 # Legacy Postgres/Lucia: docker-compose.legacy.yml — manual only, not used here.
 name: scriptony CI/CD with Deployment
@@ -47,7 +48,7 @@ jobs:
   deploy-prod:
     needs: ci
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.VPS_DEPLOY_ENABLED == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -148,7 +149,7 @@ jobs:
   deploy-test:
     needs: ci
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push' && vars.VPS_DEPLOY_ENABLED == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

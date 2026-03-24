@@ -2,10 +2,28 @@
 
 **DevOps-Zielbild (kurz):** [DEVOPS_EMPFEHLUNG.md](DEVOPS_EMPFEHLUNG.md)
 
-Der Workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) führt bei Push auf **`main`** bzw. **`develop`** nach erfolgreichem `ci`-Job einen **SSH-Deploy** aus:
+## VPS-Deploy aktivieren (Pflicht)
+
+Die Jobs **`deploy-prod`** / **`deploy-test`** laufen **nur**, wenn die Repository-**Variable** gesetzt ist:
+
+| Variable | Wert |
+|----------|------|
+| **`VPS_DEPLOY_ENABLED`** | `true` |
+
+**Settings → Secrets and variables → Actions → Variables → New repository variable**
+
+Ohne diese Variable wird nur der **`ci`**-Job ausgeführt (Lint/Build) — kein SSH, kein fehlerhafter Deploy mit leeren `SSH_HOST`/`SSH_USER`.
+
+Zusätzlich weiterhin die **Secrets** unten (`SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, …).
+
+---
+
+Der Workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) führt bei Push auf **`main`** bzw. **`develop`** nach erfolgreichem `ci`-Job einen **SSH-Deploy** aus (**wenn** `VPS_DEPLOY_ENABLED` = `true`):
 
 1. **Auf dem Server:** `git pull`, dann **`docker compose --env-file infra/appwrite/.env up -d`** (Root-Compose mit eingebundenem Appwrite).
 2. **Optional:** statisches Frontend (`bun run build` → `build/`) per **rsync**, wenn du die Repository-Variablen unten setzt.
+
+**Nicht** Teil dieses Workflows: **Appwrite Functions** (`functions/scriptony-*`). Nach `git pull` auf dem VPS liegt der Code zwar im Repo, aber die HTTP-Funktionen musst du weiterhin in der **Appwrite Console** oder per **CLI** deployen/aktualisieren (siehe [`functions/README.md`](../functions/README.md)).
 
 Der frühere Deploy mit **`docker-compose.legacy.yml`** (Postgres/Lucia) ist **nicht** mehr an die Standard-Deploy-Jobs gebunden.
 

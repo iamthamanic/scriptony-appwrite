@@ -8,7 +8,7 @@ Kurzantwort: **Ja, du kannst live gehen** — wenn Appwrite, Functions und Front
 
 ## Wichtig: Was der GitHub Actions Deploy tut
 
-Die Jobs `deploy-prod` (Branch **`main`**) und `deploy-test` (**`develop`**) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+Die Jobs `deploy-prod` (Branch **`main`**) und `deploy-test` (**`develop`**) in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) laufen **nur**, wenn die Repository-Variable **`VPS_DEPLOY_ENABLED`** = `true` ist (siehe [GITHUB_ACTIONS_DEPLOY.md](GITHUB_ACTIONS_DEPLOY.md)).
 
 1. **SSH** auf den VPS → im Repo-Verzeichnis **`git pull`** (Standardpfade: `/root/scriptony-prod` bzw. `/root/scriptony-test`).
 2. **`docker compose --env-file infra/appwrite/.env up -d`** — Appwrite-Stack wie im Repo beschrieben.
