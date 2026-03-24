@@ -43,9 +43,14 @@ export const STORAGE_CONFIG = {
   BUCKET_PREFIX: 'make-3b52693b',
   
   /**
-   * Maximum file upload size in bytes (5MB)
+   * Maximum file upload size in bytes (5MB) — applies to the file actually sent to the server.
    */
   MAX_FILE_SIZE: 5 * 1024 * 1024,
+
+  /**
+   * Larger originals allowed before client-side WebP prep (JPEG/PNG only); must still end ≤ MAX_FILE_SIZE after prep.
+   */
+  MAX_IMAGE_INPUT_BYTES_WITH_WEBP_PREP: 25 * 1024 * 1024,
   
   /**
    * Allowed image MIME types
@@ -77,6 +82,8 @@ export const STORAGE_KEYS = {
   HAS_MIGRATED: 'scriptony_has_migrated_postgres',
   HAS_SEEDED_USER: 'scriptony_has_seeded_user',
   ONBOARDING_COMPLETE: 'scriptony_onboarding_complete',
+  /** '1' = lossless WebP before upload (default). '0' = off. */
+  IMAGE_UPLOAD_LOSSLESS_WEBP: 'scriptony_image_upload_lossless_webp',
 } as const;
 
 // =============================================================================

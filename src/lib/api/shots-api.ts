@@ -11,6 +11,8 @@
 import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-client';
 import type { Shot, ShotAudio } from '../types';
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
+import { prepareImageFileForUpload, type ImageUploadGifMode } from '../image-upload-prep';
+import { assertPreparedImageWithinUploadLimit } from './image-upload-api';
 
 // API Base URLs for direct file uploads
 const TIMELINE_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.TIMELINE_V2);
@@ -121,10 +123,13 @@ export async function reorderShots(
 export async function uploadShotImage(
   shotId: string,
   file: File,
-  accessToken: string
+  accessToken: string,
+  prepOptions?: { gifMode?: ImageUploadGifMode }
 ): Promise<string> {
+  const ready = await prepareImageFileForUpload(file, prepOptions);
+  assertPreparedImageWithinUploadLimit(ready, 5);
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', ready);
 
   const response = await fetch(`${TIMELINE_API_BASE}/shots/${shotId}/upload-image`, {
     method: 'POST',

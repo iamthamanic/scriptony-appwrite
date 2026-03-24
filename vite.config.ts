@@ -10,6 +10,7 @@
       /** One copy of React — avoids "Invalid hook call" / useState from null in dev. */
       dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
+        buffer: path.resolve(__dirname, 'node_modules/buffer'),
         react: path.resolve(__dirname, 'node_modules/react'),
         'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
         'wavesurfer.js@7.8.10': 'wavesurfer.js',
@@ -61,7 +62,15 @@
     },
     publicDir: 'public',
     optimizeDeps: {
-      include: ['react', 'react-dom', 'scheduler'],
+      include: [
+        'react',
+        'react-dom',
+        'scheduler',
+        'mammoth',
+        'pdfjs-dist',
+        'buffer',
+        'cfb',
+      ],
     },
     build: {
       target: 'esnext',

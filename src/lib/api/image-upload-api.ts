@@ -6,9 +6,40 @@
 
 import { getAuthToken } from '../auth/getAuthToken';
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
+import { STORAGE_CONFIG } from '../config';
+import {
+  prepareImageFileForUpload,
+  usesWebpPrepPipeline,
+  type ImageUploadGifMode,
+} from '../image-upload-prep';
+
+export type { ImageUploadGifMode } from '../image-upload-prep';
+export { needsGifUserConfirmation } from '../image-upload-prep';
 
 const PROJECTS_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS);
 const WORLDBUILDING_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDING);
+
+export type ClientImageUploadPrepOptions = {
+  gifMode?: ImageUploadGifMode;
+};
+
+function maxInputBytesForClientValidation(file: File, maxUploadMB: number): number {
+  if (usesWebpPrepPipeline(file)) {
+    return STORAGE_CONFIG.MAX_IMAGE_INPUT_BYTES_WITH_WEBP_PREP;
+  }
+  return maxUploadMB * 1024 * 1024;
+}
+
+/** Enforce server limit on the file that is actually uploaded (after WebP prep). */
+export function assertPreparedImageWithinUploadLimit(file: File, maxSizeMB: number = 5): void {
+  const maxBytes = maxSizeMB * 1024 * 1024;
+  if (file.size > maxBytes) {
+    const mb = (file.size / (1024 * 1024)).toFixed(2);
+    throw new Error(
+      `Bild nach Verarbeitung zu groß (${mb} MB, Maximum ${maxSizeMB} MB). Bitte Auflösung reduzieren oder stärker komprimiertes Original wählen.`
+    );
+  }
+}
 
 /**
  * Upload project cover image
@@ -18,7 +49,8 @@ const WORLDBUILDING_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDIN
  */
 export async function uploadProjectImage(
   projectIdParam: string,
-  file: File
+  file: File,
+  prepOptions?: ClientImageUploadPrepOptions
 ): Promise<string> {
   // Get access token
   const accessToken = await getAuthToken();
@@ -26,9 +58,12 @@ export async function uploadProjectImage(
     throw new Error('Not authenticated');
   }
 
+  const ready = await prepareImageFileForUpload(file, prepOptions);
+  assertPreparedImageWithinUploadLimit(ready, 5);
+
   // Create FormData
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', ready);
 
   // Upload to backend
   const response = await fetch(
@@ -59,7 +94,8 @@ export async function uploadProjectImage(
  */
 export async function uploadWorldImage(
   worldId: string,
-  file: File
+  file: File,
+  prepOptions?: ClientImageUploadPrepOptions
 ): Promise<string> {
   // Get access token
   const accessToken = await getAuthToken();
@@ -67,9 +103,12 @@ export async function uploadWorldImage(
     throw new Error('Not authenticated');
   }
 
+  const ready = await prepareImageFileForUpload(file, prepOptions);
+  assertPreparedImageWithinUploadLimit(ready, 5);
+
   // Create FormData
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', ready);
 
   // Upload to backend
   const response = await fetch(
@@ -104,11 +143,12 @@ export function validateImageFile(file: File, maxSizeMB: number = 5): void {
     throw new Error('File must be an image');
   }
 
-  // Check file size
-  const maxSizeBytes = maxSizeMB * 1024 * 1024;
+  // Check file size (higher ceiling for JPEG/PNG when WebP prep will shrink before upload)
+  const maxSizeBytes = maxInputBytesForClientValidation(file, maxSizeMB);
   if (file.size > maxSizeBytes) {
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    throw new Error(`Image too large: ${fileSizeMB} MB (Max: ${maxSizeMB} MB)`);
+    const limitMB = (maxSizeBytes / (1024 * 1024)).toFixed(0);
+    throw new Error(`Image too large: ${fileSizeMB} MB (Max: ${limitMB} MB)`);
   }
 
   // Check file extension

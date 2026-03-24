@@ -13,6 +13,7 @@ import { HighlightedTextarea } from './HighlightedTextarea';
 import { RichTextEditorModal } from './RichTextEditorModal';
 import { ReadonlyTiptapView } from './ReadonlyTiptapView';
 import { ShotImageCropDialog } from './ShotImageCropDialog';
+import { ImageUploadWaveOverlay } from './ImageUploadWaveOverlay';
 import { useAuth } from '../hooks/useAuth';
 import {
   Select,
@@ -110,6 +111,8 @@ interface ShotCardProps {
   projectCharacters?: Character[]; // All characters in project for @-mention
   isExpanded?: boolean;
   isPending?: boolean; // 🚀 Optimistic UI: Show pending state
+  /** Parent-driven upload (e.g. GIF confirmation dialog); keeps overlay after child await returns */
+  imageUploadWaiting?: boolean;
   onToggleExpand?: () => void;
   onUpdate: (shotId: string, updates: Partial<Shot>) => void;
   onDelete: (shotId: string) => void;
@@ -131,6 +134,7 @@ export const ShotCard = memo(function ShotCard({
   projectCharacters = [],
   isExpanded = false,
   isPending = false,
+  imageUploadWaiting = false,
   onToggleExpand,
   onUpdate,
   onDelete,
@@ -151,7 +155,8 @@ export const ShotCard = memo(function ShotCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editValues, setEditValues] = useState({ shotNumber: String(shot.shotNumber), notes: shot.notes || '' });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  
+  const showImageUploadBusy = isUploadingImage || imageUploadWaiting;
+
   // Character Add Picker (for adding characters to shot)
   const [showCharacterAddPicker, setShowCharacterAddPicker] = useState(false);
   
@@ -686,16 +691,12 @@ export const ShotCard = memo(function ShotCard({
                     backgroundBlendMode: 'overlay'
                   } : {}}
                 >
-                  {!shot.imageUrl && !isUploadingImage && (
+                  {!shot.imageUrl && !showImageUploadBusy && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Camera className="size-4 text-primary/40" />
                     </div>
                   )}
-                  {isUploadingImage && (
-                    <div className="absolute inset-0 bg-purple-600/20 flex items-center justify-center z-10">
-                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    </div>
-                  )}
+                  <ImageUploadWaveOverlay visible={showImageUploadBusy} compact />
                 </div>
               )}
               
@@ -788,7 +789,7 @@ export const ShotCard = memo(function ShotCard({
                     backgroundBlendMode: 'overlay'
                   } : {}}
                 >
-                  {!shot.imageUrl && !isUploadingImage && (
+                  {!shot.imageUrl && !showImageUploadBusy && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                       <Camera className="size-12 text-primary/40" />
                       <div className="flex flex-col items-center gap-0.5">
@@ -797,14 +798,7 @@ export const ShotCard = memo(function ShotCard({
                       </div>
                     </div>
                   )}
-                  {isUploadingImage && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-primary/5 z-10">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-                        <span className="text-xs text-primary/60">Lädt...</span>
-                      </div>
-                    </div>
-                  )}
+                  <ImageUploadWaveOverlay visible={showImageUploadBusy} label="Wird hochgeladen…" />
                   <input
                     type="file"
                     accept="image/*"

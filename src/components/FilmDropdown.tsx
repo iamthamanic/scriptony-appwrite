@@ -38,6 +38,13 @@ import { TimelineNodeStatsDialog } from './TimelineNodeStatsDialog';
 import { FilmDropdownMobile } from './FilmDropdownMobile';
 import { useAuth } from '../hooks/useAuth';
 import * as ShotsAPI from '../lib/api/shots-api';
+import {
+  validateImageFile,
+  needsGifUserConfirmation,
+  type ImageUploadGifMode,
+} from '../lib/api/image-upload-api';
+import { STORAGE_CONFIG } from '../lib/config';
+import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
 import * as TimelineAPI from '../lib/api/timeline-api';
 import * as TimelineAPIV2 from '../lib/api/timeline-api-v2';
 import * as CharactersAPI from '../lib/api/characters-api';
@@ -421,6 +428,11 @@ export function FilmDropdown({
     type: 'act' | 'sequence' | 'scene' | 'shot';
     node: Act | Sequence | Scene | Shot;
   } | null>(null);
+
+  const [gifShotPending, setGifShotPending] = useState<{ shotId: string; file: File } | null>(null);
+  const [shotImageUploadingId, setShotImageUploadingId] = useState<string | null>(null);
+  /** Verhindert, dass beim Schließen des GIF-Dialogs nach „Konvertieren“ der Upload-Overlay sofort gelöscht wird */
+  const shotImageUploadInFlightRef = useRef(false);
 
   // 🚀 PERFORMANCE OPTIMIZATION: Memoized filtering for 10x faster rendering
   const optimized = useOptimizedFilmDropdown({
@@ -1956,24 +1968,18 @@ export function FilmDropdown({
     })();
   };
 
-  const handleShotImageUpload = async (shotId: string, file: File) => {
-    // Check file size (max 5MB per backend limit)
-    const maxSizeMB = 5;
-    const maxSizeBytes = maxSizeMB * 1024 * 1024;
-    
-    if (file.size > maxSizeBytes) {
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      toast.error(`Bild zu groß: ${fileSizeMB} MB (Max: ${maxSizeMB} MB)`);
-      return;
-    }
-
-    // Optimistic UI: Zeige Preview sofort
+  const runShotImageUpload = async (
+    shotId: string,
+    file: File,
+    gifMode?: ImageUploadGifMode
+  ) => {
+    shotImageUploadInFlightRef.current = true;
+    setShotImageUploadingId(shotId);
     const previewUrl = URL.createObjectURL(file);
-    setShots(shots => shots.map(s => 
-      s.id === shotId ? { ...s, imageUrl: previewUrl } : s
-    ));
+    setShots((shots) =>
+      shots.map((s) => (s.id === shotId ? { ...s, imageUrl: previewUrl } : s))
+    );
 
-    // Toast mit Loading-Anzeige
     toast.loading('Bild wird hochgeladen...');
 
     try {
@@ -1982,36 +1988,55 @@ export function FilmDropdown({
         toast.dismiss();
         toast.error('Nicht authentifiziert');
         URL.revokeObjectURL(previewUrl);
-        setShots(shots => shots.map(s => 
-          s.id === shotId ? { ...s, imageUrl: undefined } : s
-        ));
+        setShots((shots) =>
+          shots.map((s) => (s.id === shotId ? { ...s, imageUrl: undefined } : s))
+        );
         return;
       }
 
-      const imageUrl = await ShotsAPI.uploadShotImage(shotId, file, token);
-      
-      // Cleanup temporary URL
+      const imageUrl = await ShotsAPI.uploadShotImage(shotId, file, token, { gifMode });
+
       URL.revokeObjectURL(previewUrl);
-      
-      // Update mit echter URL
-      setShots(shots => shots.map(s => 
-        s.id === shotId ? { ...s, imageUrl } : s
-      ));
-      
+
+      setShots((shots) =>
+        shots.map((s) => (s.id === shotId ? { ...s, imageUrl } : s))
+      );
+
       toast.dismiss();
       toast.success('Bild hochgeladen! ✅');
     } catch (error) {
       console.error('❌ Error uploading shot image:', error);
-      
-      // Revert optimistic update
+
       URL.revokeObjectURL(previewUrl);
-      setShots(shots => shots.map(s => 
-        s.id === shotId ? { ...s, imageUrl: undefined } : s
-      ));
-      
+      setShots((shots) =>
+        shots.map((s) => (s.id === shotId ? { ...s, imageUrl: undefined } : s))
+      );
+
       toast.dismiss();
-      toast.error(`Fehler beim Hochladen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      toast.error(
+        `Fehler beim Hochladen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      );
+    } finally {
+      setShotImageUploadingId(null);
+      shotImageUploadInFlightRef.current = false;
     }
+  };
+
+  const handleShotImageUpload = async (shotId: string, file: File) => {
+    try {
+      validateImageFile(file, 5);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Ungültiges Bild');
+      return;
+    }
+
+    if (needsGifUserConfirmation(file)) {
+      setShotImageUploadingId(shotId);
+      setGifShotPending({ shotId, file });
+      return;
+    }
+
+    await runShotImageUpload(shotId, file, undefined);
   };
 
   const handleShotAudioUpload = async (
@@ -2211,17 +2236,57 @@ export function FilmDropdown({
     }
   }, [loading, sequences.length, scenes.length, shots.length, optimized.stats]);
 
+  const gifUploadDialog = (
+    <GifAnimationUploadDialog
+      open={gifShotPending !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setGifShotPending(null);
+          if (!shotImageUploadInFlightRef.current) {
+            setShotImageUploadingId(null);
+          }
+        }
+      }}
+      fileName={gifShotPending?.file.name}
+      allowKeepGif={
+        gifShotPending ? gifShotPending.file.size <= STORAGE_CONFIG.MAX_FILE_SIZE : true
+      }
+      onConvert={() => {
+        const p = gifShotPending;
+        if (!p) return;
+        void runShotImageUpload(p.shotId, p.file, 'convert-static');
+        setGifShotPending(null);
+      }}
+      onKeepGif={() => {
+        const p = gifShotPending;
+        if (!p) return;
+        if (p.file.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
+          toast.error(
+            `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
+          );
+          return;
+        }
+        void runShotImageUpload(p.shotId, p.file, 'keep-animation');
+        setGifShotPending(null);
+      }}
+    />
+  );
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-muted-foreground">Dropdown wird geladen...</div>
-      </div>
+      <>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-muted-foreground">Dropdown wird geladen...</div>
+        </div>
+        {gifUploadDialog}
+      </>
     );
   }
 
   // 📱 MOBILE VIEW: Simplified flat structure
   if (isMobile) {
     return (
+      <>
       <div ref={containerRef} data-beat-container className="p-2">
         <FilmDropdownMobile
           acts={acts}
@@ -2246,11 +2311,14 @@ export function FilmDropdown({
           projectType={projectType}
         />
       </div>
+      {gifUploadDialog}
+      </>
     );
   }
 
   // 💻 DESKTOP VIEW: Full nested structure with Drag & Drop
   return (
+    <>
     <DndProvider backend={HTML5Backend}>
       <div ref={containerRef} data-beat-container className="flex flex-col gap-1.5 p-4">
         {/* Add Act Button */}
@@ -2854,6 +2922,7 @@ export function FilmDropdown({
                                                     sceneId={scene.id}
                                                     projectId={projectId}
                                                     isPending={isShotPending}
+                                                    imageUploadWaiting={shotImageUploadingId === shot.id}
                                                   projectCharacters={characters}
                                                   isExpanded={expandedShots.has(shot.id)}
                                                   onToggleExpand={() => {
@@ -2968,5 +3037,7 @@ export function FilmDropdown({
         />
       )}
     </DndProvider>
+    {gifUploadDialog}
+    </>
   );
 }

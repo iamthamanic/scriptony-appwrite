@@ -7,12 +7,55 @@
 export type RequestLike = any;
 export type ResponseLike = any;
 
-/** Standard CORS headers for browser access. */
-export const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
+function getHeaderCaseInsensitive(
+  headers: Record<string, string> | undefined,
+  name: string
+): string {
+  if (!headers) return "";
+  const want = name.toLowerCase();
+  for (const [k, v] of Object.entries(headers)) {
+    if (k.toLowerCase() === want) {
+      return typeof v === "string" ? v.trim() : "";
+    }
+  }
+  return "";
+}
+
+const CORS_COMMON: Record<string, string> = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Requested-With, Accept, X-Appwrite-Project, X-Appwrite-Key, X-SDK-Version",
   "Access-Control-Max-Age": "86400",
+};
+
+/**
+ * CORS for browser calls. Echoes `Origin` when it is localhost/127.0.0.1 or listed in
+ * `SCRIPTONY_CORS_ALLOWED_ORIGINS` (comma-separated, set in Appwrite → function variables).
+ * Otherwise `Access-Control-Allow-Origin: *` (works with Bearer tokens, not cookies).
+ */
+export function corsHeadersForIncomingRequest(
+  incoming?: Record<string, string>
+): Record<string, string> {
+  const origin = getHeaderCaseInsensitive(incoming, "origin");
+  const extra =
+    process.env.SCRIPTONY_CORS_ALLOWED_ORIGINS?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? [];
+  const localOk =
+    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin);
+  const listedOk = Boolean(origin && extra.includes(origin));
+  const allowOrigin = (localOk || listedOk) && origin ? origin : "*";
+
+  return {
+    ...CORS_COMMON,
+    "Access-Control-Allow-Origin": allowOrigin,
+  };
+}
+
+/** Standard CORS headers for browser access (wildcard origin). */
+export const CORS_HEADERS: Record<string, string> = {
+  ...CORS_COMMON,
+  "Access-Control-Allow-Origin": "*",
 };
 
 export function sendJson(res: ResponseLike, status: number, body: unknown): void {

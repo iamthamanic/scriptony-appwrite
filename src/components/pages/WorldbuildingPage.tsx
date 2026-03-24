@@ -4,7 +4,15 @@ import { motion, AnimatePresence } from "motion/react";
 import { projectsApi, worldsApi } from "../../utils/api";
 import { getCharacters } from "../../lib/api/characters-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
-import { uploadWorldImage, validateImageFile } from "../../lib/api/image-upload-api";
+import {
+  uploadWorldImage,
+  validateImageFile,
+  needsGifUserConfirmation,
+  type ImageUploadGifMode,
+} from "../../lib/api/image-upload-api";
+import { STORAGE_CONFIG } from "../../lib/config";
+import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
+import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
 import { MapBuilder } from "../MapBuilder";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -792,6 +800,8 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
   const [editedDescription, setEditedDescription] = useState(world.description);
   const [linkedProjectId, setLinkedProjectId] = useState(world.linkedProjectId || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [gifCoverPending, setGifCoverPending] = useState<File | null>(null);
+  const [worldCoverUploading, setWorldCoverUploading] = useState(false);
   const [projects, setProjects] = useState(initialProjects);
 
   // Reload project characters from localStorage
@@ -902,30 +912,41 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
     fileInputRef.current?.click();
   };
 
+  const uploadWorldCoverFile = async (file: File, gifMode?: ImageUploadGifMode) => {
+    setWorldCoverUploading(true);
+    toast.loading("Bild wird hochgeladen…");
+    try {
+      const imageUrl = await uploadWorldImage(world.id, file, { gifMode });
+      onCoverImageChange(imageUrl);
+      toast.dismiss();
+      toast.success("Bild erfolgreich hochgeladen!");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.dismiss();
+      toast.error(error instanceof Error ? error.message : "Fehler beim Hochladen");
+    } finally {
+      setWorldCoverUploading(false);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
     if (!file) return;
 
     try {
-      // Validate file
       validateImageFile(file, 5);
-
-      // Show loading toast
-      toast.loading('Bild wird hochgeladen...');
-
-      // Upload through the backend storage adapter
-      const imageUrl = await uploadWorldImage(world.id, file);
-
-      // Update local state immediately (optimistic UI)
-      onCoverImageChange(imageUrl);
-
-      toast.dismiss();
-      toast.success('Bild erfolgreich hochgeladen!');
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.dismiss();
-      toast.error(error instanceof Error ? error.message : 'Fehler beim Hochladen');
+      toast.error(error instanceof Error ? error.message : "Ungültiges Bild");
+      return;
     }
+
+    if (needsGifUserConfirmation(file)) {
+      setGifCoverPending(file);
+      return;
+    }
+
+    await uploadWorldCoverFile(file, undefined);
   };
 
   const handleAssetImageClick = (assetId: string) => {
@@ -1080,22 +1101,54 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
         className="hidden"
       />
 
+      <GifAnimationUploadDialog
+        open={gifCoverPending !== null}
+        onOpenChange={(open) => {
+          if (!open) setGifCoverPending(null);
+        }}
+        fileName={gifCoverPending?.name}
+        allowKeepGif={
+          gifCoverPending ? gifCoverPending.size <= STORAGE_CONFIG.MAX_FILE_SIZE : true
+        }
+        onConvert={() => {
+          const f = gifCoverPending;
+          if (!f) return;
+          setGifCoverPending(null);
+          void uploadWorldCoverFile(f, "convert-static");
+        }}
+        onKeepGif={() => {
+          const f = gifCoverPending;
+          if (!f) return;
+          if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
+            toast.error(
+              `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
+            );
+            return;
+          }
+          setGifCoverPending(null);
+          void uploadWorldCoverFile(f, "keep-animation");
+        }}
+      />
+
       {/* MOBILE LAYOUT (<768px): Cover oben + Collapsible Info */}
       <div className="md:hidden">
         {/* Cover Top Centered */}
         <div className="pt-16 pb-4 flex justify-center bg-gradient-to-b from-primary/5 to-transparent">
           <div className="relative group">
             <div 
-              onClick={handleCoverClick}
-              className="w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 cursor-pointer relative overflow-hidden shadow-lg"
+              onClick={() => !worldCoverUploading && handleCoverClick()}
+              className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
+                worldCoverUploading ? "cursor-wait" : "cursor-pointer"
+              }`}
               style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
             >
               {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-full p-3 backdrop-blur-sm">
                   <Camera className="size-6 text-primary" />
                 </div>
               </div>
+              <ImageUploadWaveOverlay visible={worldCoverUploading} label="Cover wird hochgeladen…" />
             </div>
           </div>
         </div>
@@ -1470,8 +1523,10 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
           <div className="shrink-0">
             <div className="relative group">
               <div 
-                onClick={handleCoverClick}
-                className="w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 cursor-pointer relative overflow-hidden shadow-lg"
+                onClick={() => !worldCoverUploading && handleCoverClick()}
+                className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
+                  worldCoverUploading ? "cursor-wait" : "cursor-pointer"
+                }`}
                 style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
               >
                 {!coverImage && (
@@ -1480,11 +1535,12 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
                   </div>
                 )}
                 {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-full p-3 backdrop-blur-sm">
                     <Camera className="size-6 text-primary" />
                   </div>
                 </div>
+                <ImageUploadWaveOverlay visible={worldCoverUploading} label="Cover wird hochgeladen…" />
               </div>
             </div>
           </div>

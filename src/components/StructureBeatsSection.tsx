@@ -11,6 +11,7 @@ import { VideoEditorTimeline } from './VideoEditorTimeline';
 import type { BeatCardData, TimelineNode } from './BeatCard';
 import { FilmDropdown, type TimelineData } from './FilmDropdown';
 import { BookDropdown, type BookTimelineData } from './BookDropdown';
+import { ScriptStructureImportButton } from './ScriptStructureImportButton';
 import { NativeBookView } from './NativeBookView';
 import { NativeScreenplayView } from './NativeScreenplayView';
 import { NativeAudiobookView } from './NativeAudiobookView';
@@ -67,7 +68,9 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
   // 🎬 Initialize with Save the Cat 15 Beats
   const [beats, setBeats] = useState<BeatCardData[]>([]);
   
-  const [timelineData, setTimelineData] = useState<TimelineData | null>(initialData || null);
+  const [timelineData, setTimelineData] = useState<TimelineData | BookTimelineData | null>(
+    initialData || null
+  );
   
   // 🔄 UPDATE: Sync timelineData when initialData changes
   useEffect(() => {
@@ -175,7 +178,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     setBeats(prev => prev.filter(beat => beat.id !== beatId));
   };
 
-  const handleTimelineChange = (data: TimelineData) => {
+  const handleTimelineChange = (data: TimelineData | BookTimelineData) => {
     setTimelineData(data);
     if (onDataChange) {
       onDataChange(data);
@@ -356,6 +359,12 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
         </div>
 
         <div className="flex items-center gap-3">
+          <ScriptStructureImportButton
+            projectId={projectId}
+            projectType={projectType}
+            onImported={handleTimelineChange}
+            enabled={!isLoadingCache && !!projectType}
+          />
           {/* View Toggle */}
           <Tabs value={structureView} onValueChange={(v) => setStructureView(v as any)}>
             <TabsList className="h-9">

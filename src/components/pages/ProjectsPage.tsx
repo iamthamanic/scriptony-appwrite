@@ -33,7 +33,15 @@ import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
 import { toast } from "sonner@2.0.3";
 import { deleteCharacter as deleteCharacterApi, getCharacters, createCharacter as createCharacterApi, updateCharacter as updateCharacterApi } from "../../lib/api/characters-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
-import { uploadProjectImage, validateImageFile } from "../../lib/api/image-upload-api";
+import {
+  uploadProjectImage,
+  validateImageFile,
+  needsGifUserConfirmation,
+  type ImageUploadGifMode,
+} from "../../lib/api/image-upload-api";
+import { STORAGE_CONFIG } from "../../lib/config";
+import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
+import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
 import * as TimelineAPI from "../../lib/api/timeline-api";
 import { nodeToAct, nodeToSequence, nodeToScene } from "../../lib/api/timeline-api"; // 🔥 Import converters
 import * as TimelineAPIV2 from "../../lib/api/timeline-api-v2";
@@ -42,6 +50,7 @@ import * as InspirationsAPI from "../../lib/api/inspirations-api";
 import * as BeatsAPI from "../../lib/api/beats-api";
 import { BEAT_TEMPLATES } from "../../lib/beat-templates";
 import type { TimelineData } from "../FilmDropdown";
+import { importScriptFileToProject, SCRIPT_IMPORT_ACCEPT } from "../../lib/script-import";
 
 interface ProjectsPageProps {
   selectedProjectId?: string;
@@ -89,7 +98,12 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const [newProjectLinkedWorld, setNewProjectLinkedWorld] = useState<string | undefined>();
   const [newProjectCoverImage, setNewProjectCoverImage] = useState<string | undefined>();
   const [newProjectCoverFile, setNewProjectCoverFile] = useState<File | undefined>();
+  const newProjectCoverGifModeRef = useRef<ImageUploadGifMode | undefined>(undefined);
+  const [gifPendingNewProjectCover, setGifPendingNewProjectCover] = useState<File | null>(null);
+  const [newProjectCoverUploading, setNewProjectCoverUploading] = useState(false);
   const newProjectCoverInputRef = useRef<HTMLInputElement>(null);
+  const newProjectScriptImportInputRef = useRef<HTMLInputElement>(null);
+  const [newProjectScriptImportFile, setNewProjectScriptImportFile] = useState<File | null>(null);
   
   // 🎬 NEW: Narrative Structure & Beat Template States (Create Dialog)
   const [newProjectNarrativeStructure, setNewProjectNarrativeStructure] = useState<string>("");
@@ -533,9 +547,12 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       // Upload cover image AFTER project creation
       let finalImageUrl: string | undefined = undefined;
       if (newProjectCoverFile) {
+        setNewProjectCoverUploading(true);
         try {
           toast.loading('Bild wird hochgeladen...');
-          finalImageUrl = await uploadProjectImage(project.id, newProjectCoverFile);
+          finalImageUrl = await uploadProjectImage(project.id, newProjectCoverFile, {
+            gifMode: newProjectCoverGifModeRef.current,
+          });
           toast.dismiss();
           
           // Update project with image URL in state
@@ -544,6 +561,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
           console.error('Error uploading project image:', uploadError);
           toast.dismiss();
           toast.error('Bild konnte nicht hochgeladen werden');
+        } finally {
+          setNewProjectCoverUploading(false);
         }
       }
 
@@ -556,6 +575,23 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
           [project.id]: finalImageUrl
         }));
       }
+
+      const scriptFileToImport = newProjectScriptImportFile;
+      if (scriptFileToImport) {
+        try {
+          const token = await getAuthToken();
+          if (token) {
+            await ShotsAPI.initializeThreeActStructure(project.id, token);
+            await importScriptFileToProject(project.id, newProjectType, scriptFileToImport, token);
+            toast.success("Skriptstruktur importiert");
+          }
+        } catch (impErr) {
+          console.error("New project script import:", impErr);
+          toast.error(
+            impErr instanceof Error ? impErr.message : "Skript-Import fehlgeschlagen"
+          );
+        }
+      }
       
       setShowNewProjectDialog(false);
       
@@ -567,6 +603,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       setNewProjectLinkedWorld(undefined);
       setNewProjectCoverImage(undefined);
       setNewProjectCoverFile(undefined);
+      newProjectCoverGifModeRef.current = undefined;
       setSelectedGenres([]);
       setInspirations([""]);
       setNewProjectNarrativeStructure("");
@@ -582,6 +619,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       setNewProjectReadingSpeed("230");
       setNewProjectEpisodeLayout("");
       setNewProjectSeasonEngine("");
+      setNewProjectScriptImportFile(null);
       
       toast.success("Projekt erfolgreich erstellt!");
     } catch (error) {
@@ -590,26 +628,33 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     }
   };
 
+  const applyNewProjectCoverSelection = (file: File, gifMode?: ImageUploadGifMode) => {
+    newProjectCoverGifModeRef.current = gifMode;
+    setNewProjectCoverFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewProjectCoverImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleNewProjectCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
     if (!file) return;
 
     try {
-      // Validate file
       validateImageFile(file, 5);
 
-      // Store file for later upload
-      setNewProjectCoverFile(file);
+      if (needsGifUserConfirmation(file)) {
+        setGifPendingNewProjectCover(file);
+        return;
+      }
 
-      // Create preview URL for UI
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewProjectCoverImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      applyNewProjectCoverSelection(file, undefined);
     } catch (error) {
-      console.error('Error validating image:', error);
-      toast.error(error instanceof Error ? error.message : 'Ungültiges Bild');
+      console.error("Error validating image:", error);
+      toast.error(error instanceof Error ? error.message : "Ungültiges Bild");
     }
   };
 
@@ -1167,6 +1212,51 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="new-project-script-import">Skript-Struktur (optional)</Label>
+              <input
+                id="new-project-script-import"
+                ref={newProjectScriptImportInputRef}
+                type="file"
+                accept={SCRIPT_IMPORT_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  setNewProjectScriptImportFile(f ?? null);
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11"
+                  onClick={() => newProjectScriptImportInputRef.current?.click()}
+                >
+                  <Upload className="size-4 mr-2" />
+                  Datei wählen
+                </Button>
+                <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                  {newProjectScriptImportFile ? newProjectScriptImportFile.name : "Keine Datei"}
+                </span>
+                {newProjectScriptImportFile ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-11"
+                    onClick={() => setNewProjectScriptImportFile(null)}
+                  >
+                    Entfernen
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                .txt, .fountain, .md, .doc, .docx, .pdf — nach dem Erstellen werden Akte/Sequenzen/Szenen angelegt
+                (ohne bestehende zu löschen). PDFs: reiner Text-Layer; komplexe Layouts können Lücken haben.
+              </p>
+            </div>
+
             {/* Narrative Structure - Conditional Layout based on Type */}
             {newProjectType === 'series' ? (
               /* SERIES: Episode Layout + Season Engine (2 Felder) */
@@ -1496,17 +1586,19 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             <div className="space-y-2">
               <Label>Cover Image (Optional)</Label>
               <div 
-                onClick={() => newProjectCoverInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden"
+                onClick={() => !newProjectCoverUploading && newProjectCoverInputRef.current?.click()}
+                className={`w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors relative overflow-hidden ${
+                  newProjectCoverUploading ? "cursor-wait" : "cursor-pointer"
+                }`}
               >
                 {newProjectCoverImage ? (
-                  <div className="relative">
+                  <div className="relative rounded-lg overflow-hidden min-h-[8rem]">
                     <img 
                       src={newProjectCoverImage} 
                       alt="Cover Preview" 
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 relative z-[1]">
                       <p className="text-sm text-primary">✓ Bild hochgeladen</p>
                       <Button
                         type="button"
@@ -1515,6 +1607,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                         onClick={(e) => {
                           e.stopPropagation();
                           setNewProjectCoverImage(undefined);
+                          setNewProjectCoverFile(undefined);
+                          newProjectCoverGifModeRef.current = undefined;
                         }}
                         className="h-7 text-xs"
                       >
@@ -1522,6 +1616,10 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                         Entfernen
                       </Button>
                     </div>
+                    <ImageUploadWaveOverlay
+                      visible={newProjectCoverUploading}
+                      label="Cover wird hochgeladen…"
+                    />
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center">
@@ -1550,6 +1648,37 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GifAnimationUploadDialog
+        open={gifPendingNewProjectCover !== null}
+        onOpenChange={(open) => {
+          if (!open) setGifPendingNewProjectCover(null);
+        }}
+        fileName={gifPendingNewProjectCover?.name}
+        allowKeepGif={
+          gifPendingNewProjectCover
+            ? gifPendingNewProjectCover.size <= STORAGE_CONFIG.MAX_FILE_SIZE
+            : true
+        }
+        onConvert={() => {
+          const f = gifPendingNewProjectCover;
+          if (!f) return;
+          applyNewProjectCoverSelection(f, "convert-static");
+          setGifPendingNewProjectCover(null);
+        }}
+        onKeepGif={() => {
+          const f = gifPendingNewProjectCover;
+          if (!f) return;
+          if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
+            toast.error(
+              `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
+            );
+            return;
+          }
+          applyNewProjectCoverSelection(f, "keep-animation");
+          setGifPendingNewProjectCover(null);
+        }}
+      />
 
       {/* Project Stats & Logs Dialog */}
       {selectedStatsProject && (
@@ -2869,35 +2998,48 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
   // Conflict Dialog States
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictSceneData, setConflictSceneData] = useState<any>(null);
+  const [gifCoverPending, setGifCoverPending] = useState<File | null>(null);
+  const [coverImageUploading, setCoverImageUploading] = useState(false);
 
   const handleCoverClick = () => {
     fileInputRef.current?.click();
   };
 
+  const uploadProjectCoverFile = async (file: File, gifMode?: ImageUploadGifMode) => {
+    setCoverImageUploading(true);
+    toast.loading("Bild wird hochgeladen…");
+    try {
+      const imageUrl = await uploadProjectImage(project.id, file, { gifMode });
+      onCoverImageChange(imageUrl);
+      toast.dismiss();
+      toast.success("Bild erfolgreich hochgeladen!");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.dismiss();
+      toast.error(error instanceof Error ? error.message : "Fehler beim Hochladen");
+    } finally {
+      setCoverImageUploading(false);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
     if (!file) return;
 
     try {
-      // Validate file
       validateImageFile(file, 5);
-
-      // Show loading toast
-      toast.loading('Bild wird hochgeladen...');
-
-      // Upload through the backend storage adapter
-      const imageUrl = await uploadProjectImage(project.id, file);
-
-      // Update local state immediately (optimistic UI)
-      onCoverImageChange(imageUrl);
-
-      toast.dismiss();
-      toast.success('Bild erfolgreich hochgeladen!');
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.dismiss();
-      toast.error(error instanceof Error ? error.message : 'Fehler beim Hochladen');
+      toast.error(error instanceof Error ? error.message : "Ungültiges Bild");
+      return;
     }
+
+    if (needsGifUserConfirmation(file)) {
+      setGifCoverPending(file);
+      return;
+    }
+
+    await uploadProjectCoverFile(file, undefined);
   };
 
   const moveScene = (dragIndex: number, hoverIndex: number) => {
@@ -3406,14 +3548,45 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
         className="hidden"
       />
 
+      <GifAnimationUploadDialog
+        open={gifCoverPending !== null}
+        onOpenChange={(open) => {
+          if (!open) setGifCoverPending(null);
+        }}
+        fileName={gifCoverPending?.name}
+        allowKeepGif={
+          gifCoverPending ? gifCoverPending.size <= STORAGE_CONFIG.MAX_FILE_SIZE : true
+        }
+        onConvert={() => {
+          const f = gifCoverPending;
+          if (!f) return;
+          setGifCoverPending(null);
+          void uploadProjectCoverFile(f, "convert-static");
+        }}
+        onKeepGif={() => {
+          const f = gifCoverPending;
+          if (!f) return;
+          if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
+            toast.error(
+              `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
+            );
+            return;
+          }
+          setGifCoverPending(null);
+          void uploadProjectCoverFile(f, "keep-animation");
+        }}
+      />
+
       {/* MOBILE LAYOUT (<768px): Cover oben + Collapsible Info */}
       <div className="md:hidden">
         {/* Cover Top Centered */}
         <div className="pt-16 pb-4 flex justify-center bg-gradient-to-b from-primary/5 to-transparent">
           <div className="relative group">
             <div 
-              onClick={handleCoverClick}
-              className="w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 cursor-pointer relative overflow-hidden shadow-lg"
+              onClick={() => !coverImageUploading && handleCoverClick()}
+              className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
+                coverImageUploading ? "cursor-wait" : "cursor-pointer"
+              }`}
               style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
             >
               {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
@@ -3429,11 +3602,12 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                 </div>
               )}
               {/* Hover overlay for camera icon */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-lg px-4 py-2 backdrop-blur-sm">
                   <Camera className="size-6 text-primary" />
                 </div>
               </div>
+              <ImageUploadWaveOverlay visible={coverImageUploading} label="Cover wird hochgeladen…" />
             </div>
           </div>
         </div>
@@ -4339,8 +4513,10 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
           <div className="shrink-0">
             <div className="relative group">
               <div 
-                onClick={handleCoverClick}
-                className="w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 cursor-pointer relative overflow-hidden shadow-lg"
+                onClick={() => !coverImageUploading && handleCoverClick()}
+                className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
+                  coverImageUploading ? "cursor-wait" : "cursor-pointer"
+                }`}
                 style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
               >
                 {!coverImage && (
@@ -4355,11 +4531,12 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                 )}
                 {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
                 {/* Hover overlay for camera icon */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-full p-3 backdrop-blur-sm">
                     <Camera className="size-6 text-primary" />
                   </div>
                 </div>
+                <ImageUploadWaveOverlay visible={coverImageUploading} label="Cover wird hochgeladen…" />
               </div>
             </div>
           </div>

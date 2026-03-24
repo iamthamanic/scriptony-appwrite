@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, CreditCard, Shield, Key, Bot, Globe, LogOut, Moon, Sun, Copy, Trash2 } from "lucide-react";
+import { User, CreditCard, Shield, Key, Bot, Globe, LogOut, Moon, Sun, Copy, Trash2, ImageIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -14,6 +14,10 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { toast } from "sonner@2.0.3";
 import { apiGet, apiPost, apiDelete, unwrapApiResult } from "../../lib/api-client";
 import { StorageSettingsSection } from "../StorageSettingsSection";
+import {
+  isImageWebpConversionEnabled,
+  setImageWebpConversionEnabled,
+} from "../../lib/image-upload-prep";
 
 export function SettingsPage() {
   const { user, signOut, updateProfile } = useAuth();
@@ -26,6 +30,10 @@ export function SettingsPage() {
     return "light";
   });
   const isDemoMode = localStorage.getItem("scriptony_demo_mode") === "true";
+
+  const [losslessWebpUpload, setLosslessWebpUpload] = useState(() =>
+    isImageWebpConversionEnabled()
+  );
 
   // Integration tokens (for external tools: Blender/ComfyUI etc.)
   const [integrationTokens, setIntegrationTokens] = useState<Array<{ id: string; name: string; created_at: string }>>([]);
@@ -228,6 +236,38 @@ export function SettingsPage() {
                   <Moon className="size-4 mr-2" />
                   {t("settings.themeDark")}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ImageIcon className="size-4" />
+                Bild-Uploads
+              </CardTitle>
+              <CardDescription className="text-xs">
+                JPEG/PNG werden vor dem Upload in verlustfreies WebP gewandelt (kleinere Dateien im Speicher). GIF und
+                bestehende WebP bleiben unverändert.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="webp-upload" className="text-sm font-medium">
+                    Verlustfreies WebP
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Standard: ein (empfohlen)</p>
+                </div>
+                <Switch
+                  id="webp-upload"
+                  checked={losslessWebpUpload}
+                  onCheckedChange={(checked) => {
+                    setLosslessWebpUpload(checked);
+                    setImageWebpConversionEnabled(checked);
+                  }}
+                  disabled={isDemoMode}
+                />
               </div>
             </CardContent>
           </Card>

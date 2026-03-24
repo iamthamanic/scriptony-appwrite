@@ -1,6 +1,10 @@
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { apiGateway } from "../lib/api-gateway";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
+import {
+  prepareImageFileForUpload,
+  type PrepareImageFileOptions,
+} from "../lib/image-upload-prep";
 
 interface UploadResult {
   url: string;
@@ -17,7 +21,8 @@ interface UploadResult {
 export async function uploadImage(
   file: File,
   userId: string,
-  folder: string = "general"
+  folder: string = "general",
+  prepOptions?: PrepareImageFileOptions
 ): Promise<UploadResult> {
   try {
     // Get auth token
@@ -27,8 +32,10 @@ export async function uploadImage(
       throw new Error("Unauthorized - please log in");
     }
 
+    const ready = await prepareImageFileForUpload(file, prepOptions);
+
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", ready);
     formData.append("userId", userId);
     formData.append("folder", folder);
 
