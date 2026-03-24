@@ -2,7 +2,7 @@
  * Appwrite Storage helpers for multipart uploads from function routes.
  */
 
-import { Client, ID, Storage } from "node-appwrite";
+import { Client, ID, Permission, Role, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import {
   getAppwriteApiKey,
@@ -200,7 +200,12 @@ export async function uploadFileToStorage(options: {
   const buffer = Buffer.from(await options.file.arrayBuffer());
   const fileName = options.name || options.file.name;
   const input = InputFile.fromBuffer(buffer, fileName);
-  const created = await storage.createFile(options.bucketId, ID.unique(), input);
+  const created = await storage.createFile(
+    options.bucketId,
+    ID.unique(),
+    input,
+    [Permission.read(Role.any())]
+  );
   const project = getAppwriteProjectId();
   const url = `${getPublicAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
 
