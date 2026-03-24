@@ -8,6 +8,7 @@ import {
   getAppwriteApiKey,
   getAppwriteEndpoint,
   getAppwriteProjectId,
+  getPublicAppwriteEndpoint,
 } from "./env";
 import { sendBadRequest, type RequestLike, type ResponseLike } from "./http";
 
@@ -201,7 +202,7 @@ export async function uploadFileToStorage(options: {
   const input = InputFile.fromBuffer(buffer, fileName);
   const created = await storage.createFile(options.bucketId, ID.unique(), input);
   const project = getAppwriteProjectId();
-  const url = `${getAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
+  const url = `${getPublicAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
 
   return {
     id: created.$id,

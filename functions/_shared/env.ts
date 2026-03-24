@@ -26,12 +26,22 @@ export function getRequiredEnv(name: string): string {
   return value;
 }
 
+/** Internal endpoint for server-to-server calls (prefers in-cluster APPWRITE_FUNCTION_ENDPOINT). */
 export function getAppwriteEndpoint(): string {
   const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
   if (functionEndpoint) {
     return trimTrailingSlash(functionEndpoint);
   }
   return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
+}
+
+/** Public endpoint for URLs returned to the browser (never the in-cluster hostname). */
+export function getPublicAppwriteEndpoint(): string {
+  const pub = getOptionalEnv("APPWRITE_ENDPOINT");
+  if (pub) {
+    return trimTrailingSlash(pub);
+  }
+  return getAppwriteEndpoint();
 }
 
 export function getAppwriteProjectId(): string {
