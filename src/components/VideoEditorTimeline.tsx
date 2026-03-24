@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import * as BeatsAPI from '../lib/api/beats-api';
 import * as TimelineAPI from '../lib/api/timeline-api';
+import * as ShotsAPI from '../lib/api/shots-api';
 import { useAuth } from '../hooks/useAuth';
 import type { TimelineData } from './FilmDropdown';
 import type { BookTimelineData } from './BookDropdown';
@@ -101,7 +102,7 @@ function formatTimeLabel(totalSeconds: number): string {
 }
 
 // 🎯 ADAPTIVE TEXT RENDERING: Choose text display based on block width
-type BlockType = 'beat' | 'act' | 'chapter' | 'scene';
+type BlockType = 'beat' | 'act' | 'chapter' | 'scene' | 'shot';
 
 function getBlockText(
   fullText: string, 
@@ -109,14 +110,20 @@ function getBlockText(
   type: BlockType,
   index: number
 ): string {
+  // Hide label for ultra-small blocks to prevent visual noise/overlap.
+  if (!Number.isFinite(widthPx) || widthPx < 18) {
+    return '';
+  }
+
   // Define thresholds for each track type
-  const thresholds = {
+  const thresholds: Record<BlockType, { full: number; abbreviated: number }> = {
     beat: { full: 60, abbreviated: 30 },
     act: { full: 80, abbreviated: 40 },
     chapter: { full: 100, abbreviated: 50 },
-    scene: { full: 120, abbreviated: 60 }
+    scene: { full: 120, abbreviated: 60 },
+    shot: { full: 80, abbreviated: 40 },
   };
-  
+
   const { full, abbreviated } = thresholds[type];
   
   // 3 levels: Full, Abbreviated, Minimal
@@ -130,9 +137,10 @@ function getBlockText(
     return fullText.substring(0, maxChars - 3) + '...';
   } else {
     // Minimal text: B1, A1, K1, S1
-    const prefix = type === 'beat' ? 'B' : 
-                   type === 'act' ? 'A' : 
-                   type === 'chapter' ? 'K' : 'S';
+    const prefix = type === 'beat' ? 'B' :
+                   type === 'act' ? 'A' :
+                   type === 'chapter' ? 'K' :
+                   type === 'scene' ? 'S' : 'SH';
     return `${prefix}${index + 1}`;
   }
 }
@@ -198,8 +206,21 @@ export function VideoEditorTimeline({
   
   // 🎨 DESIGN SYSTEM: Beat Styling
   const BEAT_STYLES = {
-    container: 'bg-purple-50 dark:bg-purple-950/40 border-2 border-purple-200 dark:border-purple-700',
-    text: 'text-purple-900 dark:text-purple-100',
+    container: 'border-2',
+    text: 'font-medium',
+  };
+
+  const getBeatColorClasses = (hex?: string | null) => {
+    if (!hex) {
+      return {
+        container: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-700',
+        text: 'text-purple-900 dark:text-purple-100',
+      };
+    }
+    return {
+      container: 'border-purple-300/70 dark:border-purple-600/70',
+      text: 'text-purple-950 dark:text-purple-100',
+    };
   };
   
   // 🎯 ZOOM & VIEWPORT STATE (MUST BE DECLARED FIRST!)
@@ -276,6 +297,7 @@ export function VideoEditorTimeline({
   const playheadActRef = useRef<HTMLDivElement>(null);
   const playheadSequenceRef = useRef<HTMLDivElement>(null);
   const playheadSceneRef = useRef<HTMLDivElement>(null);
+  const playheadShotRef = useRef<HTMLDivElement>(null);
   const smoothPlayheadRAF = useRef<number | null>(null);
   
   // 🚀 DELTA TIME INTERPOLATION (for smooth 60fps independent of React renders!)
@@ -293,7 +315,8 @@ export function VideoEditorTimeline({
     beat: { min: 40, max: 120, default: 64 },
     act: { min: 40, max: 100, default: 48 },
     sequence: { min: 40, max: 80, default: 40 },
-    scene: { min: 80, max: 400, default: 120 }
+    scene: { min: 80, max: 400, default: 120 },
+    shot: { min: 32, max: 90, default: 40 },
   };
   
   const STORAGE_KEY = `scriptony-timeline-heights-${projectId}`;
@@ -304,7 +327,14 @@ export function VideoEditorTimeline({
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
-          return JSON.parse(stored);
+          const parsed = JSON.parse(stored);
+          return {
+            beat: parsed.beat ?? TRACK_CONSTRAINTS.beat.default,
+            act: parsed.act ?? TRACK_CONSTRAINTS.act.default,
+            sequence: parsed.sequence ?? TRACK_CONSTRAINTS.sequence.default,
+            scene: parsed.scene ?? TRACK_CONSTRAINTS.scene.default,
+            shot: parsed.shot ?? TRACK_CONSTRAINTS.shot.default,
+          };
         } catch (e) {
           console.error('[VideoEditorTimeline] Failed to parse stored heights:', e);
         }
@@ -314,7 +344,8 @@ export function VideoEditorTimeline({
       beat: TRACK_CONSTRAINTS.beat.default,
       act: TRACK_CONSTRAINTS.act.default,
       sequence: TRACK_CONSTRAINTS.sequence.default,
-      scene: TRACK_CONSTRAINTS.scene.default
+      scene: TRACK_CONSTRAINTS.scene.default,
+      shot: TRACK_CONSTRAINTS.shot.default,
     };
   });
   
@@ -1099,6 +1130,9 @@ export function VideoEditorTimeline({
       if (playheadSceneRef.current) {
         playheadSceneRef.current.style.transform = `translateX(${pixelPosition}px)`;
       }
+      if (playheadShotRef.current) {
+        playheadShotRef.current.style.transform = `translateX(${pixelPosition}px)`;
+      }
       
       // Continue animation loop (always running!)
       smoothPlayheadRAF.current = requestAnimationFrame(updatePlayheadPositions);
@@ -1204,6 +1238,7 @@ export function VideoEditorTimeline({
         const loadedActs = await TimelineAPI.getActs(projectId, token);
         const allSequences = await TimelineAPI.getAllSequencesByProject(projectId, token);
         const allScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
+        const allShots = await ShotsAPI.getAllShotsByProject(projectId, token);
         
         if (isBookProject) {
           // Helper to extract text from Tiptap JSON
@@ -1290,7 +1325,7 @@ export function VideoEditorTimeline({
             acts: loadedActs,
             sequences: allSequences,
             scenes: allScenes,
-            shots: [],
+            shots: allShots,
           };
           
           setTimelineData(data);
@@ -1419,10 +1454,20 @@ export function VideoEditorTimeline({
   const beatBlocks = useMemo(() => {
     const start = performance.now();
     const result = beats.map(beat => {
-      const startSec = (beat.pct_from / 100) * duration;
-      const endSec = (beat.pct_to / 100) * duration;
+      const rawStartSec = (Number(beat.pct_from) / 100) * duration;
+      const rawEndSec = (Number(beat.pct_to) / 100) * duration;
+
+      // Guard against invalid/negative ranges so CSS width never becomes invalid.
+      const startSec = Number.isFinite(rawStartSec) && Number.isFinite(rawEndSec)
+        ? Math.min(rawStartSec, rawEndSec)
+        : 0;
+      const endSec = Number.isFinite(rawStartSec) && Number.isFinite(rawEndSec)
+        ? Math.max(rawStartSec, rawEndSec)
+        : 0;
+
       const x = (startSec - viewStartSec) * pxPerSec;
-      const width = (endSec - startSec) * pxPerSec;
+      const rawWidth = (endSec - startSec) * pxPerSec;
+      const width = Math.max(2, Number.isFinite(rawWidth) ? rawWidth : 2);
       
       return {
         ...beat,
@@ -1854,6 +1899,54 @@ export function VideoEditorTimeline({
     }
     return result;
   }, [timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, readingSpeedWpm]);
+
+  const shotBlocks = useMemo(() => {
+    if (isBookProject || !timelineData || !('shots' in timelineData) || !timelineData.shots?.length) {
+      return [];
+    }
+
+    const sceneById = new Map(sceneBlocks.map(scene => [scene.id, scene]));
+    const shotsByScene = new Map<string, any[]>();
+
+    for (const shot of timelineData.shots) {
+      const sceneId = (shot as any).sceneId || (shot as any).scene_id;
+      if (!sceneId) continue;
+      const current = shotsByScene.get(sceneId) || [];
+      current.push(shot);
+      shotsByScene.set(sceneId, current);
+    }
+
+    const blocks: any[] = [];
+    for (const [sceneId, sceneShots] of shotsByScene.entries()) {
+      const scene = sceneById.get(sceneId);
+      if (!scene) continue;
+
+      const orderedShots = [...sceneShots].sort((a, b) => {
+        const orderA = (a as any).orderIndex ?? (a as any).order_index ?? 0;
+        const orderB = (b as any).orderIndex ?? (b as any).order_index ?? 0;
+        return orderA - orderB;
+      });
+
+      const slotDuration = (scene.endSec - scene.startSec) / Math.max(1, orderedShots.length);
+      orderedShots.forEach((shot, index) => {
+        const startSec = scene.startSec + index * slotDuration;
+        const endSec = startSec + slotDuration;
+        const x = (startSec - viewStartSec) * pxPerSec;
+        const width = Math.max(2, (endSec - startSec) * pxPerSec);
+        blocks.push({
+          ...(shot as any),
+          startSec,
+          endSec,
+          x,
+          width,
+          visible: endSec >= viewStartSec && startSec <= viewEndSec,
+          label: (shot as any).shotNumber || (shot as any).shot_number || (shot as any).title || `Shot ${index + 1}`,
+        });
+      });
+    }
+
+    return blocks;
+  }, [isBookProject, timelineData, sceneBlocks, viewStartSec, pxPerSec, viewEndSec]);
   
   // 🎯 UPDATE REF: Store sceneBlocks for playback functions
   sceneBlocksRef.current = sceneBlocks;
@@ -2206,6 +2299,23 @@ export function VideoEditorTimeline({
               onMouseDown={(e) => handleResizeStart('scene', e)}
             />
           </div>
+          {!isBookProject && (
+            <div
+              className="border-b border-border px-2 flex items-center bg-card relative"
+              style={{ height: `${trackHeights.shot}px` }}
+            >
+              <span className="text-[9px] text-foreground font-medium">
+                Shot
+              </span>
+              <div
+                className={cn(
+                  "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                  resizingTrack === 'shot' ? 'border-b-4 border-primary' : 'hover:border-b-4 hover:border-primary'
+                )}
+                onMouseDown={(e) => handleResizeStart('shot', e)}
+              />
+            </div>
+          )}
         </div>
         
         {/* Timeline Content - Scrollable */}
@@ -2276,16 +2386,19 @@ export function VideoEditorTimeline({
                 .filter(beat => beat.visible)
                 .map((beat, index) => {
                   const displayText = getBlockText(beat.label || '', beat.width, 'beat', index);
+                  const beatColor = getBeatColorClasses(beat.color);
                   return (
                     <div
                       key={beat.id}
                       className={cn(
                         'absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity group',
-                        BEAT_STYLES.container
+                        BEAT_STYLES.container,
+                        beatColor.container
                       )}
                       style={{
                         left: `${beat.x}px`,
                         width: `${beat.width}px`,
+                        backgroundColor: beat.color || undefined,
                       }}
                       onDoubleClick={() => handleDeleteBeat(beat.id)}
                       title="Doppelklick zum Löschen"
@@ -2299,7 +2412,7 @@ export function VideoEditorTimeline({
                       
                       {/* Center Content */}
                       <div className="h-full flex items-center justify-center px-1 overflow-hidden">
-                        <span className={cn('text-[10px] font-medium truncate', BEAT_STYLES.text)}>
+                        <span className={cn('text-[10px] truncate', BEAT_STYLES.text, beatColor.text)}>
                           {displayText}
                         </span>
                       </div>
@@ -2405,7 +2518,7 @@ export function VideoEditorTimeline({
                   return (
                     <div
                       key={scene.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-700"
+                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity bg-pink-50 border-2 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden"
                       style={{
                         left: `${scene.x}px`,
                         width: `${scene.width}px`,
@@ -2418,10 +2531,10 @@ export function VideoEditorTimeline({
                     >
                       {showFullContent && (
                         <div className="h-full flex flex-col px-2 py-1 overflow-hidden">
-                          <span className="text-[9px] text-amber-900 dark:text-amber-100 font-medium mb-0.5 truncate">
+                          <span className="text-[9px] font-medium mb-0.5 truncate text-[rgb(230,0,118)] dark:text-pink-300">
                             {scene.title}
                           </span>
-                          <div className="flex-1 overflow-hidden text-[8px] text-amber-700 dark:text-amber-300">
+                          <div className="flex-1 overflow-hidden text-[8px] text-pink-800 dark:text-pink-200/90">
                             {scene.content && typeof scene.content === 'object' ? (
                               <ReadonlyTiptapView content={scene.content} />
                             ) : (
@@ -2432,14 +2545,14 @@ export function VideoEditorTimeline({
                       )}
                       {showAbbreviatedTitle && (
                         <div className="h-full flex items-center justify-center px-1 overflow-hidden">
-                          <span className="text-[9px] text-amber-900 dark:text-amber-100 font-medium truncate">
+                          <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300">
                             {displayText}
                           </span>
                         </div>
                       )}
                       {showMinimal && (
                         <div className="h-full flex items-center justify-center overflow-hidden">
-                          <span className="text-[9px] text-amber-900 dark:text-amber-100 font-bold">
+                          <span className="text-[9px] font-bold text-[rgb(230,0,118)] dark:text-pink-300">
                             {displayText}
                           </span>
                         </div>
@@ -2454,6 +2567,41 @@ export function VideoEditorTimeline({
                 className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
               />
             </div>
+
+            {/* Shot Track */}
+            {!isBookProject && (
+              <div
+                className="relative border-b border-border bg-muted/20"
+                style={{ height: `${trackHeights.shot}px` }}
+              >
+                {shotBlocks
+                  .filter(shot => shot.visible)
+                  .map((shot, index) => {
+                    const displayText = getBlockText(shot.label || '', shot.width, 'shot', index);
+                    return (
+                      <div
+                        key={shot.id}
+                        className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-yellow-50 border-2 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600"
+                        style={{
+                          left: `${shot.x}px`,
+                          width: `${shot.width}px`,
+                        }}
+                      >
+                        <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                          <span className="text-[10px] text-yellow-900 dark:text-yellow-100 font-medium truncate">
+                            {displayText}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                <div
+                  ref={playheadShotRef}
+                  className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

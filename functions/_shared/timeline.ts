@@ -52,10 +52,13 @@ export function normalizeCharacterInput(body: JsonRecord): JsonRecord {
 }
 
 export function normalizeShotInput(body: JsonRecord): JsonRecord {
+  const shotNumber = body.shot_number ?? body.shotNumber ?? body.title ?? null;
   return compact({
     scene_id: body.scene_id ?? body.sceneId,
     project_id: body.project_id ?? body.projectId,
-    shot_number: body.shot_number ?? body.shotNumber,
+    // Legacy clients send shot_number. Current Appwrite schema stores this in shots.title.
+    shot_number: shotNumber,
+    title: body.title ?? shotNumber,
     description: body.description ?? null,
     camera_angle: body.camera_angle ?? body.cameraAngle ?? null,
     camera_movement: body.camera_movement ?? body.cameraMovement ?? null,
@@ -165,14 +168,15 @@ export function mapShotAudio(row: JsonRecord): JsonRecord {
 }
 
 export function mapShot(row: JsonRecord): JsonRecord {
+  const shotNumber = row.shot_number ?? row.title ?? undefined;
   return {
     id: row.id,
     sceneId: row.scene_id,
     scene_id: row.scene_id,
     projectId: row.project_id,
     project_id: row.project_id,
-    shotNumber: row.shot_number,
-    shot_number: row.shot_number,
+    shotNumber: shotNumber,
+    shot_number: shotNumber,
     description: row.description ?? undefined,
     cameraAngle: row.camera_angle ?? undefined,
     camera_angle: row.camera_angle ?? undefined,

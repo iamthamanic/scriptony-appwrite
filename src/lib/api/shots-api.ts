@@ -363,8 +363,15 @@ export async function getAllShotsByProject(
 // =============================================================================
 
 /**
+ * One in-flight init chain per project. ProjectsPage, FilmDropdown and
+ * useTimelineCache all call initializeThreeActStructure when acts.length === 0;
+ * without serialization they run in parallel and each POST creates 3 acts → 6 acts.
+ */
+const threeActInitTailByProject = new Map<string, Promise<unknown>>();
+
+/**
  * Initialize 3-Act Film Structure using V2 Nodes API
- * 
+ *
  * Creates:
  * - 3 Acts (Setup, Confrontation, Resolution)
  * - No sequences/scenes initially (user creates them)
@@ -373,23 +380,36 @@ export async function initializeThreeActStructure(
   projectId: string,
   accessToken: string
 ): Promise<any> {
-  // Use V2 Nodes API to initialize
-  const { initializeProject } = await import('./timeline-api-v2');
-  
-  const nodes = await initializeProject({
-    projectId,
-    templateId: 'film-3-act',
-    structure: {
-      level_1_count: 3, // 3 Acts
-    },
-    predefinedNodes: {
-      level_1: [
-        { number: 1, title: 'Akt I - Einführung', description: 'Setup: Protagonist, Welt, Konflikt werden eingeführt' },
-        { number: 2, title: 'Akt II - Konfrontation', description: 'Konfrontation: Protagonist kämpft gegen Hindernisse' },
-        { number: 3, title: 'Akt III - Auflösung', description: 'Resolution: Konflikt wird gelöst, Ende der Geschichte' },
-      ],
-    },
+  const queuedAfter = threeActInitTailByProject.get(projectId) ?? Promise.resolve();
+
+  const run = queuedAfter.then(async () => {
+    const TimelineAPI = await import('./timeline-api');
+    const { initializeProject } = await import('./timeline-api-v2');
+
+    const acts = await TimelineAPI.getActs(projectId, accessToken);
+    if (acts && acts.length > 0) {
+      return { nodes: acts };
+    }
+
+    const nodes = await initializeProject({
+      projectId,
+      templateId: 'film-3-act',
+      structure: {
+        level_1_count: 3,
+      },
+      predefinedNodes: {
+        level_1: [
+          { number: 1, title: 'Akt I - Einführung', description: 'Setup: Protagonist, Welt, Konflikt werden eingeführt' },
+          { number: 2, title: 'Akt II - Konfrontation', description: 'Konfrontation: Protagonist kämpft gegen Hindernisse' },
+          { number: 3, title: 'Akt III - Auflösung', description: 'Resolution: Konflikt wird gelöst, Ende der Geschichte' },
+        ],
+      },
+    });
+
+    return { nodes };
   });
-  
-  return { nodes };
+
+  threeActInitTailByProject.set(projectId, run.catch(() => undefined));
+
+  return run;
 }

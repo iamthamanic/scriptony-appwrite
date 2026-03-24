@@ -41,7 +41,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       const body = await readJsonBody<Record<string, any>>(req);
       const shotInput = normalizeShotInput(body);
 
-      if (!shotInput.scene_id || !shotInput.project_id || !shotInput.shot_number) {
+      if (!shotInput.scene_id || !shotInput.project_id || !(shotInput.title || shotInput.shot_number)) {
         sendBadRequest(res, "scene_id, project_id, and shot_number are required");
         return;
       }
@@ -115,7 +115,15 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         `,
         {
           object: {
-            ...shotInput,
+            // Keep only attributes that exist in the Appwrite shots collection schema.
+            scene_id: shotInput.scene_id,
+            project_id: shotInput.project_id,
+            title: shotInput.title ?? shotInput.shot_number,
+            description: shotInput.description ?? null,
+            image_url: shotInput.image_url ?? null,
+            storyboard_url: shotInput.storyboard_url ?? null,
+            dialog: shotInput.dialog ?? null,
+            notes: shotInput.notes ?? null,
             user_id: bootstrap.user.id,
             order_index: shotInput.order_index ?? 0,
           },

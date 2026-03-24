@@ -102,7 +102,10 @@ export function NativeScreenplayView({ projectId, projectType, initialData }: Na
       const scenesData: Scene[] = [];
       
       allScenes?.forEach(scene => {
-        const sceneShots = allShots?.filter(shot => shot.sceneId === scene.id) || [];
+        const sceneShots = allShots?.filter(shot => {
+          const shotSceneId = (shot as any).sceneId || (shot as any).scene_id;
+          return shotSceneId === scene.id;
+        }) || [];
         
         const shots: Shot[] = sceneShots.map(shot => {
           let description = shot.description || '';
@@ -153,7 +156,7 @@ export function NativeScreenplayView({ projectId, projectType, initialData }: Na
           return {
             id: shot.id,
             description,
-            shotNumber: shot.shotNumber,
+            shotNumber: (shot as any).shotNumber || (shot as any).shot_number,
             dialogue,
             character,
           };

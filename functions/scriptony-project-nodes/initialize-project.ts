@@ -14,7 +14,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../_shared/http";
-import { mapNode } from "../_shared/timeline";
+import { getTimelineNodes, mapNode } from "../_shared/timeline";
 
 interface PredefinedNodeInput {
   number: number;
@@ -51,6 +51,24 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const levelOneCount = Number(structure.level_1_count ?? predefinedLevelOne.length ?? 0);
     if (levelOneCount <= 0) {
       sendBadRequest(res, "structure.level_1_count must be greater than zero");
+      return;
+    }
+
+    // Idempotent: same template already has level-1 acts → return them (no second insert).
+    // Prevents duplicate acts when clients retry or race after the first batch committed.
+    const existingLevel1 = await getTimelineNodes({
+      projectId,
+      level: 1,
+      parentId: null,
+    });
+    const sameTemplate = existingLevel1.filter(
+      (n) => String(n.template_id ?? n.templateId ?? "") === String(templateId)
+    );
+    if (sameTemplate.length > 0) {
+      const sorted = [...sameTemplate].sort(
+        (a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0)
+      );
+      sendJson(res, 200, { nodes: sorted.map(mapNode) });
       return;
     }
 

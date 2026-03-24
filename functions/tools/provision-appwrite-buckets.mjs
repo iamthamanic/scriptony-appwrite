@@ -31,7 +31,7 @@ const BUCKETS = [
   { bucketId: "audio-files", name: "Scriptony audio files" },
 ];
 
-const MAX_BYTES = 52_428_800; // 50 MiB — enough for images/audio; raise in Console if needed
+const MAX_BYTES = 10_000_000; // ~10 MB — Appwrite self-hosted default max; raise via _APP_STORAGE_LIMIT
 
 const bucketPermissions = [
   Permission.create(Role.users()),

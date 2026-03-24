@@ -44,6 +44,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       delete updates.scene_id;
       delete updates.project_id;
       delete updates.user_id;
+      delete updates.shot_number;
 
       const updated = await requestGraphql<{
         update_shots_by_pk: Record<string, any> | null;
@@ -115,7 +116,14 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: shotId,
           changes: {
-            ...updates,
+            // Keep only schema-safe keys for Appwrite collection `shots`.
+            ...(updates.title !== undefined ? { title: updates.title } : {}),
+            ...(updates.description !== undefined ? { description: updates.description } : {}),
+            ...(updates.image_url !== undefined ? { image_url: updates.image_url } : {}),
+            ...(updates.storyboard_url !== undefined ? { storyboard_url: updates.storyboard_url } : {}),
+            ...(updates.dialog !== undefined ? { dialog: updates.dialog } : {}),
+            ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
+            ...(updates.order_index !== undefined ? { order_index: updates.order_index } : {}),
             user_id: bootstrap.user.id,
           },
         }

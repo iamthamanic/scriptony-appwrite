@@ -17,6 +17,26 @@ import {
 } from "../../_shared/http";
 import { normalizeBeatInput } from "../../_shared/scriptony";
 
+function mapBeatForClient(row: Record<string, any>): Record<string, any> {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    user_id: row.user_id,
+    label: row.label ?? row.title ?? "",
+    template_abbr: row.template_abbr ?? row.beat_type ?? null,
+    description: row.description ?? row.content ?? null,
+    from_container_id: row.from_container_id ?? row.parent_beat_id ?? null,
+    to_container_id: row.to_container_id ?? null,
+    pct_from: row.pct_from ?? 0,
+    pct_to: row.pct_to ?? 0,
+    color: row.color ?? null,
+    notes: row.notes ?? null,
+    order_index: row.order_index ?? 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req.headers.authorization);
@@ -44,6 +64,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               id
               project_id
               user_id
+              title
+              beat_type
+              content
+              parent_beat_id
               label
               template_abbr
               description
@@ -62,7 +86,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         { projectId }
       );
 
-      sendJson(res, 200, { beats: data.story_beats });
+      sendJson(res, 200, { beats: data.story_beats.map(mapBeatForClient) });
       return;
     }
 
@@ -71,10 +95,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       const projectId = body.project_id ?? body.projectId;
       const beatInput = normalizeBeatInput(body);
 
-      if (!projectId || !beatInput.label || !beatInput.from_container_id || !beatInput.to_container_id) {
+      if (!projectId || !beatInput.label) {
         sendBadRequest(
           res,
-          "Missing required fields: project_id, label, from_container_id, to_container_id"
+          "Missing required fields: project_id, label"
         );
         return;
       }
@@ -105,14 +129,28 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         `,
         {
           object: {
-            ...beatInput,
+            // Write both canonical and legacy fields for compatibility across UI/API paths.
+            title: beatInput.label,
+            beat_type: beatInput.template_abbr ?? null,
+            content: beatInput.description ?? null,
+            parent_beat_id: beatInput.from_container_id ?? null,
+            label: beatInput.label,
+            template_abbr: beatInput.template_abbr ?? null,
+            description: beatInput.description ?? null,
+            from_container_id: beatInput.from_container_id ?? null,
+            to_container_id: beatInput.to_container_id ?? null,
+            pct_from: beatInput.pct_from ?? 0,
+            pct_to: beatInput.pct_to ?? 0,
+            color: beatInput.color ?? null,
+            notes: beatInput.notes ?? null,
+            order_index: beatInput.order_index ?? 0,
             project_id: projectId,
             user_id: bootstrap.user.id,
           },
         }
       );
 
-      sendJson(res, 201, { beat: created.insert_story_beats_one });
+      sendJson(res, 201, { beat: mapBeatForClient(created.insert_story_beats_one) });
       return;
     }
 
