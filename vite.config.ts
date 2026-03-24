@@ -7,7 +7,11 @@
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+      /** One copy of React — avoids "Invalid hook call" / useState from null in dev. */
+      dedupe: ['react', 'react-dom', 'scheduler'],
       alias: {
+        react: path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
         'wavesurfer.js@7.8.10': 'wavesurfer.js',
         'vaul@1.1.2': 'vaul',
         'sonner@2.0.3': 'sonner',
@@ -56,6 +60,9 @@
       },
     },
     publicDir: 'public',
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'scheduler'],
+    },
     build: {
       target: 'esnext',
       outDir: 'build',

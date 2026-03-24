@@ -4,6 +4,10 @@
  * Uses the Appwrite Web SDK (Account): email/password, OAuth redirect, JWT for
  * Bearer calls to Scriptony HTTP functions.
  *
+ * JWT strategy: createJWT is rate-limited aggressively by Appwrite, so we cache
+ * the JWT for most of its lifetime and deduplicate concurrent refresh attempts
+ * behind a single in-flight promise.
+ *
  * Location: src/lib/auth/AppwriteAuthAdapter.ts
  */
 
@@ -46,27 +50,131 @@ function resolveOAuthProvider(providerId: string): OAuthProvider {
   return key as OAuthProvider;
 }
 
+/** JWT lifetime we request (seconds). */
+const JWT_DURATION = 900;
+/** Refresh the JWT when less than this many ms remain. */
+const JWT_REFRESH_MARGIN = 120_000;
+/** After a rate-limit hit, don't retry for this many ms. */
+const JWT_RATE_LIMIT_BACKOFF = 60_000;
+
 export class AppwriteAuthAdapter implements AuthClient {
+  /* ---- JWT cache ---- */
+  private cachedJwt: string | null = null;
+  private jwtExpiresAt = 0;
+  private jwtInflight: Promise<string | null> | null = null;
+  private jwtRateLimitedUntil = 0;
+
+  /* ---- Session cache ---- */
+  private cachedSession: AuthSession | null = null;
+  private sessionInflight: Promise<AuthSession | null> | null = null;
+  private sessionFetchedAt = 0;
+  /** How long to consider the cached session fresh (ms). */
+  private static SESSION_TTL = 10_000;
+
   private get account(): Account {
     return new Account(getAppwriteClient());
   }
 
-  private async mapSession(): Promise<AuthSession | null> {
+  /* ---------- JWT ---------- */
+
+  /**
+   * Get a JWT, reusing the cached one unless it's close to expiry.
+   * Concurrent callers share a single in-flight promise.
+   */
+  private async getJwt(): Promise<string | null> {
+    const now = Date.now();
+
+    // Return cached JWT if still fresh
+    if (this.cachedJwt && now < this.jwtExpiresAt - JWT_REFRESH_MARGIN) {
+      return this.cachedJwt;
+    }
+
+    // If we're in rate-limit backoff, return whatever we have
+    if (now < this.jwtRateLimitedUntil) {
+      return this.cachedJwt;
+    }
+
+    // Deduplicate: if a fetch is already in progress, piggyback on it
+    if (this.jwtInflight) {
+      return this.jwtInflight;
+    }
+
+    this.jwtInflight = this.fetchJwt();
+    try {
+      return await this.jwtInflight;
+    } finally {
+      this.jwtInflight = null;
+    }
+  }
+
+  private async fetchJwt(): Promise<string | null> {
+    try {
+      const { jwt } = await this.account.createJWT({ duration: JWT_DURATION });
+      this.cachedJwt = jwt;
+      this.jwtExpiresAt = Date.now() + JWT_DURATION * 1000;
+      return jwt;
+    } catch (e) {
+      if (e instanceof AppwriteException && e.code === 429) {
+        this.jwtRateLimitedUntil = Date.now() + JWT_RATE_LIMIT_BACKOFF;
+        if (this.cachedJwt) return this.cachedJwt;
+      }
+      console.warn("[AppwriteAuthAdapter] getJwt error:", e);
+      return this.cachedJwt; // return stale if available
+    }
+  }
+
+  /* ---------- Session ---------- */
+
+  private async fetchSession(): Promise<AuthSession | null> {
     try {
       const user = await this.account.get();
-      const { jwt } = await this.account.createJWT({ duration: 900 });
-      return {
-        accessToken: jwt,
+      const jwt = await this.getJwt();
+      const session: AuthSession = {
+        accessToken: jwt || "",
         userId: user.$id,
         profile: mapUserToProfile(user),
         raw: user,
       };
+      this.cachedSession = session;
+      this.sessionFetchedAt = Date.now();
+      return session;
     } catch (e) {
-      if (e instanceof AppwriteException && e.code === 401) {
+      if (e instanceof AppwriteException && (e.code === 401 || e.code === 0)) {
+        this.cachedSession = null;
+        this.sessionFetchedAt = Date.now();
         return null;
       }
-      console.error("[AppwriteAuthAdapter] mapSession error:", e);
-      return null;
+      console.error("[AppwriteAuthAdapter] fetchSession error:", e);
+      // On transient error, return cached session if available
+      return this.cachedSession;
+    }
+  }
+
+  /**
+   * Return cached session if fresh, otherwise fetch (deduplicating concurrent calls).
+   */
+  private async mapSession(forceRefresh = false): Promise<AuthSession | null> {
+    const now = Date.now();
+
+    // Return cached if fresh and not forced
+    if (
+      !forceRefresh &&
+      this.sessionFetchedAt > 0 &&
+      now - this.sessionFetchedAt < AppwriteAuthAdapter.SESSION_TTL
+    ) {
+      return this.cachedSession;
+    }
+
+    // Deduplicate concurrent calls
+    if (this.sessionInflight) {
+      return this.sessionInflight;
+    }
+
+    this.sessionInflight = this.fetchSession();
+    try {
+      return await this.sessionInflight;
+    } finally {
+      this.sessionInflight = null;
     }
   }
 
@@ -101,15 +209,31 @@ export class AppwriteAuthAdapter implements AuthClient {
       return null;
     }
 
-    return this.mapSession();
+    this.invalidateCache();
+    return this.mapSession(true);
   }
 
   async signInWithPassword(
     email: string,
     password: string
   ): Promise<AuthSession> {
-    await this.account.createEmailPasswordSession({ email, password });
-    const session = await this.mapSession();
+    try {
+      await this.account.createEmailPasswordSession({ email, password });
+    } catch (e) {
+      // If a session already exists, just return it
+      if (
+        e instanceof AppwriteException &&
+        e.code === 401 &&
+        /session is active/i.test(e.message)
+      ) {
+        const existing = await this.mapSession(true);
+        if (existing) return existing;
+      }
+      throw e;
+    }
+
+    this.invalidateCache();
+    const session = await this.mapSession(true);
     if (!session) {
       throw new Error("Sign in succeeded but no session returned");
     }
@@ -135,6 +259,7 @@ export class AppwriteAuthAdapter implements AuthClient {
   }
 
   async signOut(): Promise<void> {
+    this.invalidateCache();
     try {
       await this.account.deleteSession({ sessionId: "current" });
     } catch (e) {
@@ -182,7 +307,7 @@ export class AppwriteAuthAdapter implements AuthClient {
     let lastKey: string | null = null;
 
     const emit = async () => {
-      const session = await this.mapSession();
+      const session = await this.mapSession(true);
       const key = session?.userId ?? "";
       if (key !== lastKey) {
         lastKey = key;
@@ -205,5 +330,13 @@ export class AppwriteAuthAdapter implements AuthClient {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);
     };
+  }
+
+  private invalidateCache(): void {
+    this.cachedJwt = null;
+    this.jwtExpiresAt = 0;
+    this.jwtRateLimitedUntil = 0;
+    this.cachedSession = null;
+    this.sessionFetchedAt = 0;
   }
 }

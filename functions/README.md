@@ -17,6 +17,26 @@ Optional:
 - `scriptony_oauth_*` — storage-provider OAuth (see [docs/STORAGE_OAUTH_SETUP.md](../docs/STORAGE_OAUTH_SETUP.md))
 - `SCRIPTONY_DEMO_EMAIL` / `SCRIPTONY_DEMO_PASSWORD` / `SCRIPTONY_DEMO_NAME` — demo user helpers
 
+## Provisioning the Databases schema
+
+From the **repo root** (with `APPWRITE_API_KEY` and endpoint/project in `.env` / `.env.local` / `.env.server.local`, or `VITE_APPWRITE_*` for endpoint/project):
+
+```bash
+npm run appwrite:provision:schema
+```
+
+This runs [`tools/provision-appwrite-schema.mjs`](tools/provision-appwrite-schema.mjs): creates database `scriptony` (if missing), all collections listed in `_shared/appwrite-db.ts`, attributes, and basic indexes. Safe to re-run (skips existing resources). It does **not** create Messaging topics or Sites — only **Databases (legacy)**.
+
+### Storage buckets (defaults)
+
+From repo root (needs API key with **storage** scopes, e.g. `storage.buckets.read` / `storage.buckets.write`):
+
+```bash
+npm run appwrite:provision:buckets
+```
+
+Runs [`tools/provision-appwrite-buckets.mjs`](tools/provision-appwrite-buckets.mjs): ensures buckets `general`, `project-images`, `world-images`, `shots`, `audio-files` (same defaults as `_shared/env.ts`). Safe to re-run.
+
 ## Layout
 
 - `_shared/graphql-compat.ts` — `requestGraphql()` → `dispatchGraphqlOperation`

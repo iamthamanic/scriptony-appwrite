@@ -2,7 +2,7 @@
  * Ultra batch timeline load route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
+import { requireUserBootstrap } from "../../_shared/auth";
 import {
   getQuery,
   sendBadRequest,
@@ -12,7 +12,7 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../_shared/http";
+} from "../../_shared/http";
 import {
   getAllProjectNodes,
   getCharactersByProject,
@@ -20,7 +20,7 @@ import {
   mapCharacter,
   mapNode,
   mapShot,
-} from "../../../_shared/timeline";
+} from "../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {

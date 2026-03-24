@@ -2,8 +2,8 @@
  * Timeline node item routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
@@ -15,8 +15,8 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../_shared/http";
-import { getNodeById, mapNode, normalizeNodeInput } from "../../../_shared/timeline";
+} from "../../_shared/http";
+import { getNodeById, mapNode, normalizeNodeInput } from "../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -68,12 +68,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               template_id
               level
               parent_id
-              node_number
               title
-              description
-              color
+              summary
               order_index
-              metadata
+              node_type
+              scene_id
+              metadata_json
               created_at
               updated_at
             }

@@ -23,6 +23,8 @@ Copy **`.env.local.example`** → **`.env.local`** and set `VITE_APPWRITE_*` plu
 
 More: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), `npm run env:local`.
 
+**Appwrite CLI (schema / storage):** with `APPWRITE_*` in `.env` / `.env.server.local` — `npm run appwrite:provision:schema`, then `npm run appwrite:provision:buckets`. See [functions/README.md](functions/README.md).
+
 ## Build
 
 ```bash

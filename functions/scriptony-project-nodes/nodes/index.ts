@@ -2,8 +2,8 @@
  * Timeline node collection routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,
@@ -14,12 +14,12 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../_shared/http";
+} from "../../_shared/http";
 import {
   getTimelineNodes,
   mapNode,
   normalizeNodeInput,
-} from "../../../_shared/timeline";
+} from "../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -59,12 +59,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         !nodeInput.project_id ||
         !nodeInput.template_id ||
         !nodeInput.level ||
-        nodeInput.node_number === undefined ||
         !nodeInput.title
       ) {
         sendBadRequest(
           res,
-          "Missing required fields: project_id, template_id, level, node_number, title"
+          "Missing required fields: project_id, template_id, level, title"
         );
         return;
       }
@@ -80,12 +79,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               template_id
               level
               parent_id
-              node_number
               title
-              description
-              color
+              summary
               order_index
-              metadata
+              node_type
+              scene_id
+              metadata_json
               created_at
               updated_at
             }
@@ -94,9 +93,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           object: {
             ...nodeInput,
-            order_index:
-              nodeInput.order_index ?? nodeInput.node_number ?? 0,
-            metadata: nodeInput.metadata ?? {},
+            order_index: nodeInput.order_index ?? 0,
+            metadata_json: JSON.stringify(nodeInput.metadata ?? {}),
           },
         }
       );

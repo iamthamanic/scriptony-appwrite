@@ -2,8 +2,8 @@
  * Timeline node bulk creation route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,
@@ -13,8 +13,8 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../_shared/http";
-import { mapNode, normalizeNodeInput } from "../../../_shared/timeline";
+} from "../../_shared/http";
+import { mapNode, normalizeNodeInput } from "../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -40,13 +40,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           !node.project_id ||
           !node.template_id ||
           !node.level ||
-          node.node_number === undefined ||
           !node.title
       )
     ) {
       sendBadRequest(
         res,
-        "nodes must contain project_id, template_id, level, node_number, and title"
+        "nodes must contain project_id, template_id, level, and title"
       );
       return;
     }
@@ -63,12 +62,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               template_id
               level
               parent_id
-              node_number
               title
-              description
-              color
+              summary
               order_index
-              metadata
+              node_type
+              scene_id
+              metadata_json
               created_at
               updated_at
             }
@@ -78,8 +77,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       {
         objects: nodes.map((node) => ({
           ...node,
-          order_index: node.order_index ?? node.node_number ?? 0,
-          metadata: node.metadata ?? {},
+          order_index: node.order_index ?? 0,
+          metadata_json: JSON.stringify(node.metadata ?? {}),
         })),
       }
     );

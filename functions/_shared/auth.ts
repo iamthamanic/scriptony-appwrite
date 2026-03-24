@@ -138,14 +138,13 @@ export async function resolveIntegrationToken(token: string): Promise<AuthUser |
 
 export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResult> {
   const data = await requestGraphql<{
-    users_by_pk: { id: string; organization_id?: string | null } | null;
+    users_by_pk: { id: string } | null;
     organization_members: Array<{ organization_id: string }>;
   }>(
     `
       query GetExistingUserState($userId: uuid!) {
         users_by_pk(id: $userId) {
           id
-          organization_id
         }
         organization_members(
           where: { user_id: { _eq: $userId } }
@@ -159,7 +158,7 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
   );
 
   let organizationId =
-    data.users_by_pk?.organization_id || data.organization_members[0]?.organization_id || null;
+    data.organization_members[0]?.organization_id || null;
 
   if (!organizationId) {
     const displayName =
@@ -182,7 +181,7 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
         object: {
           name: `${displayName}'s Organization`,
           slug: `${slugify(displayName)}-${user.id.slice(0, 8)}`,
-          owner_id: user.id,
+          owner_user_id: user.id,
         },
       }
     );
@@ -230,9 +229,8 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
     {
       object: {
         id: user.id,
-        name: profileName,
+        display_name: profileName,
         email: user.email || null,
-        organization_id: organizationId,
         avatar_url: user.avatarUrl || null,
       },
     }

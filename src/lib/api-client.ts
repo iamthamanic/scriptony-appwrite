@@ -43,7 +43,7 @@ interface RequestOptions extends RequestInit {
 // Configuration
 // =============================================================================
 
-const API_BASE_URL_LEGACY = `${backendConfig.functionsBaseUrl}${API_CONFIG.SERVER_BASE_PATH}`;
+const API_BASE_URL_LEGACY = `${backendConfig.functionsBaseUrl || ""}${API_CONFIG.SERVER_BASE_PATH}`;
 
 // NEW: Use API Gateway for multi-function routing
 const USE_API_GATEWAY = true;

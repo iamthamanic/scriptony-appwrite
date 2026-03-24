@@ -42,8 +42,15 @@ export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
  * Backend function base URLs
  */
 export function buildFunctionBaseUrl(functionName: string): string {
-  if (!backendConfig.functionsBaseUrl) {
-    throw new Error("Backend functions base URL is not configured.");
+  const domain = backendConfig.functionDomainMap?.[functionName]?.trim();
+  if (domain) {
+    return domain.replace(/\/+$/, "");
+  }
+
+  if (!backendConfig.functionsBaseUrl?.trim()) {
+    throw new Error(
+      `Backend function "${functionName}" is not configured: add it to VITE_BACKEND_FUNCTION_DOMAIN_MAP or set VITE_BACKEND_API_BASE_URL / VITE_APPWRITE_FUNCTIONS_BASE_URL.`
+    );
   }
 
   return joinUrl(backendConfig.functionsBaseUrl, functionName);

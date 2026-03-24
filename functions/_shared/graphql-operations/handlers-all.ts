@@ -25,7 +25,7 @@ async function upsertUser(object: Record<string, unknown>): Promise<{ insert_use
   if (ex) {
     await updateDocument(C.users, id, rest);
   } else {
-    await createDocument(C.users, id, object);
+    await createDocument(C.users, id, rest);
   }
   return { insert_users_one: { id } };
 }
@@ -236,7 +236,7 @@ export const allHandlers: Record<string, Op> = {
   GetWorlds: async (v) => ({
     worlds: await listDocumentsFull(C.worlds, [
       Query.equal("organization_id", v.organizationId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
     ]),
   }),
 
@@ -297,7 +297,7 @@ export const allHandlers: Record<string, Op> = {
     } else {
       q.push(Query.isNull("world_id"));
     }
-    q.push(Query.orderDesc("created_at"));
+    q.push(Query.orderDesc("$createdAt"));
     return { characters: await listDocumentsFull(C.characters, q) };
   },
 
@@ -330,7 +330,7 @@ export const allHandlers: Record<string, Op> = {
   GetCharactersByProject: async (v) => ({
     characters: await listDocumentsFull(C.characters, [
       Query.equal("project_id", v.projectId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
     ]),
   }),
 
@@ -593,7 +593,7 @@ export const allHandlers: Record<string, Op> = {
   GetConversationMessages: async (v) => ({
     ai_chat_messages: await listDocumentsFull(C.ai_chat_messages, [
       Query.equal("conversation_id", v.conversationId as string),
-      Query.orderAsc("created_at"),
+      Query.orderAsc("$createdAt"),
     ]),
   }),
 
@@ -646,7 +646,7 @@ export const allHandlers: Record<string, Op> = {
     activity_logs: await listDocumentsFull(C.activity_logs, [
       Query.equal("entity_type", v.entityType as string),
       Query.equal("entity_id", v.entityId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(v.limit as number),
     ]),
   }),
@@ -654,7 +654,7 @@ export const allHandlers: Record<string, Op> = {
   GetProjectLogs: async (v) => ({
     activity_logs: await listDocumentsFull(C.activity_logs, [
       Query.equal("project_id", v.projectId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(v.limit as number),
     ]),
   }),
@@ -758,7 +758,7 @@ export const allHandlers: Record<string, Op> = {
   },
 
   GetSuperadminUsers: async () => ({
-    users: await listDocumentsFull(C.users, [Query.orderDesc("created_at"), Query.limit(500)]),
+    users: await listDocumentsFull(C.users, [Query.orderDesc("$createdAt"), Query.limit(500)]),
   }),
 
   GetSuperadminStats: async () => {
@@ -780,7 +780,7 @@ export const allHandlers: Record<string, Op> = {
 
   GetSuperadminOrganizations: async () => {
     const organizations = await listDocumentsFull(C.organizations, [
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(500),
     ]);
     const organization_members = await listDocumentsFull(C.organization_members, [Query.limit(5000)]);
@@ -800,7 +800,7 @@ export const allHandlers: Record<string, Op> = {
   GetSuperadminAnalytics: async () => {
     const totalEvents = await countDocuments(C.activity_logs);
     const activity_logs = await listDocumentsFull(C.activity_logs, [
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(500),
     ]);
     const organization_members = await listDocumentsFull(C.organization_members, [Query.limit(2000)]);

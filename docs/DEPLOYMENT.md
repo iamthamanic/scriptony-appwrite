@@ -8,7 +8,8 @@ Set build-time environment variables:
 |----------|---------|
 | `VITE_APPWRITE_ENDPOINT` | Appwrite API base (`…/v1`) |
 | `VITE_APPWRITE_PROJECT_ID` | Project ID |
-| `VITE_APPWRITE_FUNCTIONS_BASE_URL` or `VITE_BACKEND_API_BASE_URL` | Prefix for `scriptony-*` HTTP functions |
+| `VITE_APPWRITE_FUNCTIONS_BASE_URL` or `VITE_BACKEND_API_BASE_URL` | Path-style gateway: `{BASE}/scriptony-projects/...` (not the same as `VITE_APPWRITE_ENDPOINT` unless you proxy) |
+| `VITE_BACKEND_FUNCTION_DOMAIN_MAP` | One-line JSON: `{ "scriptony-projects": "https://…", … }` — each value is the function’s HTTP domain from Appwrite (Console → Functions → Domains). Prefer this for Appwrite-hosted functions. |
 | `VITE_APP_WEB_URL` | Public site URL |
 | `VITE_AUTH_REDIRECT_URL` | OAuth/email redirect origin |
 | `VITE_PASSWORD_RESET_REDIRECT_URL` | Password recovery return URL |

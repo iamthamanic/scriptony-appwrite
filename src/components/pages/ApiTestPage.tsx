@@ -36,18 +36,24 @@ export function ApiTestPage() {
     updateTest('Environment Config', { status: 'running' });
     try {
       const url = backendConfig.functionsBaseUrl;
+      const mapKeys = backendConfig.functionDomainMap
+        ? Object.keys(backendConfig.functionDomainMap)
+        : [];
       const hasKey =
         backendConfig.provider === "appwrite" || backendConfig.publicAuthToken.length > 0;
 
-      if (url && hasKey) {
-        updateTest('Environment Config', { 
-          status: 'success', 
-          message: `URL: ${url.substring(0, 30)}...` 
+      if ((url || mapKeys.length > 0) && hasKey) {
+        const hint = mapKeys.length
+          ? `domain map: ${mapKeys.slice(0, 4).join(", ")}${mapKeys.length > 4 ? "…" : ""}`
+          : `URL: ${(url || "").substring(0, 30)}...`;
+        updateTest("Environment Config", {
+          status: "success",
+          message: hint,
         });
       } else {
-        updateTest('Environment Config', { 
-          status: 'error', 
-          message: 'Missing URL or Key' 
+        updateTest("Environment Config", {
+          status: "error",
+          message: "Missing functions base / domain map or Key",
         });
       }
     } catch (e: any) {
@@ -240,8 +246,16 @@ export function ApiTestPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm font-mono">
             <div>
-              <span className="text-muted-foreground">Base URL:</span>
-              <div className="break-all">{backendConfig.functionsBaseUrl}</div>
+              <span className="text-muted-foreground">Base URL (path-style):</span>
+              <div className="break-all">{backendConfig.functionsBaseUrl || "(unset)"}</div>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Function domain map:</span>
+              <div className="break-all">
+                {backendConfig.functionDomainMap
+                  ? JSON.stringify(backendConfig.functionDomainMap)
+                  : "(unset)"}
+              </div>
             </div>
             <div>
               <span className="text-muted-foreground">Backend Provider:</span>

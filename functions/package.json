@@ -2,6 +2,11 @@
   "name": "scriptony-appwrite-functions",
   "private": true,
   "type": "module",
+  "scripts": {
+    "provision-schema": "node ./tools/provision-appwrite-schema.mjs",
+    "provision-buckets": "node ./tools/provision-appwrite-buckets.mjs",
+    "delete-collection": "node ./tools/delete-appwrite-collection.mjs"
+  },
   "dependencies": {
     "node-appwrite": "^22.1.3"
   }

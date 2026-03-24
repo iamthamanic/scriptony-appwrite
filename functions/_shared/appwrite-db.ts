@@ -10,17 +10,64 @@ import {
   getAppwriteProjectId,
 } from "./env";
 
-let _databases: Databases | null = null;
+let _clientCache: {
+  databases: Databases;
+  endpoint: string;
+  projectId: string;
+  apiKey: string;
+} | null = null;
+const DB_REQUEST_TIMEOUT_MS = Number(process.env.SCRIPTONY_DB_REQUEST_TIMEOUT_MS || 7000);
+
+function elapsedMs(start: number): number {
+  return Date.now() - start;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
 
 export function getDatabases(): Databases {
-  if (!_databases) {
-    const client = new Client()
-      .setEndpoint(getAppwriteEndpoint())
-      .setProject(getAppwriteProjectId())
-      .setKey(getAppwriteApiKey());
-    _databases = new Databases(client);
+  const endpoint = getAppwriteEndpoint();
+  const projectId = getAppwriteProjectId();
+  const apiKey = getAppwriteApiKey();
+  const cacheOk =
+    _clientCache &&
+    _clientCache.endpoint === endpoint &&
+    _clientCache.projectId === projectId &&
+    _clientCache.apiKey === apiKey;
+
+  if (!cacheOk) {
+    const startedAt = Date.now();
+    console.log("[appwrite-db] creating Databases client", {
+      endpoint,
+      projectId,
+    });
+    const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+    _clientCache = {
+      databases: new Databases(client),
+      endpoint,
+      projectId,
+      apiKey,
+    };
+    console.log("[appwrite-db] Databases client ready", {
+      elapsedMs: elapsedMs(startedAt),
+    });
   }
-  return _databases;
+  return _clientCache.databases;
 }
 
 export function dbId(): string {
@@ -109,6 +156,22 @@ export async function deleteDocument(collection: string, documentId: string): Pr
 }
 
 export async function countDocuments(collection: string, queries: string[] = []): Promise<number> {
-  const res = await getDatabases().listDocuments(dbId(), collection, [Query.limit(1), ...queries], undefined, true);
+  const startedAt = Date.now();
+  const databaseId = dbId();
+  console.log("[appwrite-db] countDocuments start", {
+    databaseId,
+    collection,
+    timeoutMs: DB_REQUEST_TIMEOUT_MS,
+  });
+  const res = await withTimeout(
+    getDatabases().listDocuments(databaseId, collection, [Query.limit(1), ...queries], undefined, true),
+    DB_REQUEST_TIMEOUT_MS,
+    `countDocuments(${collection})`
+  );
+  console.log("[appwrite-db] countDocuments done", {
+    collection,
+    total: res.total,
+    elapsedMs: elapsedMs(startedAt),
+  });
   return res.total;
 }

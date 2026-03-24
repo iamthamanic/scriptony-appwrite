@@ -70,20 +70,43 @@ const projectId = env.VITE_APPWRITE_PROJECT_ID?.trim();
 const fnBase =
   env.VITE_APPWRITE_FUNCTIONS_BASE_URL?.trim() || env.VITE_BACKEND_API_BASE_URL?.trim();
 
+let projectsDomain = null;
+const mapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
+if (mapRaw) {
+  try {
+    const m = JSON.parse(mapRaw);
+    if (m && typeof m === "object" && typeof m["scriptony-projects"] === "string") {
+      projectsDomain = m["scriptony-projects"].trim();
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 if (!endpoint || !projectId) {
   console.error("In .env.local fehlen VITE_APPWRITE_ENDPOINT und/oder VITE_APPWRITE_PROJECT_ID.");
   process.exit(1);
 }
 
-if (!fnBase) {
+if (!fnBase && !projectsDomain) {
   console.error(
-    "In .env.local fehlt VITE_APPWRITE_FUNCTIONS_BASE_URL oder VITE_BACKEND_API_BASE_URL."
+    "In .env.local fehlt eine Basis-URL für die HTTP-Functions. Setze **eine** der folgenden Optionen:\n\n" +
+      "  A) Pro Function (empfohlen, Appwrite Console → Functions → scriptony-projects → Domains):\n" +
+      '     VITE_BACKEND_FUNCTION_DOMAIN_MAP={"scriptony-projects":"https://DEINE-FUNCTION-DOMAIN"}\n' +
+      "     (eine Zeile, doppelte Anführungszeichen im JSON. Weitere Keys später ergänzbar.)\n\n" +
+      "  B) Gateway / Pfad-Prefix (ein Host, unter dem …/scriptony-projects/… erreichbar ist):\n" +
+      "     VITE_APPWRITE_FUNCTIONS_BASE_URL=https://DEIN-GATEWAY\n" +
+      "     (Alias: VITE_BACKEND_API_BASE_URL — gleiche Bedeutung.)\n\n" +
+      "Nicht leer lassen: `VITE_BACKEND_FUNCTION_DOMAIN_MAP=` ohne JSON zählt als „fehlt“.\n" +
+      "Siehe .env.local.example und docs/DEPLOYMENT.md.\n"
   );
   process.exit(1);
 }
 
 const appwriteHealth = `${trimSlash(endpoint)}/health`;
-const projectsHealth = `${trimSlash(fnBase)}/scriptony-projects/health`;
+const projectsHealth = projectsDomain
+  ? `${trimSlash(projectsDomain)}/health`
+  : `${trimSlash(fnBase)}/scriptony-projects/health`;
 
 let failed = false;
 
@@ -91,9 +114,12 @@ for (const url of [appwriteHealth, projectsHealth]) {
   const label = url.includes("scriptony-projects") ? "scriptony-projects /health" : "Appwrite /health";
   process.stdout.write(`→ ${label}\n  GET ${url}\n`);
   const r = await fetchJson(url, label);
-  if (r.ok) {
+  // Appwrite 1.8+ returns 401 on /v1/health for guests — that still means the server is reachable.
+  const isAppwriteReachable = label.startsWith("Appwrite") && r.status === 401;
+  if (r.ok || isAppwriteReachable) {
     const brief = r.json != null ? JSON.stringify(r.json) : r.text.slice(0, 120);
-    console.log(`  OK (${r.status})`, brief);
+    const tag = isAppwriteReachable ? "OK (erreichbar, Auth erforderlich)" : `OK (${r.status})`;
+    console.log(`  ${tag}`, brief);
   } else {
     failed = true;
     console.log(`  FEHLER (${r.status})`, r.text.slice(0, 200));

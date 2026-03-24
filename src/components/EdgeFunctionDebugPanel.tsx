@@ -179,7 +179,15 @@ export function EdgeFunctionDebugPanel() {
           <div className="font-medium mb-1">Project Configuration:</div>
           <div className="text-muted-foreground space-y-1">
             <div>Provider: <code className="text-xs bg-muted px-1 py-0.5 rounded">{backendConfig.provider}</code></div>
-            <div>Base URL: <code className="text-xs bg-muted px-1 py-0.5 rounded">{backendConfig.functionsBaseUrl}</code></div>
+            <div>Base URL: <code className="text-xs bg-muted px-1 py-0.5 rounded break-all">{backendConfig.functionsBaseUrl || "(unset)"}</code></div>
+            {backendConfig.functionDomainMap && (
+              <div className="break-all">
+                Domain map:{" "}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                  {Object.keys(backendConfig.functionDomainMap).join(", ")}
+                </code>
+              </div>
+            )}
           </div>
         </div>
 

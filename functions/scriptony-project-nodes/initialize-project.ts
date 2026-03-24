@@ -2,8 +2,8 @@
  * Project initialization route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../_shared/auth";
+import { requestGraphql } from "../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,
@@ -13,8 +13,8 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../_shared/http";
-import { mapNode } from "../../_shared/timeline";
+} from "../_shared/http";
+import { mapNode } from "../_shared/timeline";
 
 interface PredefinedNodeInput {
   number: number;
@@ -61,12 +61,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         template_id: templateId,
         level: 1,
         parent_id: null,
-        node_number: predefined?.number ?? index + 1,
         title: predefined?.title ?? `Act ${index + 1}`,
-        description: predefined?.description ?? null,
-        color: null,
+        summary: predefined?.description ?? null,
         order_index: index,
-        metadata: {},
+        metadata_json: JSON.stringify({}),
       };
     });
 
@@ -82,12 +80,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               template_id
               level
               parent_id
-              node_number
               title
-              description
-              color
+              summary
               order_index
-              metadata
+              node_type
+              scene_id
+              metadata_json
               created_at
               updated_at
             }

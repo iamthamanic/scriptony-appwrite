@@ -25,6 +25,12 @@ export interface BackendConfig {
   appwrite: AppwritePublicConfig | null;
   /** Base URL of deployed Scriptony functions (path prefix before function name). */
   functionsBaseUrl: string;
+  /**
+   * Optional: Appwrite per-function HTTP domains (Console → Functions → Domains).
+   * Keys are function IDs (e.g. scriptony-projects). When set, requests use joinUrl(domain, route)
+   * instead of joinUrl(base, functionId, route) — matches Appwrite’s function URLs.
+   */
+  functionDomainMap: Record<string, string> | null;
   publicAuthToken: string;
   capacitor: CapacitorConfig;
 }
@@ -83,6 +89,33 @@ export function getMissingAppwriteConfig(): string[] {
   return missing;
 }
 
+/**
+ * Parses VITE_BACKEND_FUNCTION_DOMAIN_MAP: one-line JSON object { "scriptony-projects": "https://…", … }.
+ */
+export function parseFunctionDomainMap(raw: unknown): Record<string, string> | null {
+  const s = validateString(raw);
+  if (!s) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(s) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      const key = typeof k === "string" ? k.trim() : "";
+      const val = typeof v === "string" ? v.trim() : "";
+      if (key && val) {
+        out[key] = trimTrailingSlash(val);
+      }
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getBackendConfig(): BackendConfig {
   if (_backendConfig) {
     return _backendConfig;
@@ -93,10 +126,13 @@ export function getBackendConfig(): BackendConfig {
       validateString(env.VITE_BACKEND_API_BASE_URL)
   );
 
+  const functionDomainMap = parseFunctionDomainMap(env.VITE_BACKEND_FUNCTION_DOMAIN_MAP);
+
   _backendConfig = {
     provider: "appwrite",
     appwrite: getAppwritePublicConfig(),
     functionsBaseUrl,
+    functionDomainMap,
     publicAuthToken: validateString(env.VITE_BACKEND_PUBLIC_TOKEN) || "",
     capacitor: {
       appId: validateString(env.VITE_CAPACITOR_APP_ID) || "ai.scriptony.app",
@@ -161,16 +197,39 @@ export function getCapacitorCallbackUrl(path = ""): string {
 export const backendConfig = getBackendConfig();
 export const appConfig = getAppConfig();
 
-/** True if the backend API base URL is set (required for projects, shots, etc.). */
+/** True if path-style base and/or per-function domain map is set. */
 export function isBackendConfigured(): boolean {
-  return Boolean(backendConfig.functionsBaseUrl?.trim());
+  return Boolean(
+    backendConfig.functionsBaseUrl?.trim() ||
+      (backendConfig.functionDomainMap &&
+        Object.keys(backendConfig.functionDomainMap).length > 0)
+  );
 }
 
 if (appConfig.isDevelopment) {
   const missingAppwrite = getMissingAppwriteConfig();
+  /* eslint-disable no-console -- dev-only diagnostics */
   console.log("Environment ready:", {
     functionsBaseUrl: backendConfig.functionsBaseUrl || "(unset)",
+    functionDomainMapKeys: backendConfig.functionDomainMap
+      ? Object.keys(backendConfig.functionDomainMap)
+      : [],
     appwriteEndpoint: backendConfig.appwrite?.endpoint || "(unset)",
     missingAppwriteConfig: missingAppwrite,
   });
+  /* eslint-enable no-console */
+
+  const ep = backendConfig.appwrite?.endpoint;
+  const fb = backendConfig.functionsBaseUrl;
+  const hasMap =
+    backendConfig.functionDomainMap &&
+    Object.keys(backendConfig.functionDomainMap).length > 0;
+  if (ep && fb && trimTrailingSlash(ep) === trimTrailingSlash(fb) && !hasMap) {
+    console.warn(
+      "[Scriptony] VITE_BACKEND_API_BASE_URL (or VITE_APPWRITE_FUNCTIONS_BASE_URL) equals the Appwrite API base. " +
+        "The app then requests …/v1/scriptony-projects/… — that path is not served by Appwrite core, and the browser " +
+        "preflight often fails (e.g. Authorization not in Access-Control-Allow-Headers). " +
+        "Set VITE_BACKEND_FUNCTION_DOMAIN_MAP (JSON from Console → Functions → Domains) or a gateway base; see docs/DEPLOYMENT.md."
+    );
+  }
 }

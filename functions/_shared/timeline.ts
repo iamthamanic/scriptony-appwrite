@@ -26,12 +26,12 @@ export function normalizeNodeInput(body: JsonRecord): JsonRecord {
     level: body.level,
     parent_id:
       body.parent_id !== undefined ? body.parent_id : body.parentId,
-    node_number: body.node_number ?? body.nodeNumber,
     title: body.title,
-    description: body.description ?? null,
-    color: body.color ?? null,
+    summary: body.description ?? body.summary ?? null,
     order_index: body.order_index ?? body.orderIndex,
-    metadata: body.metadata ?? {},
+    node_type: body.node_type ?? body.nodeType ?? null,
+    scene_id: body.scene_id ?? body.sceneId ?? null,
+    metadata_json: typeof body.metadata === "object" ? JSON.stringify(body.metadata) : (body.metadata_json ?? null),
   });
 }
 
@@ -115,14 +115,19 @@ export function mapNode(row: JsonRecord): JsonRecord {
     level: row.level,
     parentId: row.parent_id ?? null,
     parent_id: row.parent_id ?? null,
-    nodeNumber: row.node_number,
-    node_number: row.node_number,
+    nodeNumber: row.order_index,
+    node_number: row.order_index,
     title: row.title,
-    description: row.description ?? undefined,
-    color: row.color ?? undefined,
+    description: row.summary ?? undefined,
+    summary: row.summary ?? undefined,
+    color: undefined,
     orderIndex: row.order_index,
     order_index: row.order_index,
-    metadata: row.metadata ?? {},
+    node_type: row.node_type ?? undefined,
+    nodeType: row.node_type ?? undefined,
+    scene_id: row.scene_id ?? undefined,
+    sceneId: row.scene_id ?? undefined,
+    metadata: typeof row.metadata_json === "string" ? JSON.parse(row.metadata_json || "{}") : (row.metadata_json ?? {}),
     createdAt: row.created_at,
     created_at: row.created_at,
     updatedAt: row.updated_at,
@@ -244,12 +249,12 @@ export async function getNodeById(nodeId: string): Promise<JsonRecord | null> {
           template_id
           level
           parent_id
-          node_number
           title
-          description
-          color
+          summary
           order_index
-          metadata
+          node_type
+          scene_id
+          metadata_json
           created_at
           updated_at
         }
@@ -269,19 +274,19 @@ export async function getTimelineChildren(parentId: string): Promise<JsonRecord[
       query GetTimelineChildren($parentId: uuid!) {
         timeline_nodes(
           where: { parent_id: { _eq: $parentId } }
-          order_by: [{ order_index: asc }, { node_number: asc }, { created_at: asc }]
+          order_by: [{ order_index: asc }, { created_at: asc }]
         ) {
           id
           project_id
           template_id
           level
           parent_id
-          node_number
           title
-          description
-          color
+          summary
           order_index
-          metadata
+          node_type
+          scene_id
+          metadata_json
           created_at
           updated_at
         }
@@ -323,7 +328,7 @@ export async function getAllProjectNodes(projectId: string): Promise<JsonRecord[
             { level: asc }
             { parent_id: asc_nulls_first }
             { order_index: asc }
-            { node_number: asc }
+
           ]
         ) {
           id
@@ -331,12 +336,12 @@ export async function getAllProjectNodes(projectId: string): Promise<JsonRecord[
           template_id
           level
           parent_id
-          node_number
           title
-          description
-          color
+          summary
           order_index
-          metadata
+          node_type
+          scene_id
+          metadata_json
           created_at
           updated_at
         }

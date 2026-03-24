@@ -24,7 +24,17 @@ export function getAppwriteClient(): Client {
     );
   }
 
-  _client = new Client().setEndpoint(cfg.endpoint).setProject(cfg.projectId);
+  const endpoint =
+    typeof cfg.endpoint === "string" ? cfg.endpoint.trim() : "";
+  const projectId =
+    typeof cfg.projectId === "string" ? cfg.projectId.trim() : "";
+  if (!endpoint || !projectId) {
+    throw new Error(
+      "Appwrite endpoint or project ID is empty after trim — check .env.local and restart Vite (rm -rf node_modules/.vite if needed)."
+    );
+  }
+
+  _client = new Client().setEndpoint(endpoint).setProject(projectId);
   return _client;
 }
 

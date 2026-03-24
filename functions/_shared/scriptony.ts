@@ -7,22 +7,28 @@
 import { requestGraphql } from "./graphql-compat";
 
 export function normalizeProjectInput(body: Record<string, any>): Record<string, any> {
+  // Only include attributes that exist in the Appwrite projects schema.
+  // Appwrite auto-provides $id, $createdAt, $updatedAt — never send those.
   const project = {
+    organization_id: body.organization_id ?? body.organizationId ?? undefined,
+    user_id: body.user_id ?? body.userId ?? undefined,
     title: body.title,
-    logline: body.logline ?? body.description ?? null,
+    logline: body.logline ?? null,
+    description: body.description ?? null,
     genre: body.genre ?? null,
     type: body.type || "film",
+    format: body.format ?? null,
     duration: body.duration ?? null,
+    status: body.status ?? null,
+    slug: body.slug ?? null,
     world_id: body.world_id ?? body.worldId ?? body.linked_world_id ?? body.linkedWorldId ?? null,
     cover_image_url: body.cover_image_url ?? body.coverImage ?? body.coverImageUrl ?? null,
+    is_deleted: body.is_deleted ?? body.isDeleted ?? undefined,
     narrative_structure: body.narrative_structure ?? body.narrativeStructure ?? null,
     beat_template: body.beat_template ?? body.beatTemplate ?? null,
     episode_layout: body.episode_layout ?? body.episodeLayout ?? null,
     season_engine: body.season_engine ?? body.seasonEngine ?? null,
     template_id: body.template_id ?? body.templateId ?? null,
-    time_lock: body.time_lock ?? body.timeLock ?? null,
-    max_duration_seconds: body.max_duration_seconds ?? body.maxDurationSeconds ?? null,
-    reading_speed_wpm: body.reading_speed_wpm ?? body.readingSpeedWpm ?? null,
   };
 
   return Object.fromEntries(

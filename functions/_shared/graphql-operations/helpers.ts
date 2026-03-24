@@ -19,7 +19,7 @@ export function queriesForUserProjects(organizationId: string, userId: string): 
       ]),
       Query.or([Query.equal("is_deleted", false), Query.isNull("is_deleted")]),
     ]),
-    Query.orderDesc("created_at"),
+    Query.orderDesc("$createdAt"),
   ];
 }
 

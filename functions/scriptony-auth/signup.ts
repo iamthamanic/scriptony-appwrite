@@ -1,18 +1,14 @@
 /**
- * Legacy-compatible signup HTTP route (Appwrite-backed data layer).
+ * Legacy signup HTTP route stub.
  *
- * The SPA typically signs up via the Appwrite Web SDK; this route remains for
- * older clients that POST to `/signup`.
+ * Appwrite handles signup via its own Account API / Web SDK.
+ * This route exists only so the auth router doesn't 404 on /signup —
+ * it returns a helpful message directing callers to the SDK.
  */
 
-import { ensureUserBootstrap, getUserFromToken } from "../_shared/auth";
-import { getAuthBaseUrl } from "../_shared/env";
 import {
-  readJsonBody,
-  sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
 } from "../_shared/http";
@@ -23,58 +19,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return;
   }
 
-  try {
-    const body = await readJsonBody<{ email?: string; password?: string; name?: string }>(req);
-    if (!body.email || !body.password) {
-      sendBadRequest(res, "Email and password are required");
-      return;
-    }
-
-    const signupResponse = await fetch(`${getAuthBaseUrl()}/signup/email-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: body.email,
-        password: body.password,
-        options: {
-          displayName: body.name || body.email.split("@")[0],
-          allowedRoles: ["user"],
-          defaultRole: "user",
-          metadata: {
-            name: body.name || body.email.split("@")[0],
-            role: "user",
-          },
-        },
-      }),
-    });
-
-    const signupPayload = await signupResponse.json().catch(() => ({}));
-    if (!signupResponse.ok) {
-      sendJson(res, signupResponse.status, {
-        error:
-          signupPayload.message ||
-          signupPayload.error ||
-          "Signup failed",
-      });
-      return;
-    }
-
-    const accessToken = signupPayload.session?.accessToken;
-    if (accessToken) {
-      const user = await getUserFromToken(accessToken);
-      if (user) {
-        await ensureUserBootstrap(user);
-      }
-    }
-
-    sendJson(res, 200, {
-      success: true,
-      message: "User created successfully",
-      session: signupPayload.session || null,
-    });
-  } catch (error) {
-    sendServerError(res, error);
-  }
+  sendJson(res, 501, {
+    error: "Signup is handled by the Appwrite SDK. Use the client-side Account.create() flow.",
+  });
 }

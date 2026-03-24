@@ -3,6 +3,8 @@
  *
  * Reads `process.env` only here and in thin wrappers — keeps handlers free of duplicated
  * `process.env` access (DRY). Values like `APPWRITE_API_KEY` must never be imported from frontend code.
+ * Endpoint: prefer `APPWRITE_FUNCTION_ENDPOINT` (injected by Appwrite for in-cluster calls) over
+ * `APPWRITE_ENDPOINT` (often a public URL that function containers cannot reach).
  *
  * Location: functions/_shared/env.ts
  */
@@ -25,15 +27,19 @@ export function getRequiredEnv(name: string): string {
 }
 
 export function getAppwriteEndpoint(): string {
+  const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
+  if (functionEndpoint) {
+    return trimTrailingSlash(functionEndpoint);
+  }
   return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
 }
 
 export function getAppwriteProjectId(): string {
-  return getRequiredEnv("APPWRITE_PROJECT_ID");
+  return getOptionalEnv("APPWRITE_PROJECT_ID") || getRequiredEnv("APPWRITE_FUNCTION_PROJECT_ID");
 }
 
 export function getAppwriteApiKey(): string {
-  return getRequiredEnv("APPWRITE_API_KEY");
+  return getOptionalEnv("APPWRITE_API_KEY") || getRequiredEnv("APPWRITE_FUNCTION_API_KEY");
 }
 
 export function getAppwriteDatabaseId(): string {
