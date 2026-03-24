@@ -47,6 +47,17 @@ function bufferToUint8Array(value: Buffer | Uint8Array | ArrayBuffer): Uint8Arra
   return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 }
 
+/** Create a File-like duck-typed object that works in Node 16+ (no global File). */
+function makeFileLike(data: Uint8Array | ArrayBuffer, name: string, type: string): File {
+  const buf = data instanceof Uint8Array ? data : new Uint8Array(data);
+  return {
+    name,
+    type,
+    size: buf.byteLength,
+    arrayBuffer: () => Promise.resolve(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)),
+  } as unknown as File;
+}
+
 function normalizeIncomingFile(candidate: any, fallbackName = "upload.bin"): File | null {
   if (!candidate) {
     return null;
@@ -57,7 +68,7 @@ function normalizeIncomingFile(candidate: any, fallbackName = "upload.bin"): Fil
   }
 
   if (typeof Blob !== "undefined" && candidate instanceof Blob) {
-    return new File([candidate], fallbackName, { type: candidate.type || "application/octet-stream" });
+    return makeFileLike(new Uint8Array(0), fallbackName, candidate.type || "application/octet-stream");
   }
 
   const name =
@@ -72,11 +83,11 @@ function normalizeIncomingFile(candidate: any, fallbackName = "upload.bin"): Fil
     "application/octet-stream";
 
   if (candidate.buffer) {
-    return new File([bufferToUint8Array(candidate.buffer)], name, { type });
+    return makeFileLike(bufferToUint8Array(candidate.buffer), name, type);
   }
 
   if (candidate.data) {
-    return new File([bufferToUint8Array(candidate.data)], name, { type });
+    return makeFileLike(bufferToUint8Array(candidate.data), name, type);
   }
 
   if (typeof candidate.arrayBuffer === "function") {
@@ -100,12 +111,18 @@ export function getMultipartField(req: RequestLike, field: string): string | nul
 
 export function extractUploadedFile(req: RequestLike, field = "file"): File | null {
   // Base64 JSON upload: { fileBase64, fileName, mimeType }
+  // Note: Node 16 has no global File — use a duck-typed object instead.
   const b64 = req.body?.fileBase64;
   if (typeof b64 === "string" && b64.length > 0) {
     const buf = Buffer.from(b64, "base64");
     const name = req.body?.fileName || `${field}.bin`;
     const type = req.body?.mimeType || "application/octet-stream";
-    return new File([buf], name, { type });
+    return {
+      name,
+      type,
+      size: buf.byteLength,
+      arrayBuffer: () => Promise.resolve(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)),
+    } as unknown as File;
   }
 
   const bodyFile = normalizeIncomingFile(req.body?.[field], `${field}.bin`);
