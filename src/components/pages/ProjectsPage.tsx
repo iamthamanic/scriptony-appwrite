@@ -34,11 +34,11 @@ import { toast } from "sonner@2.0.3";
 import { deleteCharacter as deleteCharacterApi, getCharacters, createCharacter as createCharacterApi, updateCharacter as updateCharacterApi } from "../../lib/api/characters-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import {
-  uploadProjectImage,
   validateImageFile,
   needsGifUserConfirmation,
   type ImageUploadGifMode,
 } from "../../lib/api/image-upload-api";
+import { startBackgroundUpload } from "../../lib/background-upload";
 import { STORAGE_CONFIG } from "../../lib/config";
 import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
 import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
@@ -67,6 +67,17 @@ const getProjectTypeInfo = (type: string) => {
   };
   return typeMap[type] || { label: type.charAt(0).toUpperCase() + type.slice(1), Icon: Film };
 };
+
+/** Card title for project info blocks: Lucide icon matches project type (film / series / book / audio). */
+function ProjectInfoSectionTitle({ projectType }: { projectType: string }) {
+  const { Icon } = getProjectTypeInfo(projectType);
+  return (
+    <CardTitle className="text-base flex items-center gap-2">
+      <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+      Projekt-Informationen
+    </CardTitle>
+  );
+}
 
 export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProps) {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
@@ -100,7 +111,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const [newProjectCoverFile, setNewProjectCoverFile] = useState<File | undefined>();
   const newProjectCoverGifModeRef = useRef<ImageUploadGifMode | undefined>(undefined);
   const [gifPendingNewProjectCover, setGifPendingNewProjectCover] = useState<File | null>(null);
-  const [newProjectCoverUploading, setNewProjectCoverUploading] = useState(false);
+  // Cover upload runs in background — no local loading state
   const newProjectCoverInputRef = useRef<HTMLInputElement>(null);
   const newProjectScriptImportInputRef = useRef<HTMLInputElement>(null);
   const [newProjectScriptImportFile, setNewProjectScriptImportFile] = useState<File | null>(null);
@@ -544,37 +555,21 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         reading_speed_wpm: newProjectType === 'book' ? (newProjectReadingSpeed ? parseInt(newProjectReadingSpeed) : 230) : undefined,
       });
 
-      // Upload cover image AFTER project creation
-      let finalImageUrl: string | undefined = undefined;
+      // Upload cover image in background AFTER project creation
       if (newProjectCoverFile) {
-        setNewProjectCoverUploading(true);
-        try {
-          toast.loading('Bild wird hochgeladen...');
-          finalImageUrl = await uploadProjectImage(project.id, newProjectCoverFile, {
-            gifMode: newProjectCoverGifModeRef.current,
-          });
-          toast.dismiss();
-          
-          // Update project with image URL in state
-          project.coverImageUrl = finalImageUrl;
-        } catch (uploadError) {
-          console.error('Error uploading project image:', uploadError);
-          toast.dismiss();
-          toast.error('Bild konnte nicht hochgeladen werden');
-        } finally {
-          setNewProjectCoverUploading(false);
-        }
+        const coverFile = newProjectCoverFile;
+        const gifMode = newProjectCoverGifModeRef.current;
+        startBackgroundUpload({
+          file: coverFile,
+          target: { kind: 'project-cover', projectId: project.id },
+          prepOptions: gifMode ? { gifMode } : undefined,
+          onSuccess: (imageUrl) => {
+            setProjectCoverImages(prev => ({ ...prev, [project.id]: imageUrl }));
+          },
+        });
       }
 
       setProjects([...projects, project]);
-      
-      // Store cover image URL in state if provided
-      if (finalImageUrl) {
-        setProjectCoverImages(prev => ({
-          ...prev,
-          [project.id]: finalImageUrl
-        }));
-      }
 
       const scriptFileToImport = newProjectScriptImportFile;
       if (scriptFileToImport) {
@@ -1586,9 +1581,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             <div className="space-y-2">
               <Label>Cover Image (Optional)</Label>
               <div 
-                onClick={() => !newProjectCoverUploading && newProjectCoverInputRef.current?.click()}
+                onClick={() => newProjectCoverInputRef.current?.click()}
                 className={`w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors relative overflow-hidden ${
-                  newProjectCoverUploading ? "cursor-wait" : "cursor-pointer"
+                  "cursor-pointer"
                 }`}
               >
                 {newProjectCoverImage ? (
@@ -1616,10 +1611,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                         Entfernen
                       </Button>
                     </div>
-                    <ImageUploadWaveOverlay
-                      visible={newProjectCoverUploading}
-                      label="Cover wird hochgeladen…"
-                    />
+                    {/* Upload overlay removed — uploads run in background with toast notifications */}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center">
@@ -2999,30 +2991,24 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictSceneData, setConflictSceneData] = useState<any>(null);
   const [gifCoverPending, setGifCoverPending] = useState<File | null>(null);
-  const [coverImageUploading, setCoverImageUploading] = useState(false);
+  // Upload runs in background via startBackgroundUpload — no local loading state needed
 
   const handleCoverClick = () => {
     fileInputRef.current?.click();
   };
 
-  const uploadProjectCoverFile = async (file: File, gifMode?: ImageUploadGifMode) => {
-    setCoverImageUploading(true);
-    toast.loading("Bild wird hochgeladen…");
-    try {
-      const imageUrl = await uploadProjectImage(project.id, file, { gifMode });
-      onCoverImageChange(imageUrl);
-      toast.dismiss();
-      toast.success("Bild erfolgreich hochgeladen!");
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      toast.dismiss();
-      toast.error(error instanceof Error ? error.message : "Fehler beim Hochladen");
-    } finally {
-      setCoverImageUploading(false);
-    }
+  const uploadProjectCoverFile = (file: File, gifMode?: ImageUploadGifMode) => {
+    startBackgroundUpload({
+      file,
+      target: { kind: 'project-cover', projectId: project.id },
+      prepOptions: gifMode ? { gifMode } : undefined,
+      onSuccess: (imageUrl) => {
+        onCoverImageChange(imageUrl);
+      },
+    });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (e.target) e.target.value = "";
     if (!file) return;
@@ -3039,7 +3025,7 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
       return;
     }
 
-    await uploadProjectCoverFile(file, undefined);
+    uploadProjectCoverFile(file, undefined);
   };
 
   const moveScene = (dragIndex: number, hoverIndex: number) => {
@@ -3583,9 +3569,9 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
         <div className="pt-16 pb-4 flex justify-center bg-gradient-to-b from-primary/5 to-transparent">
           <div className="relative group">
             <div 
-              onClick={() => !coverImageUploading && handleCoverClick()}
+              onClick={() => handleCoverClick()}
               className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
-                coverImageUploading ? "cursor-wait" : "cursor-pointer"
+                "cursor-pointer"
               }`}
               style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
             >
@@ -3607,7 +3593,7 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                   <Camera className="size-6 text-primary" />
                 </div>
               </div>
-              <ImageUploadWaveOverlay visible={coverImageUploading} label="Cover wird hochgeladen…" />
+              {/* Upload overlay removed — uploads run in background with toast notifications */}
             </div>
           </div>
         </div>
@@ -3618,10 +3604,9 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
             <CollapsibleTrigger asChild>
               <Card className="mb-4 cursor-pointer hover:bg-muted/30 transition-colors">
                 <CardHeader className="p-4 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Film className="size-4 text-primary" />
-                    <CardTitle className="text-base">Projekt-Informationen</CardTitle>
-                  </div>
+                  <ProjectInfoSectionTitle
+                    projectType={isEditingInfo ? editedType : project.type}
+                  />
                   <ChevronDown className="size-4 text-muted-foreground transition-transform" />
                 </CardHeader>
               </Card>
@@ -3630,7 +3615,9 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
             <CollapsibleContent>
               <Card className="mb-4">
           <CardHeader className="p-4 flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Projekt-Informationen</CardTitle>
+            <ProjectInfoSectionTitle
+              projectType={isEditingInfo ? editedType : project.type}
+            />
             
             {/* SAVE BUTTON + 3-PUNKTE-MENÜ */}
             <div className="flex items-center gap-2">
@@ -4064,7 +4051,9 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
           <div className="flex-1">
             <Card className="h-[360px] flex flex-col">
               <CardHeader className="p-4 flex flex-row items-center justify-between shrink-0">
-                <CardTitle className="text-base">{project.type === 'book' ? '📚' : '📽️'} Projekt-Informationen</CardTitle>
+                <ProjectInfoSectionTitle
+                  projectType={isEditingInfo ? editedType : project.type}
+                />
                 
                 {/* SAVE BUTTON + 3-PUNKTE-MENÜ */}
                 <div className="flex items-center gap-2">
@@ -4513,9 +4502,9 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
           <div className="shrink-0">
             <div className="relative group">
               <div 
-                onClick={() => !coverImageUploading && handleCoverClick()}
+                onClick={() => handleCoverClick()}
                 className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
-                  coverImageUploading ? "cursor-wait" : "cursor-pointer"
+                  "cursor-pointer"
                 }`}
                 style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
               >
@@ -4536,7 +4525,7 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                     <Camera className="size-6 text-primary" />
                   </div>
                 </div>
-                <ImageUploadWaveOverlay visible={coverImageUploading} label="Cover wird hochgeladen…" />
+                {/* Upload overlay removed — uploads run in background with toast notifications */}
               </div>
             </div>
           </div>
