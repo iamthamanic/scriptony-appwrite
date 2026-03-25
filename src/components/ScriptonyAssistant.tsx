@@ -992,7 +992,7 @@ export function ScriptonyAssistant() {
     setChatTitle(`Scriptony Assistant Chat - ${now.toLocaleDateString("de-DE")} - ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`);
     setMessages([]);
     setCurrentConversationId(null);
-    setContextTokens({ used: 0, max: 200000 });
+    tokenCounter.reset();
     setIsChatHistoryOpen(false);
     
     // Reload chat history to include the old chat
@@ -1165,18 +1165,37 @@ export function ScriptonyAssistant() {
     <>
       {/* Floating Button */}
       <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95"
-        aria-label="Scriptony Assistant öffnen"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="fixed bottom-20 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95"
+        style={{ zIndex: 60 }}
+        aria-label={isOpen ? "Scriptony Assistant schließen" : "Scriptony Assistant öffnen"}
+        aria-expanded={isOpen}
       >
-        <MessageCircle className="h-6 w-6 text-primary-foreground" />
+        {isOpen ? (
+          <X className="h-6 w-6 text-primary-foreground" />
+        ) : (
+          <MessageCircle className="h-6 w-6 text-primary-foreground" />
+        )}
       </button>
 
-      {/* Chat Sheet */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent 
-          side="bottom" 
-          className="h-[670px] max-w-[376px] mx-auto p-0 flex flex-col bg-[#F8F8F8] dark:bg-background rounded-t-3xl border-0 [&>button]:hidden"
+      {/* Floating Chat Panel */}
+      <Sheet open={isOpen} onOpenChange={setIsOpen} modal={false}>
+        <SheetContent
+          hideOverlay
+          side="bottom"
+          onInteractOutside={(event) => event.preventDefault()}
+          className="p-0 flex flex-col overflow-hidden border bg-[#F8F8F8] shadow-2xl dark:bg-background [&>button]:hidden"
+          style={{
+            left: "auto",
+            right: "1rem",
+            bottom: "9rem",
+            width: "calc(100vw - 2rem)",
+            maxWidth: "376px",
+            height: "670px",
+            maxHeight: "calc(100vh - 11rem)",
+            borderRadius: "1.5rem",
+            zIndex: 55,
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Scriptony Assistant</SheetTitle>
