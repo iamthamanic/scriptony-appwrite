@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { motion, AnimatePresence } from "motion/react";
@@ -51,6 +51,161 @@ import * as BeatsAPI from "../../lib/api/beats-api";
 import { BEAT_TEMPLATES } from "../../lib/beat-templates";
 import type { TimelineData } from "../FilmDropdown";
 import { importScriptFileToProject, SCRIPT_IMPORT_ACCEPT } from "../../lib/script-import";
+import { cn } from "../ui/utils";
+import {
+  createDefaultConceptBlocks,
+  normalizeConceptBlocks,
+  type ConceptBlock,
+} from "../../lib/concept-blocks";
+
+/** Preset genres for new/edit project picker; custom labels are stored in the same comma-separated `genre` field. */
+export const PROJECT_PRESET_GENRES = [
+  "Action",
+  "Abenteuer",
+  "Komödie",
+  "Drama",
+  "Fantasy",
+  "Horror",
+  "Mystery",
+  "Romantik",
+  "Science Fiction",
+  "Slice of Life",
+  "Übernatürlich",
+  "Thriller",
+] as const;
+
+const PROJECT_PRESET_GENRE_SET = new Set<string>(PROJECT_PRESET_GENRES as unknown as string[]);
+
+function parseProjectGenreField(genre: string | undefined): string[] {
+  if (!genre?.trim()) return [];
+  return genre.split(", ").map((s) => s.trim()).filter(Boolean);
+}
+
+function customGenresFromSelection(genres: string[]): string[] {
+  return [...new Set(genres.filter((g) => !PROJECT_PRESET_GENRE_SET.has(g)))];
+}
+
+function getProjectLastEditedAt(project: any): string | null {
+  return (
+    project?.last_edited ||
+    project?.updated_at ||
+    project?.updatedAt ||
+    project?.modified_at ||
+    project?.modifiedAt ||
+    project?.created_at ||
+    project?.createdAt ||
+    null
+  );
+}
+
+type GenrePillGridProps = {
+  selected: string[];
+  onSelectedChange: React.Dispatch<React.SetStateAction<string[]>>;
+  customPool: string[];
+  onCustomPoolChange: React.Dispatch<React.SetStateAction<string[]>>;
+  compact?: boolean;
+};
+
+/**
+ * Preset genre pills + optional custom genres (same button style). "+" opens popover to add a label.
+ * Location: used on ProjectsPage (new project + project detail edit).
+ */
+function GenrePillGrid({
+  selected,
+  onSelectedChange,
+  customPool,
+  onCustomPoolChange,
+  compact,
+}: GenrePillGridProps) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputId = useId();
+
+  const displayGenres = useMemo(() => {
+    const extras = customPool.filter((g) => !PROJECT_PRESET_GENRE_SET.has(g));
+    return [...PROJECT_PRESET_GENRES, ...extras];
+  }, [customPool]);
+
+  const toggle = (genre: string) => {
+    onSelectedChange((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    );
+  };
+
+  const addCustom = () => {
+    const name = draft.trim();
+    if (!name) return;
+    const lower = name.toLowerCase();
+    const exists = displayGenres.some((g) => g.toLowerCase() === lower);
+    if (exists) {
+      toast.error("Dieses Genre gibt es schon.");
+      return;
+    }
+    onCustomPoolChange((prev) => [...prev, name]);
+    onSelectedChange((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setDraft("");
+    setAddOpen(false);
+  };
+
+  const pillBase = compact
+    ? "px-3 py-1.5 rounded-lg border transition-all text-sm"
+    : "px-4 py-2 rounded-lg border transition-all text-sm";
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {displayGenres.map((genre) => (
+        <button
+          key={genre}
+          type="button"
+          onClick={() => toggle(genre)}
+          className={cn(
+            pillBase,
+            selected.includes(genre)
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-background border-border hover:border-primary/50"
+          )}
+        >
+          {genre}
+        </button>
+      ))}
+      <Popover open={addOpen} onOpenChange={setAddOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              pillBase,
+              "border-dashed bg-background border-border hover:border-primary/50 inline-flex items-center justify-center min-w-[2.5rem]"
+            )}
+            aria-label="Eigenes Genre hinzufügen"
+          >
+            <Plus className="size-4 shrink-0" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-3" align="start">
+          <div className="space-y-2">
+            <Label htmlFor={inputId}>Eigenes Genre</Label>
+            <Input
+              id={inputId}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="z. B. Cyberpunk"
+              className="h-9"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustom();
+                }
+              }}
+            />
+            <Button type="button" size="sm" className="w-full" onClick={addCustom}>
+              Hinzufügen
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 interface ProjectsPageProps {
   selectedProjectId?: string;
@@ -58,14 +213,29 @@ interface ProjectsPageProps {
 }
 
 // Helper function to get project type display info
-const getProjectTypeInfo = (type: string) => {
+const getProjectTypeInfo = (rawType: string) => {
+  const normalized = (rawType || "").toLowerCase().trim();
+  const aliases: Record<string, string> = {
+    movie: "film",
+    kino: "film",
+    serie: "series",
+    serial: "series",
+    buch: "book",
+    roman: "book",
+    hoerspiel: "audio",
+    hörspiel: "audio",
+    audio_book: "audio",
+    audiobook: "audio",
+  };
+  const key = aliases[normalized] || normalized;
+
   const typeMap: Record<string, { label: string; Icon: any }> = {
     film: { label: "Film", Icon: Film },
     series: { label: "Serie", Icon: Tv },
     book: { label: "Buch", Icon: Book },
     audio: { label: "Hörspiel", Icon: Headphones },
   };
-  return typeMap[type] || { label: type.charAt(0).toUpperCase() + type.slice(1), Icon: Film };
+  return typeMap[key] || { label: rawType?.charAt(0).toUpperCase() + rawType?.slice(1), Icon: Film };
 };
 
 /** Card title for project info blocks: Lucide icon matches project type (film / series / book / audio). */
@@ -83,6 +253,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [selectedProject, setSelectedProject] = useState(selectedProjectId);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [newProjectCustomGenres, setNewProjectCustomGenres] = useState<string[]>([]);
   const [projectInspirationNotes, setProjectInspirationNotes] = useState<string[]>([""]); // Renamed to avoid conflict
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
@@ -542,6 +713,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         genre: selectedGenres.join(", "),
         duration: newProjectDuration,
         linkedWorldId: newProjectLinkedWorld,
+        concept_blocks: createDefaultConceptBlocks(),
         inspirations: projectInspirationNotes,
         // Series: episode_layout + season_engine
         episode_layout: newProjectType === 'series' ? (episodeLayoutValue || undefined) : undefined,
@@ -600,6 +772,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       setNewProjectCoverFile(undefined);
       newProjectCoverGifModeRef.current = undefined;
       setSelectedGenres([]);
+      setNewProjectCustomGenres([]);
       setInspirations([""]);
       setNewProjectNarrativeStructure("");
       setNewProjectBeatTemplate("");
@@ -697,6 +870,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         genre: originalProject.genre,
         duration: originalProject.duration,
         linkedWorldId: originalProject.linkedWorldId,
+        concept_blocks: normalizeConceptBlocks(originalProject.concept_blocks),
         coverImage: projectCoverImages[projectId],
       });
 
@@ -736,7 +910,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     return (
       <ProjectDetail 
         project={currentProject} 
+        worlds={worlds}
         onBack={() => onNavigate("projekte")}
+        onOpenWorldbuilding={() => onNavigate("worldbuilding")}
         coverImage={projectCoverImages[currentProject.id]}
         onCoverImageChange={async (imageUrl) => {
           // Update local state immediately (optimistic UI)
@@ -1044,14 +1220,6 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                         className="active:scale-[0.99] transition-transform cursor-pointer overflow-hidden hover:border-primary/30 relative"
                         onClick={() => onNavigate("projekte", project.id)}
                       >
-                        {/* "Zuletzt bearbeitet" Badge - ONLY first item - TOP RIGHT */}
-                        {index === 0 && (
-                          <Badge variant="default" className="absolute top-2 right-2 z-10 text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
-                            <Clock className="size-2" />
-                            Zuletzt bearbeitet
-                          </Badge>
-                        )}
-                        
                         <div className="flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-primary/20 border-2 border-transparent hover:border-primary/30">
                           {/* Thumbnail Left - Portrait 2:3 Ratio */}
                           <div 
@@ -1076,6 +1244,13 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                               <h3 className="font-semibold text-sm leading-snug line-clamp-1">
                                 {project.title}
                               </h3>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {index === 0 && (
+                                  <Badge variant="default" className="text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
+                                    <Clock className="size-2" />
+                                    Zuletzt
+                                  </Badge>
+                                )}
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -1119,13 +1294,12 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              </div>
                             </div>
                             
-                            {project.logline && (
-                              <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                                {project.logline}
-                              </p>
-                            )}
+                            <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                              {project.logline?.trim() || "Keine Logline"}
+                            </p>
 
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge variant="secondary" className="text-[10px] h-5 px-1.5 flex items-center gap-1">
@@ -1139,25 +1313,47 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                                   );
                                 })()}
                               </Badge>
-                              <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                {project.genre}
-                              </Badge>
-                              {project.last_edited && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              {parseProjectGenreField(project.genre).length > 0 ? (
+                                parseProjectGenreField(project.genre).slice(0, 2).map((genre) => (
+                                  <Badge key={`${project.id}-${genre}`} variant="outline" className="text-[10px] h-5 px-1.5">
+                                    {genre}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground">
+                                  Kein Genre
+                                </Badge>
+                              )}
+                              {parseProjectGenreField(project.genre).length > 2 && (
+                                <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                  +{parseProjectGenreField(project.genre).length - 2}
+                                </Badge>
+                              )}
+
+                            </div>
+                            {(() => {
+                              const lastEditedAt = getProjectLastEditedAt(project);
+                              if (!lastEditedAt) return null;
+                              const d = new Date(lastEditedAt);
+                              if (Number.isNaN(d.getTime())) return null;
+                              return (
+                                <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                                   <CalendarIcon className="size-3" />
                                   <span>
-                                    Zuletzt: {new Date(project.last_edited).toLocaleDateString("de-DE", { 
-                                      day: "2-digit", 
+                                    {d.toLocaleDateString("de-DE", {
+                                      day: "2-digit",
                                       month: "2-digit",
-                                      year: "numeric"
-                                    })}, {new Date(project.last_edited).toLocaleTimeString("de-DE", { 
-                                      hour: "2-digit", 
-                                      minute: "2-digit" 
+                                      year: "numeric",
+                                    })} - {d.toLocaleTimeString("de-DE", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      second: "2-digit",
+                                      hour12: false,
                                     })}
                                   </span>
                                 </div>
-                              )}
-                            </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </Card>
@@ -1454,28 +1650,15 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             {/* Genres */}
             <div className="space-y-2">
               <Label>Genres</Label>
-              <div className="flex flex-wrap gap-2">
-                {["Action", "Abenteuer", "Komödie", "Drama", "Fantasy", "Horror", "Mystery", "Romantik", "Science Fiction", "Slice of Life", "Übernatürlich", "Thriller"].map((genre) => (
-                  <button
-                    key={genre}
-                    onClick={() => {
-                      setSelectedGenres((prev) =>
-                        prev.includes(genre)
-                          ? prev.filter((g) => g !== genre)
-                          : [...prev, genre]
-                      );
-                    }}
-                    className={`px-4 py-2 rounded-lg border transition-all text-sm ${
-                      selectedGenres.includes(genre)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {genre}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">Please select at least one genre</p>
+              <GenrePillGrid
+                selected={selectedGenres}
+                onSelectedChange={setSelectedGenres}
+                customPool={newProjectCustomGenres}
+                onCustomPoolChange={setNewProjectCustomGenres}
+              />
+              <p className="text-xs text-muted-foreground">
+                Mindestens ein Genre wählen; mit + eigene Bezeichnungen ergänzen.
+              </p>
             </div>
 
             {/* Duration / Target Pages - Type-dependent */}
@@ -2810,7 +2993,9 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
 
 interface ProjectDetailProps {
   project: any;
+  worlds: any[];
   onBack: () => void;
+  onOpenWorldbuilding: () => void;
   coverImage?: string;
   onCoverImageChange: (imageUrl: string) => void;
   worldbuildingItems: Array<{ id: string; name: string; category: string; categoryType: string }>;
@@ -2848,7 +3033,7 @@ interface ProjectDetailProps {
   onEditInspiration: (inspiration: ProjectInspiration) => void;
 }
 
-function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, timelineCache, timelineCacheLoading, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration }: ProjectDetailProps) {
+function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, timelineCache, timelineCacheLoading, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration }: ProjectDetailProps) {
   const [structureView, setStructureView] = useState<"dropdown" | "timeline">("dropdown");
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
@@ -2857,12 +3042,22 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
   const [editedLogline, setEditedLogline] = useState(project.logline || "");
   const [editedType, setEditedType] = useState(project.type || "");
   const [editedGenre, setEditedGenre] = useState(project.genre || "");
+  const [editedLinkedWorldId, setEditedLinkedWorldId] = useState<string>(project.linkedWorldId || "none");
   const [editedDuration, setEditedDuration] = useState(project.duration || "");
   const [editedNarrativeStructure, setEditedNarrativeStructure] = useState(project.narrative_structure || "");
   const [editedBeatTemplate, setEditedBeatTemplate] = useState(project.beat_template || "");
-  const [editedGenresMulti, setEditedGenresMulti] = useState<string[]>(project.genre ? project.genre.split(", ") : []);
+  const [editedGenresMulti, setEditedGenresMulti] = useState<string[]>(() =>
+    parseProjectGenreField(project.genre)
+  );
+  const [editedCustomGenrePool, setEditedCustomGenrePool] = useState<string[]>(() =>
+    customGenresFromSelection(parseProjectGenreField(project.genre))
+  );
   const [editedEpisodeLayout, setEditedEpisodeLayout] = useState(project.episode_layout || "");
   const [editedSeasonEngine, setEditedSeasonEngine] = useState(project.season_engine || "");
+  const [conceptOpen, setConceptOpen] = useState(true);
+  const [editedConceptBlocks, setEditedConceptBlocks] = useState<ConceptBlock[]>(
+    () => normalizeConceptBlocks(project.concept_blocks)
+  );
   // 📖 NEW: Book Metrics States (Edit Mode)
   const [editedTargetPages, setEditedTargetPages] = useState<string>(project.target_pages?.toString() || "");
   const [editedWordsPerPage, setEditedWordsPerPage] = useState<string>(project.words_per_page?.toString() || "250");
@@ -2889,16 +3084,20 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
     setEditedLogline(project.logline || "");
     setEditedType(project.type || "");
     setEditedGenre(project.genre || "");
+    setEditedLinkedWorldId(project.linkedWorldId || "none");
     setEditedDuration(project.duration || "");
     setEditedNarrativeStructure(project.narrative_structure || "");
     setEditedBeatTemplate(project.beat_template || "");
-    setEditedGenresMulti(project.genre ? project.genre.split(", ") : []);
+    const parsedGenres = parseProjectGenreField(project.genre);
+    setEditedGenresMulti(parsedGenres);
+    setEditedCustomGenrePool(customGenresFromSelection(parsedGenres));
     setEditedEpisodeLayout(project.episode_layout || "");
     setEditedSeasonEngine(project.season_engine || "");
+    setEditedConceptBlocks(normalizeConceptBlocks(project.concept_blocks));
     setEditedTargetPages(project.target_pages?.toString() || "");
     setEditedWordsPerPage(project.words_per_page?.toString() || "250");
     setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
-  }, [project.id, project.title, project.logline, project.type, project.genre, project.duration, project.narrative_structure, project.beat_template, project.episode_layout, project.season_engine, project.target_pages, project.words_per_page, project.reading_speed_wpm]);
+  }, [project.id, project.title, project.logline, project.type, project.genre, project.linkedWorldId, project.duration, project.narrative_structure, project.beat_template, project.episode_layout, project.season_engine, project.target_pages, project.words_per_page, project.reading_speed_wpm, project.concept_blocks]);
 
   // 📖 Calculate word count from timeline cache (live recalculation)
   const [calculatedWords, setCalculatedWords] = useState(project.current_words || 0);
@@ -3451,6 +3650,8 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
         type: editedType,
         genre: editedGenresMulti.join(", "), // Convert array to comma-separated string
         duration: editedDuration,
+        linkedWorldId: editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
+        concept_blocks: editedConceptBlocks,
         // Series: episode_layout + season_engine
         episode_layout: editedType === 'series' ? (editedEpisodeLayout || undefined) : undefined,
         season_engine: editedType === 'series' ? (editedSeasonEngine || undefined) : undefined,
@@ -3659,12 +3860,19 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                         setEditedLogline(project.logline || "");
                         setEditedType(project.type || "");
                         setEditedGenre(project.genre || "");
+                        setEditedLinkedWorldId(project.linkedWorldId || "none");
                         setEditedDuration(project.duration || "");
                         setEditedNarrativeStructure(project.narrative_structure || "");
                         setEditedBeatTemplate(project.beat_template || "");
-                        setEditedGenresMulti(project.genre ? project.genre.split(", ") : []);
+                        const pgM = parseProjectGenreField(project.genre);
+                        setEditedGenresMulti(pgM);
+                        setEditedCustomGenrePool(customGenresFromSelection(pgM));
+                        setEditedConceptBlocks(normalizeConceptBlocks(project.concept_blocks));
                         setEditedEpisodeLayout(project.episode_layout || "");
                         setEditedSeasonEngine(project.season_engine || "");
+                        setEditedTargetPages(project.target_pages?.toString() || "");
+                        setEditedWordsPerPage(project.words_per_page?.toString() || "250");
+                        setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
                       }}>
                         <X className="size-3.5 mr-2" />
                         Abbrechen
@@ -3793,33 +4001,15 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                 {/* Genres - Multi-Select Pills */}
                 <div className="col-span-3">
                   <Label className="text-sm mb-2 block font-bold">Genres</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "Action", "Abenteuer", "Komödie", "Drama", "Fantasy", 
-                      "Horror", "Mystery", "Romantik", "Science Fiction", 
-                      "Slice of Life", "Übernatürlich", "Thriller"
-                    ].map((genre) => (
-                      <button
-                        key={genre}
-                        onClick={() => {
-                          setEditedGenresMulti((prev) =>
-                            prev.includes(genre)
-                              ? prev.filter((g) => g !== genre)
-                              : [...prev, genre]
-                          );
-                        }}
-                        className={`px-3 py-1.5 rounded-lg border transition-all text-sm ${
-                          editedGenresMulti.includes(genre)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border hover:border-primary/50"
-                        }`}
-                      >
-                        {genre}
-                      </button>
-                    ))}
-                  </div>
+                  <GenrePillGrid
+                    selected={editedGenresMulti}
+                    onSelectedChange={setEditedGenresMulti}
+                    customPool={editedCustomGenrePool}
+                    onCustomPoolChange={setEditedCustomGenrePool}
+                    compact
+                  />
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    Wähle ein oder mehrere Genres
+                    Ein oder mehrere Genres; mit + eigene ergänzen.
                   </p>
                 </div>
 
@@ -3933,20 +4123,29 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                 <div>
                   <Label htmlFor="project-world" className="text-sm mb-2 block font-bold">Verknüpfte Welt</Label>
                   <div className="flex gap-2">
-                    <Select value={project.linkedWorldId || "none"}>
+                    <Select value={editedLinkedWorldId} onValueChange={setEditedLinkedWorldId}>
                       <SelectTrigger id="project-world" className="h-9 flex-1">
                         <SelectValue placeholder="Keine Welt verknüpft" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Keine Welt verknüpft</SelectItem>
+                        {worlds.map((world) => (
+                          <SelectItem key={world.id} value={world.id}>{world.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Neue Welt erstellen">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      title="Neue Welt erstellen"
+                      onClick={onOpenWorldbuilding}
+                    >
                       <Plus className="size-4" />
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    {project.linkedWorldId ? "Projekt greift auf alle Welt-Informationen zu" : "Verknüpfe eine Welt für Worldbuilding-Referenzen"}
+                    {editedLinkedWorldId !== "none" ? "Projekt greift auf alle Welt-Informationen zu" : "Verknüpfe eine Welt für Worldbuilding-Referenzen"}
                   </p>
                 </div>
               </>
@@ -4033,7 +4232,11 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
 
                 <div>
                   <p className="text-sm font-bold mb-1">Verknüpfte Welt</p>
-                  <p className="text-sm text-muted-foreground">Keine Welt verknüpft</p>
+                  <p className="text-sm text-muted-foreground">
+                    {editedLinkedWorldId !== "none"
+                      ? (worlds.find((w) => w.id === editedLinkedWorldId)?.name || "Verknüpft")
+                      : "Keine Welt verknüpft"}
+                  </p>
                 </div>
               </>
             )}
@@ -4095,10 +4298,14 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                             setEditedLogline(project.logline || "");
                             setEditedType(project.type || "");
                             setEditedGenre(project.genre || "");
+                            setEditedLinkedWorldId(project.linkedWorldId || "none");
                             setEditedDuration(project.duration || "");
                             setEditedNarrativeStructure(project.narrative_structure || "");
                             setEditedBeatTemplate(project.beat_template || "");
-                            setEditedGenresMulti(project.genre ? project.genre.split(", ") : []);
+                            const pg = parseProjectGenreField(project.genre);
+                            setEditedGenresMulti(pg);
+                            setEditedCustomGenrePool(customGenresFromSelection(pg));
+                            setEditedConceptBlocks(normalizeConceptBlocks(project.concept_blocks));
                             setEditedEpisodeLayout(project.episode_layout || "");
                             setEditedSeasonEngine(project.season_engine || "");
                             setEditedTargetPages(project.target_pages?.toString() || "");
@@ -4166,7 +4373,7 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                       />
                     </div>
                     <Separator />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
                         <Label htmlFor="project-type-desktop" className="text-xs mb-1 block">Projekt Type</Label>
                         <Select value={editedType} onValueChange={setEditedType}>
@@ -4204,25 +4411,16 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                           />
                         )}
                       </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">Genres</Label>
-                        <div className="flex flex-wrap gap-1 max-h-8 overflow-hidden">
-                          {editedGenresMulti.length > 0 ? (
-                            editedGenresMulti.slice(0, 2).map((genre) => (
-                              <Badge key={genre} variant="secondary" className="text-xs h-5 px-1.5">
-                                {genre}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">–</span>
-                          )}
-                          {editedGenresMulti.length > 2 && (
-                            <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                              +{editedGenresMulti.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs mb-1 block">Genres</Label>
+                      <GenrePillGrid
+                        selected={editedGenresMulti}
+                        onSelectedChange={setEditedGenresMulti}
+                        customPool={editedCustomGenrePool}
+                        onCustomPoolChange={setEditedCustomGenrePool}
+                        compact
+                      />
                     </div>
                     
                     {/* Book Advanced Metrics - Desktop */}
@@ -4354,6 +4552,20 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                         </SelectContent>
                       </Select>
                     </div>
+                    <div>
+                      <Label htmlFor="project-world-desktop" className="text-xs mb-1 block">Verknüpfte Welt</Label>
+                      <Select value={editedLinkedWorldId} onValueChange={setEditedLinkedWorldId}>
+                        <SelectTrigger id="project-world-desktop" className="h-8 text-sm">
+                          <SelectValue placeholder="Keine Welt verknüpft" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Keine Welt verknüpft</SelectItem>
+                          {worlds.map((world) => (
+                            <SelectItem key={world.id} value={world.id}>{world.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -4437,6 +4649,17 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                          editedBeatTemplate === 'season-lite-5' ? 'Season-Lite-5 (Macro)' :
                          editedBeatTemplate === 'custom' ? 'Custom' :
                          '–'}
+                      </div>
+                    </div>
+                    <Separator />
+
+                    {/* World Link - Desktop Read-Only */}
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Verknüpfte Welt</div>
+                      <div className="text-sm">
+                        {editedLinkedWorldId !== "none"
+                          ? (worlds.find((w) => w.id === editedLinkedWorldId)?.name || "Verknüpft")
+                          : "Keine Welt verknüpft"}
                       </div>
                     </div>
 
@@ -4592,6 +4815,70 @@ function ProjectDetail({ project, onBack, coverImage, onCoverImageChange, worldb
                   onUpdateDetails={updateCharacterDetails}
                   onDelete={deleteCharacter}
                 />
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </section>
+
+      {/* Concept Section */}
+      <section className="px-6 mb-8">
+        <Collapsible open={conceptOpen} onOpenChange={setConceptOpen}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-[#6E59A5] text-white h-8 flex items-center gap-2">
+                <Book className="w-4 h-4" />
+                Konzept ({editedConceptBlocks.length})
+              </Badge>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {conceptOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </div>
+
+          <CollapsibleContent>
+            <div className="space-y-3">
+              {editedConceptBlocks.map((block) => (
+                <Card key={block.id}>
+                  <CardHeader className="p-3 pb-2">
+                    {isEditingInfo ? (
+                      <Input
+                        value={block.title}
+                        onChange={(e) =>
+                          setEditedConceptBlocks((prev) =>
+                            prev.map((b) => (b.id === block.id ? { ...b, title: e.target.value } : b))
+                          )
+                        }
+                        className="h-8"
+                      />
+                    ) : (
+                      <CardTitle className="text-sm">{block.title}</CardTitle>
+                    )}
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    {isEditingInfo ? (
+                      <Textarea
+                        value={block.content}
+                        onChange={(e) =>
+                          setEditedConceptBlocks((prev) =>
+                            prev.map((b) => (b.id === block.id ? { ...b, content: e.target.value } : b))
+                          )
+                        }
+                        rows={4}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {block.content?.trim() || "Noch kein Inhalt"}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </CollapsibleContent>
