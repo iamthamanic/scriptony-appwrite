@@ -3,6 +3,7 @@
  */
 
 import { requestGraphql } from "../_shared/graphql-compat";
+import { getAppwriteEndpoint, getPublicAppwriteEndpoint } from "../_shared/env";
 import { sendJson, sendMethodNotAllowed, sendServerError, type RequestLike, type ResponseLike } from "../_shared/http";
 
 const HEALTH_DB_TIMEOUT_MS = 8000;
@@ -69,6 +70,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       service: "scriptony-projects",
       provider: "appwrite",
       timestamp: new Date().toISOString(),
+      _debug: {
+        internalEndpoint: getAppwriteEndpoint(),
+        publicEndpoint: getPublicAppwriteEndpoint(),
+        envAppwriteEndpoint: process.env.APPWRITE_ENDPOINT || "(not set)",
+        envFunctionEndpoint: process.env.APPWRITE_FUNCTION_ENDPOINT || "(not set)",
+      },
     });
     console.log("[projects/health] success", { elapsedMs: elapsedMs(startedAt) });
   } catch (error) {

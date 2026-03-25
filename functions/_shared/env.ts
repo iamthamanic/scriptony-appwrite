@@ -37,7 +37,8 @@ export function getAppwriteEndpoint(): string {
 
 /** Public endpoint for URLs returned to the browser (never the in-cluster hostname). */
 export function getPublicAppwriteEndpoint(): string {
-  const pub = getOptionalEnv("APPWRITE_ENDPOINT");
+  // Prefer explicit public URL, fall back to APPWRITE_ENDPOINT
+  const pub = getOptionalEnv("APPWRITE_PUBLIC_ENDPOINT") || getOptionalEnv("APPWRITE_ENDPOINT");
   if (pub) {
     return trimTrailingSlash(pub);
   }
