@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
@@ -3054,10 +3055,18 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   );
   const [editedEpisodeLayout, setEditedEpisodeLayout] = useState(project.episode_layout || "");
   const [editedSeasonEngine, setEditedSeasonEngine] = useState(project.season_engine || "");
-  const [conceptOpen, setConceptOpen] = useState(true);
   const [editedConceptBlocks, setEditedConceptBlocks] = useState<ConceptBlock[]>(
     () => normalizeConceptBlocks(project.concept_blocks)
   );
+
+  const getConceptContent = (type: ConceptBlock["type"]) =>
+    editedConceptBlocks.find((b) => b.type === type)?.content || "";
+
+  const setConceptContent = (type: ConceptBlock["type"], content: string) => {
+    setEditedConceptBlocks((prev) =>
+      prev.map((b) => (b.type === type ? { ...b, content } : b))
+    );
+  };
   // 📖 NEW: Book Metrics States (Edit Mode)
   const [editedTargetPages, setEditedTargetPages] = useState<string>(project.target_pages?.toString() || "");
   const [editedWordsPerPage, setEditedWordsPerPage] = useState<string>(project.words_per_page?.toString() || "250");
@@ -4148,6 +4157,138 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     {editedLinkedWorldId !== "none" ? "Projekt greift auf alle Welt-Informationen zu" : "Verknüpfe eine Welt für Worldbuilding-Referenzen"}
                   </p>
                 </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label htmlFor="project-premise" className="text-sm block font-bold">Prämisse</Label>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          aria-label="Hilfe: Prämisse"
+                        >
+                          <Info className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                        <div className="space-y-1">
+                          <div className="font-semibold">Was kommt hier rein?</div>
+                          <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
+                          <div className="opacity-90">
+                            Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Textarea
+                    id="project-premise"
+                    value={getConceptContent("premise")}
+                    onChange={(e) => setConceptContent("premise", e.target.value)}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label htmlFor="project-theme" className="text-sm block font-bold">Thema</Label>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          aria-label="Hilfe: Thema"
+                        >
+                          <Info className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                        <div className="space-y-1">
+                          <div className="font-semibold">Worum geht’s „eigentlich“?</div>
+                          <div>Aussage/Frage oder Spannungsfeld.</div>
+                          <div className="opacity-90">
+                            Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Textarea
+                    id="project-theme"
+                    value={getConceptContent("theme")}
+                    onChange={(e) => setConceptContent("theme", e.target.value)}
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label htmlFor="project-hook" className="text-sm block font-bold">Hook</Label>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          aria-label="Hilfe: Hook"
+                        >
+                          <Info className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                        <div className="space-y-1">
+                          <div className="font-semibold">Was ist das Einzigartige?</div>
+                          <div>Der „Warum sollte ich das schauen/lesen?“-Grund.</div>
+                          <div className="opacity-90">
+                            Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Textarea
+                    id="project-hook"
+                    value={getConceptContent("hook")}
+                    onChange={(e) => setConceptContent("hook", e.target.value)}
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label htmlFor="project-notes" className="text-sm block font-bold">Notiz</Label>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          aria-label="Hilfe: Notiz"
+                        >
+                          <Info className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                        <div className="space-y-1">
+                          <div className="font-semibold">Sammelplatz</div>
+                          <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
+                          <div className="opacity-90">
+                            Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Textarea
+                    id="project-notes"
+                    value={getConceptContent("notes")}
+                    onChange={(e) => setConceptContent("notes", e.target.value)}
+                    rows={3}
+                  />
+                </div>
               </>
             ) : (
               <>
@@ -4237,6 +4378,130 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       ? (worlds.find((w) => w.id === editedLinkedWorldId)?.name || "Verknüpft")
                       : "Keine Welt verknüpft"}
                   </p>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-bold">Prämisse</p>
+                      <Tooltip delayDuration={100}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            aria-label="Hilfe: Prämisse"
+                          >
+                            <Info className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <div className="space-y-1">
+                            <div className="font-semibold">Was kommt hier rein?</div>
+                            <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
+                            <div className="opacity-90">
+                              Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {getConceptContent("premise")?.trim() || "—"}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-sm font-bold">Thema</p>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Thema"
+                            >
+                              <Info className="size-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Worum geht’s „eigentlich“?</div>
+                              <div>Aussage/Frage oder Spannungsfeld.</div>
+                              <div className="opacity-90">
+                                Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {getConceptContent("theme")?.trim() || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-sm font-bold">Hook</p>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Hook"
+                            >
+                              <Info className="size-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Was ist das Einzigartige?</div>
+                              <div>Der „Warum sollte ich das schauen/lesen?“-Grund.</div>
+                              <div className="opacity-90">
+                                Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {getConceptContent("hook")?.trim() || "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-bold">Notiz</p>
+                      <Tooltip delayDuration={100}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            aria-label="Hilfe: Notiz"
+                          >
+                            <Info className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <div className="space-y-1">
+                            <div className="font-semibold">Sammelplatz</div>
+                            <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
+                            <div className="opacity-90">
+                              Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {getConceptContent("notes")?.trim() || "—"}
+                    </p>
+                  </div>
                 </div>
               </>
             )}
@@ -4566,6 +4831,143 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         </SelectContent>
                       </Select>
                     </div>
+                    <Separator />
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Label htmlFor="project-premise-desktop" className="text-xs block">Prämisse</Label>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Prämisse"
+                            >
+                              <Info className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Was kommt hier rein?</div>
+                              <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
+                              <div className="opacity-90">
+                                Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Textarea
+                        id="project-premise-desktop"
+                        value={getConceptContent("premise")}
+                        onChange={(e) => setConceptContent("premise", e.target.value)}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Label htmlFor="project-theme-desktop" className="text-xs block">Thema</Label>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Thema"
+                            >
+                              <Info className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Worum geht’s „eigentlich“?</div>
+                              <div>Aussage/Frage oder Spannungsfeld.</div>
+                              <div className="opacity-90">
+                                Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Textarea
+                        id="project-theme-desktop"
+                        value={getConceptContent("theme")}
+                        onChange={(e) => setConceptContent("theme", e.target.value)}
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Label htmlFor="project-hook-desktop" className="text-xs block">Hook</Label>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Hook"
+                            >
+                              <Info className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Was ist das Einzigartige?</div>
+                              <div>Der „Warum das?“-Grund in 1–2 Zeilen.</div>
+                              <div className="opacity-90">
+                                Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Textarea
+                        id="project-hook-desktop"
+                        value={getConceptContent("hook")}
+                        onChange={(e) => setConceptContent("hook", e.target.value)}
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Label htmlFor="project-notes-desktop" className="text-xs block">Notiz</Label>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Notiz"
+                            >
+                              <Info className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Sammelplatz</div>
+                              <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
+                              <div className="opacity-90">
+                                Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <Textarea
+                        id="project-notes-desktop"
+                        value={getConceptContent("notes")}
+                        onChange={(e) => setConceptContent("notes", e.target.value)}
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
                   </>
                 ) : (
                   <>
@@ -4577,6 +4979,35 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Logline</div>
                       <div className="text-sm text-muted-foreground">{editedLogline || "Keine Logline"}</div>
+                    </div>
+                    <Separator />
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Prämisse</div>
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {getConceptContent("premise")?.trim() || "—"}
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Thema</div>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {getConceptContent("theme")?.trim() || "—"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Hook</div>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {getConceptContent("hook")?.trim() || "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <Separator />
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Notiz</div>
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {getConceptContent("notes")?.trim() || "—"}
+                      </div>
                     </div>
                     <Separator />
                     <div className="grid grid-cols-3 gap-3">
@@ -4822,68 +5253,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       </section>
 
       {/* Concept Section */}
-      <section className="px-6 mb-8">
-        <Collapsible open={conceptOpen} onOpenChange={setConceptOpen}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Badge className="bg-[#6E59A5] text-white h-8 flex items-center gap-2">
-                <Book className="w-4 h-4" />
-                Konzept ({editedConceptBlocks.length})
-              </Badge>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  {conceptOpen ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </div>
-
-          <CollapsibleContent>
-            <div className="space-y-3">
-              {editedConceptBlocks.map((block) => (
-                <Card key={block.id}>
-                  <CardHeader className="p-3 pb-2">
-                    {isEditingInfo ? (
-                      <Input
-                        value={block.title}
-                        onChange={(e) =>
-                          setEditedConceptBlocks((prev) =>
-                            prev.map((b) => (b.id === block.id ? { ...b, title: e.target.value } : b))
-                          )
-                        }
-                        className="h-8"
-                      />
-                    ) : (
-                      <CardTitle className="text-sm">{block.title}</CardTitle>
-                    )}
-                  </CardHeader>
-                  <CardContent className="p-3 pt-0">
-                    {isEditingInfo ? (
-                      <Textarea
-                        value={block.content}
-                        onChange={(e) =>
-                          setEditedConceptBlocks((prev) =>
-                            prev.map((b) => (b.id === block.id ? { ...b, content: e.target.value } : b))
-                          )
-                        }
-                        rows={4}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {block.content?.trim() || "Noch kein Inhalt"}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </section>
+      {/* Concept Section removed (moved into Projekt-Informationen) */}
 
       {/* Inspiration Section */}
       <section className="px-4 mb-8">
