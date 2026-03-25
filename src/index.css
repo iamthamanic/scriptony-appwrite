@@ -8131,3 +8131,52 @@ html {
     transform: translateX(120%);
   }
 }
+
+@keyframes assistant-panel-open {
+  from {
+    opacity: 0;
+    transform: scale(0.16);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes assistant-panel-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.16);
+  }
+}
+
+.assistant-floating-panel {
+  transform-origin: calc(100% - 28px) calc(100% + 36px);
+  will-change: transform, opacity;
+}
+
+.assistant-floating-panel[data-state="open"] {
+  animation: assistant-panel-open 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.assistant-floating-panel[data-state="closed"] {
+  animation: assistant-panel-close 220ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-floating-panel[data-state="open"],
+  .assistant-floating-panel[data-state="closed"] {
+    animation-duration: 1ms;
+  }
+}

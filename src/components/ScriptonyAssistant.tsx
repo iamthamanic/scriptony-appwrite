@@ -1184,7 +1184,7 @@ export function ScriptonyAssistant() {
           hideOverlay
           side="bottom"
           onInteractOutside={(event) => event.preventDefault()}
-          className="p-0 flex flex-col overflow-hidden border bg-[#F8F8F8] shadow-2xl dark:bg-background [&>button]:hidden"
+          className="assistant-floating-panel p-0 flex flex-col overflow-hidden border bg-[#F8F8F8] shadow-2xl dark:bg-background [&>button]:hidden"
           style={{
             left: "auto",
             right: "1rem",
