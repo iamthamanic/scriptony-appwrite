@@ -71,6 +71,7 @@ const SCHEMA = {
     beat_template: S(512),
     episode_layout: S(512),
     season_engine: S(512),
+    concept_blocks: XL(50000),
     description: L(8000),
     status: S(128),
     slug: S(256),

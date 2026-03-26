@@ -30,6 +30,7 @@ import { InspirationCard, ProjectInspiration } from "../InspirationCard";
 import { AddInspirationDialog, InspirationData } from "../AddInspirationDialog";
 import { ProjectCarousel } from "../ProjectCarousel";
 import { ProjectDebugger } from "../ProjectDebugger";
+import { ProjectSectionFrame } from "../ProjectSectionFrame";
 import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
 import { toast } from "sonner@2.0.3";
 import { deleteCharacter as deleteCharacterApi, getCharacters, createCharacter as createCharacterApi, updateCharacter as updateCharacterApi } from "../../lib/api/characters-api";
@@ -97,6 +98,46 @@ function getProjectLastEditedAt(project: any): string | null {
     project?.createdAt ||
     null
   );
+}
+
+/** Gesamtminuten aus gespeichertem `project.duration` (Zahl oder Text). */
+function parseStoredDurationMinutes(raw: string | number | undefined | null): number {
+  if (raw == null || raw === "") return 0;
+  const s = String(raw).trim();
+  const m = s.match(/(\d+(?:[.,]\d+)?)/);
+  if (!m) return 0;
+  const n = parseFloat(m[1].replace(",", "."));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n);
+}
+
+function splitTotalMinutesToHoursMinutesStrings(total: number): { h: string; m: string } {
+  if (!Number.isFinite(total) || total <= 0) return { h: "", m: "" };
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return { h: String(hh), m: String(mm) };
+}
+
+/** Stunden + Minuten → Gesamtminuten (Minutenfeld darf z. B. 90 sein wenn Std. leer). */
+function totalMinutesFromHourMinuteParts(h: string, m: string): number {
+  const hi = Math.max(0, Math.floor(parseFloat(String(h || "").replace(",", ".") || "0") || 0));
+  const mi = Math.max(0, Math.floor(parseFloat(String(m || "").replace(",", ".") || "0") || 0));
+  return hi * 60 + mi;
+}
+
+function formatDurationHrMinDe(h: string, m: string): string {
+  const t = totalMinutesFromHourMinuteParts(h, m);
+  if (t <= 0) return "–";
+  const hh = Math.floor(t / 60);
+  const mm = t % 60;
+  if (hh === 0) return `${mm} Min.`;
+  if (mm === 0) return `${hh} Std.`;
+  return `${hh} Std. ${mm} Min.`;
+}
+
+function durationPartsToApiString(h: string, m: string): string {
+  const t = totalMinutesFromHourMinuteParts(h, m);
+  return t > 0 ? String(t) : "";
 }
 
 type GenrePillGridProps = {
@@ -277,7 +318,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectType, setNewProjectType] = useState("film");
   const [newProjectLogline, setNewProjectLogline] = useState("");
-  const [newProjectDuration, setNewProjectDuration] = useState("");
+  const [newProjectDurationHours, setNewProjectDurationHours] = useState("");
+  const [newProjectDurationMinutes, setNewProjectDurationMinutes] = useState("");
   const [newProjectLinkedWorld, setNewProjectLinkedWorld] = useState<string | undefined>();
   const [newProjectCoverImage, setNewProjectCoverImage] = useState<string | undefined>();
   const [newProjectCoverFile, setNewProjectCoverFile] = useState<File | undefined>();
@@ -712,7 +754,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         logline: newProjectLogline,
         type: newProjectType,
         genre: selectedGenres.join(", "),
-        duration: newProjectDuration,
+        duration: durationPartsToApiString(newProjectDurationHours, newProjectDurationMinutes),
         linkedWorldId: newProjectLinkedWorld,
         concept_blocks: createDefaultConceptBlocks(),
         inspirations: projectInspirationNotes,
@@ -767,7 +809,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       setNewProjectTitle("");
       setNewProjectType("film");
       setNewProjectLogline("");
-      setNewProjectDuration("");
+      setNewProjectDurationHours("");
+      setNewProjectDurationMinutes("");
       setNewProjectLinkedWorld(undefined);
       setNewProjectCoverImage(undefined);
       setNewProjectCoverFile(undefined);
@@ -1710,15 +1753,35 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               </>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input 
-                  id="duration" 
-                  type="number" 
-                  placeholder="Project duration in minutes" 
-                  className="h-11"
-                  value={newProjectDuration}
-                  onChange={(e) => setNewProjectDuration(e.target.value)}
-                />
+                <Label>Dauer</Label>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <Label htmlFor="duration-hours" className="text-xs text-muted-foreground">Stunden</Label>
+                    <Input
+                      id="duration-hours"
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="h-11"
+                      value={newProjectDurationHours}
+                      onChange={(e) => setNewProjectDurationHours(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <Label htmlFor="duration-minutes" className="text-xs text-muted-foreground">Minuten</Label>
+                    <Input
+                      id="duration-minutes"
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="h-11"
+                      value={newProjectDurationMinutes}
+                      onChange={(e) => setNewProjectDurationMinutes(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -3044,7 +3107,12 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const [editedType, setEditedType] = useState(project.type || "");
   const [editedGenre, setEditedGenre] = useState(project.genre || "");
   const [editedLinkedWorldId, setEditedLinkedWorldId] = useState<string>(project.linkedWorldId || "none");
-  const [editedDuration, setEditedDuration] = useState(project.duration || "");
+  const [editedDurationHours, setEditedDurationHours] = useState(() =>
+    splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration)).h
+  );
+  const [editedDurationMinutes, setEditedDurationMinutes] = useState(() =>
+    splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration)).m
+  );
   const [editedNarrativeStructure, setEditedNarrativeStructure] = useState(project.narrative_structure || "");
   const [editedBeatTemplate, setEditedBeatTemplate] = useState(project.beat_template || "");
   const [editedGenresMulti, setEditedGenresMulti] = useState<string[]>(() =>
@@ -3094,7 +3162,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setEditedType(project.type || "");
     setEditedGenre(project.genre || "");
     setEditedLinkedWorldId(project.linkedWorldId || "none");
-    setEditedDuration(project.duration || "");
+    {
+      const d = splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration));
+      setEditedDurationHours(d.h);
+      setEditedDurationMinutes(d.m);
+    }
     setEditedNarrativeStructure(project.narrative_structure || "");
     setEditedBeatTemplate(project.beat_template || "");
     const parsedGenres = parseProjectGenreField(project.genre);
@@ -3107,6 +3179,12 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setEditedWordsPerPage(project.words_per_page?.toString() || "250");
     setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
   }, [project.id, project.title, project.logline, project.type, project.genre, project.linkedWorldId, project.duration, project.narrative_structure, project.beat_template, project.episode_layout, project.season_engine, project.target_pages, project.words_per_page, project.reading_speed_wpm, project.concept_blocks]);
+
+  const editedDurationTotalMinutes = useMemo(
+    () => totalMinutesFromHourMinuteParts(editedDurationHours, editedDurationMinutes),
+    [editedDurationHours, editedDurationMinutes]
+  );
+  const editedDurationForApi = durationPartsToApiString(editedDurationHours, editedDurationMinutes);
 
   // 📖 Calculate word count from timeline cache (live recalculation)
   const [calculatedWords, setCalculatedWords] = useState(project.current_words || 0);
@@ -3658,7 +3736,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         logline: editedLogline,
         type: editedType,
         genre: editedGenresMulti.join(", "), // Convert array to comma-separated string
-        duration: editedDuration,
+        duration: editedDurationForApi,
         linkedWorldId: editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
         concept_blocks: editedConceptBlocks,
         // Series: episode_layout + season_engine
@@ -3870,7 +3948,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         setEditedType(project.type || "");
                         setEditedGenre(project.genre || "");
                         setEditedLinkedWorldId(project.linkedWorldId || "none");
-                        setEditedDuration(project.duration || "");
+                        {
+                          const d = splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration));
+                          setEditedDurationHours(d.h);
+                          setEditedDurationMinutes(d.m);
+                        }
                         setEditedNarrativeStructure(project.narrative_structure || "");
                         setEditedBeatTemplate(project.beat_template || "");
                         const pgM = parseProjectGenreField(project.genre);
@@ -3968,13 +4050,34 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         className="h-9"
                       />
                     ) : (
-                      <Input
-                        id="project-duration"
-                        value={editedDuration}
-                        onChange={(e) => setEditedDuration(e.target.value)}
-                        placeholder="90 min"
-                        className="h-9"
-                      />
+                      <div className="flex gap-2">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <Label htmlFor="project-duration-hours" className="text-xs text-muted-foreground">Std.</Label>
+                          <Input
+                            id="project-duration-hours"
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            value={editedDurationHours}
+                            onChange={(e) => setEditedDurationHours(e.target.value)}
+                            placeholder="0"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <Label htmlFor="project-duration-minutes" className="text-xs text-muted-foreground">Min.</Label>
+                          <Input
+                            id="project-duration-minutes"
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            value={editedDurationMinutes}
+                            onChange={(e) => setEditedDurationMinutes(e.target.value)}
+                            placeholder="0"
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -4307,7 +4410,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   </div>
                   <div>
                     <p className="text-sm font-bold mb-1">Dauer</p>
-                    <p className="text-sm">{editedDuration}</p>
+                    <p className="text-sm">{formatDurationHrMinDe(editedDurationHours, editedDurationMinutes)}</p>
                   </div>
                 </div>
 
@@ -4564,7 +4667,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                             setEditedType(project.type || "");
                             setEditedGenre(project.genre || "");
                             setEditedLinkedWorldId(project.linkedWorldId || "none");
-                            setEditedDuration(project.duration || "");
+                            {
+                              const d = splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration));
+                              setEditedDurationHours(d.h);
+                              setEditedDurationMinutes(d.m);
+                            }
                             setEditedNarrativeStructure(project.narrative_structure || "");
                             setEditedBeatTemplate(project.beat_template || "");
                             const pg = parseProjectGenreField(project.genre);
@@ -4667,13 +4774,34 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                             className="h-8 text-sm"
                           />
                         ) : (
-                          <Input
-                            id="project-duration-desktop"
-                            value={editedDuration}
-                            onChange={(e) => setEditedDuration(e.target.value)}
-                            placeholder="90 min"
-                            className="h-8 text-sm"
-                          />
+                          <div className="flex gap-2">
+                            <div className="flex-1 min-w-0 space-y-0.5">
+                              <Label htmlFor="project-duration-hours-desktop" className="text-[10px] text-muted-foreground">Std.</Label>
+                              <Input
+                                id="project-duration-hours-desktop"
+                                type="number"
+                                min={0}
+                                inputMode="numeric"
+                                value={editedDurationHours}
+                                onChange={(e) => setEditedDurationHours(e.target.value)}
+                                placeholder="0"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-0.5">
+                              <Label htmlFor="project-duration-minutes-desktop" className="text-[10px] text-muted-foreground">Min.</Label>
+                              <Input
+                                id="project-duration-minutes-desktop"
+                                type="number"
+                                min={0}
+                                inputMode="numeric"
+                                value={editedDurationMinutes}
+                                onChange={(e) => setEditedDurationMinutes(e.target.value)}
+                                placeholder="0"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -4981,35 +5109,6 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       <div className="text-sm text-muted-foreground">{editedLogline || "Keine Logline"}</div>
                     </div>
                     <Separator />
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Prämisse</div>
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {getConceptContent("premise")?.trim() || "—"}
-                      </div>
-                    </div>
-                    <Separator />
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">Thema</div>
-                        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                          {getConceptContent("theme")?.trim() || "—"}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1">Hook</div>
-                        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                          {getConceptContent("hook")?.trim() || "—"}
-                        </div>
-                      </div>
-                    </div>
-                    <Separator />
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Notiz</div>
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {getConceptContent("notes")?.trim() || "—"}
-                      </div>
-                    </div>
-                    <Separator />
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Projekt Type</div>
@@ -5025,7 +5124,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         <div className="text-sm">
                           {editedType === 'book' 
                             ? (editedTargetPages ? `${editedTargetPages} Seiten` : '–')
-                            : (editedDuration || '–')
+                            : formatDurationHrMinDe(editedDurationHours, editedDurationMinutes)
                           }
                         </div>
                       </div>
@@ -5091,6 +5190,130 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         {editedLinkedWorldId !== "none"
                           ? (worlds.find((w) => w.id === editedLinkedWorldId)?.name || "Verknüpft")
                           : "Keine Welt verknüpft"}
+                      </div>
+                    </div>
+                    <Separator />
+
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="text-xs text-muted-foreground">Prämisse</div>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Prämisse"
+                            >
+                              <Info className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Was kommt hier rein?</div>
+                              <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
+                              <div className="opacity-90">
+                                Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {getConceptContent("premise")?.trim() || "—"}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="text-xs text-muted-foreground">Thema</div>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                aria-label="Hilfe: Thema"
+                              >
+                                <Info className="size-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                              <div className="space-y-1">
+                                <div className="font-semibold">Worum geht’s „eigentlich“?</div>
+                                <div>Aussage/Frage oder Spannungsfeld.</div>
+                                <div className="opacity-90">
+                                  Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {getConceptContent("theme")?.trim() || "—"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="text-xs text-muted-foreground">Hook</div>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                aria-label="Hilfe: Hook"
+                              >
+                                <Info className="size-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                              <div className="space-y-1">
+                                <div className="font-semibold">Was ist das Einzigartige?</div>
+                                <div>Der „Warum sollte ich das schauen/lesen?“-Grund.</div>
+                                <div className="opacity-90">
+                                  Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {getConceptContent("hook")?.trim() || "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="text-xs text-muted-foreground">Notiz</div>
+                        <Tooltip delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              aria-label="Hilfe: Notiz"
+                            >
+                              <Info className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <div className="space-y-1">
+                              <div className="font-semibold">Sammelplatz</div>
+                              <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
+                              <div className="opacity-90">
+                                Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {getConceptContent("notes")?.trim() || "—"}
                       </div>
                     </div>
 
@@ -5202,6 +5425,13 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           wordsPerPage={project.words_per_page || 250}
           readingSpeedWpm={project.reading_speed_wpm || 230}
           targetPages={project.target_pages}
+          targetDurationMinutes={
+            project.type === 'book'
+              ? undefined
+              : editedDurationTotalMinutes > 0
+                ? String(editedDurationTotalMinutes)
+                : undefined
+          }
         />
       </section>
 
@@ -5237,17 +5467,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           </div>
 
           <CollapsibleContent>
-            <div className="space-y-3">
-              {charactersState.map((character) => (
-                <CharacterCard
-                  key={character.id}
-                  character={character}
-                  onImageUpload={updateCharacterImage}
-                  onUpdateDetails={updateCharacterDetails}
-                  onDelete={deleteCharacter}
-                />
-              ))}
-            </div>
+            <ProjectSectionFrame>
+              <div className="space-y-3">
+                {charactersState.map((character) => (
+                  <CharacterCard
+                    key={character.id}
+                    character={character}
+                    onImageUpload={updateCharacterImage}
+                    onUpdateDetails={updateCharacterDetails}
+                    onDelete={deleteCharacter}
+                  />
+                ))}
+              </div>
+            </ProjectSectionFrame>
           </CollapsibleContent>
         </Collapsible>
       </section>
@@ -5256,7 +5488,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       {/* Concept Section removed (moved into Projekt-Informationen) */}
 
       {/* Inspiration Section */}
-      <section className="px-4 mb-8">
+      <section className="px-6 mb-8">
         <Collapsible open={inspirationOpen} onOpenChange={setInspirationOpen}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -5293,40 +5525,42 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           </div>
 
           <CollapsibleContent>
-            {inspirationsLoading ? (
-              <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#6E59A5]" />
-              </div>
-            ) : inspirations.length === 0 ? (
-              <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center">
-                <ImageIcon className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                <p className="text-slate-600 mb-2">Noch keine Inspirationen</p>
-                <p className="text-sm text-slate-500 mb-4">
-                  Füge visuelle Referenzen hinzu für Inspiration
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setEditingInspiration(null);
-                    setShowAddInspirationDialog(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Erste Inspiration hinzufügen
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 gap-4">
-                {inspirations.map((inspiration) => (
-                  <InspirationCard
-                    key={inspiration.id}
-                    inspiration={inspiration}
-                    onEdit={onEditInspiration}
-                    onDelete={(id) => onDeleteInspiration(id)}
-                  />
-                ))}
-              </div>
-            )}
+            <ProjectSectionFrame>
+              {inspirationsLoading ? (
+                <div className="flex items-center justify-center p-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#6E59A5]" />
+                </div>
+              ) : inspirations.length === 0 ? (
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center">
+                  <ImageIcon className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                  <p className="text-slate-600 mb-2">Noch keine Inspirationen</p>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Füge visuelle Referenzen hinzu für Inspiration
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditingInspiration(null);
+                      setShowAddInspirationDialog(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Erste Inspiration hinzufügen
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                  {inspirations.map((inspiration) => (
+                    <InspirationCard
+                      key={inspiration.id}
+                      inspiration={inspiration}
+                      onEdit={onEditInspiration}
+                      onDelete={(id) => onDeleteInspiration(id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </ProjectSectionFrame>
           </CollapsibleContent>
         </Collapsible>
       </section>

@@ -16,7 +16,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../_shared/http";
-import { getAccessibleProject, getUserOrganizationIds, normalizeProjectInput } from "../../_shared/scriptony";
+import { getAccessibleProject, getUserOrganizationIds, hydrateProjectRow, normalizeProjectInput } from "../../_shared/scriptony";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -40,7 +40,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      sendJson(res, 200, { project });
+      sendJson(res, 200, { project: hydrateProjectRow(project) });
       return;
     }
 
@@ -72,6 +72,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               beat_template
               episode_layout
               season_engine
+              concept_blocks
+              target_pages
+              words_per_page
+              reading_speed_wpm
               organization_id
               user_id
               created_at
@@ -85,7 +89,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         }
       );
 
-      sendJson(res, 200, { project: updated.update_projects_by_pk });
+      sendJson(res, 200, { project: hydrateProjectRow(updated.update_projects_by_pk) });
       return;
     }
 

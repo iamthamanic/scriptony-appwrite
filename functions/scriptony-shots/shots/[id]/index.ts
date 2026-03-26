@@ -124,6 +124,15 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             ...(updates.dialog !== undefined ? { dialog: updates.dialog } : {}),
             ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
             ...(updates.order_index !== undefined ? { order_index: updates.order_index } : {}),
+            ...(updates.duration !== undefined && updates.duration !== null
+              ? { duration: updates.duration }
+              : {}),
+            ...(updates.shotlength_minutes !== undefined && updates.shotlength_minutes !== null
+              ? { shotlength_minutes: updates.shotlength_minutes }
+              : {}),
+            ...(updates.shotlength_seconds !== undefined && updates.shotlength_seconds !== null
+              ? { shotlength_seconds: updates.shotlength_seconds }
+              : {}),
             user_id: bootstrap.user.id,
           },
         }

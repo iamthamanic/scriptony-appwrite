@@ -6,29 +6,75 @@
 
 import { requestGraphql } from "./graphql-compat";
 
+function hasOwn(body: Record<string, any>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(body, key);
+}
+
+function pickProvided(body: Record<string, any>, ...keys: string[]): any {
+  for (const key of keys) {
+    if (hasOwn(body, key)) {
+      return body[key];
+    }
+  }
+  return undefined;
+}
+
+function serializeConceptBlocks(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+}
+
+function parseConceptBlocks(value: unknown): unknown {
+  if (typeof value !== "string") return value ?? null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+export function hydrateProjectRow<T extends Record<string, any> | null>(project: T): T {
+  if (!project) return project;
+  return {
+    ...project,
+    concept_blocks: parseConceptBlocks(project.concept_blocks),
+  } as T;
+}
+
+export function hydrateProjectRows<T extends Record<string, any>>(projects: T[]): T[] {
+  return projects.map((project) => hydrateProjectRow(project));
+}
+
 export function normalizeProjectInput(body: Record<string, any>): Record<string, any> {
-  // Only include attributes that exist in the Appwrite projects schema.
-  // Appwrite auto-provides $id, $createdAt, $updatedAt — never send those.
+  const conceptBlocks = pickProvided(body, "concept_blocks", "conceptBlocks");
   const project = {
-    organization_id: body.organization_id ?? body.organizationId ?? undefined,
-    user_id: body.user_id ?? body.userId ?? undefined,
-    title: body.title,
-    logline: body.logline ?? null,
-    description: body.description ?? null,
-    genre: body.genre ?? null,
-    type: body.type || "film",
-    format: body.format ?? null,
-    duration: body.duration ?? null,
-    status: body.status ?? null,
-    slug: body.slug ?? null,
-    world_id: body.world_id ?? body.worldId ?? body.linked_world_id ?? body.linkedWorldId ?? null,
-    cover_image_url: body.cover_image_url ?? body.coverImage ?? body.coverImageUrl ?? null,
-    is_deleted: body.is_deleted ?? body.isDeleted ?? undefined,
-    narrative_structure: body.narrative_structure ?? body.narrativeStructure ?? null,
-    beat_template: body.beat_template ?? body.beatTemplate ?? null,
-    episode_layout: body.episode_layout ?? body.episodeLayout ?? null,
-    season_engine: body.season_engine ?? body.seasonEngine ?? null,
-    template_id: body.template_id ?? body.templateId ?? null,
+    organization_id: pickProvided(body, "organization_id", "organizationId"),
+    user_id: pickProvided(body, "user_id", "userId"),
+    title: pickProvided(body, "title"),
+    logline: pickProvided(body, "logline"),
+    description: pickProvided(body, "description"),
+    genre: pickProvided(body, "genre"),
+    type: pickProvided(body, "type"),
+    format: pickProvided(body, "format"),
+    duration: pickProvided(body, "duration"),
+    status: pickProvided(body, "status"),
+    slug: pickProvided(body, "slug"),
+    world_id: pickProvided(body, "world_id", "worldId", "linked_world_id", "linkedWorldId"),
+    cover_image_url: pickProvided(body, "cover_image_url", "coverImage", "coverImageUrl"),
+    is_deleted: pickProvided(body, "is_deleted", "isDeleted"),
+    narrative_structure: pickProvided(body, "narrative_structure", "narrativeStructure"),
+    beat_template: pickProvided(body, "beat_template", "beatTemplate"),
+    episode_layout: pickProvided(body, "episode_layout", "episodeLayout"),
+    season_engine: pickProvided(body, "season_engine", "seasonEngine"),
+    concept_blocks: serializeConceptBlocks(conceptBlocks),
+    target_pages: pickProvided(body, "target_pages", "targetPages"),
+    words_per_page: pickProvided(body, "words_per_page", "wordsPerPage"),
+    reading_speed_wpm: pickProvided(body, "reading_speed_wpm", "readingSpeedWpm"),
+    template_id: pickProvided(body, "template_id", "templateId"),
   };
 
   return Object.fromEntries(
@@ -121,6 +167,10 @@ export async function getAccessibleProject(
           beat_template
           episode_layout
           season_engine
+          concept_blocks
+          target_pages
+          words_per_page
+          reading_speed_wpm
           is_deleted
           created_at
           updated_at
@@ -134,5 +184,5 @@ export async function getAccessibleProject(
     }
   );
 
-  return data.projects[0] || null;
+  return hydrateProjectRow(data.projects[0] || null);
 }

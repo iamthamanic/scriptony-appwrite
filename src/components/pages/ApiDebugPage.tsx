@@ -271,7 +271,7 @@ export function ApiDebugPage() {
             <strong>Expected Result:</strong>
             <ul className="list-disc list-inside ml-4 mt-1 text-muted-foreground">
               <li>All 7 functions should return 200 OK</li>
-              <li>Response time should be < 2000ms</li>
+              <li>Response time should be under 2000ms</li>
               <li>No "Network Error" or "Failed to fetch" errors</li>
             </ul>
           </div>

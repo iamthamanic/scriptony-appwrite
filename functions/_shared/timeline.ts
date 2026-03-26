@@ -15,6 +15,17 @@ function compact<T extends JsonRecord>(value: T): T {
   ) as T;
 }
 
+/** Omit empty / data-URL values so Appwrite url attributes are never set to "". */
+function optionalUrlField(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  if (!t) return undefined;
+  if (t.startsWith("data:")) return undefined;
+  return t;
+}
+
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
@@ -28,7 +39,7 @@ export function normalizeNodeInput(body: JsonRecord): JsonRecord {
       body.parent_id !== undefined ? body.parent_id : body.parentId,
     title: body.title,
     summary: body.description ?? body.summary ?? null,
-    order_index: body.order_index ?? body.orderIndex,
+    order_index: body.order_index ?? body.orderIndex ?? body.nodeNumber ?? body.node_number,
     node_type: body.node_type ?? body.nodeType ?? null,
     scene_id: body.scene_id ?? body.sceneId ?? null,
     metadata_json: typeof body.metadata === "object" ? JSON.stringify(body.metadata) : (body.metadata_json ?? null),
@@ -71,11 +82,12 @@ export function normalizeShotInput(body: JsonRecord): JsonRecord {
       body.shotlength_seconds ?? body.shotlengthSeconds ?? null,
     composition: body.composition ?? null,
     lighting_notes: body.lighting_notes ?? body.lightingNotes ?? null,
-    image_url: body.image_url ?? body.imageUrl ?? null,
+    image_url: optionalUrlField(body.image_url ?? body.imageUrl),
     sound_notes: body.sound_notes ?? body.soundNotes ?? null,
-    storyboard_url: body.storyboard_url ?? body.storyboardUrl ?? null,
-    reference_image_url:
-      body.reference_image_url ?? body.referenceImageUrl ?? null,
+    storyboard_url: optionalUrlField(body.storyboard_url ?? body.storyboardUrl),
+    reference_image_url: optionalUrlField(
+      body.reference_image_url ?? body.referenceImageUrl
+    ),
     dialog: body.dialog ?? null,
     notes: body.notes ?? null,
     order_index: body.order_index ?? body.orderIndex,

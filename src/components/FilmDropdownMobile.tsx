@@ -12,7 +12,6 @@ import { useState, useCallback } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, MoreVertical, Edit, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { cn } from './ui/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -156,10 +155,10 @@ export function FilmDropdownMobile({
     <div className="space-y-3 pb-20">
       {/* Mobile Header mit Add Button */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b pb-3">
-        <Button 
+        <Button
           onClick={onAddAct}
-          className="w-full h-12 text-base"
           variant="outline"
+          className="w-full h-12 text-base bg-white border-2 border-dashed border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
         >
           <Plus className="mr-2 h-5 w-5" />
           {getActLabel()} hinzufügen
@@ -176,9 +175,9 @@ export function FilmDropdownMobile({
             key={act.id}
             open={isActExpanded}
             onOpenChange={() => toggleAct(act.id)}
-            className="border rounded-lg bg-card"
+            className="border-2 rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-700 overflow-hidden"
           >
-            <div className="p-3">
+            <div className="bg-blue-100 dark:bg-blue-900/40 p-3">
               {/* Act Header - Touch-optimiert (min 44px) */}
               <div className="flex items-center gap-2 min-h-[44px]">
                 <CollapsibleTrigger asChild>
@@ -212,14 +211,16 @@ export function FilmDropdownMobile({
                         setEditingItem(null);
                       }
                     }}
-                    className="flex-1 h-11"
+                    className="flex-1 h-11 bg-white border-blue-200 dark:border-blue-700 focus-visible:ring-blue-400/20"
                   />
                 ) : (
                   <button
                     onClick={() => setEditingItem({ id: act.id, type: 'act' })}
-                    className="flex-1 text-left px-2 py-2 rounded hover:bg-accent min-h-[44px] flex items-center"
+                    className="flex-1 text-left px-2 py-2 rounded-md hover:bg-blue-200/60 dark:hover:bg-blue-800/40 min-h-[44px] flex items-center transition-colors"
                   >
-                    <span className="font-medium">{act.title || `${getActLabel()} ${act.actNumber}`}</span>
+                    <span className="font-semibold text-[rgb(21,93,252)] dark:text-blue-300">
+                      {act.title || `${getActLabel()} ${act.actNumber}`}
+                    </span>
                   </button>
                 )}
 
@@ -256,22 +257,23 @@ export function FilmDropdownMobile({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+            </div>
 
               {/* Act Metadata */}
               {act.description && (
-                <p className="text-sm text-muted-foreground mt-2 px-2">
+                <p className="text-sm text-muted-foreground px-3 py-2 border-t border-blue-200/50 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/25">
                   {act.description}
                 </p>
               )}
 
               <CollapsibleContent>
-                <div className="mt-3 space-y-3">
+                <div className="p-3 pt-2 space-y-3 border-t border-blue-200/60 dark:border-blue-800/40 bg-blue-50/30 dark:bg-blue-950/20">
                   {/* Add Sequence Button */}
                   <Button
                     onClick={() => onAddSequence(act.id)}
                     variant="outline"
                     size="sm"
-                    className="w-full h-11"
+                    className="w-full h-11 bg-white border-2 border-dashed border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {getSequenceLabel()} hinzufügen
@@ -287,9 +289,9 @@ export function FilmDropdownMobile({
                         key={sequence.id}
                         open={isSequenceExpanded}
                         onOpenChange={() => toggleSequence(sequence.id)}
-                        className="border rounded-md bg-background/50 ml-4"
+                        className="border-2 rounded-lg bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-700 overflow-hidden ml-3 sm:ml-4"
                       >
-                        <div className="p-2">
+                        <div className="bg-green-100 dark:bg-green-900/40 p-2">
                           {/* Sequence Header */}
                           <div className="flex items-center gap-2 min-h-[44px]">
                             <CollapsibleTrigger asChild>
@@ -323,12 +325,12 @@ export function FilmDropdownMobile({
                                     setEditingItem(null);
                                   }
                                 }}
-                                className="flex-1 h-10"
+                                className="flex-1 h-10 bg-white border-green-200 dark:border-green-700 focus-visible:ring-green-400/20"
                               />
                             ) : (
                               <button
                                 onClick={() => setEditingItem({ id: sequence.id, type: 'sequence' })}
-                                className="flex-1 text-left px-2 py-2 rounded hover:bg-accent min-h-[44px] flex items-center text-sm"
+                                className="flex-1 text-left px-2 py-2 rounded-md hover:bg-green-200/60 dark:hover:bg-green-800/40 min-h-[44px] flex items-center text-sm font-medium text-green-800 dark:text-green-200 transition-colors"
                               >
                                 {sequence.title || `${getSequenceLabel()} ${sequence.sequenceNumber}`}
                               </button>
@@ -367,15 +369,16 @@ export function FilmDropdownMobile({
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
+                        </div>
 
                           <CollapsibleContent>
-                            <div className="mt-2 space-y-2">
+                            <div className="p-2 pt-1.5 space-y-2 border-t border-green-200/60 dark:border-green-800/40 bg-green-50/40 dark:bg-green-950/25">
                               {/* Add Scene Button */}
                               <Button
                                 onClick={() => onAddScene(sequence.id)}
                                 variant="outline"
                                 size="sm"
-                                className="w-full h-10"
+                                className="w-full h-10 bg-white border-2 border-dashed border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
                               >
                                 <Plus className="mr-2 h-4 w-4" />
                                 {getSceneLabel()} hinzufügen
@@ -391,9 +394,9 @@ export function FilmDropdownMobile({
                                     key={scene.id}
                                     open={isSceneExpanded}
                                     onOpenChange={() => toggleScene(scene.id)}
-                                    className="border rounded-md bg-card ml-4"
+                                    className="border-2 rounded-lg bg-pink-50 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden ml-2 sm:ml-3"
                                   >
-                                    <div className="p-2">
+                                    <div className="bg-pink-100 dark:bg-pink-900/40 p-2">
                                       {/* Scene Header */}
                                       <div className="flex items-center gap-2 min-h-[44px]">
                                         <CollapsibleTrigger asChild>
@@ -427,12 +430,12 @@ export function FilmDropdownMobile({
                                                 setEditingItem(null);
                                               }
                                             }}
-                                            className="flex-1 h-10"
+                                            className="flex-1 h-10 bg-white border-pink-200 dark:border-pink-700 focus-visible:ring-pink-400/20"
                                           />
                                         ) : (
                                           <button
                                             onClick={() => setEditingItem({ id: scene.id, type: 'scene' })}
-                                            className="flex-1 text-left px-2 py-2 rounded hover:bg-accent min-h-[44px] flex items-center text-sm"
+                                            className="flex-1 text-left px-2 py-2 rounded-md hover:bg-pink-200/60 dark:hover:bg-pink-800/40 min-h-[44px] flex items-center text-sm font-medium text-pink-900 dark:text-pink-100 transition-colors"
                                           >
                                             {scene.title || `${getSceneLabel()} ${scene.sceneNumber}`}
                                           </button>
@@ -471,29 +474,31 @@ export function FilmDropdownMobile({
                                           </DropdownMenuContent>
                                         </DropdownMenu>
                                       </div>
+                                    </div>
 
-                                      {/* Scene Metadata */}
-                                      <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
-                                        {scene.setting && (
-                                          <span className="bg-accent px-2 py-1 rounded">
-                                            📍 {scene.setting}
-                                          </span>
-                                        )}
-                                        {scene.timeOfDay && (
-                                          <span className="bg-accent px-2 py-1 rounded">
-                                            🕐 {scene.timeOfDay}
-                                          </span>
-                                        )}
-                                      </div>
+                                      {(scene.setting || scene.timeOfDay) && (
+                                        <div className="flex flex-wrap gap-2 px-2 pb-2 text-xs text-muted-foreground border-t border-pink-200/50 dark:border-pink-800/40 bg-pink-50/40 dark:bg-pink-950/20">
+                                          {scene.setting && (
+                                            <span className="bg-accent px-2 py-1 rounded">
+                                              📍 {scene.setting}
+                                            </span>
+                                          )}
+                                          {scene.timeOfDay && (
+                                            <span className="bg-accent px-2 py-1 rounded">
+                                              🕐 {scene.timeOfDay}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
 
                                       <CollapsibleContent>
-                                        <div className="mt-2 space-y-2">
+                                        <div className="p-2 pt-1.5 space-y-2 border-t border-pink-200/60 dark:border-pink-800/40 bg-pink-50/30 dark:bg-pink-950/25">
                                           {/* Add Shot Button */}
                                           <Button
                                             onClick={() => onAddShot(scene.id)}
                                             variant="outline"
                                             size="sm"
-                                            className="w-full h-10"
+                                            className="w-full h-10 bg-white border border-pink-300/80 dark:border-pink-600 text-pink-700 dark:text-pink-300 hover:bg-pink-100/50 dark:hover:bg-pink-900/30"
                                           >
                                             <Plus className="mr-2 h-4 w-4" />
                                             {getShotLabel()} hinzufügen
@@ -520,19 +525,16 @@ export function FilmDropdownMobile({
                                           ))}
                                         </div>
                                       </CollapsibleContent>
-                                    </div>
                                   </Collapsible>
                                 );
                               })}
                             </div>
                           </CollapsibleContent>
-                        </div>
                       </Collapsible>
                     );
                   })}
                 </div>
               </CollapsibleContent>
-            </div>
           </Collapsible>
         );
       })}

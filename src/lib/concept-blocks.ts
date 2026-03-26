@@ -76,6 +76,16 @@ function isConceptBlock(value: unknown): value is ConceptBlock {
  * Accept legacy/partial payloads and always return a complete block set.
  */
 export function normalizeConceptBlocks(input: unknown): ConceptBlock[] {
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return createDefaultConceptBlocks();
+    try {
+      return normalizeConceptBlocks(JSON.parse(trimmed));
+    } catch {
+      return createDefaultConceptBlocks();
+    }
+  }
+
   const base = createDefaultConceptBlocks();
   if (!Array.isArray(input)) return base;
   const valid = input.filter(isConceptBlock);

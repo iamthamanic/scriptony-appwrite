@@ -2,7 +2,7 @@
  * Timeline node children routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requireUserBootstrap } from "../../../_shared/auth";
 import {
   getParam,
   getQuery,
@@ -13,12 +13,12 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../../_shared/http";
+} from "../../../_shared/http";
 import {
   getRecursiveChildren,
   getTimelineChildren,
   mapNode,
-} from "../../../../_shared/timeline";
+} from "../../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {

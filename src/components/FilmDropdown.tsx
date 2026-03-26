@@ -76,6 +76,9 @@ interface FilmDropdownProps {
   onExpandedActsChange?: (expanded: Set<string>) => void;
   onExpandedSequencesChange?: (expanded: Set<string>) => void;
   onExpandedScenesChange?: (expanded: Set<string>) => void;
+  /** From timeline: expand act→sequence→scene→shot and scroll into view once. */
+  expandShotId?: string | null;
+  onExpandShotIdConsumed?: () => void;
 }
 
 // DnD Types
@@ -358,6 +361,8 @@ export function FilmDropdown({
   initialData,
   onDataChange,
   containerRef,
+  expandShotId,
+  onExpandShotIdConsumed,
 }: FilmDropdownProps) {
   const { getAccessToken } = useAuth();
   const isMobile = useIsMobile();
@@ -467,6 +472,32 @@ export function FilmDropdown({
       setCharacters(externalCharacters);
     }
   }, [externalCharacters]);
+
+  // Timeline → öffne Shot wie in der Dropdown-Ansicht (alle Felder / ShotCard-Menü)
+  useEffect(() => {
+    if (!expandShotId) return;
+    const shot = shots.find((s) => s.id === expandShotId);
+    if (!shot) return;
+
+    const scene = scenes.find((sc) => sc.id === shot.sceneId);
+    if (!scene) return;
+    const sequence = sequences.find((seq) => seq.id === scene.sequenceId);
+    if (!sequence) return;
+    const act = acts.find((a) => a.id === sequence.actId);
+    if (!act) return;
+
+    setExpandedActs((prev) => new Set([...prev, act.id]));
+    setExpandedSequences((prev) => new Set([...prev, sequence.id]));
+    setExpandedScenes((prev) => new Set([...prev, scene.id]));
+    setExpandedShots((prev) => new Set([...prev, shot.id]));
+
+    const t = window.setTimeout(() => {
+      const el = document.querySelector(`[data-shot-id="${expandShotId}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      onExpandShotIdConsumed?.();
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [expandShotId, shots, scenes, sequences, acts, onExpandShotIdConsumed]);
 
   // 🚀 PERFORMANCE: Notify parent of data changes to update cache
   // Use ref to avoid re-triggering the effect on every render
@@ -1845,8 +1876,10 @@ export function FilmDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      await ShotsAPI.updateShot(shotId, updates, token);
-      toast.success('Shot aktualisiert');
+      const saved = await ShotsAPI.updateShot(shotId, updates, token);
+      if (saved !== undefined) {
+        toast.success('Shot aktualisiert');
+      }
     } catch (error) {
       console.error('Error updating shot:', error);
       toast.error('Fehler beim Aktualisieren');
@@ -2016,6 +2049,7 @@ export function FilmDropdown({
       toast.error(
         `Fehler beim Hochladen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
       );
+      throw error;
     } finally {
       setShotImageUploadingId(null);
       shotImageUploadInFlightRef.current = false;

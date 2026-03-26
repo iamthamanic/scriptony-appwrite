@@ -109,6 +109,7 @@
             "verify:test-env": "node scripts/verify-appwrite-test-env.mjs",
             "appwrite:env:generate": "node scripts/generate-infra-appwrite-env.mjs",
             "appwrite:functions:create": "bash scripts/appwrite-create-functions.sh",
+            "appwrite:deploy:shots": "bash scripts/deploy-appwrite-function-shots.sh",
             "appwrite:provision:schema": "npm run provision-schema --prefix functions",
             "appwrite:provision:buckets": "node functions/tools/provision-appwrite-buckets.mjs",
             "appwrite:delete:collection": "node functions/tools/delete-appwrite-collection.mjs",

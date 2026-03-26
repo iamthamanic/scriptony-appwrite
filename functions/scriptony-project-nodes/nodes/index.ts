@@ -94,7 +94,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           object: {
             ...nodeInput,
             order_index: nodeInput.order_index ?? 0,
-            metadata_json: JSON.stringify(nodeInput.metadata ?? {}),
+            metadata_json: nodeInput.metadata_json ?? "{}",
           },
         }
       );

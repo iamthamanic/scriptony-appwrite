@@ -48,6 +48,7 @@ export function nodeToAct(node: TimelineNode): Act {
     title: node.title,
     description: node.description || '',
     orderIndex: node.orderIndex,
+    metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -66,6 +67,7 @@ export function nodeToSequence(node: TimelineNode): Sequence {
     description: node.description || '',
     color: node.color,
     orderIndex: node.orderIndex,
+    metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -88,6 +90,7 @@ export function nodeToScene(node: TimelineNode): Scene {
     timeOfDay: node.metadata?.timeOfDay,
     characters: node.metadata?.characters || [],
     content: node.metadata?.content, // 📚 Support for book content
+    metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -125,13 +128,20 @@ export async function updateAct(
   updates: Partial<Act>,
   token: string
 ): Promise<Act> {
+  const currentNode = await NodesAPI.getNode(actId);
+  const metadata: Record<string, any> = { ...(currentNode.metadata || {}) };
+  if (updates.metadata) {
+    Object.assign(metadata, updates.metadata);
+  }
+
   const node = await NodesAPI.updateNode(actId, {
     nodeNumber: updates.actNumber,
     title: updates.title,
     description: updates.description,
     orderIndex: updates.orderIndex,
+    metadata,
   });
-  
+
   return nodeToAct(node);
 }
 
@@ -183,6 +193,12 @@ export async function updateSequence(
   updates: Partial<Sequence>,
   token: string
 ): Promise<Sequence> {
+  const currentNode = await NodesAPI.getNode(sequenceId);
+  const metadata: Record<string, any> = { ...(currentNode.metadata || {}) };
+  if (updates.metadata) {
+    Object.assign(metadata, updates.metadata);
+  }
+
   const node = await NodesAPI.updateNode(sequenceId, {
     nodeNumber: updates.sequenceNumber,
     title: updates.title,
@@ -190,8 +206,9 @@ export async function updateSequence(
     color: updates.color,
     orderIndex: updates.orderIndex,
     parentId: updates.actId, // Support moving to different Act
+    metadata,
   });
-  
+
   return nodeToSequence(node);
 }
 
@@ -257,7 +274,10 @@ export async function updateScene(
   if (updates.timeOfDay !== undefined) metadata.timeOfDay = updates.timeOfDay;
   if (updates.characters !== undefined) metadata.characters = updates.characters;
   if (updates.content !== undefined) metadata.content = updates.content; // 📚 Support for book content
-  
+  if (updates.metadata) {
+    Object.assign(metadata, updates.metadata);
+  }
+
   const node = await NodesAPI.updateNode(sceneId, {
     nodeNumber: updates.sceneNumber,
     title: updates.title,

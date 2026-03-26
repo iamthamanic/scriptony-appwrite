@@ -348,7 +348,7 @@ export const ShotCard = memo(function ShotCard({
     
     // 🚀 OPTIMISTIC UI: Zeige Bild SOFORT an!
     const previousImageUrl = shot.imageUrl;
-    onShotUpdate(shot.id, { imageUrl: croppedImageBase64 });
+    onUpdate(shot.id, { imageUrl: croppedImageBase64 });
     
     // Dialog sofort schließen
     setShowImageCropDialog(false);
@@ -385,9 +385,9 @@ export const ShotCard = memo(function ShotCard({
       
       // ROLLBACK bei Fehler
       if (previousImageUrl) {
-        onShotUpdate(shot.id, { imageUrl: previousImageUrl });
+        onUpdate(shot.id, { imageUrl: previousImageUrl });
       } else {
-        onShotUpdate(shot.id, { imageUrl: '' });
+        onUpdate(shot.id, { imageUrl: undefined });
       }
       
       toast.error('Upload fehlgeschlagen - Bild entfernt');

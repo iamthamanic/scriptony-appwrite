@@ -113,11 +113,19 @@ export function calculateActBlocks(
         visible: endSec >= viewStartSec && startSec <= viewEndSec,
       };
     } else {
-      // 🎬 FILM: Equal distribution
+      // 🎬 FILM: Use manual trim pct if present; otherwise equal distribution.
       const totalActs = timelineData.acts?.length || 1;
-      const actDuration = duration / totalActs;
-      const startSec = actIndex * actDuration;
-      const endSec = (actIndex + 1) * actDuration;
+      const actDurationFallback = duration / totalActs;
+
+      const meta = (act as any).metadata ?? {};
+      const pctFrom = typeof meta?.pct_from === 'number' ? meta.pct_from : undefined;
+      const pctTo = typeof meta?.pct_to === 'number' ? meta.pct_to : undefined;
+
+      const startSec =
+        pctFrom !== undefined ? (pctFrom / 100) * duration : actIndex * actDurationFallback;
+      const endSec =
+        pctTo !== undefined ? (pctTo / 100) * duration : (actIndex + 1) * actDurationFallback;
+
       const x = (startSec - viewStartSec) * pxPerSec;
       const width = (endSec - startSec) * pxPerSec;
       
@@ -201,17 +209,39 @@ export function calculateSequenceBlocks(
       }
     });
   } else {
-    // 🎬 FILM: Equal distribution within acts
+    // 🎬 FILM: Use manual trim pct if present; otherwise equal distribution.
     (timelineData.acts || []).forEach((act, actIndex) => {
       const sequences = (timelineData.sequences || []).filter(s => s.actId === act.id);
+
       const totalActs = timelineData.acts?.length || 1;
-      const actDuration = duration / totalActs;
-      const actStartSec = actIndex * actDuration;
-      const sequenceDuration = sequences.length > 0 ? actDuration / sequences.length : actDuration;
-      
+      const actDurationFallback = duration / totalActs;
+      const actMeta = (act as any).metadata ?? {};
+      const actPctFrom = typeof actMeta?.pct_from === 'number' ? actMeta.pct_from : undefined;
+      const actPctTo = typeof actMeta?.pct_to === 'number' ? actMeta.pct_to : undefined;
+
+      const actStartSec =
+        actPctFrom !== undefined ? (actPctFrom / 100) * duration : actIndex * actDurationFallback;
+      const actEndSec =
+        actPctTo !== undefined ? (actPctTo / 100) * duration : (actIndex + 1) * actDurationFallback;
+
+      const actDurSec = Math.max(0, actEndSec - actStartSec);
+      const sequenceDurationFallback = sequences.length > 0 ? actDurSec / sequences.length : actDurSec;
+
       sequences.forEach((sequence, seqIndex) => {
-        const startSec = actStartSec + seqIndex * sequenceDuration;
-        const endSec = startSec + sequenceDuration;
+        const seqMeta = (sequence as any).metadata ?? {};
+        const seqPctFrom =
+          typeof seqMeta?.pct_from === 'number' ? seqMeta.pct_from : undefined;
+        const seqPctTo =
+          typeof seqMeta?.pct_to === 'number' ? seqMeta.pct_to : undefined;
+
+        const startSec =
+          seqPctFrom !== undefined
+            ? actStartSec + (seqPctFrom / 100) * actDurSec
+            : actStartSec + seqIndex * sequenceDurationFallback;
+        const endSec =
+          seqPctTo !== undefined
+            ? actStartSec + (seqPctTo / 100) * actDurSec
+            : startSec + sequenceDurationFallback;
         const x = (startSec - viewStartSec) * pxPerSec;
         const width = (endSec - startSec) * pxPerSec;
         
@@ -300,22 +330,60 @@ export function calculateSceneBlocks(
       }
     });
   } else {
-    // 🎬 FILM: Equal distribution within sequences
+    // 🎬 FILM: Use manual trim pct if present; otherwise equal distribution.
     (timelineData.acts || []).forEach((act, actIndex) => {
       const sequences = (timelineData.sequences || []).filter(s => s.actId === act.id);
+
       const totalActs = timelineData.acts?.length || 1;
-      const actDuration = duration / totalActs;
-      const actStartSec = actIndex * actDuration;
-      const sequenceDuration = sequences.length > 0 ? actDuration / sequences.length : actDuration;
-      
+      const actDurationFallback = duration / totalActs;
+      const actMeta = (act as any).metadata ?? {};
+      const actPctFrom = typeof actMeta?.pct_from === 'number' ? actMeta.pct_from : undefined;
+      const actPctTo = typeof actMeta?.pct_to === 'number' ? actMeta.pct_to : undefined;
+
+      const actStartSec =
+        actPctFrom !== undefined ? (actPctFrom / 100) * duration : actIndex * actDurationFallback;
+      const actEndSec =
+        actPctTo !== undefined ? (actPctTo / 100) * duration : (actIndex + 1) * actDurationFallback;
+
+      const actDurSec = Math.max(0, actEndSec - actStartSec);
+      const sequenceDurationFallback = sequences.length > 0 ? actDurSec / sequences.length : actDurSec;
+
       sequences.forEach((sequence, seqIndex) => {
         const scenes = (timelineData.scenes || []).filter(sc => sc.sequenceId === sequence.id);
-        const seqStartSec = actStartSec + seqIndex * sequenceDuration;
-        const sceneDuration = scenes.length > 0 ? sequenceDuration / scenes.length : sequenceDuration;
-        
+
+        const seqMeta = (sequence as any).metadata ?? {};
+        const seqPctFrom =
+          typeof seqMeta?.pct_from === 'number' ? seqMeta.pct_from : undefined;
+        const seqPctTo =
+          typeof seqMeta?.pct_to === 'number' ? seqMeta.pct_to : undefined;
+
+        const seqStartSec =
+          seqPctFrom !== undefined
+            ? actStartSec + (seqPctFrom / 100) * actDurSec
+            : actStartSec + seqIndex * sequenceDurationFallback;
+        const seqEndSec =
+          seqPctTo !== undefined
+            ? actStartSec + (seqPctTo / 100) * actDurSec
+            : seqStartSec + sequenceDurationFallback;
+
+        const seqDurSec = Math.max(0, seqEndSec - seqStartSec);
+        const sceneDurationFallback = scenes.length > 0 ? seqDurSec / scenes.length : seqDurSec;
+
         scenes.forEach((scene, sceneIndex) => {
-          const startSec = seqStartSec + sceneIndex * sceneDuration;
-          const endSec = startSec + sceneDuration;
+          const sceneMeta = (scene as any).metadata ?? {};
+          const scenePctFrom =
+            typeof sceneMeta?.pct_from === 'number' ? sceneMeta.pct_from : undefined;
+          const scenePctTo =
+            typeof sceneMeta?.pct_to === 'number' ? sceneMeta.pct_to : undefined;
+
+          const startSec =
+            scenePctFrom !== undefined
+              ? seqStartSec + (scenePctFrom / 100) * seqDurSec
+              : seqStartSec + sceneIndex * sceneDurationFallback;
+          const endSec =
+            scenePctTo !== undefined
+              ? seqStartSec + (scenePctTo / 100) * seqDurSec
+              : startSec + sceneDurationFallback;
           const x = (startSec - viewStartSec) * pxPerSec;
           const width = (endSec - startSec) * pxPerSec;
           

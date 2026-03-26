@@ -103,6 +103,8 @@ export interface Scene {
   episodeId?: string;
   sequenceId?: string; // NEW: Zuordnung zu Sequence
   actId?: string; // Legacy/Optional
+  /** Backend node metadata (e.g. manual trim pct values). */
+  metadata?: Record<string, any>;
   sceneNumber: number; // Konsistent mit API (Timeline API verwendet sceneNumber)
   number?: number; // Legacy field for backwards compatibility
   title: string;
@@ -136,6 +138,8 @@ export interface Act {
   color?: string; // Hex color for UI
   orderIndex: number;
   wordCount?: number; // 📖 For books: Total word count in this act
+  /** Backend node metadata (e.g. manual trim pct values). */
+  metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
   // Relations
@@ -151,6 +155,8 @@ export interface Sequence {
   color?: string; // Hex color for UI
   orderIndex: number;
   wordCount?: number; // 📖 For books (chapters): Total word count in this chapter
+  /** Backend node metadata (e.g. manual trim pct values). */
+  metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
   // Relations

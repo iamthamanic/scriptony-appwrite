@@ -5,6 +5,7 @@
 import shotsHandler from "./shots/index";
 import shotBySceneHandler from "./shots/[sceneId]";
 import shotByIdHandler from "./shots/[id]/index";
+import shotUploadImageHandler from "./shots/[id]/upload-image";
 import shotReorderHandler from "./shots/reorder";
 import { sendJson, sendNotFound, type RequestLike, type ResponseLike } from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
@@ -50,6 +51,13 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   const bySceneMatch = pathname.match(/^\/shots\/by-scene\/([^/]+)$/);
   if (bySceneMatch) {
     await shotBySceneHandler(withParams(req, { sceneId: bySceneMatch[1] }), res);
+    return;
+  }
+
+  // /shots/:id/upload-image (must be before /shots/:id)
+  const uploadImageMatch = pathname.match(/^\/shots\/([^/]+)\/upload-image$/);
+  if (uploadImageMatch) {
+    await shotUploadImageHandler(withParams(req, { id: uploadImageMatch[1] }), res);
     return;
   }
 

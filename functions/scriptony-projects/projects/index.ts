@@ -14,7 +14,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../_shared/http";
-import { normalizeProjectInput } from "../../_shared/scriptony";
+import { hydrateProjectRow, hydrateProjectRows, normalizeProjectInput } from "../../_shared/scriptony";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -61,6 +61,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               beat_template
               episode_layout
               season_engine
+              concept_blocks
+              target_pages
+              words_per_page
+              reading_speed_wpm
               organization_id
               user_id
               is_deleted
@@ -75,13 +79,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         }
       );
 
-      sendJson(res, 200, { projects: data.projects });
+      sendJson(res, 200, { projects: hydrateProjectRows(data.projects) });
       return;
     }
 
     if (req.method === "POST") {
       const body = await readJsonBody<Record<string, any>>(req);
       const projectInput = normalizeProjectInput(body);
+      if (!("type" in projectInput)) {
+        projectInput.type = "film";
+      }
 
       if (!projectInput.title) {
         sendBadRequest(res, "title is required");
@@ -106,6 +113,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               beat_template
               episode_layout
               season_engine
+              concept_blocks
+              target_pages
+              words_per_page
+              reading_speed_wpm
               organization_id
               user_id
               created_at
@@ -122,7 +133,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         }
       );
 
-      sendJson(res, 201, { project: created.insert_projects_one });
+      sendJson(res, 201, { project: hydrateProjectRow(created.insert_projects_one) });
       return;
     }
 

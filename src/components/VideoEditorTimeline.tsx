@@ -1,6 +1,28 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Play, Pause, Plus, Minus, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Plus,
+  Minus,
+  Maximize2,
+  Minimize2,
+  MoreVertical,
+  Camera,
+  ListTree,
+  Magnet,
+} from 'lucide-react';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Textarea } from './ui/textarea';
 import { cn } from './ui/utils';
 import * as BeatsAPI from '../lib/api/beats-api';
 import * as TimelineAPI from '../lib/api/timeline-api';
@@ -8,11 +30,13 @@ import * as ShotsAPI from '../lib/api/shots-api';
 import { useAuth } from '../hooks/useAuth';
 import type { TimelineData } from './FilmDropdown';
 import type { BookTimelineData } from './BookDropdown';
+import type { ShotAudio } from '../lib/types';
 import { RichTextEditorModal } from './RichTextEditorModal';
 import { ReadonlyTiptapView } from './ReadonlyTiptapView';
 import { TimelineTextPreview } from './TimelineTextPreview';
 import { trimBeatLeft, trimBeatRight } from './timeline-helpers';
 import { calculateActBlocks, calculateSequenceBlocks, calculateSceneBlocks } from './timeline-blocks';
+import { toast } from 'sonner';
 
 /**
  * 🎬 VIDEO EDITOR TIMELINE (CapCut Style)
@@ -24,6 +48,8 @@ import { calculateActBlocks, calculateSequenceBlocks, calculateSceneBlocks } fro
  * - Viewport culling (only render visible items)
  * - Dynamic zoom range: zoom=0 always shows ENTIRE timeline (like CapCut!)
  * - Exponential zoom mapping from fitPxPerSec (dynamic) to MAX_PX_PER_SEC (200)
+ * - Shot track: shows each shot’s image (thumbnail or full-bleed when the block is narrow).
+ * - Film: Musik- und SFX-Zeilen nutzen dieselbe x/Breite wie der Shot (mit Shot-Trim); Clips proportional nach Audiolänge/Trim.
  */
 
 interface VideoEditorTimelineProps {
@@ -37,7 +63,12 @@ interface VideoEditorTimelineProps {
   wordsPerPage?: number;
   targetPages?: number;
   readingSpeedWpm?: number; // Reading speed in words per minute for books
+  /** Film: switch to structure dropdown, expand act→scene→shot and scroll to shot (full ShotCard menu). */
+  onOpenShotInStructureTree?: (shotId: string) => void;
 }
+
+type AddNodeKind = 'act' | 'sequence' | 'scene' | 'shot';
+type EditableTitleKind = AddNodeKind | 'beat';
 
 // 🎯 ZOOM CONFIGURATION
 const MAX_PX_PER_SEC = 200;  // Maximum zoom in
@@ -99,6 +130,36 @@ function formatTimeLabel(totalSeconds: number): string {
 
   if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
   return `${m}:${pad(s)}`;
+}
+
+function shotBlockPreviewUrl(shot: { imageUrl?: string; image_url?: string; thumbnailUrl?: string; thumbnail_url?: string }): string {
+  return (
+    shot.imageUrl ||
+    shot.image_url ||
+    shot.thumbnailUrl ||
+    shot.thumbnail_url ||
+    ''
+  );
+}
+
+/** Playback length of one clip (trim region or file duration) for proportional layout inside the shot bar. */
+function shotAudioPlayDurationSec(a: ShotAudio): number {
+  const s = a.startTime;
+  const e = a.endTime;
+  if (typeof s === 'number' && typeof e === 'number' && e > s) return e - s;
+  if (typeof a.duration === 'number' && a.duration > 0) return a.duration;
+  return 1;
+}
+
+function layoutShotAudioSegments(files: ShotAudio[]): { id: string; widthFrac: number; title: string }[] {
+  if (files.length === 0) return [];
+  const durs = files.map(shotAudioPlayDurationSec);
+  const sum = durs.reduce((x, y) => x + y, 0) || 1;
+  return files.map((f, i) => ({
+    id: f.id,
+    widthFrac: durs[i]! / sum,
+    title: (f.label || f.fileName || 'Audio').slice(0, 48),
+  }));
 }
 
 // 🎯 ADAPTIVE TEXT RENDERING: Choose text display based on block width
@@ -190,6 +251,29 @@ function calculateWordCountFromContent(content: any): number {
   return totalWords;
 }
 
+/** Rescale shot segment lengths to a target sum while respecting a minimum per segment. */
+function redistributeShotLensProportional(
+  prev: number[],
+  targetSum: number,
+  minEach: number
+): number[] {
+  const n = prev.length;
+  if (n === 0) return [];
+  const floor = n * minEach;
+  if (targetSum < floor - 1e-6) {
+    return prev.map(() => minEach);
+  }
+  const s0 = prev.reduce((a, b) => a + b, 0) || 1;
+  const out = prev.map((d) => Math.max(minEach, (d / s0) * targetSum));
+  let err = targetSum - out.reduce((a, b) => a + b, 0);
+  out[n - 1] = Math.max(minEach, out[n - 1] + err);
+  err = targetSum - out.reduce((a, b) => a + b, 0);
+  if (Math.abs(err) > 1e-3) {
+    out[0] = Math.max(minEach, out[0] + err);
+  }
+  return out;
+}
+
 export function VideoEditorTimeline({ 
   projectId, 
   projectType = 'film',
@@ -201,6 +285,7 @@ export function VideoEditorTimeline({
   wordsPerPage = 250,
   targetPages,
   readingSpeedWpm = 150, // Default reading speed in words per minute
+  onOpenShotInStructureTree,
 }: VideoEditorTimelineProps) {
   const { getAccessToken } = useAuth();
   
@@ -254,17 +339,146 @@ export function VideoEditorTimeline({
   // 🎯 TRACK DB BEATS: Set of beat IDs that exist in the database
   const [dbBeatIds, setDbBeatIds] = useState<Set<string>>(new Set());
   
-  // 🧲 BEAT MAGNET (Ripple Editing)
+  // 🧲 BEAT MAGNET (nur Beat-Trim / Ripple)
   const [beatMagnetEnabled, setBeatMagnetEnabled] = useState(true);
+
+  // 🧲 CLIP MAGNETS (Act / Sequence / Scene / Shot separat, nur Film-Trim)
+  const CLIP_MAGNETS_STORAGE_KEY = `scriptony-timeline-clip-magnets-${projectId}`;
+  const [clipMagnets, setClipMagnets] = useState(() => {
+    const defaults = { act: true, sequence: true, scene: true, shot: true };
+    if (typeof window === 'undefined') return defaults;
+    try {
+      const raw = localStorage.getItem(CLIP_MAGNETS_STORAGE_KEY);
+      if (!raw) return defaults;
+      const p = JSON.parse(raw) as Record<string, unknown>;
+      return {
+        act: p.act !== false,
+        sequence: p.sequence !== false,
+        scene: p.scene !== false,
+        shot: p.shot !== false,
+      };
+    } catch {
+      return defaults;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(CLIP_MAGNETS_STORAGE_KEY, JSON.stringify(clipMagnets));
+  }, [clipMagnets, CLIP_MAGNETS_STORAGE_KEY]);
   
   // 🎯 BEAT TRIM STATE
   const [trimingBeat, setTrimingBeat] = useState<{ id: string; handle: 'left' | 'right' } | null>(null);
   const trimStartXRef = useRef(0);
   const trimStartSecRef = useRef(0);
+  /** Snapshot at beat trim mousedown — used on mouseup to diff DB updates (drag already applied gapless ripple). */
+  const beatTrimSnapshotRef = useRef<BeatsAPI.StoryBeat[] | null>(null);
+
+  // 🎬 CAPCUT-LIKE TRIM STATE (Act / Sequence / Scene / Shot)
+  type TrimKind = 'act' | 'sequence' | 'scene' | 'shot';
+  const [trimingClip, setTrimingClip] = useState<{
+    kind: TrimKind;
+    id: string;
+    handle: 'left' | 'right';
+  } | null>(null);
+  const trimStartXRefClip = useRef(0);
+  const trimClipBoundaryStartRef = useRef(0);
+  const trimClipCtxRef = useRef<{
+    kind: TrimKind;
+    actIds?: string[];
+    actIndex?: number;
+    sequenceIds?: string[];
+    seqIndex?: number;
+    sceneIds?: string[];
+    sceneIndex?: number;
+    actStartSec?: number;
+    actDurSec?: number;
+    seqStartSec?: number;
+    seqDurSec?: number;
+    sceneStartSec?: number;
+    sceneDurSec?: number;
+    actDurations?: number[];
+    sequenceDurations?: number[];
+    sceneDurations?: number[];
+    shotIds?: string[];
+    shotIndex?: number;
+    shotDurations?: number[];
+    /** Last shot: drag right edge — grow/shrink last shot, take/give time to earlier shots (same scene duration). */
+    trimLastRight?: boolean;
+    /** First shot: drag left edge — grow/shrink first shot, take/give time to later shots. */
+    trimFirstLeft?: boolean;
+    /** Absolute sec end of first shot (boundary shot0|shot1); fixed while trimFirstLeft drag. */
+    anchorEndFirstSec?: number;
+  } | null>(null);
+  const trimClipSnapshotRef = useRef<{
+    manualActTimings: Record<string, { pct_from: number; pct_to: number }>;
+    manualSequenceTimings: Record<string, { pct_from: number; pct_to: number }>;
+    manualSceneTimings: Record<string, { pct_from: number; pct_to: number }>;
+    manualShotDurations: Record<string, number>;
+  } | null>(null);
+  const trimingClipRef = useRef<typeof trimingClip>(null);
+  trimingClipRef.current = trimingClip;
+
+  // Local overrides so UI can update while dragging (we commit only on mouse up).
+  const [manualActTimings, setManualActTimings] = useState<
+    Record<string, { pct_from: number; pct_to: number }>
+  >({});
+  const [manualSequenceTimings, setManualSequenceTimings] = useState<
+    Record<string, { pct_from: number; pct_to: number }>
+  >({}); // pct values are relative to parent act
+  const [manualSceneTimings, setManualSceneTimings] = useState<
+    Record<string, { pct_from: number; pct_to: number }>
+  >({}); // pct values are relative to parent sequence
+  const [manualShotDurations, setManualShotDurations] = useState<
+    Record<string, number>
+  >({}); // duration in seconds
+
+  const manualActTimingsRef = useRef(manualActTimings);
+  manualActTimingsRef.current = manualActTimings;
+  const manualSequenceTimingsRef = useRef(manualSequenceTimings);
+  manualSequenceTimingsRef.current = manualSequenceTimings;
+  const manualSceneTimingsRef = useRef(manualSceneTimings);
+  manualSceneTimingsRef.current = manualSceneTimings;
+  const manualShotDurationsRef = useRef(manualShotDurations);
+  manualShotDurationsRef.current = manualShotDurations;
+
+  const actBlocksRef = useRef<any[]>([]);
+  const sequenceBlocksRef = useRef<any[]>([]);
+  const sceneBlocksRef = useRef<any[]>([]);
+  const shotBlocksRef = useRef<any[]>([]);
+  const timelineDataRef = useRef(timelineData);
+  timelineDataRef.current = timelineData;
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
+  const pxPerSecRef = useRef(pxPerSec);
+  pxPerSecRef.current = pxPerSec;
+  const beatMagnetEnabledRef = useRef(beatMagnetEnabled);
+  beatMagnetEnabledRef.current = beatMagnetEnabled;
+  const clipMagnetsRef = useRef(clipMagnets);
+  clipMagnetsRef.current = clipMagnets;
+  const beatsRef = useRef(beats);
+  beatsRef.current = beats;
+
+  const MIN_CLIP_DURATION_SEC = 1; // Consistent with Beat min duration
   
   // 🎯 MODAL STATE: Scene Content Editor
   const [editingSceneForModal, setEditingSceneForModal] = useState<any | null>(null);
   const [showContentModal, setShowContentModal] = useState(false);
+  const [editingTitle, setEditingTitle] = useState<{
+    kind: EditableTitleKind;
+    id: string;
+    value: string;
+  } | null>(null);
+  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+  const [editingDescription, setEditingDescription] = useState<{
+    kind: AddNodeKind;
+    id: string;
+    title: string;
+    description: string;
+  } | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [pendingAddKind, setPendingAddKind] = useState<AddNodeKind | null>(null);
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
   
   // 🎯 DURATION & VIEWPORT (NOW SAFE TO USE timelineData!)
   const totalDurationMin = duration / 60; // Total timeline duration in MINUTES (from prop)
@@ -272,7 +486,12 @@ export function VideoEditorTimeline({
   
   // 📖 BOOK METRICS: Default duration for empty acts
   const DEFAULT_EMPTY_ACT_MIN = 5; // 5 minutes
-  const isBookProject = projectType === 'book';
+  const isBookProject = (projectType ?? '').toLowerCase() === 'book';
+  /** Magnete für Act/Seq/Scene/Shot: alles außer reinem Buch-Projekt (Film, Serie, …). */
+  const showFilmClipMagnets = !isBookProject;
+  const labelByKind: Record<AddNodeKind, string> = isBookProject
+    ? { act: 'Kapitel', sequence: 'Abschnitt', scene: 'Szene', shot: 'Shot' }
+    : { act: 'Akt', sequence: 'Sequence', scene: 'Scene', shot: 'Shot' };
   
   // 📖 PLAYBACK STATE: Word-by-word text display (MUST BE AFTER isBookProject)
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
@@ -280,7 +499,6 @@ export function VideoEditorTimeline({
   const [wordsArray, setWordsArray] = useState<string[]>([]);
   const playbackSceneStartTimeRef = useRef<number>(0); // Timeline position where current scene started
   const playbackAnimationRef = useRef<number | null>(null);
-  const sceneBlocksRef = useRef<any[]>([]);
   const lastStateUpdateTimeRef = useRef<number>(0); // Throttle State updates to avoid re-render spam
   
   // 🎯 CURSOR DRAG STATE
@@ -298,6 +516,8 @@ export function VideoEditorTimeline({
   const playheadSequenceRef = useRef<HTMLDivElement>(null);
   const playheadSceneRef = useRef<HTMLDivElement>(null);
   const playheadShotRef = useRef<HTMLDivElement>(null);
+  const playheadMusicRef = useRef<HTMLDivElement>(null);
+  const playheadSfxRef = useRef<HTMLDivElement>(null);
   const smoothPlayheadRAF = useRef<number | null>(null);
   
   // 🚀 DELTA TIME INTERPOLATION (for smooth 60fps independent of React renders!)
@@ -307,7 +527,6 @@ export function VideoEditorTimeline({
   const isPlayingRef = useRef<boolean>(false);
   const isBookProjectRef = useRef<boolean>(isBookProject);
   const viewStartSecRef = useRef<number>(0);
-  const pxPerSecRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0); // 🎯 Current playhead time (for snapping!)
   
   // 🎯 TRACK HEIGHTS (CapCut-Style with localStorage)
@@ -317,6 +536,8 @@ export function VideoEditorTimeline({
     sequence: { min: 40, max: 80, default: 40 },
     scene: { min: 80, max: 400, default: 120 },
     shot: { min: 32, max: 90, default: 40 },
+    music: { min: 22, max: 72, default: 28 },
+    sfx: { min: 22, max: 72, default: 28 },
   };
   
   const STORAGE_KEY = `scriptony-timeline-heights-${projectId}`;
@@ -334,6 +555,8 @@ export function VideoEditorTimeline({
             sequence: parsed.sequence ?? TRACK_CONSTRAINTS.sequence.default,
             scene: parsed.scene ?? TRACK_CONSTRAINTS.scene.default,
             shot: parsed.shot ?? TRACK_CONSTRAINTS.shot.default,
+            music: parsed.music ?? TRACK_CONSTRAINTS.music.default,
+            sfx: parsed.sfx ?? TRACK_CONSTRAINTS.sfx.default,
           };
         } catch (e) {
           console.error('[VideoEditorTimeline] Failed to parse stored heights:', e);
@@ -346,6 +569,8 @@ export function VideoEditorTimeline({
       sequence: TRACK_CONSTRAINTS.sequence.default,
       scene: TRACK_CONSTRAINTS.scene.default,
       shot: TRACK_CONSTRAINTS.shot.default,
+      music: TRACK_CONSTRAINTS.music.default,
+      sfx: TRACK_CONSTRAINTS.sfx.default,
     };
   });
   
@@ -394,6 +619,7 @@ export function VideoEditorTimeline({
   
   // 🎯 BEAT TRIM HANDLERS (Mouse Events)
   const handleTrimStart = (beatId: string, handle: 'left' | 'right', e: React.MouseEvent) => {
+    if (trimingClip) return;
     e.preventDefault();
     e.stopPropagation();
     setTrimingBeat({ id: beatId, handle });
@@ -407,6 +633,7 @@ export function VideoEditorTimeline({
         trimStartSecRef.current = (beat.pct_to / 100) * duration;
       }
     }
+    beatTrimSnapshotRef.current = beats.map((b) => ({ ...b }));
     
     console.log(`[Beat Trim] 🎯 Start trimming ${handle} handle of ${beatId}`);
   };
@@ -467,6 +694,1087 @@ export function VideoEditorTimeline({
     
     return Math.max(0, Math.min(duration, best));
   }
+
+  /** Snap a timeline boundary (sec) to extra edges + 0/duration; uses same px threshold as beats when magnet is on. */
+  function snapClipBoundary(
+    rawSec: number,
+    extraEdges: number[],
+    totalDur: number,
+    pxs: number,
+    magnet: boolean
+  ): number {
+    if (!magnet) return rawSec;
+    const thresholdSec = SNAP_THRESHOLD_PX / pxs;
+    const edges = [...extraEdges, 0, totalDur];
+    let best = rawSec;
+    let bestDelta = thresholdSec;
+    for (const edge of edges) {
+      const d = Math.abs(rawSec - edge);
+      if (d <= bestDelta) {
+        bestDelta = d;
+        best = edge;
+      }
+    }
+    return Math.max(0, Math.min(totalDur, best));
+  }
+
+  function resolveActPct(
+    actId: string,
+    manual: Record<string, { pct_from: number; pct_to: number }>,
+    actsOrdered: any[]
+  ): { from: number; to: number } {
+    const o = manual[actId];
+    if (o) return { from: o.pct_from, to: o.pct_to };
+    const i = actsOrdered.findIndex((a) => a.id === actId);
+    const act = actsOrdered[i];
+    const m = act?.metadata;
+    if (typeof m?.pct_from === 'number' && typeof m?.pct_to === 'number') {
+      return { from: m.pct_from, to: m.pct_to };
+    }
+    const n = actsOrdered.length || 1;
+    return { from: (i / n) * 100, to: ((i + 1) / n) * 100 };
+  }
+
+  function resolveSeqPct(
+    seqId: string,
+    manual: Record<string, { pct_from: number; pct_to: number }>,
+    seqsOrdered: any[]
+  ): { from: number; to: number } {
+    const o = manual[seqId];
+    if (o) return { from: o.pct_from, to: o.pct_to };
+    const j = seqsOrdered.findIndex((s) => s.id === seqId);
+    const seq = seqsOrdered[j];
+    const m = seq?.metadata;
+    if (typeof m?.pct_from === 'number' && typeof m?.pct_to === 'number') {
+      return { from: m.pct_from, to: m.pct_to };
+    }
+    const n = seqsOrdered.length || 1;
+    return { from: (j / n) * 100, to: ((j + 1) / n) * 100 };
+  }
+
+  function resolveScenePct(
+    sceneId: string,
+    manual: Record<string, { pct_from: number; pct_to: number }>,
+    scenesOrdered: any[]
+  ): { from: number; to: number } {
+    const o = manual[sceneId];
+    if (o) return { from: o.pct_from, to: o.pct_to };
+    const j = scenesOrdered.findIndex((s) => s.id === sceneId);
+    const sc = scenesOrdered[j];
+    const m = sc?.metadata;
+    if (typeof m?.pct_from === 'number' && typeof m?.pct_to === 'number') {
+      return { from: m.pct_from, to: m.pct_to };
+    }
+    const n = scenesOrdered.length || 1;
+    return { from: (j / n) * 100, to: ((j + 1) / n) * 100 };
+  }
+
+  function collectClipSnapEdgesFilm(includeBeatPct: boolean): number[] {
+    const out: number[] = [];
+    const dur = durationRef.current;
+    const b = beatsRef.current;
+    if (includeBeatPct) {
+      for (const beat of b) {
+        out.push((beat.pct_from / 100) * dur, (beat.pct_to / 100) * dur);
+      }
+    }
+    out.push(currentTimeRef.current);
+    for (const ab of actBlocksRef.current) {
+      out.push(ab.startSec, ab.endSec);
+    }
+    for (const sb of sequenceBlocksRef.current) {
+      out.push(sb.startSec, sb.endSec);
+    }
+    for (const scb of sceneBlocksRef.current) {
+      out.push(scb.startSec, scb.endSec);
+    }
+    for (const sh of shotBlocksRef.current) {
+      out.push(sh.startSec, sh.endSec);
+    }
+    return out;
+  }
+
+  const handleTrimClipMouseDown = (
+    kind: TrimKind,
+    id: string,
+    handle: 'left' | 'right',
+    e: React.MouseEvent
+  ) => {
+    if (isBookProject || trimingBeat) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const td = timelineDataRef.current;
+    if (!td || !('acts' in td) || !td.acts?.length) return;
+
+    trimClipSnapshotRef.current = {
+      manualActTimings: { ...manualActTimingsRef.current },
+      manualSequenceTimings: { ...manualSequenceTimingsRef.current },
+      manualSceneTimings: { ...manualSceneTimingsRef.current },
+      manualShotDurations: { ...manualShotDurationsRef.current },
+    };
+
+    const actsOrdered = [...(td.acts || [])].sort(
+      (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+    );
+
+    if (kind === 'act') {
+      const idx = actsOrdered.findIndex((a: any) => a.id === id);
+      if (idx < 0) return;
+      const sortedBlocks = [...actBlocksRef.current].sort((a: any, b: any) => a.startSec - b.startSec);
+      const blockMap = new Map(sortedBlocks.map((b: any) => [b.id, b]));
+      const cur = blockMap.get(id);
+      if (!cur) return;
+      const actIds = actsOrdered.map((a: any) => a.id);
+      const actDurations = actIds.map((aid: string) => {
+        const b = blockMap.get(aid);
+        return b ? Math.max(MIN_CLIP_DURATION_SEC, b.endSec - b.startSec) : MIN_CLIP_DURATION_SEC;
+      });
+      trimClipBoundaryStartRef.current = handle === 'left' ? cur.startSec : cur.endSec;
+      trimStartXRefClip.current = e.clientX;
+      if (handle === 'right' && idx >= actsOrdered.length - 1) {
+        trimClipCtxRef.current = {
+          kind: 'act',
+          actIds,
+          actIndex: idx,
+          actDurations,
+          trimLastRight: true,
+        };
+        setTrimingClip({ kind: 'act', id, handle });
+        return;
+      }
+      if (handle === 'left' && idx === 0) {
+        trimClipCtxRef.current = {
+          kind: 'act',
+          actIds,
+          actIndex: idx,
+          actDurations,
+          trimFirstLeft: true,
+          anchorEndFirstSec: cur.endSec,
+        };
+        setTrimingClip({ kind: 'act', id, handle });
+        return;
+      }
+      trimClipCtxRef.current = {
+        kind: 'act',
+        actIds,
+        actIndex: idx,
+        actDurations,
+      };
+      setTrimingClip({ kind: 'act', id, handle });
+      return;
+    }
+
+    if (kind === 'sequence') {
+      const seq = (td.sequences || []).find((s: any) => s.id === id);
+      if (!seq) return;
+      const actId = seq.actId;
+      const actBlock = actBlocksRef.current.find((b: any) => b.id === actId);
+      if (!actBlock) return;
+      const seqsOrdered = [...(td.sequences || [])]
+        .filter((s: any) => s.actId === actId)
+        .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const idx = seqsOrdered.findIndex((s: any) => s.id === id);
+      if (idx < 0) return;
+      const sb = sequenceBlocksRef.current.find((b: any) => b.id === id);
+      if (!sb) return;
+      const seqIds = seqsOrdered.map((s: any) => s.id);
+      const sequenceDurations = seqIds.map((sid: string) => {
+        const b = sequenceBlocksRef.current.find((x: any) => x.id === sid);
+        return b ? Math.max(MIN_CLIP_DURATION_SEC, b.endSec - b.startSec) : MIN_CLIP_DURATION_SEC;
+      });
+      trimClipBoundaryStartRef.current = handle === 'left' ? sb.startSec : sb.endSec;
+      trimStartXRefClip.current = e.clientX;
+      if (handle === 'right' && idx >= seqsOrdered.length - 1) {
+        trimClipCtxRef.current = {
+          kind: 'sequence',
+          sequenceIds: seqIds,
+          seqIndex: idx,
+          actStartSec: actBlock.startSec,
+          actDurSec: Math.max(0, actBlock.endSec - actBlock.startSec),
+          sequenceDurations,
+          trimLastRight: true,
+        };
+        setTrimingClip({ kind: 'sequence', id, handle });
+        return;
+      }
+      if (handle === 'left' && idx === 0) {
+        trimClipCtxRef.current = {
+          kind: 'sequence',
+          sequenceIds: seqIds,
+          seqIndex: idx,
+          actStartSec: actBlock.startSec,
+          actDurSec: Math.max(0, actBlock.endSec - actBlock.startSec),
+          sequenceDurations,
+          trimFirstLeft: true,
+          anchorEndFirstSec: sb.endSec,
+        };
+        setTrimingClip({ kind: 'sequence', id, handle });
+        return;
+      }
+      trimClipCtxRef.current = {
+        kind: 'sequence',
+        sequenceIds: seqIds,
+        seqIndex: idx,
+        actStartSec: actBlock.startSec,
+        actDurSec: Math.max(0, actBlock.endSec - actBlock.startSec),
+        sequenceDurations,
+      };
+      setTrimingClip({ kind: 'sequence', id, handle });
+      return;
+    }
+
+    if (kind === 'scene') {
+      const scene = (td.scenes || []).find((s: any) => s.id === id);
+      if (!scene) return;
+      const seqId = scene.sequenceId;
+      const seqBlock = sequenceBlocksRef.current.find((b: any) => b.id === seqId);
+      if (!seqBlock) return;
+      const scenesOrdered = [...(td.scenes || [])]
+        .filter((s: any) => s.sequenceId === seqId)
+        .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const idx = scenesOrdered.findIndex((s: any) => s.id === id);
+      if (idx < 0) return;
+      const scb = sceneBlocksRef.current.find((b: any) => b.id === id);
+      if (!scb) return;
+      const sceneIds = scenesOrdered.map((s: any) => s.id);
+      const sceneDurations = sceneIds.map((sid: string) => {
+        const b = sceneBlocksRef.current.find((x: any) => x.id === sid);
+        return b ? Math.max(MIN_CLIP_DURATION_SEC, b.endSec - b.startSec) : MIN_CLIP_DURATION_SEC;
+      });
+      trimClipBoundaryStartRef.current = handle === 'left' ? scb.startSec : scb.endSec;
+      trimStartXRefClip.current = e.clientX;
+      if (handle === 'right' && idx >= scenesOrdered.length - 1) {
+        trimClipCtxRef.current = {
+          kind: 'scene',
+          sceneIds,
+          sceneIndex: idx,
+          seqStartSec: seqBlock.startSec,
+          seqDurSec: Math.max(0, seqBlock.endSec - seqBlock.startSec),
+          sceneDurations,
+          trimLastRight: true,
+        };
+        setTrimingClip({ kind: 'scene', id, handle });
+        return;
+      }
+      if (handle === 'left' && idx === 0) {
+        trimClipCtxRef.current = {
+          kind: 'scene',
+          sceneIds,
+          sceneIndex: idx,
+          seqStartSec: seqBlock.startSec,
+          seqDurSec: Math.max(0, seqBlock.endSec - seqBlock.startSec),
+          sceneDurations,
+          trimFirstLeft: true,
+          anchorEndFirstSec: scb.endSec,
+        };
+        setTrimingClip({ kind: 'scene', id, handle });
+        return;
+      }
+      trimClipCtxRef.current = {
+        kind: 'scene',
+        sceneIds,
+        sceneIndex: idx,
+        seqStartSec: seqBlock.startSec,
+        seqDurSec: Math.max(0, seqBlock.endSec - seqBlock.startSec),
+        sceneDurations,
+      };
+      setTrimingClip({ kind: 'scene', id, handle });
+      return;
+    }
+
+    if (kind === 'shot') {
+      const shRow = (td.shots || []).find((sh: any) => sh.id === id);
+      const sceneId = shRow?.sceneId || shRow?.scene_id;
+      if (!sceneId) return;
+      const sceneBlock = sceneBlocksRef.current.find((b: any) => b.id === sceneId);
+      if (!sceneBlock) return;
+      const blocksInScene = shotBlocksRef.current
+        .filter(
+          (b: any) =>
+            ((b as any).sceneId || (b as any).scene_id) === sceneId
+        )
+        .sort((a: any, b: any) => a.startSec - b.startSec);
+      const idx = blocksInScene.findIndex((b: any) => b.id === id);
+      if (idx < 0) return;
+      const n = blocksInScene.length;
+      const shb = blocksInScene[idx];
+      const durs = blocksInScene.map((b: any) => Math.max(0, b.endSec - b.startSec));
+      const sceneStartSec = sceneBlock.startSec;
+      const sceneDurSec = Math.max(0, sceneBlock.endSec - sceneBlock.startSec);
+
+      if (handle === 'right' && idx === n - 1) {
+        trimClipBoundaryStartRef.current = shb.endSec;
+        trimStartXRefClip.current = e.clientX;
+        trimClipCtxRef.current = {
+          kind: 'shot',
+          shotIds: blocksInScene.map((b: any) => b.id),
+          shotIndex: idx,
+          sceneStartSec,
+          sceneDurSec,
+          shotDurations: durs,
+          trimLastRight: true,
+        };
+        setTrimingClip({ kind: 'shot', id, handle });
+        return;
+      }
+      if (handle === 'left' && idx === 0) {
+        trimClipBoundaryStartRef.current = shb.startSec;
+        trimStartXRefClip.current = e.clientX;
+        trimClipCtxRef.current = {
+          kind: 'shot',
+          shotIds: blocksInScene.map((b: any) => b.id),
+          shotIndex: idx,
+          sceneStartSec,
+          sceneDurSec,
+          shotDurations: durs,
+          trimFirstLeft: true,
+          anchorEndFirstSec: shb.endSec,
+        };
+        setTrimingClip({ kind: 'shot', id, handle });
+        return;
+      }
+      trimClipBoundaryStartRef.current = handle === 'left' ? shb.startSec : shb.endSec;
+      trimStartXRefClip.current = e.clientX;
+      trimClipCtxRef.current = {
+        kind: 'shot',
+        shotIds: blocksInScene.map((b: any) => b.id),
+        shotIndex: idx,
+        sceneStartSec,
+        sceneDurSec,
+        shotDurations: durs,
+      };
+      setTrimingClip({ kind: 'shot', id, handle });
+    }
+  };
+
+  const handleTrimClipMove = (e: MouseEvent) => {
+    const clip = trimingClipRef.current;
+    const ctx = trimClipCtxRef.current;
+    if (!clip || !ctx || ctx.kind !== clip.kind) return;
+
+    const dTotal = durationRef.current;
+    const pxs = pxPerSecRef.current;
+    const cm = clipMagnetsRef.current;
+    const magnet =
+      clip.kind === 'act'
+        ? cm.act
+        : clip.kind === 'sequence'
+          ? cm.sequence
+          : clip.kind === 'scene'
+            ? cm.scene
+            : cm.shot;
+    const deltaSec = (e.clientX - trimStartXRefClip.current) / pxs;
+    let newBoundarySec = trimClipBoundaryStartRef.current + deltaSec;
+    const td = timelineDataRef.current;
+    if (!td || !('acts' in td)) return;
+
+    const snapEdges = magnet ? collectClipSnapEdgesFilm(true) : [];
+
+    if (ctx.kind === 'act' && ctx.actIds && ctx.actIndex !== undefined) {
+      const actsOrdered = [...(td.acts || [])].sort(
+        (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+      );
+      const idx = ctx.actIndex;
+      const sortedBlocks = [...actBlocksRef.current].sort(
+        (a: any, b: any) => a.startSec - b.startSec
+      );
+      if (ctx.trimLastRight || ctx.trimFirstLeft) {
+        const ids = ctx.actIds;
+        const n = ids.length;
+        const minD = MIN_CLIP_DURATION_SEC;
+        let durs =
+          ctx.actDurations && ctx.actDurations.length === n
+            ? [...ctx.actDurations]
+            : ids.map((aid) => {
+                const b = sortedBlocks.find((x: any) => x.id === aid);
+                return b ? Math.max(minD, b.endSec - b.startSec) : minD;
+              });
+        const totalDur = dTotal;
+        if (ctx.trimLastRight) {
+          const lastStart = durs.slice(0, n - 1).reduce((s, x) => s + x, 0);
+          let newEnd = newBoundarySec;
+          newEnd = Math.max(lastStart + minD, Math.min(totalDur, newEnd));
+          if (magnet) {
+            newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
+            newEnd = Math.max(lastStart + minD, Math.min(totalDur, newEnd));
+          }
+          const newLast = newEnd - lastStart;
+          const prev = redistributeShotLensProportional(durs.slice(0, n - 1), totalDur - newLast, minD);
+          durs = [...prev, Math.max(minD, totalDur - prev.reduce((a, b) => a + b, 0))];
+        } else if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
+          let newStart = newBoundarySec;
+          const anchor = ctx.anchorEndFirstSec;
+          newStart = Math.max(0, Math.min(anchor - minD, newStart));
+          if (magnet) {
+            newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
+            newStart = Math.max(0, Math.min(anchor - minD, newStart));
+          }
+          const newFirst = Math.max(minD, anchor - newStart);
+          const tail = redistributeShotLensProportional(durs.slice(1), totalDur - newFirst, minD);
+          durs = [newFirst, ...tail];
+        }
+        trimClipCtxRef.current = { ...ctx, actDurations: durs };
+        let acc = 0;
+        const next: Record<string, { pct_from: number; pct_to: number }> = {};
+        ids.forEach((aid, i) => {
+          const from = (acc / totalDur) * 100;
+          acc += durs[i];
+          const to = (acc / totalDur) * 100;
+          next[aid] = { pct_from: from, pct_to: to };
+        });
+        setManualActTimings((prev) => ({ ...prev, ...next }));
+        return;
+      }
+      const prevId = ctx.actIds[idx - 1];
+      const curId = ctx.actIds[idx];
+      const prevB = sortedBlocks.find((b: any) => b.id === prevId);
+      const curB = sortedBlocks.find((b: any) => b.id === curId);
+      if (!prevB || !curB) return;
+
+      if (clip.handle === 'left') {
+        const minB = prevB.startSec + MIN_CLIP_DURATION_SEC;
+        const maxB = curB.endSec - MIN_CLIP_DURATION_SEC;
+        newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        if (magnet) {
+          newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
+          newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        const newPct = (newBoundarySec / dTotal) * 100;
+        setManualActTimings((prev) => {
+          const prevP = resolveActPct(prevId, prev, actsOrdered);
+          const curP = resolveActPct(curId, prev, actsOrdered);
+          return {
+            ...prev,
+            [prevId]: { pct_from: prevP.from, pct_to: newPct },
+            [curId]: { pct_from: newPct, pct_to: curP.to },
+          };
+        });
+      } else {
+        const nextId = ctx.actIds[idx + 1];
+        const nextB = sortedBlocks.find((b: any) => b.id === nextId);
+        if (!nextB) return;
+        const minB = curB.startSec + MIN_CLIP_DURATION_SEC;
+        const maxB = nextB.endSec - MIN_CLIP_DURATION_SEC;
+        newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        if (magnet) {
+          newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
+          newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        const newPct = (newBoundarySec / dTotal) * 100;
+        setManualActTimings((prev) => {
+          const curP = resolveActPct(curId, prev, actsOrdered);
+          const nextP = resolveActPct(nextId, prev, actsOrdered);
+          return {
+            ...prev,
+            [curId]: { pct_from: curP.from, pct_to: newPct },
+            [nextId]: { pct_from: newPct, pct_to: nextP.to },
+          };
+        });
+      }
+      return;
+    }
+
+    if (
+      ctx.kind === 'sequence' &&
+      ctx.sequenceIds &&
+      ctx.seqIndex !== undefined &&
+      ctx.actStartSec !== undefined &&
+      ctx.actDurSec !== undefined
+    ) {
+      const actStart = ctx.actStartSec;
+      const actDur = Math.max(1e-6, ctx.actDurSec);
+      const seqsOrdered = [...(td.sequences || [])]
+        .filter((s: any) => ctx.sequenceIds!.includes(s.id))
+        .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const idx = ctx.seqIndex;
+      const sortedBlocks = [...sequenceBlocksRef.current].sort(
+        (a: any, b: any) => a.startSec - b.startSec
+      );
+      if (ctx.trimLastRight || ctx.trimFirstLeft) {
+        const ids = ctx.sequenceIds;
+        const n = ids.length;
+        const minD = MIN_CLIP_DURATION_SEC;
+        let durs =
+          ctx.sequenceDurations && ctx.sequenceDurations.length === n
+            ? [...ctx.sequenceDurations]
+            : ids.map((sid) => {
+                const b = sortedBlocks.find((x: any) => x.id === sid);
+                return b ? Math.max(minD, b.endSec - b.startSec) : minD;
+              });
+        if (ctx.trimLastRight) {
+          const lastStartRel = durs.slice(0, n - 1).reduce((s, x) => s + x, 0);
+          const lastStart = actStart + lastStartRel;
+          let newEnd = newBoundarySec;
+          newEnd = Math.max(lastStart + minD, Math.min(actStart + actDur, newEnd));
+          if (magnet) {
+            newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
+            newEnd = Math.max(lastStart + minD, Math.min(actStart + actDur, newEnd));
+          }
+          const newLast = newEnd - lastStart;
+          const prev = redistributeShotLensProportional(durs.slice(0, n - 1), actDur - newLast, minD);
+          durs = [...prev, Math.max(minD, actDur - prev.reduce((a, b) => a + b, 0))];
+        } else if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
+          let newStart = newBoundarySec;
+          const anchor = ctx.anchorEndFirstSec;
+          newStart = Math.max(actStart, Math.min(anchor - minD, newStart));
+          if (magnet) {
+            newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
+            newStart = Math.max(actStart, Math.min(anchor - minD, newStart));
+          }
+          const newFirst = Math.max(minD, anchor - newStart);
+          const tail = redistributeShotLensProportional(durs.slice(1), actDur - newFirst, minD);
+          durs = [newFirst, ...tail];
+        }
+        trimClipCtxRef.current = { ...ctx, sequenceDurations: durs };
+        let acc = 0;
+        const next: Record<string, { pct_from: number; pct_to: number }> = {};
+        ids.forEach((sid, i) => {
+          const from = (acc / actDur) * 100;
+          acc += durs[i];
+          const to = (acc / actDur) * 100;
+          next[sid] = { pct_from: from, pct_to: to };
+        });
+        setManualSequenceTimings((prev) => ({ ...prev, ...next }));
+        return;
+      }
+
+      if (clip.handle === 'left') {
+        const prevId = ctx.sequenceIds[idx - 1];
+        const curId = ctx.sequenceIds[idx];
+        const prevB = sortedBlocks.find((b: any) => b.id === prevId);
+        const curB = sortedBlocks.find((b: any) => b.id === curId);
+        if (!prevB || !curB) return;
+        const minB = prevB.startSec + MIN_CLIP_DURATION_SEC;
+        const maxB = curB.endSec - MIN_CLIP_DURATION_SEC;
+        newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        if (magnet) {
+          newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
+          newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        const newPct = ((newBoundarySec - actStart) / actDur) * 100;
+        setManualSequenceTimings((prev) => {
+          const prevP = resolveSeqPct(prevId, prev, seqsOrdered);
+          const curP = resolveSeqPct(curId, prev, seqsOrdered);
+          return {
+            ...prev,
+            [prevId]: { pct_from: prevP.from, pct_to: newPct },
+            [curId]: { pct_from: newPct, pct_to: curP.to },
+          };
+        });
+      } else {
+        const curId = ctx.sequenceIds[idx];
+        const nextId = ctx.sequenceIds[idx + 1];
+        const curB = sortedBlocks.find((b: any) => b.id === curId);
+        const nextB = sortedBlocks.find((b: any) => b.id === nextId);
+        if (!curB || !nextB) return;
+        const minB = curB.startSec + MIN_CLIP_DURATION_SEC;
+        const maxB = nextB.endSec - MIN_CLIP_DURATION_SEC;
+        newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        if (magnet) {
+          newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
+          newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        const newPct = ((newBoundarySec - actStart) / actDur) * 100;
+        setManualSequenceTimings((prev) => {
+          const curP = resolveSeqPct(curId, prev, seqsOrdered);
+          const nextP = resolveSeqPct(nextId, prev, seqsOrdered);
+          return {
+            ...prev,
+            [curId]: { pct_from: curP.from, pct_to: newPct },
+            [nextId]: { pct_from: newPct, pct_to: nextP.to },
+          };
+        });
+      }
+      return;
+    }
+
+    if (
+      ctx.kind === 'scene' &&
+      ctx.sceneIds &&
+      ctx.sceneIndex !== undefined &&
+      ctx.seqStartSec !== undefined &&
+      ctx.seqDurSec !== undefined
+    ) {
+      const seqStart = ctx.seqStartSec;
+      const seqDur = Math.max(1e-6, ctx.seqDurSec);
+      const scenesOrdered = [...(td.scenes || [])]
+        .filter((s: any) => ctx.sceneIds!.includes(s.id))
+        .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const idx = ctx.sceneIndex;
+      const sortedBlocks = [...sceneBlocksRef.current].sort(
+        (a: any, b: any) => a.startSec - b.startSec
+      );
+      if (ctx.trimLastRight || ctx.trimFirstLeft) {
+        const ids = ctx.sceneIds;
+        const n = ids.length;
+        const minD = MIN_CLIP_DURATION_SEC;
+        let durs =
+          ctx.sceneDurations && ctx.sceneDurations.length === n
+            ? [...ctx.sceneDurations]
+            : ids.map((sid) => {
+                const b = sortedBlocks.find((x: any) => x.id === sid);
+                return b ? Math.max(minD, b.endSec - b.startSec) : minD;
+              });
+        if (ctx.trimLastRight) {
+          const lastStartRel = durs.slice(0, n - 1).reduce((s, x) => s + x, 0);
+          const lastStart = seqStart + lastStartRel;
+          let newEnd = newBoundarySec;
+          newEnd = Math.max(lastStart + minD, Math.min(seqStart + seqDur, newEnd));
+          if (magnet) {
+            newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
+            newEnd = Math.max(lastStart + minD, Math.min(seqStart + seqDur, newEnd));
+          }
+          const newLast = newEnd - lastStart;
+          const prev = redistributeShotLensProportional(durs.slice(0, n - 1), seqDur - newLast, minD);
+          durs = [...prev, Math.max(minD, seqDur - prev.reduce((a, b) => a + b, 0))];
+        } else if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
+          let newStart = newBoundarySec;
+          const anchor = ctx.anchorEndFirstSec;
+          newStart = Math.max(seqStart, Math.min(anchor - minD, newStart));
+          if (magnet) {
+            newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
+            newStart = Math.max(seqStart, Math.min(anchor - minD, newStart));
+          }
+          const newFirst = Math.max(minD, anchor - newStart);
+          const tail = redistributeShotLensProportional(durs.slice(1), seqDur - newFirst, minD);
+          durs = [newFirst, ...tail];
+        }
+        trimClipCtxRef.current = { ...ctx, sceneDurations: durs };
+        let acc = 0;
+        const next: Record<string, { pct_from: number; pct_to: number }> = {};
+        ids.forEach((sid, i) => {
+          const from = (acc / seqDur) * 100;
+          acc += durs[i];
+          const to = (acc / seqDur) * 100;
+          next[sid] = { pct_from: from, pct_to: to };
+        });
+        setManualSceneTimings((prev) => ({ ...prev, ...next }));
+        return;
+      }
+
+      if (clip.handle === 'left') {
+        const prevId = ctx.sceneIds[idx - 1];
+        const curId = ctx.sceneIds[idx];
+        const prevB = sortedBlocks.find((b: any) => b.id === prevId);
+        const curB = sortedBlocks.find((b: any) => b.id === curId);
+        if (!prevB || !curB) return;
+        const minB = prevB.startSec + MIN_CLIP_DURATION_SEC;
+        const maxB = curB.endSec - MIN_CLIP_DURATION_SEC;
+        newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        if (magnet) {
+          newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
+          newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        const newPct = ((newBoundarySec - seqStart) / seqDur) * 100;
+        setManualSceneTimings((prev) => {
+          const prevP = resolveScenePct(prevId, prev, scenesOrdered);
+          const curP = resolveScenePct(curId, prev, scenesOrdered);
+          return {
+            ...prev,
+            [prevId]: { pct_from: prevP.from, pct_to: newPct },
+            [curId]: { pct_from: newPct, pct_to: curP.to },
+          };
+        });
+      } else {
+        const curId = ctx.sceneIds[idx];
+        const nextId = ctx.sceneIds[idx + 1];
+        const curB = sortedBlocks.find((b: any) => b.id === curId);
+        const nextB = sortedBlocks.find((b: any) => b.id === nextId);
+        if (!curB || !nextB) return;
+        const minB = curB.startSec + MIN_CLIP_DURATION_SEC;
+        const maxB = nextB.endSec - MIN_CLIP_DURATION_SEC;
+        newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        if (magnet) {
+          newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
+          newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        const newPct = ((newBoundarySec - seqStart) / seqDur) * 100;
+        setManualSceneTimings((prev) => {
+          const curP = resolveScenePct(curId, prev, scenesOrdered);
+          const nextP = resolveScenePct(nextId, prev, scenesOrdered);
+          return {
+            ...prev,
+            [curId]: { pct_from: curP.from, pct_to: newPct },
+            [nextId]: { pct_from: newPct, pct_to: nextP.to },
+          };
+        });
+      }
+      return;
+    }
+
+    if (
+      ctx.kind === 'shot' &&
+      ctx.shotIds &&
+      ctx.sceneStartSec !== undefined &&
+      ctx.sceneDurSec !== undefined &&
+      ctx.shotDurations
+    ) {
+      const sceneStart = ctx.sceneStartSec;
+      const sceneDur = ctx.sceneDurSec;
+      const ids = ctx.shotIds;
+      const minD = MIN_CLIP_DURATION_SEC;
+      const n = ids.length;
+
+      const commitShotDurs = (durs: number[]) => {
+        trimClipCtxRef.current = { ...ctx, shotDurations: durs };
+        setManualShotDurations((prev) => {
+          const next = { ...prev };
+          ids.forEach((sid, idx) => {
+            next[sid] = durs[idx];
+          });
+          return next;
+        });
+      };
+
+      if (ctx.trimLastRight) {
+        let durs = [...ctx.shotDurations];
+        if (n === 1) {
+          const lastStart = sceneStart;
+          let newEnd = newBoundarySec;
+          newEnd = Math.max(lastStart + minD, Math.min(sceneStart + sceneDur, newEnd));
+          if (magnet) {
+            newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
+            newEnd = Math.max(lastStart + minD, Math.min(sceneStart + sceneDur, newEnd));
+          }
+          durs[0] = newEnd - lastStart;
+        } else {
+          const lastStartRel = durs.slice(0, n - 1).reduce((s, x) => s + x, 0);
+          const lastStart = sceneStart + lastStartRel;
+          let newEnd = newBoundarySec;
+          newEnd = Math.max(lastStart + minD, Math.min(sceneStart + sceneDur, newEnd));
+          if (magnet) {
+            newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
+            newEnd = Math.max(lastStart + minD, Math.min(sceneStart + sceneDur, newEnd));
+          }
+          const newLastDur = newEnd - lastStart;
+          const prevBudget = sceneDur - newLastDur;
+          const prevDurs = durs.slice(0, n - 1);
+          const nextPrev = redistributeShotLensProportional(prevDurs, prevBudget, minD);
+          const lastDur = Math.max(minD, sceneDur - nextPrev.reduce((a, b) => a + b, 0));
+          durs = [...nextPrev, lastDur];
+        }
+        commitShotDurs(durs);
+        return;
+      }
+
+      if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
+        const anchorEnd = ctx.anchorEndFirstSec;
+        let durs = [...ctx.shotDurations];
+        if (n === 1) {
+          let newStart = newBoundarySec;
+          newStart = Math.max(sceneStart, Math.min(anchorEnd - minD, newStart));
+          if (magnet) {
+            newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
+            newStart = Math.max(sceneStart, Math.min(anchorEnd - minD, newStart));
+          }
+          durs[0] = anchorEnd - newStart;
+        } else {
+          let newStart = newBoundarySec;
+          newStart = Math.max(sceneStart, Math.min(anchorEnd - minD, newStart));
+          if (magnet) {
+            newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
+            newStart = Math.max(sceneStart, Math.min(anchorEnd - minD, newStart));
+          }
+          const newFirstDur = Math.max(minD, anchorEnd - newStart);
+          const tailBudget = sceneDur - newFirstDur;
+          const tail = durs.slice(1);
+          const nextTail = redistributeShotLensProportional(tail, tailBudget, minD);
+          durs = [newFirstDur, ...nextTail];
+        }
+        commitShotDurs(durs);
+        return;
+      }
+
+      if (ctx.shotIndex === undefined) return;
+      const durs = [...ctx.shotDurations];
+      const i = ctx.shotIndex;
+      const j = clip.handle === 'left' ? i : i + 1;
+      const pairLeft = j - 1;
+      const P = durs.slice(0, pairLeft).reduce((s, x) => s + x, 0);
+      const pairSum = durs[pairLeft] + durs[j];
+      const minPairLeft = MIN_CLIP_DURATION_SEC;
+      const maxPairLeft = pairSum - MIN_CLIP_DURATION_SEC;
+      let newPairLeft = newBoundarySec - sceneStart - P;
+      newPairLeft = Math.max(minPairLeft, Math.min(maxPairLeft, newPairLeft));
+      if (magnet) {
+        const boundaryAbs = sceneStart + P + newPairLeft;
+        const snapped = snapClipBoundary(boundaryAbs, snapEdges, dTotal, pxs, true);
+        newPairLeft = snapped - sceneStart - P;
+        newPairLeft = Math.max(minPairLeft, Math.min(maxPairLeft, newPairLeft));
+      }
+      const d1 = newPairLeft;
+      const d2 = pairSum - d1;
+      durs[pairLeft] = d1;
+      durs[j] = d2;
+      trimClipCtxRef.current = { ...ctx, shotDurations: durs };
+      setManualShotDurations((prev) => {
+        const next = { ...prev };
+        next[ids[pairLeft]] = d1;
+        next[ids[j]] = d2;
+        return next;
+      });
+    }
+  };
+
+  const handleTrimClipEnd = async () => {
+    const clip = trimingClipRef.current;
+    if (!clip) return;
+
+    const snap = trimClipSnapshotRef.current;
+    const td = timelineDataRef.current;
+
+    const revert = () => {
+      if (snap) {
+        setManualActTimings(snap.manualActTimings);
+        setManualSequenceTimings(snap.manualSequenceTimings);
+        setManualSceneTimings(snap.manualSceneTimings);
+        setManualShotDurations(snap.manualShotDurations);
+      }
+    };
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Nicht authentifiziert');
+        revert();
+        setTrimingClip(null);
+        trimClipCtxRef.current = null;
+        return;
+      }
+
+      const ma = manualActTimingsRef.current;
+      const msq = manualSequenceTimingsRef.current;
+      const msc = manualSceneTimingsRef.current;
+      const msh = manualShotDurationsRef.current;
+
+      if (clip.kind === 'act' && td && 'acts' in td) {
+        const ctxEnd = trimClipCtxRef.current;
+        const actsOrdered = [...(td.acts || [])].sort(
+          (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+        );
+        const toWrite = new Set<string>();
+        if (ctxEnd?.kind === 'act' && (ctxEnd.trimLastRight || ctxEnd.trimFirstLeft) && ctxEnd.actIds) {
+          for (const aid of ctxEnd.actIds) toWrite.add(aid);
+        } else if (clip.handle === 'left') {
+          const idx = actsOrdered.findIndex((a: any) => a.id === clip.id);
+          if (idx > 0) {
+            toWrite.add(actsOrdered[idx - 1].id);
+            toWrite.add(clip.id);
+          }
+        } else {
+          const idx = actsOrdered.findIndex((a: any) => a.id === clip.id);
+          if (idx >= 0 && idx < actsOrdered.length - 1) {
+            toWrite.add(clip.id);
+            toWrite.add(actsOrdered[idx + 1].id);
+          }
+        }
+        for (const actId of toWrite) {
+          const o = ma[actId];
+          if (!o) continue;
+          await TimelineAPI.updateAct(actId, { metadata: { pct_from: o.pct_from, pct_to: o.pct_to } }, token);
+        }
+        setTimelineData((prev) => {
+          if (!prev || !('acts' in prev)) return prev;
+          return {
+            ...prev,
+            acts: prev.acts.map((a: any) => {
+              const o = ma[a.id];
+              if (!o) return a;
+              return {
+                ...a,
+                metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
+              };
+            }),
+          };
+        });
+        setManualActTimings((prev) => {
+          const next = { ...prev };
+          for (const id of toWrite) delete next[id];
+          return next;
+        });
+      } else if (clip.kind === 'sequence' && td && 'sequences' in td) {
+        const ctxEnd = trimClipCtxRef.current;
+        const seq = (td.sequences || []).find((s: any) => s.id === clip.id);
+        if (seq) {
+          const actId = seq.actId;
+          const seqsOrdered = [...(td.sequences || [])]
+            .filter((s: any) => s.actId === actId)
+            .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+          const idx = seqsOrdered.findIndex((s: any) => s.id === clip.id);
+          const toWrite = new Set<string>();
+          if (ctxEnd?.kind === 'sequence' && (ctxEnd.trimLastRight || ctxEnd.trimFirstLeft) && ctxEnd.sequenceIds) {
+            for (const sid of ctxEnd.sequenceIds) toWrite.add(sid);
+          } else if (clip.handle === 'left' && idx > 0) {
+            toWrite.add(seqsOrdered[idx - 1].id);
+            toWrite.add(clip.id);
+          } else if (clip.handle === 'right' && idx >= 0 && idx < seqsOrdered.length - 1) {
+            toWrite.add(clip.id);
+            toWrite.add(seqsOrdered[idx + 1].id);
+          }
+          for (const sid of toWrite) {
+            const o = msq[sid];
+            if (!o) continue;
+            await TimelineAPI.updateSequence(sid, { metadata: { pct_from: o.pct_from, pct_to: o.pct_to } }, token);
+          }
+          setTimelineData((prev) => {
+            if (!prev || !('sequences' in prev)) return prev;
+            return {
+              ...prev,
+              sequences: prev.sequences.map((s: any) => {
+                const o = msq[s.id];
+                if (!o) return s;
+                return {
+                  ...s,
+                  metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
+                };
+              }),
+            };
+          });
+          setManualSequenceTimings((prev) => {
+            const next = { ...prev };
+            for (const id of toWrite) delete next[id];
+            return next;
+          });
+        }
+      } else if (clip.kind === 'scene' && td && 'scenes' in td) {
+        const ctxEnd = trimClipCtxRef.current;
+        const scene = (td.scenes || []).find((s: any) => s.id === clip.id);
+        if (scene) {
+          const seqId = scene.sequenceId;
+          const scenesOrdered = [...(td.scenes || [])]
+            .filter((s: any) => s.sequenceId === seqId)
+            .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+          const idx = scenesOrdered.findIndex((s: any) => s.id === clip.id);
+          const toWrite = new Set<string>();
+          if (ctxEnd?.kind === 'scene' && (ctxEnd.trimLastRight || ctxEnd.trimFirstLeft) && ctxEnd.sceneIds) {
+            for (const sid of ctxEnd.sceneIds) toWrite.add(sid);
+          } else if (clip.handle === 'left' && idx > 0) {
+            toWrite.add(scenesOrdered[idx - 1].id);
+            toWrite.add(clip.id);
+          } else if (clip.handle === 'right' && idx >= 0 && idx < scenesOrdered.length - 1) {
+            toWrite.add(clip.id);
+            toWrite.add(scenesOrdered[idx + 1].id);
+          }
+          for (const scid of toWrite) {
+            const o = msc[scid];
+            if (!o) continue;
+            await TimelineAPI.updateScene(scid, { metadata: { pct_from: o.pct_from, pct_to: o.pct_to } }, token);
+          }
+          setTimelineData((prev) => {
+            if (!prev || !('scenes' in prev)) return prev;
+            return {
+              ...prev,
+              scenes: prev.scenes.map((s: any) => {
+                const o = msc[s.id];
+                if (!o) return s;
+                return {
+                  ...s,
+                  metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
+                };
+              }),
+            };
+          });
+          setManualSceneTimings((prev) => {
+            const next = { ...prev };
+            for (const id of toWrite) delete next[id];
+            return next;
+          });
+        }
+      } else if (clip.kind === 'shot' && td && 'shots' in td) {
+        const ctxEnd = trimClipCtxRef.current;
+        if (ctxEnd?.kind === 'shot' && ctxEnd.shotIds && ctxEnd.shotDurations) {
+          const ids = ctxEnd.shotIds;
+          const durs = ctxEnd.shotDurations;
+          const snapD = snap?.manualShotDurations ?? {};
+
+          const timelineShotTotalSec = (shotId: string): number | undefined => {
+            const sh = (td.shots || []).find((x: any) => x.id === shotId);
+            if (!sh) return undefined;
+            const mRaw = sh.shotlengthMinutes ?? sh.shotlength_minutes ?? 0;
+            const sRaw = sh.shotlengthSeconds ?? sh.shotlength_seconds;
+            if (typeof sRaw !== 'number' || !Number.isFinite(sRaw)) return undefined;
+            const mi =
+              typeof mRaw === 'number' && Number.isFinite(mRaw) ? Math.max(0, Math.floor(mRaw)) : 0;
+            const s = Math.round(sRaw);
+            const t = mi * 60 + s;
+            return t > 0 ? t : undefined;
+          };
+
+          const pushShotApi = async (shotId: string, totalSec: number) => {
+            const total = Math.max(MIN_CLIP_DURATION_SEC, Math.round(Number(totalSec)));
+            const minutes = Math.floor(total / 60);
+            const seconds = total % 60;
+            await ShotsAPI.updateShot(
+              shotId,
+              { shotlengthMinutes: minutes, shotlengthSeconds: seconds, duration: `${total}s` },
+              token
+            );
+          };
+
+          const patchTimelineShotsFromDurs = () => {
+            setTimelineData((prev) => {
+              if (!prev || !('shots' in prev)) return prev;
+              return {
+                ...prev,
+                shots: prev.shots.map((sh: any) => {
+                  const ix = ids.indexOf(sh.id);
+                  if (ix < 0) return sh;
+                  const total = Math.max(MIN_CLIP_DURATION_SEC, Math.round(Number(durs[ix])));
+                  const minutes = Math.floor(total / 60);
+                  const seconds = total % 60;
+                  return {
+                    ...sh,
+                    shotlengthMinutes: minutes,
+                    shotlengthSeconds: seconds,
+                    shotlength_minutes: minutes,
+                    shotlength_seconds: seconds,
+                    duration: `${total}s`,
+                  };
+                }),
+              };
+            });
+            setManualShotDurations((prev) => {
+              const next = { ...prev };
+              for (const sid of ids) delete next[sid];
+              return next;
+            });
+          };
+
+          if (ctxEnd.trimLastRight || ctxEnd.trimFirstLeft) {
+            for (let i = 0; i < ids.length; i++) {
+              const sid = ids[i];
+              const newTotal = Math.max(MIN_CLIP_DURATION_SEC, Math.round(Number(durs[i])));
+              const fromSnap = snapD[sid];
+              const baseline =
+                fromSnap !== undefined ? Math.round(fromSnap) : timelineShotTotalSec(sid);
+              if (baseline === undefined || newTotal !== baseline) {
+                await pushShotApi(sid, newTotal);
+              }
+            }
+            patchTimelineShotsFromDurs();
+          } else if (ctxEnd.shotIndex !== undefined) {
+            const i = ctxEnd.shotIndex;
+            const toWrite: [string, string] =
+              clip.handle === 'left' ? [ids[i - 1], ids[i]] : [ids[i], ids[i + 1]];
+            const idxA = clip.handle === 'left' ? i - 1 : i;
+            const idxB = clip.handle === 'left' ? i : i + 1;
+            await pushShotApi(toWrite[0], durs[idxA]);
+            await pushShotApi(toWrite[1], durs[idxB]);
+            patchTimelineShotsFromDurs();
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Clip Trim] save failed', err);
+      toast.error('Trim konnte nicht gespeichert werden');
+      revert();
+    }
+
+    setTrimingClip(null);
+    trimClipCtxRef.current = null;
+    trimClipSnapshotRef.current = null;
+  };
   
   /* OLD - REPLACED BY handleTrimMoveSimplified
   const handleTrimMove = (e: MouseEvent) => {
@@ -656,132 +1964,76 @@ export function VideoEditorTimeline({
     
     console.log(`[Beat Trim] ✅ Finished trimming ${trimingBeat.handle} handle`);
     
-    // Store original beats for comparison
-    const originalBeats = [...beats];
+    const beatsAtTrimStart = beatTrimSnapshotRef.current;
+    beatTrimSnapshotRef.current = null;
     
-    // NOW apply ripple and update DB
     const beat = beats.find(b => b.id === trimingBeat.id);
     if (!beat) {
       setTrimingBeat(null);
       return;
     }
     
-    const startSec = (beat.pct_from / 100) * duration;
-    const endSec = (beat.pct_to / 100) * duration;
-    
     try {
-      if (trimingBeat.handle === 'right') {
-        // Apply ripple for right handle
-        const oldEndSec = trimStartSecRef.current;
-        const withRipple = applyBeatRipple(beats, trimingBeat.id, oldEndSec, endSec, beatMagnetEnabled);
-        
-        // Update the trimmed beat first (only if it's in DB)
-        if (dbBeatIds.has(trimingBeat.id)) {
-          try {
-            await BeatsAPI.updateBeat(trimingBeat.id, { pct_to: beat.pct_to });
-          } catch (error: any) {
-            // If beat doesn't exist in DB (404), remove it from tracking
-            if (error.message?.includes('404') || error.message?.includes('not found')) {
-              console.warn(`[Beat Trim] ⚠️ Beat ${trimingBeat.id} not found in DB, removing from tracking...`);
-              setDbBeatIds(prev => {
-                const next = new Set(prev);
-                next.delete(trimingBeat.id);
-                return next;
-              });
-              setTrimingBeat(null);
-              return;
-            }
-            throw error;
-          }
-        } else {
+      // handleTrimMove already applied gapless ripple (left/right). On save we only persist deltas.
+      let abortTrimSave = false;
+      const updateTrimmedBeat = async () => {
+        if (!dbBeatIds.has(trimingBeat.id)) {
           console.log(`[Beat Trim] ⏭️ Skipping DB update for template beat ${trimingBeat.id}`);
+          return;
         }
-        
-        // 🎯 UPDATE PUSHED/COMPRESSED BEATS (from manual pushing or ripple)
-        // First check for manually pushed beats (from handleTrimMove)
-        const pushedBeats = beats.filter(b => {
-          const original = originalBeats.find(ob => ob.id === b.id);
-          return b.id !== trimingBeat.id && 
-                 original && 
-                 (b.pct_from !== original.pct_from || b.pct_to !== original.pct_to);
-        });
-        
-        // Then check rippled beats (from applyBeatRipple)
-        const rippleUpdates = beatMagnetEnabled ? withRipple.filter(b => {
-          const original = originalBeats.find(ob => ob.id === b.id);
-          return b.id !== trimingBeat.id && 
-                 original && 
-                 (b.pct_from !== original.pct_from || b.pct_to !== original.pct_to);
-        }) : [];
-        
-        // Combine both (pushed beats have priority)
-        const allUpdates = [...pushedBeats];
-        for (const r of rippleUpdates) {
-          if (!allUpdates.find(p => p.id === r.id)) {
-            allUpdates.push(r);
+        const payload =
+          trimingBeat.handle === 'right'
+            ? { pct_to: beat.pct_to }
+            : { pct_from: beat.pct_from };
+        try {
+          await BeatsAPI.updateBeat(trimingBeat.id, payload);
+        } catch (error: any) {
+          if (error.message?.includes('404') || error.message?.includes('not found')) {
+            console.warn(`[Beat Trim] ⚠️ Beat ${trimingBeat.id} not found in DB, removing from tracking...`);
+            setDbBeatIds((prev) => {
+              const next = new Set(prev);
+              next.delete(trimingBeat.id);
+              return next;
+            });
+            abortTrimSave = true;
+            setTrimingBeat(null);
+            return;
           }
+          throw error;
         }
-        
-        // Filter to only DB beats
-        const dbUpdates = allUpdates.filter(b => dbBeatIds.has(b.id));
-        console.log(`[Beat Trim] 📤 Saving ${dbUpdates.length}/${allUpdates.length} pushed/rippled beats to DB (skipping ${allUpdates.length - dbUpdates.length} template beats)`);
-        
-        // Update all affected beats sequentially
-        for (const b of dbUpdates) {
-          try {
-            await BeatsAPI.updateBeat(b.id, { pct_from: b.pct_from, pct_to: b.pct_to });
-            console.log(`[Beat Trim] ✅ Saved \"${b.label}\" position`);
-          } catch (error: any) {
-            // If beat doesn't exist, remove from tracking
-            if (error.message?.includes('404') || error.message?.includes('not found')) {
-              console.warn(`[Beat Trim] ⚠️ Beat ${b.id} not found in DB, removing from tracking...`);
-              setDbBeatIds(prev => {
-                const next = new Set(prev);
-                next.delete(b.id);
-                return next;
-              });
-              continue;
-            }
-            throw error;
+      };
+
+      await updateTrimmedBeat();
+      if (abortTrimSave) return;
+
+      const allUpdates = beats.filter((b) => {
+        const snapB = beatsAtTrimStart?.find((ob) => ob.id === b.id);
+        return snapB && (b.pct_from !== snapB.pct_from || b.pct_to !== snapB.pct_to);
+      });
+
+      const dbUpdates = allUpdates.filter((b) => dbBeatIds.has(b.id) && b.id !== trimingBeat.id);
+      console.log(
+        `[Beat Trim] 📤 Saving ${dbUpdates.length} rippled beats to DB (left/right magnetic ripple already in UI state)`
+      );
+
+      for (const b of dbUpdates) {
+        try {
+          await BeatsAPI.updateBeat(b.id, { pct_from: b.pct_from, pct_to: b.pct_to });
+          console.log(`[Beat Trim] ✅ Saved \"${b.label}\" position`);
+        } catch (error: any) {
+          if (error.message?.includes('404') || error.message?.includes('not found')) {
+            console.warn(`[Beat Trim] ⚠️ Beat ${b.id} not found in DB, removing from tracking...`);
+            setDbBeatIds((prev) => {
+              const next = new Set(prev);
+              next.delete(b.id);
+              return next;
+            });
+            continue;
           }
-        }
-        
-        // Apply to local state (use current beats state which already includes pushed beats)
-        // If ripple was applied, merge with current state
-        if (beatMagnetEnabled && withRipple.length > 0) {
-          // Merge ripple updates with manually pushed beats
-          const mergedBeats = beats.map(b => {
-            const rippled = withRipple.find(r => r.id === b.id);
-            return rippled || b;
-          });
-          setBeats(mergedBeats);
-        }
-        // Otherwise beats state is already correct from handleTrimMove
-        
-      } else {
-        // Left handle - just update DB (only if it's in DB)
-        if (dbBeatIds.has(trimingBeat.id)) {
-          try {
-            await BeatsAPI.updateBeat(trimingBeat.id, { pct_from: beat.pct_from });
-          } catch (error: any) {
-            // If beat doesn't exist in DB (404), remove it from tracking
-            if (error.message?.includes('404') || error.message?.includes('not found')) {
-              console.warn(`[Beat Trim] ⚠️ Beat ${trimingBeat.id} not found in DB, removing from tracking...`);
-              setDbBeatIds(prev => {
-                const next = new Set(prev);
-                next.delete(trimingBeat.id);
-                return next;
-              });
-              setTrimingBeat(null);
-              return;
-            }
-            throw error;
-          }
-        } else {
-          console.log(`[Beat Trim] ⏭️ Skipping DB update for template beat ${trimingBeat.id}`);
+          throw error;
         }
       }
-      
+
       console.log('[Beat Trim] ✅ DB updated successfully');
     } catch (error) {
       console.error('[Beat Trim] ❌ Error updating beat:', error);
@@ -792,8 +2044,9 @@ export function VideoEditorTimeline({
         pct_to: beat.pct_to,
         error: error instanceof Error ? error.message : String(error)
       });
-      // Revert to original state on error
-      setBeats(originalBeats);
+      if (beatsAtTrimStart) {
+        setBeats(beatsAtTrimStart.map((b) => ({ ...b })));
+      }
     }
     
     setTrimingBeat(null);
@@ -821,6 +2074,17 @@ export function VideoEditorTimeline({
       };
     }
   }, [trimingBeat, beats, pxPerSec, duration, beatMagnetEnabled]);
+
+  useEffect(() => {
+    if (trimingClip) {
+      window.addEventListener('mousemove', handleTrimClipMove);
+      window.addEventListener('mouseup', handleTrimClipEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleTrimClipMove);
+        window.removeEventListener('mouseup', handleTrimClipEnd);
+      };
+    }
+  }, [trimingClip]);
   
   console.log('[VideoEditorTimeline] 📖 Book Timeline:', {
     isBookProject,
@@ -934,8 +2198,11 @@ export function VideoEditorTimeline({
   // 🎬 HANDLE PLAY/PAUSE TOGGLE
   const handlePlayPause = () => {
     if (!isBookProject) {
-      // Film projects: not implemented yet
-      console.log('[Playback] ⚠️ Playback only supported for book projects');
+      if (currentTimeRef.current >= duration) {
+        setCurrentTime(0);
+        currentTimeRef.current = 0;
+      }
+      setIsPlaying((prev) => !prev);
       return;
     }
     
@@ -1100,6 +2367,13 @@ export function VideoEditorTimeline({
         
         // Update currentTimeRef so Book Playback Loop can read it
         currentTimeRef.current = displayTime;
+
+        if (displayTime >= duration) {
+          displayTime = duration;
+          currentTimeRef.current = duration;
+          setCurrentTime(duration);
+          setIsPlaying(false);
+        }
         
         // Throttle State updates for UI display (max 10x/sec)
         if (performance.now() - lastStateUpdateTimeRef.current > 100) {
@@ -1132,6 +2406,12 @@ export function VideoEditorTimeline({
       }
       if (playheadShotRef.current) {
         playheadShotRef.current.style.transform = `translateX(${pixelPosition}px)`;
+      }
+      if (playheadMusicRef.current) {
+        playheadMusicRef.current.style.transform = `translateX(${pixelPosition}px)`;
+      }
+      if (playheadSfxRef.current) {
+        playheadSfxRef.current.style.transform = `translateX(${pixelPosition}px)`;
       }
       
       // Continue animation loop (always running!)
@@ -1486,57 +2766,6 @@ export function VideoEditorTimeline({
   }, [beats, duration, viewStartSec, viewEndSec, pxPerSec]);
   
   /**
-   * Apply ripple effect to beats after a beat's end time changes
-   * @param beatsArray - Current beats array
-   * @param changedBeatId - ID of the beat that changed
-   * @param oldEndSec - Old end time in seconds
-   * @param newEndSec - New end time in seconds
-   * @param magnetEnabled - Whether magnet is enabled
-   * @returns Updated beats array with ripple applied
-   */
-  const applyBeatRipple = (
-    beatsArray: BeatsAPI.StoryBeat[],
-    changedBeatId: string,
-    oldEndSec: number,
-    newEndSec: number,
-    magnetEnabled: boolean
-  ): BeatsAPI.StoryBeat[] => {
-    if (!magnetEnabled) return beatsArray;
-    
-    const delta = newEndSec - oldEndSec;
-    if (delta === 0) return beatsArray;
-    
-    // Sort beats by start time
-    const sortedBeats = [...beatsArray].sort((a, b) => a.pct_from - b.pct_from);
-    
-    return sortedBeats.map(beat => {
-      // Skip the changed beat itself
-      if (beat.id === changedBeatId) return beat;
-      
-      const beatStartSec = (beat.pct_from / 100) * duration;
-      const beatEndSec = (beat.pct_to / 100) * duration;
-      
-      // Only shift beats that start at or after the old end position
-      if (beatStartSec >= oldEndSec) {
-        const newStartSec = beatStartSec + delta;
-        const newEndSec = beatEndSec + delta;
-        
-        // Convert back to percentage
-        const newPctFrom = Math.max(0, Math.min(100, (newStartSec / duration) * 100));
-        const newPctTo = Math.max(0, Math.min(100, (newEndSec / duration) * 100));
-        
-        return {
-          ...beat,
-          pct_from: newPctFrom,
-          pct_to: newPctTo,
-        };
-      }
-      
-      return beat;
-    });
-  };
-  
-  /**
    * Delete a beat and apply ripple effect
    * @param beatId - ID of beat to delete
    */
@@ -1685,16 +2914,88 @@ export function VideoEditorTimeline({
     }
   });
   
+  const effectiveTimelineData = useMemo(() => {
+    if (!timelineData || isBookProject) return timelineData;
+
+    const withActTimings = timelineData.acts?.map((act: any) => {
+      const o = manualActTimings[act.id];
+      if (!o) return act;
+      return {
+        ...act,
+        metadata: {
+          ...(act.metadata || {}),
+          pct_from: o.pct_from,
+          pct_to: o.pct_to,
+        },
+      };
+    });
+
+    const withSequenceTimings = timelineData.sequences?.map((seq: any) => {
+      const o = manualSequenceTimings[seq.id];
+      if (!o) return seq;
+      return {
+        ...seq,
+        metadata: {
+          ...(seq.metadata || {}),
+          pct_from: o.pct_from,
+          pct_to: o.pct_to,
+        },
+      };
+    });
+
+    const withSceneTimings = timelineData.scenes?.map((scene: any) => {
+      const o = manualSceneTimings[scene.id];
+      if (!o) return scene;
+      return {
+        ...scene,
+        metadata: {
+          ...(scene.metadata || {}),
+          pct_from: o.pct_from,
+          pct_to: o.pct_to,
+        },
+      };
+    });
+
+    return {
+      ...timelineData,
+      acts: withActTimings,
+      sequences: withSequenceTimings,
+      scenes: withSceneTimings,
+    };
+  }, [
+    timelineData,
+    isBookProject,
+    manualActTimings,
+    manualSequenceTimings,
+    manualSceneTimings,
+  ]);
+
   // 🚀 OPTIMIZED: Memoized act blocks calculation
   const actBlocks = useMemo(() => {
     const start = performance.now();
-    const result = calculateActBlocks(timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, readingSpeedWpm);
+    const result = calculateActBlocks(
+      effectiveTimelineData,
+      duration,
+      viewStartSec,
+      viewEndSec,
+      pxPerSec,
+      isBookProject,
+      readingSpeedWpm
+    );
     const elapsed = performance.now() - start;
     if (elapsed > 10) {
       console.warn(`[VideoEditorTimeline] ⚠️ actBlocks calculation took ${elapsed.toFixed(2)}ms (SLA: 10ms)`);
     }
     return result;
-  }, [timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, readingSpeedWpm]);
+  }, [
+    effectiveTimelineData,
+    duration,
+    viewStartSec,
+    viewEndSec,
+    pxPerSec,
+    isBookProject,
+    readingSpeedWpm,
+  ]);
   
   // ⚠️ DEPRECATED: Old inline calculation (replaced by memoized version below)
   // Kept for reference only - not used in render
@@ -1787,13 +3088,31 @@ export function VideoEditorTimeline({
   // 🚀 OPTIMIZED: Memoized sequence blocks calculation
   const sequenceBlocks = useMemo(() => {
     const start = performance.now();
-    const result = calculateSequenceBlocks(timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, totalWords, readingSpeedWpm);
+    const result = calculateSequenceBlocks(
+      effectiveTimelineData,
+      duration,
+      viewStartSec,
+      viewEndSec,
+      pxPerSec,
+      isBookProject,
+      totalWords,
+      readingSpeedWpm
+    );
     const elapsed = performance.now() - start;
     if (elapsed > 10) {
       console.warn(`[VideoEditorTimeline] ⚠️ sequenceBlocks calculation took ${elapsed.toFixed(2)}ms (SLA: 10ms)`);
     }
     return result;
-  }, [timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, totalWords, readingSpeedWpm]);
+  }, [
+    effectiveTimelineData,
+    duration,
+    viewStartSec,
+    viewEndSec,
+    pxPerSec,
+    isBookProject,
+    totalWords,
+    readingSpeedWpm,
+  ]);
   
   // ⚠️ DEPRECATED: Old inline calculation (replaced by memoized version below)
   // Kept for reference only - not used in render
@@ -1892,23 +3211,39 @@ export function VideoEditorTimeline({
   // 🚀 OPTIMIZED: Memoized scene blocks calculation
   const sceneBlocks = useMemo(() => {
     const start = performance.now();
-    const result = calculateSceneBlocks(timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, readingSpeedWpm);
+    const result = calculateSceneBlocks(
+      effectiveTimelineData,
+      duration,
+      viewStartSec,
+      viewEndSec,
+      pxPerSec,
+      isBookProject,
+      readingSpeedWpm
+    );
     const elapsed = performance.now() - start;
     if (elapsed > 10) {
       console.warn(`[VideoEditorTimeline] ⚠️ sceneBlocks calculation took ${elapsed.toFixed(2)}ms (SLA: 10ms)`);
     }
     return result;
-  }, [timelineData, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject, readingSpeedWpm]);
+  }, [
+    effectiveTimelineData,
+    duration,
+    viewStartSec,
+    viewEndSec,
+    pxPerSec,
+    isBookProject,
+    readingSpeedWpm,
+  ]);
 
   const shotBlocks = useMemo(() => {
-    if (isBookProject || !timelineData || !('shots' in timelineData) || !timelineData.shots?.length) {
+    if (isBookProject || !effectiveTimelineData || !('shots' in effectiveTimelineData) || !effectiveTimelineData.shots?.length) {
       return [];
     }
 
-    const sceneById = new Map(sceneBlocks.map(scene => [scene.id, scene]));
+    const sceneById = new Map(sceneBlocks.map((scene: any) => [scene.id, scene]));
     const shotsByScene = new Map<string, any[]>();
 
-    for (const shot of timelineData.shots) {
+    for (const shot of effectiveTimelineData.shots) {
       const sceneId = (shot as any).sceneId || (shot as any).scene_id;
       if (!sceneId) continue;
       const current = shotsByScene.get(sceneId) || [];
@@ -1916,7 +3251,42 @@ export function VideoEditorTimeline({
       shotsByScene.set(sceneId, current);
     }
 
+    const getShotDurationSec = (shot: any): number | null => {
+      const override = manualShotDurations[shot.id];
+      if (override !== undefined) return override;
+
+      const mRaw = shot.shotlengthMinutes ?? shot.shotlength_minutes;
+      const sRaw = shot.shotlengthSeconds ?? shot.shotlength_seconds;
+      if (typeof sRaw === 'number' && Number.isFinite(sRaw) && sRaw >= 0) {
+        const m =
+          typeof mRaw === 'number' && Number.isFinite(mRaw)
+            ? Math.max(0, Math.floor(mRaw))
+            : 0;
+        const s = Math.round(sRaw);
+        const total = m * 60 + s;
+        if (total > 0) return total;
+      }
+
+      const stored = shot.durationSeconds;
+      if (typeof stored === 'number' && Number.isFinite(stored) && stored > 0) {
+        return stored;
+      }
+
+      // Optional legacy parsing (best-effort).
+      if (typeof shot.duration === 'string') {
+        // e.g. "3s" or "0:05"
+        const s = shot.duration.trim();
+        if (s.endsWith('s')) {
+          const n = Number(s.slice(0, -1));
+          if (Number.isFinite(n) && n > 0) return n;
+        }
+      }
+
+      return null;
+    };
+
     const blocks: any[] = [];
+
     for (const [sceneId, sceneShots] of shotsByScene.entries()) {
       const scene = sceneById.get(sceneId);
       if (!scene) continue;
@@ -1927,12 +3297,39 @@ export function VideoEditorTimeline({
         return orderA - orderB;
       });
 
-      const slotDuration = (scene.endSec - scene.startSec) / Math.max(1, orderedShots.length);
+      const sceneDuration = Math.max(0, scene.endSec - scene.startSec);
+
+      const storedDurations = orderedShots.map(getShotDurationSec);
+      const allDurationsValid = storedDurations.every((d) => typeof d === 'number' && (d as number) > 0);
+
+      // If we have persisted durations for all shots, use them (scaled to fit this scene).
+      // Otherwise fall back to equal distribution (so initial projects still render).
+      let durations: number[];
+      if (allDurationsValid && sceneDuration > 0) {
+        const totalStored = (storedDurations as number[]).reduce((sum, d) => sum + d, 0);
+        const scale = totalStored > 0 ? sceneDuration / totalStored : 1;
+        const raw = (storedDurations as number[]).map((d) => Math.max(MIN_CLIP_DURATION_SEC, d * scale));
+        const sumAfterClamp = raw.reduce((sum, d) => sum + d, 0);
+        const renorm = sumAfterClamp > 0 ? sceneDuration / sumAfterClamp : 1;
+        durations = raw.map((d) => d * renorm);
+      } else {
+        const slotDuration = sceneDuration / Math.max(1, orderedShots.length);
+        durations = orderedShots.map(() => Math.max(MIN_CLIP_DURATION_SEC, slotDuration));
+        // Renormalize to exact scene duration.
+        const sum = durations.reduce((s, d) => s + d, 0);
+        const renorm = sum > 0 ? sceneDuration / sum : 1;
+        durations = durations.map((d) => d * renorm);
+      }
+
+      let cursor = scene.startSec;
       orderedShots.forEach((shot, index) => {
-        const startSec = scene.startSec + index * slotDuration;
-        const endSec = startSec + slotDuration;
+        const startSec = cursor;
+        const endSec = startSec + durations[index];
+        cursor = endSec;
+
         const x = (startSec - viewStartSec) * pxPerSec;
         const width = Math.max(2, (endSec - startSec) * pxPerSec);
+
         blocks.push({
           ...(shot as any),
           startSec,
@@ -1940,16 +3337,308 @@ export function VideoEditorTimeline({
           x,
           width,
           visible: endSec >= viewStartSec && startSec <= viewEndSec,
-          label: (shot as any).shotNumber || (shot as any).shot_number || (shot as any).title || `Shot ${index + 1}`,
+          label:
+            (shot as any).shotNumber ||
+            (shot as any).shot_number ||
+            (shot as any).title ||
+            `Shot ${index + 1}`,
         });
       });
     }
 
     return blocks;
-  }, [isBookProject, timelineData, sceneBlocks, viewStartSec, pxPerSec, viewEndSec]);
+  }, [
+    isBookProject,
+    effectiveTimelineData,
+    sceneBlocks,
+    viewStartSec,
+    pxPerSec,
+    viewEndSec,
+    manualShotDurations,
+  ]);
+
+  actBlocksRef.current = actBlocks;
+  sequenceBlocksRef.current = sequenceBlocks;
+  sceneBlocksRef.current = sceneBlocks;
+  shotBlocksRef.current = shotBlocks;
+
+  const activePreviewShot = useMemo(() => {
+    if (isBookProject || shotBlocks.length === 0) return null;
+    const exact = shotBlocks.find((shot: any) => currentTime >= shot.startSec && currentTime <= shot.endSec);
+    if (exact) return exact as any;
+    const next = shotBlocks.find((shot: any) => shot.startSec >= currentTime);
+    if (next) return next as any;
+    return shotBlocks[shotBlocks.length - 1] as any;
+  }, [currentTime, isBookProject, shotBlocks]);
+
+  const activePreviewImageUrl = useMemo(() => {
+    const shot = activePreviewShot as any;
+    if (!shot) return '';
+    return shot.imageUrl || shot.image_url || shot.thumbnailUrl || shot.thumbnail_url || '';
+  }, [activePreviewShot]);
+
+  const addableKinds = useMemo<AddNodeKind[]>(() => {
+    if (isBookProject) return ['act', 'sequence', 'scene'];
+    return ['act', 'sequence', 'scene', 'shot'];
+  }, [isBookProject]);
+
+  const getParentOptions = useCallback(
+    (kind: AddNodeKind): Array<{ id: string; label: string }> => {
+      if (!timelineData) return [];
+      if (kind === 'sequence') {
+        return (timelineData.acts || []).map((a) => ({ id: a.id, label: a.title || labelByKind.act }));
+      }
+      if (kind === 'scene') {
+        return (timelineData.sequences || []).map((s) => ({ id: s.id, label: s.title || labelByKind.sequence }));
+      }
+      if (kind === 'shot') {
+        return (timelineData.scenes || []).map((s) => ({ id: s.id, label: s.title || labelByKind.scene }));
+      }
+      return [];
+    },
+    [timelineData, labelByKind.act, labelByKind.scene, labelByKind.sequence]
+  );
+
+  const createNodeAndRefresh = useCallback(
+    async (kind: AddNodeKind, parentId?: string) => {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Nicht authentifiziert');
+        return;
+      }
+
+      if (kind === 'act') {
+        const next = (timelineData?.acts?.length || 0) + 1;
+        await TimelineAPI.createAct(projectId, { title: `${labelByKind.act} ${next}` }, token);
+      } else if (kind === 'sequence') {
+        if (!parentId) throw new Error('Parent für Sequence fehlt');
+        const next = (timelineData?.sequences?.filter((s) => s.actId === parentId).length || 0) + 1;
+        await TimelineAPI.createSequence(parentId, { title: `${labelByKind.sequence} ${next}` }, token);
+      } else if (kind === 'scene') {
+        if (!parentId) throw new Error('Parent für Scene fehlt');
+        const next = (timelineData?.scenes?.filter((s) => s.sequenceId === parentId).length || 0) + 1;
+        await TimelineAPI.createScene(parentId, { title: `${labelByKind.scene} ${next}` }, token);
+      } else if (kind === 'shot') {
+        if (!parentId) throw new Error('Parent für Shot fehlt');
+        const next = (timelineData && 'shots' in timelineData
+          ? (timelineData.shots || []).filter((s: any) => s.sceneId === parentId || s.scene_id === parentId).length
+          : 0) + 1;
+        await ShotsAPI.createShot(
+          parentId,
+          {
+            projectId,
+            shotNumber: `${labelByKind.shot} ${next}`,
+            description: '',
+          } as any,
+          token
+        );
+      }
+
+      // Trigger the existing loader effect for source-of-truth refresh.
+      setTimelineData(null);
+      toast.success(`${labelByKind[kind]} hinzugefügt`);
+    },
+    [getAccessToken, labelByKind, projectId, timelineData]
+  );
+
+  const openAddDialogForKind = useCallback(
+    (kind: AddNodeKind) => {
+      const needsParent = kind !== 'act';
+      if (!needsParent) {
+        void createNodeAndRefresh(kind);
+        return;
+      }
+      const options = getParentOptions(kind);
+      if (options.length === 0) {
+        toast.error(`Bitte zuerst ${labelByKind[kind === 'shot' ? 'scene' : kind === 'scene' ? 'sequence' : 'act']} anlegen`);
+        return;
+      }
+      if (options.length === 1) {
+        void createNodeAndRefresh(kind, options[0].id);
+        return;
+      }
+      setPendingAddKind(kind);
+      setSelectedParentId(options[0].id);
+      setAddDialogOpen(true);
+    },
+    [createNodeAndRefresh, getParentOptions, labelByKind]
+  );
+
+  const handleConfirmAddWithParent = useCallback(async () => {
+    if (!pendingAddKind || !selectedParentId) return;
+    try {
+      await createNodeAndRefresh(pendingAddKind, selectedParentId);
+    } catch (error) {
+      console.error('[VideoEditorTimeline] Add item failed:', error);
+      toast.error('Element konnte nicht angelegt werden');
+    } finally {
+      setAddDialogOpen(false);
+      setPendingAddKind(null);
+      setSelectedParentId('');
+    }
+  }, [createNodeAndRefresh, pendingAddKind, selectedParentId]);
+
+  const openDescriptionDialog = useCallback(
+    (kind: AddNodeKind, id: string, title: string, currentDescription?: string) => {
+      setEditingDescription({
+        kind,
+        id,
+        title,
+        description: currentDescription || '',
+      });
+      setDescriptionDialogOpen(true);
+    },
+    []
+  );
+
+  const commitDescriptionEdit = useCallback(async () => {
+    if (!editingDescription) return;
+    const token = await getAccessToken();
+    if (!token) {
+      toast.error('Nicht authentifiziert');
+      return;
+    }
+    try {
+      if (editingDescription.kind === 'act') {
+        await TimelineAPI.updateAct(editingDescription.id, { description: editingDescription.description }, token);
+      } else if (editingDescription.kind === 'sequence') {
+        await TimelineAPI.updateSequence(editingDescription.id, { description: editingDescription.description }, token);
+      } else if (editingDescription.kind === 'scene') {
+        await TimelineAPI.updateScene(editingDescription.id, { description: editingDescription.description }, token);
+      } else {
+        await ShotsAPI.updateShot(editingDescription.id, { description: editingDescription.description } as any, token);
+      }
+
+      setTimelineData((prev) => {
+        if (!prev) return prev;
+        if (editingDescription.kind === 'act') {
+          return {
+            ...prev,
+            acts: (prev.acts || []).map((a: any) =>
+              a.id === editingDescription.id ? { ...a, description: editingDescription.description } : a
+            ),
+          };
+        }
+        if (editingDescription.kind === 'sequence') {
+          return {
+            ...prev,
+            sequences: (prev.sequences || []).map((s: any) =>
+              s.id === editingDescription.id ? { ...s, description: editingDescription.description } : s
+            ),
+          };
+        }
+        if (editingDescription.kind === 'scene') {
+          return {
+            ...prev,
+            scenes: (prev.scenes || []).map((s: any) =>
+              s.id === editingDescription.id ? { ...s, description: editingDescription.description } : s
+            ),
+          };
+        }
+        if ('shots' in prev) {
+          return {
+            ...prev,
+            shots: ((prev as any).shots || []).map((s: any) =>
+              s.id === editingDescription.id ? { ...s, description: editingDescription.description } : s
+            ),
+          } as TimelineData;
+        }
+        return prev;
+      });
+
+      toast.success('Beschreibung gespeichert');
+      setDescriptionDialogOpen(false);
+      setEditingDescription(null);
+    } catch (error) {
+      console.error('[VideoEditorTimeline] Description update failed:', error);
+      toast.error('Beschreibung konnte nicht gespeichert werden');
+    }
+  }, [editingDescription, getAccessToken]);
+
+  const startInlineTitleEdit = useCallback((kind: EditableTitleKind, id: string, currentTitle?: string) => {
+    setEditingTitle({
+      kind,
+      id,
+      value: currentTitle || '',
+    });
+  }, []);
+
+  const cancelInlineTitleEdit = useCallback(() => {
+    setEditingTitle(null);
+  }, []);
+
+  const commitInlineTitleEdit = useCallback(async () => {
+    if (!editingTitle) return;
+    const nextTitle = editingTitle.value.trim();
+    if (!nextTitle) {
+      toast.error('Titel darf nicht leer sein');
+      return;
+    }
+    const token = await getAccessToken();
+    if (!token) {
+      toast.error('Nicht authentifiziert');
+      return;
+    }
+    try {
+      if (editingTitle.kind === 'beat') {
+        if (dbBeatIds.has(editingTitle.id)) {
+          await BeatsAPI.updateBeat(editingTitle.id, { label: nextTitle });
+        }
+        setBeats((prev) =>
+          prev.map((b) => (b.id === editingTitle.id ? { ...b, label: nextTitle } : b))
+        );
+        toast.success('Beat-Name gespeichert');
+        setEditingTitle(null);
+        return;
+      }
+      if (editingTitle.kind === 'act') {
+        await TimelineAPI.updateAct(editingTitle.id, { title: nextTitle }, token);
+      } else if (editingTitle.kind === 'sequence') {
+        await TimelineAPI.updateSequence(editingTitle.id, { title: nextTitle }, token);
+      } else if (editingTitle.kind === 'scene') {
+        await TimelineAPI.updateScene(editingTitle.id, { title: nextTitle }, token);
+      } else {
+        await ShotsAPI.updateShot(editingTitle.id, { shotNumber: nextTitle } as any, token);
+      }
+      setTimelineData((prev) => {
+        if (!prev) return prev;
+        if (editingTitle.kind === 'act') {
+          return { ...prev, acts: (prev.acts || []).map((a: any) => a.id === editingTitle.id ? { ...a, title: nextTitle } : a) };
+        }
+        if (editingTitle.kind === 'sequence') {
+          return { ...prev, sequences: (prev.sequences || []).map((s: any) => s.id === editingTitle.id ? { ...s, title: nextTitle } : s) };
+        }
+        if (editingTitle.kind === 'scene') {
+          return { ...prev, scenes: (prev.scenes || []).map((s: any) => s.id === editingTitle.id ? { ...s, title: nextTitle } : s) };
+        }
+        if ('shots' in prev) {
+          return {
+            ...prev,
+            shots: ((prev as any).shots || []).map((s: any) =>
+              s.id === editingTitle.id ? { ...s, shotNumber: nextTitle, shot_number: nextTitle } : s
+            ),
+          } as TimelineData;
+        }
+        return prev;
+      });
+      toast.success('Titel gespeichert');
+      setEditingTitle(null);
+    } catch (error) {
+      console.error('[VideoEditorTimeline] Inline title update failed:', error);
+      toast.error('Titel konnte nicht gespeichert werden');
+    }
+  }, [editingTitle, getAccessToken, dbBeatIds]);
   
   // 🎯 UPDATE REF: Store sceneBlocks for playback functions
   sceneBlocksRef.current = sceneBlocks;
+
+  /** Delay single-click title open so double-click can open scene content without flashing the title modal first */
+  const sceneTitleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (sceneTitleClickTimerRef.current) clearTimeout(sceneTitleClickTimerRef.current);
+    };
+  }, []);
   
   // 🚀 INITIAL TEXT LOAD: Load first scene text on mount
   useEffect(() => {
@@ -2128,13 +3817,26 @@ export function VideoEditorTimeline({
                 currentSceneTitle={sceneBlocks.find(s => s.id === currentSceneId)?.title}
               />
             ) : (
-              // 🎬 FILM: Video placeholder
+              // 🎬 FILM/SERIES/AUDIO: active shot preview with fallback
               <>
-                <img 
-                  src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&h=450&fit=crop"
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded"
-                />
+                {activePreviewImageUrl ? (
+                  <img
+                    src={activePreviewImageUrl}
+                    alt={activePreviewShot?.label || 'Shot Preview'}
+                    className="w-full h-full object-cover rounded"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded bg-gradient-to-br from-muted to-muted/40 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-sm font-medium text-foreground">
+                        {activePreviewShot?.label || 'Kein Shot aktiv'}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {activePreviewShot ? 'Kein Bild fuer diesen Shot' : 'Fuege Shots hinzu oder bewege den Playhead'}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Button
@@ -2227,7 +3929,7 @@ export function VideoEditorTimeline({
       {/* Timeline Container */}
       <div className="flex-1 flex">
         {/* Track Labels - Sticky Left */}
-        <div className="w-20 flex-shrink-0 bg-card border-r border-border">
+        <div className="w-24 min-w-[5.5rem] flex-shrink-0 bg-card border-r border-border">
           <div className="h-12 border-b border-border px-2 flex items-center bg-card">
             <span className="text-[9px] text-foreground font-medium">Zeit</span>
           </div>
@@ -2237,14 +3939,19 @@ export function VideoEditorTimeline({
           >
             <span className="text-[9px] text-foreground font-medium">Beat</span>
             <button
+              type="button"
               onClick={() => setBeatMagnetEnabled(!beatMagnetEnabled)}
               className={cn(
-                'text-sm transition-all hover:scale-110',
-                beatMagnetEnabled ? 'opacity-100' : 'opacity-30 grayscale'
+                'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                beatMagnetEnabled ? 'opacity-100 text-primary' : 'opacity-35 text-muted-foreground'
               )}
-              title={beatMagnetEnabled ? 'Magnet: ON (Ripple aktiv)' : 'Magnet: OFF (Keine Ripple)'}
+              title={
+                beatMagnetEnabled
+                  ? 'Beat-Magnet: an (Snapping & Ripple nur für Beats)'
+                  : 'Beat-Magnet: aus'
+              }
             >
-              🧲
+              <Magnet className="size-4" strokeWidth={2.25} />
             </button>
             <div 
               className={cn(
@@ -2255,12 +3962,31 @@ export function VideoEditorTimeline({
             />
           </div>
           <div 
-            className="border-b border-border px-2 flex items-center bg-card relative"
+            className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
             style={{ height: `${trackHeights.act}px` }}
           >
-            <span className="text-[9px] text-foreground font-medium">
+            <span className="text-[9px] text-foreground font-medium truncate min-w-0">
               {isBookProject ? 'Akt' : 'Act'}
             </span>
+            {showFilmClipMagnets && (
+              <button
+                type="button"
+                onClick={() =>
+                  setClipMagnets((m) => ({ ...m, act: !m.act }))
+                }
+                className={cn(
+                  'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                  clipMagnets.act ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                )}
+                title={
+                  clipMagnets.act
+                    ? 'Act-Trim: Magnet an (Snapping)'
+                    : 'Act-Trim: Magnet aus'
+                }
+              >
+                <Magnet className="size-3.5" strokeWidth={2.25} />
+              </button>
+            )}
             <div 
               className={cn(
                 "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
@@ -2270,12 +3996,31 @@ export function VideoEditorTimeline({
             />
           </div>
           <div 
-            className="border-b border-border px-2 flex items-center bg-card relative"
+            className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
             style={{ height: `${trackHeights.sequence}px` }}
           >
-            <span className="text-[9px] text-foreground font-medium">
+            <span className="text-[9px] text-foreground font-medium truncate min-w-0">
               {isBookProject ? 'Kapitel' : 'Seq'}
             </span>
+            {showFilmClipMagnets && (
+              <button
+                type="button"
+                onClick={() =>
+                  setClipMagnets((m) => ({ ...m, sequence: !m.sequence }))
+                }
+                className={cn(
+                  'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                  clipMagnets.sequence ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                )}
+                title={
+                  clipMagnets.sequence
+                    ? 'Sequence-Trim: Magnet an'
+                    : 'Sequence-Trim: Magnet aus'
+                }
+              >
+                <Magnet className="size-3.5" strokeWidth={2.25} />
+              </button>
+            )}
             <div 
               className={cn(
                 "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
@@ -2285,12 +4030,31 @@ export function VideoEditorTimeline({
             />
           </div>
           <div 
-            className="border-b border-border px-2 flex items-center bg-card relative"
+            className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
             style={{ height: `${trackHeights.scene}px` }}
           >
-            <span className="text-[9px] text-foreground font-medium">
+            <span className="text-[9px] text-foreground font-medium truncate min-w-0">
               {isBookProject ? 'Abschnitt' : 'Scene'}
             </span>
+            {showFilmClipMagnets && (
+              <button
+                type="button"
+                onClick={() =>
+                  setClipMagnets((m) => ({ ...m, scene: !m.scene }))
+                }
+                className={cn(
+                  'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                  clipMagnets.scene ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                )}
+                title={
+                  clipMagnets.scene
+                    ? 'Scene-Trim: Magnet an'
+                    : 'Scene-Trim: Magnet aus'
+                }
+              >
+                <Magnet className="size-3.5" strokeWidth={2.25} />
+              </button>
+            )}
             <div 
               className={cn(
                 "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
@@ -2300,21 +4064,70 @@ export function VideoEditorTimeline({
             />
           </div>
           {!isBookProject && (
-            <div
-              className="border-b border-border px-2 flex items-center bg-card relative"
-              style={{ height: `${trackHeights.shot}px` }}
-            >
-              <span className="text-[9px] text-foreground font-medium">
-                Shot
-              </span>
+            <>
               <div
-                className={cn(
-                  "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                  resizingTrack === 'shot' ? 'border-b-4 border-primary' : 'hover:border-b-4 hover:border-primary'
-                )}
-                onMouseDown={(e) => handleResizeStart('shot', e)}
-              />
-            </div>
+                className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
+                style={{ height: `${trackHeights.shot}px` }}
+              >
+                <span className="text-[9px] text-foreground font-medium truncate min-w-0">
+                  Shot
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setClipMagnets((m) => ({ ...m, shot: !m.shot }))
+                  }
+                  className={cn(
+                    'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    clipMagnets.shot ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={
+                    clipMagnets.shot
+                      ? 'Shot-Trim: Magnet an'
+                      : 'Shot-Trim: Magnet aus'
+                  }
+                >
+                  <Magnet className="size-3.5" strokeWidth={2.25} />
+                </button>
+                <div
+                  className={cn(
+                    "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                    resizingTrack === 'shot' ? 'border-b-4 border-primary' : 'hover:border-b-4 hover:border-primary'
+                  )}
+                  onMouseDown={(e) => handleResizeStart('shot', e)}
+                />
+              </div>
+              <div
+                className="border-b border-border px-2 flex items-center bg-card relative"
+                style={{ height: `${trackHeights.music}px` }}
+              >
+                <span className="text-[9px] text-foreground font-medium leading-tight">
+                  Musik
+                </span>
+                <div
+                  className={cn(
+                    "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                    resizingTrack === 'music' ? 'border-b-4 border-primary' : 'hover:border-b-4 hover:border-primary'
+                  )}
+                  onMouseDown={(e) => handleResizeStart('music', e)}
+                />
+              </div>
+              <div
+                className="border-b border-border px-2 flex items-center bg-card relative"
+                style={{ height: `${trackHeights.sfx}px` }}
+              >
+                <span className="text-[9px] text-foreground font-medium leading-tight">
+                  SFX
+                </span>
+                <div
+                  className={cn(
+                    "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                    resizingTrack === 'sfx' ? 'border-b-4 border-primary' : 'hover:border-b-4 hover:border-primary'
+                  )}
+                  onMouseDown={(e) => handleResizeStart('sfx', e)}
+                />
+              </div>
+            </>
           )}
         </div>
         
@@ -2400,18 +4213,51 @@ export function VideoEditorTimeline({
                         width: `${beat.width}px`,
                         backgroundColor: beat.color || undefined,
                       }}
-                      onDoubleClick={() => handleDeleteBeat(beat.id)}
-                      title="Doppelklick zum Löschen"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startInlineTitleEdit('beat', beat.id, beat.label);
+                      }}
+                      title="Klicken zum Umbenennen"
                     >
                       {/* Left Handle */}
                       <div
                         className="absolute left-0 top-0 bottom-0 w-1.5 bg-purple-900/80 dark:bg-purple-600/80 cursor-ew-resize hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors rounded-l z-10"
                         onMouseDown={(e) => handleTrimStart(beat.id, 'left', e)}
+                        onClick={(e) => e.stopPropagation()}
                         title="Linken Rand ziehen"
                       />
                       
                       {/* Center Content */}
-                      <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                      <div className="h-full flex items-center justify-center px-1 overflow-hidden gap-0.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                'h-4 w-4 p-0 shrink-0',
+                                beatColor.text,
+                                'hover:opacity-80'
+                              )}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="size-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Beat „${beat.label}“ wirklich löschen?`)) {
+                                  void handleDeleteBeat(beat.id);
+                                }
+                              }}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              Beat löschen
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <span className={cn('text-[10px] truncate', BEAT_STYLES.text, beatColor.text)}>
                           {displayText}
                         </span>
@@ -2421,6 +4267,7 @@ export function VideoEditorTimeline({
                       <div
                         className="absolute right-0 top-0 bottom-0 w-1.5 bg-purple-900/80 dark:bg-purple-600/80 cursor-ew-resize hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors rounded-r z-10"
                         onMouseDown={(e) => handleTrimStart(beat.id, 'right', e)}
+                        onClick={(e) => e.stopPropagation()}
                         title="Rechten Rand ziehen"
                       />
                     </div>
@@ -2443,16 +4290,64 @@ export function VideoEditorTimeline({
                 .filter(act => act.visible)
                 .map((act, index) => {
                   const displayText = getBlockText(act.title || '', act.width, 'act', index);
+                  const actsOrdered = [...(timelineData?.acts || [])].sort(
+                    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+                  );
+                  const actIdx = actsOrdered.findIndex((a: any) => a.id === act.id);
+                  const actFirst = actIdx <= 0;
+                  const actLast = actIdx < 0 || actIdx >= actsOrdered.length - 1;
                   return (
                     <div
                       key={act.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-200 dark:border-blue-700"
+                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-200 dark:border-blue-700 group"
                       style={{
                         left: `${act.x}px`,
                         width: `${act.width}px`,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startInlineTitleEdit('act', act.id, act.title);
+                      }}
                     >
+                      {!isBookProject && !actFirst && (
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-900/75 dark:bg-blue-500/80 cursor-ew-resize hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors rounded-l z-10"
+                          onMouseDown={(e) => handleTrimClipMouseDown('act', act.id, 'left', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Linken Rand ziehen (Ripple)"
+                        />
+                      )}
+                      {!isBookProject && !actLast && (
+                        <div
+                          className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-900/75 dark:bg-blue-500/80 cursor-ew-resize hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors rounded-r z-10"
+                          onMouseDown={(e) => handleTrimClipMouseDown('act', act.id, 'right', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Rechten Rand ziehen (Ripple)"
+                        />
+                      )}
                       <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-4 w-4 p-0 mr-1 shrink-0 text-blue-700 hover:text-blue-900"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="size-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDescriptionDialog('act', act.id, act.title || labelByKind.act, (act as any).description);
+                              }}
+                            >
+                              Beschreibung bearbeiten
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <span className="text-[10px] text-blue-900 dark:text-blue-100 font-medium truncate">
                           {displayText}
                         </span>
@@ -2477,16 +4372,64 @@ export function VideoEditorTimeline({
                 .filter(seq => seq.visible)
                 .map((seq, index) => {
                   const displayText = getBlockText(seq.title || '', seq.width, 'chapter', index);
+                  const seqsOrdered = [...(timelineData?.sequences || [])]
+                    .filter((s: any) => s.actId === (seq as any).actId)
+                    .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+                  const seqIdx = seqsOrdered.findIndex((s: any) => s.id === seq.id);
+                  const seqFirst = seqIdx <= 0;
+                  const seqLast = seqIdx < 0 || seqIdx >= seqsOrdered.length - 1;
                   return (
                     <div
                       key={seq.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-green-50 dark:bg-green-950/40 border-2 border-green-200 dark:border-green-700"
+                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-green-50 dark:bg-green-950/40 border-2 border-green-200 dark:border-green-700 group"
                       style={{
                         left: `${seq.x}px`,
                         width: `${seq.width}px`,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startInlineTitleEdit('sequence', seq.id, seq.title);
+                      }}
                     >
+                      {!isBookProject && !seqFirst && (
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-1.5 bg-green-900/75 dark:bg-green-500/80 cursor-ew-resize hover:bg-green-700 dark:hover:bg-green-400 transition-colors rounded-l z-10"
+                          onMouseDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'left', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Linken Rand ziehen (Ripple)"
+                        />
+                      )}
+                      {!isBookProject && !seqLast && (
+                        <div
+                          className="absolute right-0 top-0 bottom-0 w-1.5 bg-green-900/75 dark:bg-green-500/80 cursor-ew-resize hover:bg-green-700 dark:hover:bg-green-400 transition-colors rounded-r z-10"
+                          onMouseDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'right', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Rechten Rand ziehen (Ripple)"
+                        />
+                      )}
                       <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-4 w-4 p-0 mr-1 shrink-0 text-green-700 hover:text-green-900"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="size-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDescriptionDialog('sequence', seq.id, seq.title || labelByKind.sequence, (seq as any).description);
+                              }}
+                            >
+                              Beschreibung bearbeiten
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <span className="text-[10px] text-green-900 dark:text-green-100 font-medium truncate">
                           {displayText}
                         </span>
@@ -2514,26 +4457,85 @@ export function VideoEditorTimeline({
                   const showFullContent = scene.width >= 120;
                   const showAbbreviatedTitle = scene.width >= 60 && scene.width < 120;
                   const showMinimal = scene.width < 60;
+                  const scenesOrdered = [...(timelineData?.scenes || [])]
+                    .filter((s: any) => s.sequenceId === (scene as any).sequenceId)
+                    .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+                  const scIdx = scenesOrdered.findIndex((s: any) => s.id === scene.id);
+                  const scFirst = scIdx <= 0;
+                  const scLast = scIdx < 0 || scIdx >= scenesOrdered.length - 1;
                   
                   return (
                     <div
                       key={scene.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity bg-pink-50 border-2 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden"
+                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity bg-pink-50 border-2 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden group"
                       style={{
                         left: `${scene.x}px`,
                         width: `${scene.width}px`,
                       }}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (sceneTitleClickTimerRef.current) clearTimeout(sceneTitleClickTimerRef.current);
+                        sceneTitleClickTimerRef.current = setTimeout(() => {
+                          sceneTitleClickTimerRef.current = null;
+                          startInlineTitleEdit('scene', scene.id, scene.title);
+                        }, 260);
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        if (sceneTitleClickTimerRef.current) {
+                          clearTimeout(sceneTitleClickTimerRef.current);
+                          sceneTitleClickTimerRef.current = null;
+                        }
                         console.log('[VideoEditorTimeline] 🚀 Opening Content Modal for scene:', scene.id);
                         setEditingSceneForModal(scene);
                         setShowContentModal(true);
                       }}
                     >
+                      {!isBookProject && !scFirst && (
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-900/75 dark:bg-pink-500/80 cursor-ew-resize hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors rounded-l z-10"
+                          onMouseDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'left', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Linken Rand ziehen (Ripple)"
+                        />
+                      )}
+                      {!isBookProject && !scLast && (
+                        <div
+                          className="absolute right-0 top-0 bottom-0 w-1.5 bg-pink-900/75 dark:bg-pink-500/80 cursor-ew-resize hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors rounded-r z-10"
+                          onMouseDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'right', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Rechten Rand ziehen (Ripple)"
+                        />
+                      )}
                       {showFullContent && (
                         <div className="h-full flex flex-col px-2 py-1 overflow-hidden">
-                          <span className="text-[9px] font-medium mb-0.5 truncate text-[rgb(230,0,118)] dark:text-pink-300">
-                            {scene.title}
-                          </span>
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-4 w-4 p-0 shrink-0 text-pink-700 hover:text-pink-900"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="size-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDescriptionDialog('scene', scene.id, scene.title || labelByKind.scene, (scene as any).description);
+                                  }}
+                                >
+                                  Beschreibung bearbeiten
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300">
+                              {scene.title}
+                            </span>
+                          </div>
                           <div className="flex-1 overflow-hidden text-[8px] text-pink-800 dark:text-pink-200/90">
                             {scene.content && typeof scene.content === 'object' ? (
                               <ReadonlyTiptapView content={scene.content} />
@@ -2545,6 +4547,28 @@ export function VideoEditorTimeline({
                       )}
                       {showAbbreviatedTitle && (
                         <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0 mr-1 shrink-0 text-pink-700 hover:text-pink-900"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="size-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDescriptionDialog('scene', scene.id, scene.title || labelByKind.scene, (scene as any).description);
+                                }}
+                              >
+                                Beschreibung bearbeiten
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300">
                             {displayText}
                           </span>
@@ -2552,6 +4576,28 @@ export function VideoEditorTimeline({
                       )}
                       {showMinimal && (
                         <div className="h-full flex items-center justify-center overflow-hidden">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0 mr-1 shrink-0 text-pink-700 hover:text-pink-900"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="size-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDescriptionDialog('scene', scene.id, scene.title || labelByKind.scene, (scene as any).description);
+                                }}
+                              >
+                                Beschreibung bearbeiten
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <span className="text-[9px] font-bold text-[rgb(230,0,118)] dark:text-pink-300">
                             {displayText}
                           </span>
@@ -2568,8 +4614,9 @@ export function VideoEditorTimeline({
               />
             </div>
 
-            {/* Shot Track */}
+            {/* Shot Track + Audio-Zeilen (Film): gleiche Geometrie wie Shots */}
             {!isBookProject && (
+              <>
               <div
                 className="relative border-b border-border bg-muted/20"
                 style={{ height: `${trackHeights.shot}px` }}
@@ -2578,17 +4625,130 @@ export function VideoEditorTimeline({
                   .filter(shot => shot.visible)
                   .map((shot, index) => {
                     const displayText = getBlockText(shot.label || '', shot.width, 'shot', index);
+                    const imgUrl = shotBlockPreviewUrl(shot as any);
+                    const narrow = shot.width < 44;
+                    const fullBleedImage = Boolean(imgUrl && narrow);
+                    const showSideThumb = Boolean(imgUrl && !narrow);
+                    const thumbW = Math.min(48, Math.max(26, Math.round(shot.width * 0.28)));
+                    const sid = (shot as any).sceneId || (shot as any).scene_id;
+                    const sceneShots = (timelineData as TimelineData)?.shots?.filter(
+                      (sh: any) => (sh.sceneId || sh.scene_id) === sid
+                    ) ?? [];
+                    const shotsOrdered = [...sceneShots].sort(
+                      (a: any, b: any) => (a.orderIndex ?? a.order_index ?? 0) - (b.orderIndex ?? b.order_index ?? 0)
+                    );
+                    const shIdx = shotsOrdered.findIndex((s: any) => s.id === shot.id);
+                    const shFirst = shIdx <= 0;
+                    const shLast = shIdx < 0 || shIdx >= shotsOrdered.length - 1;
+
                     return (
                       <div
                         key={shot.id}
-                        className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-yellow-50 border-2 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-600"
+                        className={cn(
+                          'absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity border-2 border-yellow-400 dark:border-yellow-600 overflow-hidden group',
+                          fullBleedImage && 'bg-cover bg-center',
+                          !fullBleedImage && 'bg-yellow-50 dark:bg-yellow-900/20'
+                        )}
                         style={{
                           left: `${shot.x}px`,
                           width: `${shot.width}px`,
+                          ...(fullBleedImage ? { backgroundImage: `url(${imgUrl})` } : {}),
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startInlineTitleEdit('shot', shot.id, shot.label);
                         }}
                       >
-                        <div className="h-full flex items-center justify-center px-1 overflow-hidden">
-                          <span className="text-[10px] text-yellow-900 dark:text-yellow-100 font-medium truncate">
+                        {!shFirst && (
+                          <div
+                            className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-900/80 dark:bg-yellow-500/80 cursor-ew-resize hover:bg-yellow-700 dark:hover:bg-yellow-400 transition-colors rounded-l z-10"
+                            onMouseDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'left', e)}
+                            onClick={(e) => e.stopPropagation()}
+                            title="Shot-Timing links (Ripple)"
+                          />
+                        )}
+                        {!shLast && (
+                          <div
+                            className="absolute right-0 top-0 bottom-0 w-1.5 bg-yellow-900/80 dark:bg-yellow-500/80 cursor-ew-resize hover:bg-yellow-700 dark:hover:bg-yellow-400 transition-colors rounded-r z-10"
+                            onMouseDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'right', e)}
+                            onClick={(e) => e.stopPropagation()}
+                            title="Shot-Timing rechts (Ripple)"
+                          />
+                        )}
+                        <div
+                          className={cn(
+                            'h-full flex items-center justify-center gap-0.5 px-1 min-w-0 overflow-hidden',
+                            fullBleedImage && 'bg-black/40'
+                          )}
+                        >
+                          {showSideThumb && (
+                            <div
+                              className="shrink-0 rounded-sm overflow-hidden border border-yellow-700/40 bg-muted my-0.5"
+                              style={{
+                                width: thumbW,
+                                height: 'calc(100% - 6px)',
+                                backgroundImage: `url(${imgUrl})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }}
+                              aria-hidden
+                            />
+                          )}
+                          {!imgUrl && shot.width >= 26 && (
+                            <div
+                              className="shrink-0 flex items-center justify-center rounded-sm border border-dashed border-yellow-600/45 bg-yellow-100/40 dark:bg-yellow-950/40 my-0.5"
+                              style={{ width: Math.min(28, shot.width - 8), height: 'calc(100% - 6px)' }}
+                              aria-hidden
+                            >
+                              <Camera className="size-3 text-yellow-800/45 dark:text-yellow-200/45" />
+                            </div>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  'h-4 w-4 p-0 shrink-0',
+                                  fullBleedImage
+                                    ? 'text-yellow-50 hover:text-white hover:bg-white/10'
+                                    : 'mr-0.5 text-yellow-700 hover:text-yellow-900'
+                                )}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="size-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {onOpenShotInStructureTree && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenShotInStructureTree(shot.id);
+                                  }}
+                                >
+                                  <ListTree className="size-3 mr-2 shrink-0" />
+                                  Shot im Strukturbaum öffnen
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDescriptionDialog('shot', shot.id, shot.label || labelByKind.shot, (shot as any).description);
+                                }}
+                              >
+                                Beschreibung bearbeiten
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <span
+                            className={cn(
+                              'text-[10px] font-medium truncate min-w-0',
+                              fullBleedImage
+                                ? 'text-yellow-50 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]'
+                                : 'text-yellow-900 dark:text-yellow-100'
+                            )}
+                          >
                             {displayText}
                           </span>
                         </div>
@@ -2601,6 +4761,131 @@ export function VideoEditorTimeline({
                   className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
                 />
               </div>
+
+              {/* Musik: eine Zelle pro Shot — gleiche x/Breite wie Shot (mit Trim mitbewegt) */}
+              <div
+                className="relative border-b border-border bg-muted/15"
+                style={{ height: `${trackHeights.music}px` }}
+              >
+                {shotBlocks
+                  .filter((s) => s.visible)
+                  .map((shot) => {
+                    const full = (timelineData as TimelineData)?.shots?.find((sh: any) => sh.id === shot.id);
+                    const files = (full?.audioFiles || []).filter((a) => a.type === 'music');
+                    const segments = layoutShotAudioSegments(files);
+                    const w = Math.max(2, shot.width);
+                    return (
+                      <div
+                        key={`music-${shot.id}`}
+                        role={onOpenShotInStructureTree ? 'button' : undefined}
+                        tabIndex={onOpenShotInStructureTree ? 0 : undefined}
+                        className={cn(
+                          'absolute top-0.5 bottom-0.5 rounded border border-violet-400/70 dark:border-violet-600/60 bg-violet-50/80 dark:bg-violet-950/35 overflow-hidden flex',
+                          onOpenShotInStructureTree && 'cursor-pointer hover:ring-1 hover:ring-violet-500/50'
+                        )}
+                        style={{ left: `${shot.x}px`, width: `${w}px` }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenShotInStructureTree?.(shot.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!onOpenShotInStructureTree) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onOpenShotInStructureTree(shot.id);
+                          }
+                        }}
+                        title={
+                          files.length
+                            ? `${files.length} Musik-Clip(s) — Klick: Shot im Strukturbaum`
+                            : 'Keine Musik — Klick: Shot im Strukturbaum'
+                        }
+                      >
+                        {files.length === 0 ? (
+                          <div className="flex-1 flex items-center justify-center min-w-0">
+                            <span className="text-[8px] text-muted-foreground truncate px-0.5">—</span>
+                          </div>
+                        ) : (
+                          segments.map((seg) => (
+                            <div
+                              key={seg.id}
+                              className="h-full min-w-0 bg-violet-500/75 dark:bg-violet-500/50 border-r border-violet-900/20 last:border-r-0"
+                              style={{ width: `${seg.widthFrac * 100}%` }}
+                              title={seg.title}
+                            />
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
+                <div
+                  ref={playheadMusicRef}
+                  className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
+                />
+              </div>
+
+              {/* SFX: gleiche Geometrie wie Shot-Zeile */}
+              <div
+                className="relative border-b border-border bg-muted/15"
+                style={{ height: `${trackHeights.sfx}px` }}
+              >
+                {shotBlocks
+                  .filter((s) => s.visible)
+                  .map((shot) => {
+                    const full = (timelineData as TimelineData)?.shots?.find((sh: any) => sh.id === shot.id);
+                    const files = (full?.audioFiles || []).filter((a) => a.type === 'sfx');
+                    const segments = layoutShotAudioSegments(files);
+                    const w = Math.max(2, shot.width);
+                    return (
+                      <div
+                        key={`sfx-${shot.id}`}
+                        role={onOpenShotInStructureTree ? 'button' : undefined}
+                        tabIndex={onOpenShotInStructureTree ? 0 : undefined}
+                        className={cn(
+                          'absolute top-0.5 bottom-0.5 rounded border border-orange-400/80 dark:border-orange-600/55 bg-orange-50/85 dark:bg-orange-950/30 overflow-hidden flex',
+                          onOpenShotInStructureTree && 'cursor-pointer hover:ring-1 hover:ring-orange-500/50'
+                        )}
+                        style={{ left: `${shot.x}px`, width: `${w}px` }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenShotInStructureTree?.(shot.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!onOpenShotInStructureTree) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onOpenShotInStructureTree(shot.id);
+                          }
+                        }}
+                        title={
+                          files.length
+                            ? `${files.length} SFX — Klick: Shot im Strukturbaum`
+                            : 'Keine SFX — Klick: Shot im Strukturbaum'
+                        }
+                      >
+                        {files.length === 0 ? (
+                          <div className="flex-1 flex items-center justify-center min-w-0">
+                            <span className="text-[8px] text-muted-foreground truncate px-0.5">—</span>
+                          </div>
+                        ) : (
+                          segments.map((seg) => (
+                            <div
+                              key={seg.id}
+                              className="h-full min-w-0 bg-orange-500/80 dark:bg-orange-500/45 border-r border-orange-900/25 last:border-r-0"
+                              style={{ width: `${seg.widthFrac * 100}%` }}
+                              title={seg.title}
+                            />
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
+                <div
+                  ref={playheadSfxRef}
+                  className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
+                />
+              </div>
+              </>
             )}
           </div>
         </div>
@@ -2608,11 +4893,143 @@ export function VideoEditorTimeline({
       
       {/* Bottom Controls */}
       <div className="flex-shrink-0 bg-card border-t border-border p-3">
-        <Button variant="outline" size="sm" className="border-2 border-primary">
-          <Plus className="w-4 h-4 mr-1" />
-          Add Item
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="border-2 border-primary">
+              <Plus className="w-4 h-4 mr-1" />
+              Add Item
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {addableKinds.map((kind) => (
+              <DropdownMenuItem key={kind} onClick={() => openAddDialogForKind(kind)}>
+                {labelByKind[kind]} hinzufügen
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{pendingAddKind ? `${labelByKind[pendingAddKind]} hinzufügen` : 'Element hinzufügen'}</DialogTitle>
+          </DialogHeader>
+          {pendingAddKind ? (
+            <div className="space-y-2">
+              <Label htmlFor="timeline-parent-select">
+                {pendingAddKind === 'sequence'
+                  ? `${labelByKind.act} auswählen`
+                  : pendingAddKind === 'scene'
+                    ? `${labelByKind.sequence} auswählen`
+                    : `${labelByKind.scene} auswählen`}
+              </Label>
+              <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                <SelectTrigger id="timeline-parent-select">
+                  <SelectValue placeholder="Parent auswählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getParentOptions(pendingAddKind).map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={() => void handleConfirmAddWithParent()} disabled={!selectedParentId}>
+              Hinzufügen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!editingTitle}
+        onOpenChange={(open) => {
+          if (!open) cancelInlineTitleEdit();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Titel bearbeiten
+              {editingTitle
+                ? ` — ${editingTitle.kind === 'beat' ? 'Beat' : labelByKind[editingTitle.kind as AddNodeKind]}`
+                : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="timeline-title-edit">Name</Label>
+            <Input
+              id="timeline-title-edit"
+              value={editingTitle?.value ?? ''}
+              onChange={(e) =>
+                setEditingTitle((prev) => (prev ? { ...prev, value: e.target.value } : prev))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void commitInlineTitleEdit();
+                }
+              }}
+              placeholder="Titel eingeben..."
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => cancelInlineTitleEdit()}
+            >
+              Abbrechen
+            </Button>
+            <Button onClick={() => void commitInlineTitleEdit()}>Speichern</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={descriptionDialogOpen} onOpenChange={setDescriptionDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Beschreibung bearbeiten
+              {editingDescription?.title ? ` - ${editingDescription.title}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="timeline-description-edit">Beschreibung</Label>
+            <Textarea
+              id="timeline-description-edit"
+              value={editingDescription?.description || ''}
+              onChange={(e) =>
+                setEditingDescription((prev) => (prev ? { ...prev, description: e.target.value } : prev))
+              }
+              rows={6}
+              placeholder="Beschreibung eingeben..."
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDescriptionDialogOpen(false);
+                setEditingDescription(null);
+              }}
+            >
+              Abbrechen
+            </Button>
+            <Button onClick={() => void commitDescriptionEdit()}>
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* 📝 Rich Text Content Editor Modal */}
       {editingSceneForModal && (

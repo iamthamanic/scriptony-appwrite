@@ -4,7 +4,7 @@
  * 🚀 MIGRATED TO API GATEWAY + AUDIO MICROSERVICE
  * 
  * Helper functions for Shot CRUD operations, file uploads, and character management.
- * - Shot operations → API Gateway → scriptony-timeline-v2
+ * - Shot CRUD / image upload → API Gateway → scriptony-shots
  * - Audio operations → API Gateway → scriptony-audio
  */
 
@@ -88,13 +88,36 @@ export async function createShot(
   }
 }
 
+/** Strip values Appwrite url attributes reject; skip data-URL optimistic previews. */
+function sanitizeShotUpdatePayload(updates: Partial<Shot>): Partial<Shot> {
+  const out: Partial<Shot> = { ...updates };
+  if (out.imageUrl !== undefined) {
+    const u = out.imageUrl;
+    if (typeof u !== "string" || !u.trim() || u.startsWith("data:")) {
+      delete out.imageUrl;
+    }
+  }
+  return out;
+}
+
 export async function updateShot(
   shotId: string,
   updates: Partial<Shot>,
   accessToken: string
-): Promise<Shot> {
-  console.log('[Shots API] updateShot called:', { shotId, updates, updateType: typeof updates });
-  const result = await apiPut(`/shots/${shotId}`, updates);
+): Promise<Shot | undefined> {
+  const payload = sanitizeShotUpdatePayload(updates) as Record<string, unknown>;
+  // Appwrite `shotlength_*` attributes are integers; floats break updates.
+  if (typeof payload.shotlengthMinutes === 'number' && Number.isFinite(payload.shotlengthMinutes)) {
+    payload.shotlengthMinutes = Math.max(0, Math.round(payload.shotlengthMinutes));
+  }
+  if (typeof payload.shotlengthSeconds === 'number' && Number.isFinite(payload.shotlengthSeconds)) {
+    payload.shotlengthSeconds = Math.max(0, Math.round(payload.shotlengthSeconds));
+  }
+  if (Object.keys(payload).length === 0) {
+    return undefined;
+  }
+  console.log('[Shots API] updateShot called:', { shotId, updates: payload, updateType: typeof payload });
+  const result = await apiPut(`/shots/${shotId}`, payload);
   const data = unwrapApiResult(result);
   return data?.shot || data;
 }
@@ -129,26 +152,19 @@ export async function uploadShotImage(
   const ready = await prepareImageFileForUpload(file, prepOptions);
   assertPreparedImageWithinUploadLimit(ready, 5);
   const base64 = await fileToBase64(ready);
-
-  const response = await fetch(`${TIMELINE_API_BASE}/shots/${shotId}/upload-image`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      fileBase64: base64,
-      fileName: ready.name,
-      mimeType: ready.type,
-    }),
+  // Route through API Gateway to avoid browser-side CORS preflight failures
+  // against direct function origins.
+  const result = await apiPost(`/shots/${shotId}/upload-image`, {
+    fileBase64: base64,
+    fileName: ready.name,
+    mimeType: ready.type,
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to upload image: ${response.statusText}`);
+  const data = unwrapApiResult(result) as { imageUrl?: string; image_url?: string; data?: { imageUrl?: string } };
+  const url = data?.imageUrl ?? data?.image_url ?? data?.data?.imageUrl;
+  if (!url || typeof url !== "string") {
+    throw new Error("Upload antwortete ohne imageUrl — bitte scriptony-shots deployen und Logs prüfen.");
   }
-
-  const { imageUrl } = await response.json();
-  return imageUrl;
+  return url;
 }
 
 export async function uploadShotAudio(

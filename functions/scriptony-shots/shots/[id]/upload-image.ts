@@ -2,11 +2,12 @@
  * Shot image upload route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
-import { getStorageBucketId } from "../../../../_shared/env";
-import { requestGraphql } from "../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../_shared/auth";
+import { getStorageBucketId } from "../../../_shared/env";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
+  readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
@@ -15,10 +16,10 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../../_shared/http";
-import { ensureFile, uploadFileToStorage } from "../../../../_shared/storage";
-import { getAccessibleProject, getUserOrganizationIds } from "../../../../_shared/scriptony";
-import { getShotById } from "../../../../_shared/timeline";
+} from "../../../_shared/http";
+import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
+import { getAccessibleProject, getUserOrganizationIds } from "../../../_shared/scriptony";
+import { getShotById } from "../../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -50,6 +51,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     if (!project) {
       sendNotFound(res, "Shot not found");
       return;
+    }
+
+    // Normalize JSON body (Appwrite sometimes delivers a string; ensureFile reads req.body)
+    const parsed = await readJsonBody<Record<string, unknown>>(req);
+    if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+      req.body = parsed;
     }
 
     const file = ensureFile(req, res, {

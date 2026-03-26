@@ -23,8 +23,9 @@ export interface TrimRightResult {
 }
 
 /**
- * ✂️ Trim beat from LEFT handle
- * NO RIPPLE - only the beat itself changes (standard video editor behavior)
+ * 🧲 CapCut-Style Ripple: Trim beat from LEFT handle
+ * Previous beats STICK to the start of current beat (gapless to the left)
+ * while each beat keeps its own duration.
  */
 export function trimBeatLeft(
   beat: Beat,
@@ -43,43 +44,44 @@ export function trimBeatLeft(
   currentTimeRef: number
 ): TrimLeftResult {
   const beatEndSec = (beat.pct_to / 100) * duration;
-  
-  // Find beat immediately to the left
-  const sortedBeats = [...beats].sort((a, b) => a.pct_from - b.pct_from);
-  const beatIndex = sortedBeats.findIndex(b => b.id === beat.id);
-  const beatToLeft = beatIndex > 0 ? sortedBeats[beatIndex - 1] : null;
-  
+
   // Clamp to min duration and bounds
   let clampedSec = Math.max(0, Math.min(beatEndSec - MIN_BEAT_DURATION_SEC, newSec));
-  
-  // Hard stop: Can't overlap with beat to the left
-  if (beatToLeft) {
-    const beatToLeftEndSec = (beatToLeft.pct_to / 100) * duration;
-    clampedSec = Math.max(beatToLeftEndSec, clampedSec);
-  }
-  
+
   // 🧲 SNAP (if magnet enabled)
   if (beatMagnetEnabled) {
     clampedSec = snapTime(clampedSec, beats, duration, pxPerSec, {
       excludeBeatId: beat.id,
       snapToPlayheadSec: currentTimeRef
     });
-    
-    // Re-check hard stop after snapping
-    if (beatToLeft) {
-      const beatToLeftEndSec = (beatToLeft.pct_to / 100) * duration;
-      clampedSec = Math.max(beatToLeftEndSec, clampedSec);
-    }
   }
-  
+
   // Enforce min duration again after snapping
   clampedSec = Math.min(beatEndSec - MIN_BEAT_DURATION_SEC, clampedSec);
-  
   const newPctFrom = (clampedSec / duration) * 100;
-  
-  // ❌ NO RIPPLE for left handle (standard video editor behavior)
+
+  // 🚀 GAPLESS RIPPLE LEFT: previous beats end exactly at current beat start.
   const rippleBeats: Beat[] = [];
-  
+  const sortedBeats = [...beats].sort((a, b) => a.pct_from - b.pct_from);
+  const beatIndex = sortedBeats.findIndex((b) => b.id === beat.id);
+  if (beatIndex > 0) {
+    let currentFromPct = newPctFrom;
+    for (let i = beatIndex - 1; i >= 0; i--) {
+      const b = sortedBeats[i];
+      const beatDurationPct = b.pct_to - b.pct_from;
+      const newToPct = currentFromPct;
+      const newFromPct = currentFromPct - beatDurationPct;
+      if (newToPct <= 0) break;
+      rippleBeats.push({
+        ...b,
+        pct_from: Math.max(0, newFromPct),
+        pct_to: Math.max(0, newToPct),
+      });
+      currentFromPct = Math.max(0, newFromPct);
+      if (currentFromPct <= 0) break;
+    }
+  }
+
   return { newPctFrom, rippleBeats };
 }
 

@@ -45,6 +45,18 @@ Runs [`tools/provision-appwrite-buckets.mjs`](tools/provision-appwrite-buckets.m
 - `_shared/auth.ts` — JWT user resolution (Appwrite Account API)
 - `_shared/storage.ts` — Appwrite Storage uploads
 
+## Deploy a single function (example: `scriptony-shots`)
+
+After `npx appwrite-cli login` and a linked project, from the **repo root**:
+
+```bash
+npm run appwrite:deploy:shots
+```
+
+The deploy script runs **esbuild** from `functions/`: it bundles `scriptony-shots/index.ts`, all of `_shared`, and `node-appwrite` into **one** `index.js` (CommonJS, Node 16–compatible). The deployment upload contains only that file; **`--entrypoint index.js`**. Appwrite’s Node runtime does not run `.ts` entry files — deploying TS sources leads to immediate worker failure → **503** and an HTML error page **without** CORS headers, which browsers report as a CORS / `Failed to fetch` error.
+
+Ensure the function’s active deployment entrypoint in the Console is **`index.js`** after you deploy (the CLI sets it per deployment).
+
 ## Further reading
 
 - [docs/SOURCE_OF_TRUTH.md](../docs/SOURCE_OF_TRUTH.md)

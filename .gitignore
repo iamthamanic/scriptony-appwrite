@@ -16,6 +16,7 @@ build/
 node_modules/
 functions/node_modules/
 .appwrite-deploy/
+functions/.deploy-staging/
 starter-for-react/
 
 # OS

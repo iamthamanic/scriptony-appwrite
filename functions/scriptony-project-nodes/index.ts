@@ -5,9 +5,12 @@
 import initializeProjectHandler from "./initialize-project";
 import nodesHandler from "./nodes/index";
 import nodeByIdHandler from "./nodes/[id]";
+import nodeChildrenHandler from "./nodes/[id]/children";
+import nodePathHandler from "./nodes/[id]/path";
 import batchLoadHandler from "./nodes/batch-load";
 import ultraBatchLoadHandler from "./nodes/ultra-batch-load";
 import bulkHandler from "./nodes/bulk";
+import reorderHandler from "./nodes/reorder";
 import { sendJson, sendNotFound, type RequestLike, type ResponseLike } from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
@@ -60,6 +63,23 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
   if (pathname === "/nodes/bulk") {
     await bulkHandler(req, res);
+    return;
+  }
+
+  if (pathname === "/nodes/reorder") {
+    await reorderHandler(req, res);
+    return;
+  }
+
+  const childrenMatch = pathname.match(/^\/nodes\/([^/]+)\/children$/);
+  if (childrenMatch) {
+    await nodeChildrenHandler(withParams(req, { id: childrenMatch[1] }), res);
+    return;
+  }
+
+  const pathMatch = pathname.match(/^\/nodes\/([^/]+)\/path$/);
+  if (pathMatch) {
+    await nodePathHandler(withParams(req, { id: pathMatch[1] }), res);
     return;
   }
 

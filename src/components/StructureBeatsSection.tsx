@@ -40,6 +40,8 @@ interface StructureBeatsSectionProps {
   targetPages?: number;
   wordsPerPage?: number;
   readingSpeedWpm?: number;
+  /** Film/Series/Audio: target length in **minutes** (from project detail); drives timeline ruler & duration label. */
+  targetDurationMinutes?: string | number | null;
   // 🚀 NEW: Loading state when parent is fetching cache
   isLoadingCache?: boolean;
 }
@@ -54,10 +56,19 @@ const TEST_BEAT_HOOK: BeatCardData = {
   pctTo: 8,   // Ende bei 8% (6% hoch = ca. 60px bei 1000px Höhe)
 };
 
-export function StructureBeatsSection({ projectId, projectType, beatTemplate, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, isLoadingCache }: StructureBeatsSectionProps) {
+function parseTargetMinutes(v: string | number | null | undefined): number | null {
+  if (v == null || v === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(String(v).trim().replace(',', '.'));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+export function StructureBeatsSection({ projectId, projectType, beatTemplate, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, targetDurationMinutes, isLoadingCache }: StructureBeatsSectionProps) {
   const containerStackRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(true); // DEFAULT: OPEN
   const [structureView, setStructureView] = useState<'dropdown' | 'timeline' | 'native'>('dropdown');
+  /** Timeline → FilmDropdown: welcher Shot aufgeklappt & gescrollt werden soll */
+  const [expandShotId, setExpandShotId] = useState<string | null>(null);
   
   // 🚀 REACT QUERY: Lade Beats für dieses Projekt (mit Cache!)
   const { data: beatsData, isLoading: beatsLoading } = useBeats(projectId);
@@ -80,17 +91,29 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     }
   }, [initialData]);
   
-  // 📖 CALCULATE: Book timeline duration from timelineData (reactive!)
+  // 📖 Book: word/WPM-based length. 🎬 Film/Series/Audio: project "Dauer" field (minutes) → seconds for the timeline.
   const bookTimelineDuration = useMemo(() => {
     console.log('[StructureBeatsSection] 🔍 useMemo - Calculating duration:', {
       projectType,
       readingSpeedWpm,
+      targetDurationMinutes,
       hasTimelineData: !!timelineData,
       hasActs: !!timelineData?.acts,
       hasSequences: !!timelineData?.sequences,
       hasScenes: !!timelineData?.scenes,
       scenesCount: timelineData?.scenes?.length || 0,
     });
+    
+    if (projectType !== 'book') {
+      const mins = parseTargetMinutes(targetDurationMinutes);
+      if (mins != null && mins > 0) {
+        const sec = Math.max(1, Math.round(mins * 60));
+        console.log(`[StructureBeatsSection] 🎬 Film timeline duration: ${mins} min → ${sec}s`);
+        return sec;
+      }
+      console.log('[StructureBeatsSection] ⚠️ No valid targetDurationMinutes — fallback 300s');
+      return 300;
+    }
     
     if (projectType === 'book' && readingSpeedWpm && timelineData?.acts && timelineData?.sequences && timelineData?.scenes) {
       const DEFAULT_EMPTY_ACT_SECONDS = 300; // 5 minutes = 300 seconds
@@ -157,9 +180,9 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
       return totalDuration;
     } else {
       console.log('[StructureBeatsSection] ⚠️ Using default 300s (5 min) - Book condition not met');
-      return 300; // Default: 300 seconds (5 minutes) for films
+      return 300;
     }
-  }, [projectType, readingSpeedWpm, timelineData]);
+  }, [projectType, readingSpeedWpm, timelineData, targetDurationMinutes]);
   
   // 🧪 TEST: Hook bei 5% positionieren (oben sichtbar)
   const TEST_BEAT_HOOK: BeatCardData = {
@@ -402,9 +425,11 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
                 <FilmDropdown
                   projectId={projectId}
                   projectType={projectType}
-                  initialData={initialData}
+                  initialData={(timelineData ?? initialData) as TimelineData}
                   onDataChange={handleTimelineChange}
                   containerRef={containerStackRef}
+                  expandShotId={expandShotId}
+                  onExpandShotIdConsumed={() => setExpandShotId(null)}
                 />
               )
             ) : structureView === 'timeline' ? (
@@ -420,6 +445,10 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
                 wordsPerPage={wordsPerPage}
                 targetPages={targetPages}
                 readingSpeedWpm={readingSpeedWpm}
+                onOpenShotInStructureTree={(shotId) => {
+                  setExpandShotId(shotId);
+                  setStructureView('dropdown');
+                }}
               />
             ) : structureView === 'native' ? (
               projectType === 'book' ? (

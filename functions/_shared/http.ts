@@ -26,6 +26,8 @@ const CORS_COMMON: Record<string, string> = {
   "Access-Control-Allow-Headers":
     "Content-Type, Authorization, X-Requested-With, Accept, X-Appwrite-Project, X-Appwrite-Key, X-SDK-Version",
   "Access-Control-Max-Age": "86400",
+  // Chrome: localhost → hostname that resolves to RFC1918 (e.g. self-hosted Appwrite) requires this on preflight.
+  "Access-Control-Allow-Private-Network": "true",
 };
 
 /**
