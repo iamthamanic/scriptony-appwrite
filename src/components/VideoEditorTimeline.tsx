@@ -37,6 +37,9 @@ import { TimelineTextPreview } from './TimelineTextPreview';
 import { trimBeatLeft, trimBeatRight } from './timeline-helpers';
 import { calculateActBlocks, calculateSequenceBlocks, calculateSceneBlocks } from './timeline-blocks';
 import { toast } from 'sonner';
+import { ShotCardModal } from './ShotCardModal';
+import { useOptionalTimelineState } from '../contexts/TimelineStateContext';
+import { useTrimDragEngine, applyBeatPreviewToDOM } from '../lib/trim-drag-engine';
 
 /**
  * 🎬 VIDEO EDITOR TIMELINE (CapCut Style)
@@ -184,7 +187,7 @@ function getBlockText(
     scene: { full: 120, abbreviated: 60 },
     shot: { full: 80, abbreviated: 40 },
   };
-
+  
   const { full, abbreviated } = thresholds[type];
   
   // 3 levels: Full, Abbreviated, Minimal
@@ -198,8 +201,8 @@ function getBlockText(
     return fullText.substring(0, maxChars - 3) + '...';
   } else {
     // Minimal text: B1, A1, K1, S1
-    const prefix = type === 'beat' ? 'B' :
-                   type === 'act' ? 'A' :
+    const prefix = type === 'beat' ? 'B' : 
+                   type === 'act' ? 'A' : 
                    type === 'chapter' ? 'K' :
                    type === 'scene' ? 'S' : 'SH';
     return `${prefix}${index + 1}`;
@@ -288,6 +291,20 @@ export function VideoEditorTimeline({
   onOpenShotInStructureTree,
 }: VideoEditorTimelineProps) {
   const { getAccessToken } = useAuth();
+
+  // 🎬 SHOT MODAL: Open ShotCard directly in timeline (no view switch)
+  const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
+  const timelineCtx = useOptionalTimelineState(); // May be null if no provider
+
+  /** Open shot: prefer modal (if context available), fallback to structure tree */
+  const canOpenShot = !!(timelineCtx || onOpenShotInStructureTree);
+  const openShot = useCallback((shotId: string) => {
+    if (timelineCtx) {
+      setSelectedShotId(shotId);
+    } else if (onOpenShotInStructureTree) {
+      onOpenShotInStructureTree(shotId);
+    }
+  }, [timelineCtx, onOpenShotInStructureTree]);
   
   // 🎨 DESIGN SYSTEM: Beat Styling
   const BEAT_STYLES = {
@@ -299,7 +316,7 @@ export function VideoEditorTimeline({
     if (!hex) {
       return {
         container: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-700',
-        text: 'text-purple-900 dark:text-purple-100',
+    text: 'text-purple-900 dark:text-purple-100',
       };
     }
     return {
@@ -371,7 +388,7 @@ export function VideoEditorTimeline({
   const [trimingBeat, setTrimingBeat] = useState<{ id: string; handle: 'left' | 'right' } | null>(null);
   const trimStartXRef = useRef(0);
   const trimStartSecRef = useRef(0);
-  /** Snapshot at beat trim mousedown — used on mouseup to diff DB updates (drag already applied gapless ripple). */
+  /** Snapshot at beat trim pointerdown — used on pointerup to diff DB updates via engine commit. */
   const beatTrimSnapshotRef = useRef<BeatsAPI.StoryBeat[] | null>(null);
 
   // 🎬 CAPCUT-LIKE TRIM STATE (Act / Sequence / Scene / Shot)
@@ -419,6 +436,14 @@ export function VideoEditorTimeline({
   const trimingClipRef = useRef<typeof trimingClip>(null);
   trimingClipRef.current = trimingClip;
 
+  // 🚀 EPHEMERAL DRAG ENGINE — ref-based state during drag, single commit on pointerup
+  const trimEngine = useTrimDragEngine();
+  const beatTrackContainerRef = useRef<HTMLElement | null>(null);
+  const actTrackContainerRef = useRef<HTMLElement | null>(null);
+  const sequenceTrackContainerRef = useRef<HTMLElement | null>(null);
+  const sceneTrackContainerRef = useRef<HTMLElement | null>(null);
+  const beatTrimPointerIdRef = useRef<number | null>(null);
+
   // Local overrides so UI can update while dragging (we commit only on mouse up).
   const [manualActTimings, setManualActTimings] = useState<
     Record<string, { pct_from: number; pct_to: number }>
@@ -441,6 +466,118 @@ export function VideoEditorTimeline({
   manualSceneTimingsRef.current = manualSceneTimings;
   const manualShotDurationsRef = useRef(manualShotDurations);
   manualShotDurationsRef.current = manualShotDurations;
+
+  // 🚀 Clip trim smoothing: batch timing state updates to one React render per frame
+  type TimingUpdater<T> = (prev: T) => T;
+  const queuedActUpdatesRef = useRef<TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>[]>([]);
+  const queuedSequenceUpdatesRef = useRef<TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>[]>([]);
+  const queuedSceneUpdatesRef = useRef<TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>[]>([]);
+  const queuedShotUpdatesRef = useRef<TimingUpdater<Record<string, number>>[]>([]);
+  const queuedTimingRafRef = useRef<number | null>(null);
+
+  const applyQueuedUpdates = <T,>(base: T, updates: TimingUpdater<T>[]): T => {
+    let next = base;
+    for (const update of updates) {
+      next = update(next);
+    }
+    return next;
+  };
+
+  const flushQueuedTimingUpdatesNow = useCallback(() => {
+    if (queuedTimingRafRef.current !== null) {
+      cancelAnimationFrame(queuedTimingRafRef.current);
+      queuedTimingRafRef.current = null;
+    }
+
+    if (queuedActUpdatesRef.current.length > 0) {
+      const updates = queuedActUpdatesRef.current.splice(0);
+      const next = applyQueuedUpdates(manualActTimingsRef.current, updates);
+      manualActTimingsRef.current = next;
+      setManualActTimings(next);
+    }
+    if (queuedSequenceUpdatesRef.current.length > 0) {
+      const updates = queuedSequenceUpdatesRef.current.splice(0);
+      const next = applyQueuedUpdates(manualSequenceTimingsRef.current, updates);
+      manualSequenceTimingsRef.current = next;
+      setManualSequenceTimings(next);
+    }
+    if (queuedSceneUpdatesRef.current.length > 0) {
+      const updates = queuedSceneUpdatesRef.current.splice(0);
+      const next = applyQueuedUpdates(manualSceneTimingsRef.current, updates);
+      manualSceneTimingsRef.current = next;
+      setManualSceneTimings(next);
+    }
+    if (queuedShotUpdatesRef.current.length > 0) {
+      const updates = queuedShotUpdatesRef.current.splice(0);
+      const next = applyQueuedUpdates(manualShotDurationsRef.current, updates);
+      manualShotDurationsRef.current = next;
+      setManualShotDurations(next);
+    }
+  }, []);
+
+  const scheduleQueuedTimingFlush = useCallback(() => {
+    if (queuedTimingRafRef.current !== null) return;
+    queuedTimingRafRef.current = requestAnimationFrame(() => {
+      queuedTimingRafRef.current = null;
+      flushQueuedTimingUpdatesNow();
+    });
+  }, [flushQueuedTimingUpdatesNow]);
+
+  const queueManualActTimings = useCallback(
+    (action: React.SetStateAction<Record<string, { pct_from: number; pct_to: number }>>) => {
+      const updater: TimingUpdater<Record<string, { pct_from: number; pct_to: number }>> =
+        typeof action === 'function' ? (action as TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>) : () => action;
+      if (!trimingClipRef.current) {
+        setManualActTimings(action);
+        return;
+      }
+      queuedActUpdatesRef.current.push(updater);
+      scheduleQueuedTimingFlush();
+    },
+    [scheduleQueuedTimingFlush]
+  );
+
+  const queueManualSequenceTimings = useCallback(
+    (action: React.SetStateAction<Record<string, { pct_from: number; pct_to: number }>>) => {
+      const updater: TimingUpdater<Record<string, { pct_from: number; pct_to: number }>> =
+        typeof action === 'function' ? (action as TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>) : () => action;
+      if (!trimingClipRef.current) {
+        setManualSequenceTimings(action);
+        return;
+      }
+      queuedSequenceUpdatesRef.current.push(updater);
+      scheduleQueuedTimingFlush();
+    },
+    [scheduleQueuedTimingFlush]
+  );
+
+  const queueManualSceneTimings = useCallback(
+    (action: React.SetStateAction<Record<string, { pct_from: number; pct_to: number }>>) => {
+      const updater: TimingUpdater<Record<string, { pct_from: number; pct_to: number }>> =
+        typeof action === 'function' ? (action as TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>) : () => action;
+      if (!trimingClipRef.current) {
+        setManualSceneTimings(action);
+        return;
+      }
+      queuedSceneUpdatesRef.current.push(updater);
+      scheduleQueuedTimingFlush();
+    },
+    [scheduleQueuedTimingFlush]
+  );
+
+  const queueManualShotDurations = useCallback(
+    (action: React.SetStateAction<Record<string, number>>) => {
+      const updater: TimingUpdater<Record<string, number>> =
+        typeof action === 'function' ? (action as TimingUpdater<Record<string, number>>) : () => action;
+      if (!trimingClipRef.current) {
+        setManualShotDurations(action);
+        return;
+      }
+      queuedShotUpdatesRef.current.push(updater);
+      scheduleQueuedTimingFlush();
+    },
+    [scheduleQueuedTimingFlush]
+  );
 
   const actBlocksRef = useRef<any[]>([]);
   const sequenceBlocksRef = useRef<any[]>([]);
@@ -617,11 +754,17 @@ export function VideoEditorTimeline({
     setResizingTrack(null);
   };
   
-  // 🎯 BEAT TRIM HANDLERS (Mouse Events)
-  const handleTrimStart = (beatId: string, handle: 'left' | 'right', e: React.MouseEvent) => {
+  // 🎯 BEAT TRIM HANDLERS (Pointer Events + Ephemeral Engine)
+  const handleTrimStart = (beatId: string, handle: 'left' | 'right', e: React.PointerEvent) => {
     if (trimingClip) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Pointer capture for touch/pen support — events stay on this element even outside
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
+    beatTrimPointerIdRef.current = e.pointerId;
+
     setTrimingBeat({ id: beatId, handle });
     trimStartXRef.current = e.clientX;
     
@@ -635,7 +778,10 @@ export function VideoEditorTimeline({
     }
     beatTrimSnapshotRef.current = beats.map((b) => ({ ...b }));
     
-    console.log(`[Beat Trim] 🎯 Start trimming ${handle} handle of ${beatId}`);
+    // Start the ephemeral drag engine (stores snapshot in ref, zero re-renders during drag)
+    trimEngine.startBeatTrim(beatId, handle, e.clientX, trimStartSecRef.current, beats as any[]);
+
+    console.log(`[Beat Trim] 🎯 Start trimming ${handle} handle of ${beatId} (pointer capture)`);
   };
   
   // 🧲 BEAT RIPPLE FUNCTIONS (CapCut-Style Magnetic Timeline)
@@ -794,15 +940,99 @@ export function VideoEditorTimeline({
     return out;
   }
 
+  function applyClipTimingPreviewToDOM(
+    kind: 'act' | 'sequence' | 'scene',
+    updates: Record<string, { pct_from: number; pct_to: number }>
+  ) {
+    if (!updates || Object.keys(updates).length === 0) return;
+    const pxs = pxPerSecRef.current;
+    const viewStart = viewStartSecRef.current;
+    const totalDur = durationRef.current;
+
+    if (kind === 'act') {
+      const container = actTrackContainerRef.current;
+      if (!container) return;
+      for (const [id, pct] of Object.entries(updates)) {
+        const el = container.querySelector(`[data-act-id="${id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        const start = (pct.pct_from / 100) * totalDur;
+        const end = (pct.pct_to / 100) * totalDur;
+        el.style.transform = `translateX(${(start - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (end - start) * pxs)}px`;
+        el.style.left = '0';
+      }
+      return;
+    }
+
+    if (kind === 'sequence') {
+      const container = sequenceTrackContainerRef.current;
+      if (!container) return;
+      for (const [id, pct] of Object.entries(updates)) {
+        const seqBlock = sequenceBlocksRef.current.find((b: any) => b.id === id);
+        if (!seqBlock) continue;
+        const actBlock = actBlocksRef.current.find((b: any) => b.id === seqBlock.actId);
+        if (!actBlock) continue;
+        const actDur = Math.max(0.0001, actBlock.endSec - actBlock.startSec);
+        const start = actBlock.startSec + (pct.pct_from / 100) * actDur;
+        const end = actBlock.startSec + (pct.pct_to / 100) * actDur;
+        const el = container.querySelector(`[data-sequence-id="${id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(start - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (end - start) * pxs)}px`;
+        el.style.left = '0';
+      }
+      return;
+    }
+
+    const container = sceneTrackContainerRef.current;
+    if (!container) return;
+    for (const [id, pct] of Object.entries(updates)) {
+      const sceneBlock = sceneBlocksRef.current.find((b: any) => b.id === id);
+      if (!sceneBlock) continue;
+      const seqBlock = sequenceBlocksRef.current.find((b: any) => b.id === sceneBlock.sequenceId);
+      if (!seqBlock) continue;
+      const seqDur = Math.max(0.0001, seqBlock.endSec - seqBlock.startSec);
+      const start = seqBlock.startSec + (pct.pct_from / 100) * seqDur;
+      const end = seqBlock.startSec + (pct.pct_to / 100) * seqDur;
+      const el = container.querySelector(`[data-scene-id="${id}"]`) as HTMLElement | null;
+      if (!el) continue;
+      el.style.transform = `translateX(${(start - viewStart) * pxs}px)`;
+      el.style.width = `${Math.max(2, (end - start) * pxs)}px`;
+      el.style.left = '0';
+    }
+  }
+
+  function resetClipPreviewStyles() {
+    const selectors: Array<[HTMLElement | null, string]> = [
+      [actTrackContainerRef.current, '[data-act-id]'],
+      [sequenceTrackContainerRef.current, '[data-sequence-id]'],
+      [sceneTrackContainerRef.current, '[data-scene-id]'],
+    ];
+    for (const [container, selector] of selectors) {
+      if (!container) continue;
+      const els = container.querySelectorAll(selector);
+      els.forEach((el) => {
+        const node = el as HTMLElement;
+        node.style.transform = '';
+        node.style.width = '';
+        node.style.left = '';
+      });
+    }
+  }
+
   const handleTrimClipMouseDown = (
     kind: TrimKind,
     id: string,
     handle: 'left' | 'right',
-    e: React.MouseEvent
+    e: React.PointerEvent
   ) => {
     if (isBookProject || trimingBeat) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Pointer capture for touch/pen support
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
 
     const td = timelineDataRef.current;
     if (!td || !('acts' in td) || !td.acts?.length) return;
@@ -1048,7 +1278,7 @@ export function VideoEditorTimeline({
     }
   };
 
-  const handleTrimClipMove = (e: MouseEvent) => {
+  const handleTrimClipMove = (e: PointerEvent) => {
     const clip = trimingClipRef.current;
     const ctx = trimClipCtxRef.current;
     if (!clip || !ctx || ctx.kind !== clip.kind) return;
@@ -1123,7 +1353,8 @@ export function VideoEditorTimeline({
           const to = (acc / totalDur) * 100;
           next[aid] = { pct_from: from, pct_to: to };
         });
-        setManualActTimings((prev) => ({ ...prev, ...next }));
+        trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('act', next));
+        queueManualActTimings((prev) => ({ ...prev, ...next }));
         return;
       }
       const prevId = ctx.actIds[idx - 1];
@@ -1141,14 +1372,19 @@ export function VideoEditorTimeline({
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
         const newPct = (newBoundarySec / dTotal) * 100;
-        setManualActTimings((prev) => {
+        queueManualActTimings((prev) => {
           const prevP = resolveActPct(prevId, prev, actsOrdered);
           const curP = resolveActPct(curId, prev, actsOrdered);
-          return {
+          const next = {
             ...prev,
             [prevId]: { pct_from: prevP.from, pct_to: newPct },
             [curId]: { pct_from: newPct, pct_to: curP.to },
           };
+          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('act', {
+            [prevId]: next[prevId],
+            [curId]: next[curId],
+          }));
+          return next;
         });
       } else {
         const nextId = ctx.actIds[idx + 1];
@@ -1162,14 +1398,19 @@ export function VideoEditorTimeline({
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
         const newPct = (newBoundarySec / dTotal) * 100;
-        setManualActTimings((prev) => {
+        queueManualActTimings((prev) => {
           const curP = resolveActPct(curId, prev, actsOrdered);
           const nextP = resolveActPct(nextId, prev, actsOrdered);
-          return {
+          const next = {
             ...prev,
             [curId]: { pct_from: curP.from, pct_to: newPct },
             [nextId]: { pct_from: newPct, pct_to: nextP.to },
           };
+          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('act', {
+            [curId]: next[curId],
+            [nextId]: next[nextId],
+          }));
+          return next;
         });
       }
       return;
@@ -1235,7 +1476,8 @@ export function VideoEditorTimeline({
           const to = (acc / actDur) * 100;
           next[sid] = { pct_from: from, pct_to: to };
         });
-        setManualSequenceTimings((prev) => ({ ...prev, ...next }));
+        trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('sequence', next));
+        queueManualSequenceTimings((prev) => ({ ...prev, ...next }));
         return;
       }
 
@@ -1253,14 +1495,19 @@ export function VideoEditorTimeline({
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
         const newPct = ((newBoundarySec - actStart) / actDur) * 100;
-        setManualSequenceTimings((prev) => {
+        queueManualSequenceTimings((prev) => {
           const prevP = resolveSeqPct(prevId, prev, seqsOrdered);
           const curP = resolveSeqPct(curId, prev, seqsOrdered);
-          return {
+          const next = {
             ...prev,
             [prevId]: { pct_from: prevP.from, pct_to: newPct },
             [curId]: { pct_from: newPct, pct_to: curP.to },
           };
+          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('sequence', {
+            [prevId]: next[prevId],
+            [curId]: next[curId],
+          }));
+          return next;
         });
       } else {
         const curId = ctx.sequenceIds[idx];
@@ -1276,14 +1523,19 @@ export function VideoEditorTimeline({
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
         const newPct = ((newBoundarySec - actStart) / actDur) * 100;
-        setManualSequenceTimings((prev) => {
+        queueManualSequenceTimings((prev) => {
           const curP = resolveSeqPct(curId, prev, seqsOrdered);
           const nextP = resolveSeqPct(nextId, prev, seqsOrdered);
-          return {
+          const next = {
             ...prev,
             [curId]: { pct_from: curP.from, pct_to: newPct },
             [nextId]: { pct_from: newPct, pct_to: nextP.to },
           };
+          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('sequence', {
+            [curId]: next[curId],
+            [nextId]: next[nextId],
+          }));
+          return next;
         });
       }
       return;
@@ -1349,7 +1601,8 @@ export function VideoEditorTimeline({
           const to = (acc / seqDur) * 100;
           next[sid] = { pct_from: from, pct_to: to };
         });
-        setManualSceneTimings((prev) => ({ ...prev, ...next }));
+        trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('scene', next));
+        queueManualSceneTimings((prev) => ({ ...prev, ...next }));
         return;
       }
 
@@ -1367,14 +1620,19 @@ export function VideoEditorTimeline({
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
         const newPct = ((newBoundarySec - seqStart) / seqDur) * 100;
-        setManualSceneTimings((prev) => {
+        queueManualSceneTimings((prev) => {
           const prevP = resolveScenePct(prevId, prev, scenesOrdered);
           const curP = resolveScenePct(curId, prev, scenesOrdered);
-          return {
+          const next = {
             ...prev,
             [prevId]: { pct_from: prevP.from, pct_to: newPct },
             [curId]: { pct_from: newPct, pct_to: curP.to },
           };
+          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('scene', {
+            [prevId]: next[prevId],
+            [curId]: next[curId],
+          }));
+          return next;
         });
       } else {
         const curId = ctx.sceneIds[idx];
@@ -1390,14 +1648,19 @@ export function VideoEditorTimeline({
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
         const newPct = ((newBoundarySec - seqStart) / seqDur) * 100;
-        setManualSceneTimings((prev) => {
+        queueManualSceneTimings((prev) => {
           const curP = resolveScenePct(curId, prev, scenesOrdered);
           const nextP = resolveScenePct(nextId, prev, scenesOrdered);
-          return {
+          const next = {
             ...prev,
             [curId]: { pct_from: curP.from, pct_to: newPct },
             [nextId]: { pct_from: newPct, pct_to: nextP.to },
           };
+          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('scene', {
+            [curId]: next[curId],
+            [nextId]: next[nextId],
+          }));
+          return next;
         });
       }
       return;
@@ -1418,7 +1681,7 @@ export function VideoEditorTimeline({
 
       const commitShotDurs = (durs: number[]) => {
         trimClipCtxRef.current = { ...ctx, shotDurations: durs };
-        setManualShotDurations((prev) => {
+        queueManualShotDurations((prev) => {
           const next = { ...prev };
           ids.forEach((sid, idx) => {
             next[sid] = durs[idx];
@@ -1508,7 +1771,7 @@ export function VideoEditorTimeline({
       durs[pairLeft] = d1;
       durs[j] = d2;
       trimClipCtxRef.current = { ...ctx, shotDurations: durs };
-      setManualShotDurations((prev) => {
+      queueManualShotDurations((prev) => {
         const next = { ...prev };
         next[ids[pairLeft]] = d1;
         next[ids[j]] = d2;
@@ -1520,11 +1783,13 @@ export function VideoEditorTimeline({
   const handleTrimClipEnd = async () => {
     const clip = trimingClipRef.current;
     if (!clip) return;
+    flushQueuedTimingUpdatesNow();
+    resetClipPreviewStyles();
 
     const snap = trimClipSnapshotRef.current;
     const td = timelineDataRef.current;
 
-    const revert = () => {
+      const revert = () => {
       if (snap) {
         setManualActTimings(snap.manualActTimings);
         setManualSequenceTimings(snap.manualSequenceTimings);
@@ -1893,157 +2158,148 @@ export function VideoEditorTimeline({
   };
   */
   
-  // 🆕 NEW SIMPLIFIED handleTrimMove using extracted helpers with CapCut-Style Ripple
-  const handleTrimMove = (e: MouseEvent) => {
+  // 🆕 EPHEMERAL handleTrimMove — engine calculates in refs, rAF applies to DOM (zero React re-renders)
+  const handleTrimMove = (e: PointerEvent) => {
     if (!trimingBeat) return;
     
-    const deltaX = e.clientX - trimStartXRef.current;
-    const deltaSec = deltaX / pxPerSec;
-    const newSec = trimStartSecRef.current + deltaSec;
-    
-    // Get current beat
-    const beat = beats.find(b => b.id === trimingBeat.id);
-    if (!beat) return;
-    
-    if (trimingBeat.handle === 'left') {
-      // LEFT HANDLE: Trim from start + RIPPLE LEFT
-      const result = trimBeatLeft(
-        beat,
-        beats,
-        newSec,
-        duration,
-        beatMagnetEnabled,
-        snapTime,
-        pxPerSec,
-        currentTimeRef.current
+    // Use SNAPSHOT beats (from drag start) so we don't depend on React state during drag
+    const snapshotBeats = beatTrimSnapshotRef.current;
+    if (!snapshotBeats) return;
+
+    const result = trimEngine.updateBeatTrim(
+      e.clientX,
+      snapshotBeats as any[],
+      durationRef.current,
+      pxPerSecRef.current,
+      beatMagnetEnabledRef.current,
+      snapTime as any,
+      currentTimeRef.current,
+    );
+
+    if (!result) return;
+
+    // 🚀 rAF-throttled DOM update — bypasses React entirely for 60fps smoothness
+    trimEngine.scheduleRAF(() => {
+      applyBeatPreviewToDOM(
+        beatTrackContainerRef.current,
+        snapshotBeats as any[],
+        trimingBeat.id,
+        result.trimmedBeat,
+        result.rippleBeats,
+        durationRef.current,
+        pxPerSecRef.current,
+        viewStartSecRef.current,
       );
-      
-      // 🚀 Apply to current beat + rippled beats
-      setBeats(prev => {
-        const updated = prev.map(b => {
-          if (b.id === trimingBeat.id) {
-            return { ...b, pct_from: result.newPctFrom };
-          }
-          const rippled = result.rippleBeats.find(rb => rb.id === b.id);
-          return rippled || b;
-        });
-        return updated;
-      });
-      
-    } else {
-      // RIGHT HANDLE: Trim from end + RIPPLE RIGHT
-      const result = trimBeatRight(
-        beat,
-        beats,
-        newSec,
-        duration,
-        beatMagnetEnabled,
-        snapTime,
-        pxPerSec,
-        currentTimeRef.current
-      );
-      
-      console.log(`[Ripple Debug] Beat: ${beat.label}, newPctTo: ${result.newPctTo.toFixed(2)}, rippleBeats:`, result.rippleBeats.map(b => `${b.label} (${b.pct_from.toFixed(2)}% -> ${b.pct_to.toFixed(2)}%)`));
-      
-      // 🚀 Apply to current beat + rippled beats
-      setBeats(prev => {
-        const updated = prev.map(b => {
-          if (b.id === trimingBeat.id) {
-            return { ...b, pct_to: result.newPctTo };
-          }
-          const rippled = result.rippleBeats.find(rb => rb.id === b.id);
-          return rippled || b;
-        });
-        return updated;
-      });
-    }
+    });
   };
   
-  const handleTrimEnd = async () => {
+  const handleTrimEnd = async (e?: PointerEvent) => {
     if (!trimingBeat) return;
     
     console.log(`[Beat Trim] ✅ Finished trimming ${trimingBeat.handle} handle`);
     
+    // Release pointer capture
+    if (e && beatTrimPointerIdRef.current !== null) {
+      try { (e.target as HTMLElement).releasePointerCapture(beatTrimPointerIdRef.current); } catch (_) {}
+      beatTrimPointerIdRef.current = null;
+    }
+
     const beatsAtTrimStart = beatTrimSnapshotRef.current;
     beatTrimSnapshotRef.current = null;
-    
-    const beat = beats.find(b => b.id === trimingBeat.id);
-    if (!beat) {
+
+    // 🚀 Commit from engine — single source of truth for final positions
+    const commitResult = trimEngine.commitBeatTrim();
+
+    if (!commitResult) {
       setTrimingBeat(null);
       return;
     }
     
+    // Reset inline DOM styles set by applyBeatPreviewToDOM (React will re-render with correct positions)
+    if (beatTrackContainerRef.current) {
+      const els = beatTrackContainerRef.current.querySelectorAll('[data-beat-id]');
+      els.forEach((el) => {
+        (el as HTMLElement).style.transform = '';
+        (el as HTMLElement).style.width = '';
+        (el as HTMLElement).style.left = '';
+      });
+    }
+
+    // 🚀 Single React state update — applies committed positions
+    setBeats(prev => prev.map(b => {
+      if (b.id === commitResult.beatId) {
+        return commitResult.handle === 'left'
+          ? { ...b, pct_from: commitResult.trimmedBeat.pct_from }
+          : { ...b, pct_to: commitResult.trimmedBeat.pct_to };
+      }
+      const rippled = commitResult.rippleBeats.find(rb => rb.id === b.id);
+      return rippled || b;
+    }));
+
+    // DB persist — use committed positions (not React state which may be stale)
     try {
-      // handleTrimMove already applied gapless ripple (left/right). On save we only persist deltas.
       let abortTrimSave = false;
       const updateTrimmedBeat = async () => {
-        if (!dbBeatIds.has(trimingBeat.id)) {
-          console.log(`[Beat Trim] ⏭️ Skipping DB update for template beat ${trimingBeat.id}`);
+        if (!dbBeatIds.has(commitResult.beatId)) {
+          console.log(`[Beat Trim] ⏭️ Skipping DB update for template beat ${commitResult.beatId}`);
           return;
         }
         const payload =
-          trimingBeat.handle === 'right'
-            ? { pct_to: beat.pct_to }
-            : { pct_from: beat.pct_from };
+          commitResult.handle === 'right'
+            ? { pct_to: commitResult.trimmedBeat.pct_to }
+            : { pct_from: commitResult.trimmedBeat.pct_from };
         try {
-          await BeatsAPI.updateBeat(trimingBeat.id, payload);
-        } catch (error: any) {
-          if (error.message?.includes('404') || error.message?.includes('not found')) {
-            console.warn(`[Beat Trim] ⚠️ Beat ${trimingBeat.id} not found in DB, removing from tracking...`);
+          await BeatsAPI.updateBeat(commitResult.beatId, payload);
+          } catch (error: any) {
+            if (error.message?.includes('404') || error.message?.includes('not found')) {
+            console.warn(`[Beat Trim] ⚠️ Beat ${commitResult.beatId} not found in DB, removing from tracking...`);
             setDbBeatIds((prev) => {
-              const next = new Set(prev);
-              next.delete(trimingBeat.id);
-              return next;
-            });
+                const next = new Set(prev);
+              next.delete(commitResult.beatId);
+                return next;
+              });
             abortTrimSave = true;
-            setTrimingBeat(null);
-            return;
+              setTrimingBeat(null);
+              return;
+            }
+            throw error;
           }
-          throw error;
-        }
       };
 
       await updateTrimmedBeat();
       if (abortTrimSave) return;
 
-      const allUpdates = beats.filter((b) => {
-        const snapB = beatsAtTrimStart?.find((ob) => ob.id === b.id);
-        return snapB && (b.pct_from !== snapB.pct_from || b.pct_to !== snapB.pct_to);
+      // Diff committed ripple beats against snapshot to find DB-worthy changes
+      const dbUpdates = commitResult.rippleBeats.filter((rb) => {
+        if (!dbBeatIds.has(rb.id)) return false;
+        const snapB = beatsAtTrimStart?.find((ob) => ob.id === rb.id);
+        return snapB && (rb.pct_from !== snapB.pct_from || rb.pct_to !== snapB.pct_to);
       });
-
-      const dbUpdates = allUpdates.filter((b) => dbBeatIds.has(b.id) && b.id !== trimingBeat.id);
       console.log(
-        `[Beat Trim] 📤 Saving ${dbUpdates.length} rippled beats to DB (left/right magnetic ripple already in UI state)`
+        `[Beat Trim] 📤 Saving ${dbUpdates.length} rippled beats to DB`
       );
 
-      for (const b of dbUpdates) {
-        try {
-          await BeatsAPI.updateBeat(b.id, { pct_from: b.pct_from, pct_to: b.pct_to });
-          console.log(`[Beat Trim] ✅ Saved \"${b.label}\" position`);
-        } catch (error: any) {
-          if (error.message?.includes('404') || error.message?.includes('not found')) {
-            console.warn(`[Beat Trim] ⚠️ Beat ${b.id} not found in DB, removing from tracking...`);
+        for (const b of dbUpdates) {
+          try {
+            await BeatsAPI.updateBeat(b.id, { pct_from: b.pct_from, pct_to: b.pct_to });
+            console.log(`[Beat Trim] ✅ Saved \"${b.label}\" position`);
+          } catch (error: any) {
+            if (error.message?.includes('404') || error.message?.includes('not found')) {
+              console.warn(`[Beat Trim] ⚠️ Beat ${b.id} not found in DB, removing from tracking...`);
             setDbBeatIds((prev) => {
-              const next = new Set(prev);
-              next.delete(b.id);
-              return next;
-            });
-            continue;
-          }
-          throw error;
+                const next = new Set(prev);
+                next.delete(b.id);
+                return next;
+              });
+              continue;
+            }
+            throw error;
         }
       }
-
+      
       console.log('[Beat Trim] ✅ DB updated successfully');
     } catch (error) {
       console.error('[Beat Trim] ❌ Error updating beat:', error);
-      console.error('[Beat Trim] ❌ Error details:', {
-        beatId: trimingBeat.id,
-        handle: trimingBeat.handle,
-        pct_from: beat.pct_from,
-        pct_to: beat.pct_to,
-        error: error instanceof Error ? error.message : String(error)
-      });
       if (beatsAtTrimStart) {
         setBeats(beatsAtTrimStart.map((b) => ({ ...b })));
       }
@@ -2066,25 +2322,29 @@ export function VideoEditorTimeline({
   
   useEffect(() => {
     if (trimingBeat) {
-      window.addEventListener('mousemove', handleTrimMove);
-      window.addEventListener('mouseup', handleTrimEnd);
+      // Pointer events — engine uses refs for all values (no dependency on beats/pxPerSec/duration)
+      window.addEventListener('pointermove', handleTrimMove);
+      window.addEventListener('pointerup', handleTrimEnd);
       return () => {
-        window.removeEventListener('mousemove', handleTrimMove);
-        window.removeEventListener('mouseup', handleTrimEnd);
+        window.removeEventListener('pointermove', handleTrimMove);
+        window.removeEventListener('pointerup', handleTrimEnd);
+        trimEngine.cleanup();
       };
     }
-  }, [trimingBeat, beats, pxPerSec, duration, beatMagnetEnabled]);
+  }, [trimingBeat]); // Only depends on trimingBeat — engine reads from refs during drag
 
   useEffect(() => {
     if (trimingClip) {
-      window.addEventListener('mousemove', handleTrimClipMove);
-      window.addEventListener('mouseup', handleTrimClipEnd);
+      window.addEventListener('pointermove', handleTrimClipMove);
+      window.addEventListener('pointerup', handleTrimClipEnd);
       return () => {
-        window.removeEventListener('mousemove', handleTrimClipMove);
-        window.removeEventListener('mouseup', handleTrimClipEnd);
+        window.removeEventListener('pointermove', handleTrimClipMove);
+        window.removeEventListener('pointerup', handleTrimClipEnd);
+        flushQueuedTimingUpdatesNow();
+        resetClipPreviewStyles();
       };
     }
-  }, [trimingClip]);
+  }, [trimingClip, flushQueuedTimingUpdatesNow]);
   
   console.log('[VideoEditorTimeline] 📖 Book Timeline:', {
     isBookProject,
@@ -2969,7 +3229,7 @@ export function VideoEditorTimeline({
     manualSequenceTimings,
     manualSceneTimings,
   ]);
-
+  
   // 🚀 OPTIMIZED: Memoized act blocks calculation
   const actBlocks = useMemo(() => {
     const start = performance.now();
@@ -3820,11 +4080,11 @@ export function VideoEditorTimeline({
               // 🎬 FILM/SERIES/AUDIO: active shot preview with fallback
               <>
                 {activePreviewImageUrl ? (
-                  <img
+                <img 
                     src={activePreviewImageUrl}
                     alt={activePreviewShot?.label || 'Shot Preview'}
-                    className="w-full h-full object-cover rounded"
-                  />
+                  className="w-full h-full object-cover rounded"
+                />
                 ) : (
                   <div className="w-full h-full rounded bg-gradient-to-br from-muted to-muted/40 flex items-center justify-center">
                     <div className="text-center">
@@ -4192,6 +4452,7 @@ export function VideoEditorTimeline({
             
             {/* Beat Track */}
             <div 
+              ref={beatTrackContainerRef as React.RefObject<HTMLDivElement>}
               className="relative border-b border-border bg-muted/30"
               style={{ height: `${trackHeights.beat}px` }}
             >
@@ -4203,6 +4464,7 @@ export function VideoEditorTimeline({
                   return (
                     <div
                       key={beat.id}
+                      data-beat-id={beat.id}
                       className={cn(
                         'absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity group',
                         BEAT_STYLES.container,
@@ -4222,7 +4484,7 @@ export function VideoEditorTimeline({
                       {/* Left Handle */}
                       <div
                         className="absolute left-0 top-0 bottom-0 w-1.5 bg-purple-900/80 dark:bg-purple-600/80 cursor-ew-resize hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors rounded-l z-10"
-                        onMouseDown={(e) => handleTrimStart(beat.id, 'left', e)}
+                        onPointerDown={(e) => handleTrimStart(beat.id, 'left', e)}
                         onClick={(e) => e.stopPropagation()}
                         title="Linken Rand ziehen"
                       />
@@ -4266,7 +4528,7 @@ export function VideoEditorTimeline({
                       {/* Right Handle */}
                       <div
                         className="absolute right-0 top-0 bottom-0 w-1.5 bg-purple-900/80 dark:bg-purple-600/80 cursor-ew-resize hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors rounded-r z-10"
-                        onMouseDown={(e) => handleTrimStart(beat.id, 'right', e)}
+                        onPointerDown={(e) => handleTrimStart(beat.id, 'right', e)}
                         onClick={(e) => e.stopPropagation()}
                         title="Rechten Rand ziehen"
                       />
@@ -4283,6 +4545,7 @@ export function VideoEditorTimeline({
             
             {/* Act Track */}
             <div 
+              ref={actTrackContainerRef as React.RefObject<HTMLDivElement>}
               className="relative border-b border-border bg-muted/30"
               style={{ height: `${trackHeights.act}px` }}
             >
@@ -4299,6 +4562,7 @@ export function VideoEditorTimeline({
                   return (
                     <div
                       key={act.id}
+                      data-act-id={act.id}
                       className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-200 dark:border-blue-700 group"
                       style={{
                         left: `${act.x}px`,
@@ -4312,7 +4576,7 @@ export function VideoEditorTimeline({
                       {!isBookProject && !actFirst && (
                         <div
                           className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-900/75 dark:bg-blue-500/80 cursor-ew-resize hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors rounded-l z-10"
-                          onMouseDown={(e) => handleTrimClipMouseDown('act', act.id, 'left', e)}
+                          onPointerDown={(e) => handleTrimClipMouseDown('act', act.id, 'left', e)}
                           onClick={(e) => e.stopPropagation()}
                           title="Linken Rand ziehen (Ripple)"
                         />
@@ -4320,7 +4584,7 @@ export function VideoEditorTimeline({
                       {!isBookProject && !actLast && (
                         <div
                           className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-900/75 dark:bg-blue-500/80 cursor-ew-resize hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors rounded-r z-10"
-                          onMouseDown={(e) => handleTrimClipMouseDown('act', act.id, 'right', e)}
+                          onPointerDown={(e) => handleTrimClipMouseDown('act', act.id, 'right', e)}
                           onClick={(e) => e.stopPropagation()}
                           title="Rechten Rand ziehen (Ripple)"
                         />
@@ -4365,6 +4629,7 @@ export function VideoEditorTimeline({
             
             {/* Sequence/Chapter Track */}
             <div 
+              ref={sequenceTrackContainerRef as React.RefObject<HTMLDivElement>}
               className="relative border-b border-border bg-muted/30"
               style={{ height: `${trackHeights.sequence}px` }}
             >
@@ -4381,6 +4646,7 @@ export function VideoEditorTimeline({
                   return (
                     <div
                       key={seq.id}
+                      data-sequence-id={seq.id}
                       className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-green-50 dark:bg-green-950/40 border-2 border-green-200 dark:border-green-700 group"
                       style={{
                         left: `${seq.x}px`,
@@ -4394,7 +4660,7 @@ export function VideoEditorTimeline({
                       {!isBookProject && !seqFirst && (
                         <div
                           className="absolute left-0 top-0 bottom-0 w-1.5 bg-green-900/75 dark:bg-green-500/80 cursor-ew-resize hover:bg-green-700 dark:hover:bg-green-400 transition-colors rounded-l z-10"
-                          onMouseDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'left', e)}
+                          onPointerDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'left', e)}
                           onClick={(e) => e.stopPropagation()}
                           title="Linken Rand ziehen (Ripple)"
                         />
@@ -4402,7 +4668,7 @@ export function VideoEditorTimeline({
                       {!isBookProject && !seqLast && (
                         <div
                           className="absolute right-0 top-0 bottom-0 w-1.5 bg-green-900/75 dark:bg-green-500/80 cursor-ew-resize hover:bg-green-700 dark:hover:bg-green-400 transition-colors rounded-r z-10"
-                          onMouseDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'right', e)}
+                          onPointerDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'right', e)}
                           onClick={(e) => e.stopPropagation()}
                           title="Rechten Rand ziehen (Ripple)"
                         />
@@ -4447,6 +4713,7 @@ export function VideoEditorTimeline({
             
             {/* Scene/Section Track */}
             <div 
+              ref={sceneTrackContainerRef as React.RefObject<HTMLDivElement>}
               className="relative border-b border-border bg-muted/30"
               style={{ height: `${trackHeights.scene}px` }}
             >
@@ -4467,6 +4734,7 @@ export function VideoEditorTimeline({
                   return (
                     <div
                       key={scene.id}
+                      data-scene-id={scene.id}
                       className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity bg-pink-50 border-2 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden group"
                       style={{
                         left: `${scene.x}px`,
@@ -4494,7 +4762,7 @@ export function VideoEditorTimeline({
                       {!isBookProject && !scFirst && (
                         <div
                           className="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-900/75 dark:bg-pink-500/80 cursor-ew-resize hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors rounded-l z-10"
-                          onMouseDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'left', e)}
+                          onPointerDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'left', e)}
                           onClick={(e) => e.stopPropagation()}
                           title="Linken Rand ziehen (Ripple)"
                         />
@@ -4502,7 +4770,7 @@ export function VideoEditorTimeline({
                       {!isBookProject && !scLast && (
                         <div
                           className="absolute right-0 top-0 bottom-0 w-1.5 bg-pink-900/75 dark:bg-pink-500/80 cursor-ew-resize hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors rounded-r z-10"
-                          onMouseDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'right', e)}
+                          onPointerDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'right', e)}
                           onClick={(e) => e.stopPropagation()}
                           title="Rechten Rand ziehen (Ripple)"
                         />
@@ -4533,8 +4801,8 @@ export function VideoEditorTimeline({
                               </DropdownMenuContent>
                             </DropdownMenu>
                             <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300">
-                              {scene.title}
-                            </span>
+                            {scene.title}
+                          </span>
                           </div>
                           <div className="flex-1 overflow-hidden text-[8px] text-pink-800 dark:text-pink-200/90">
                             {scene.content && typeof scene.content === 'object' ? (
@@ -4662,7 +4930,7 @@ export function VideoEditorTimeline({
                         {!shFirst && (
                           <div
                             className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-900/80 dark:bg-yellow-500/80 cursor-ew-resize hover:bg-yellow-700 dark:hover:bg-yellow-400 transition-colors rounded-l z-10"
-                            onMouseDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'left', e)}
+                            onPointerDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'left', e)}
                             onClick={(e) => e.stopPropagation()}
                             title="Shot-Timing links (Ripple)"
                           />
@@ -4670,7 +4938,7 @@ export function VideoEditorTimeline({
                         {!shLast && (
                           <div
                             className="absolute right-0 top-0 bottom-0 w-1.5 bg-yellow-900/80 dark:bg-yellow-500/80 cursor-ew-resize hover:bg-yellow-700 dark:hover:bg-yellow-400 transition-colors rounded-r z-10"
-                            onMouseDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'right', e)}
+                            onPointerDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'right', e)}
                             onClick={(e) => e.stopPropagation()}
                             title="Shot-Timing rechts (Ripple)"
                           />
@@ -4701,7 +4969,7 @@ export function VideoEditorTimeline({
                               aria-hidden
                             >
                               <Camera className="size-3 text-yellow-800/45 dark:text-yellow-200/45" />
-                            </div>
+          </div>
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -4720,15 +4988,15 @@ export function VideoEditorTimeline({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
-                              {onOpenShotInStructureTree && (
+                              {canOpenShot && (
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onOpenShotInStructureTree(shot.id);
+                                    openShot(shot.id);
                                   }}
                                 >
                                   <ListTree className="size-3 mr-2 shrink-0" />
-                                  Shot im Strukturbaum öffnen
+                                  Shot bearbeiten
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
@@ -4777,22 +5045,22 @@ export function VideoEditorTimeline({
                     return (
                       <div
                         key={`music-${shot.id}`}
-                        role={onOpenShotInStructureTree ? 'button' : undefined}
-                        tabIndex={onOpenShotInStructureTree ? 0 : undefined}
+                        role={canOpenShot ? 'button' : undefined}
+                        tabIndex={canOpenShot ? 0 : undefined}
                         className={cn(
                           'absolute top-0.5 bottom-0.5 rounded border border-violet-400/70 dark:border-violet-600/60 bg-violet-50/80 dark:bg-violet-950/35 overflow-hidden flex',
-                          onOpenShotInStructureTree && 'cursor-pointer hover:ring-1 hover:ring-violet-500/50'
+                          canOpenShot && 'cursor-pointer hover:ring-1 hover:ring-violet-500/50'
                         )}
                         style={{ left: `${shot.x}px`, width: `${w}px` }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenShotInStructureTree?.(shot.id);
+                          openShot(shot.id);
                         }}
                         onKeyDown={(e) => {
-                          if (!onOpenShotInStructureTree) return;
+                          if (!canOpenShot) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            onOpenShotInStructureTree(shot.id);
+                            openShot(shot.id);
                           }
                         }}
                         title={
@@ -4839,22 +5107,22 @@ export function VideoEditorTimeline({
                     return (
                       <div
                         key={`sfx-${shot.id}`}
-                        role={onOpenShotInStructureTree ? 'button' : undefined}
-                        tabIndex={onOpenShotInStructureTree ? 0 : undefined}
+                        role={canOpenShot ? 'button' : undefined}
+                        tabIndex={canOpenShot ? 0 : undefined}
                         className={cn(
                           'absolute top-0.5 bottom-0.5 rounded border border-orange-400/80 dark:border-orange-600/55 bg-orange-50/85 dark:bg-orange-950/30 overflow-hidden flex',
-                          onOpenShotInStructureTree && 'cursor-pointer hover:ring-1 hover:ring-orange-500/50'
+                          canOpenShot && 'cursor-pointer hover:ring-1 hover:ring-orange-500/50'
                         )}
                         style={{ left: `${shot.x}px`, width: `${w}px` }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenShotInStructureTree?.(shot.id);
+                          openShot(shot.id);
                         }}
                         onKeyDown={(e) => {
-                          if (!onOpenShotInStructureTree) return;
+                          if (!canOpenShot) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            onOpenShotInStructureTree(shot.id);
+                            openShot(shot.id);
                           }
                         }}
                         title={
@@ -4895,10 +5163,10 @@ export function VideoEditorTimeline({
       <div className="flex-shrink-0 bg-card border-t border-border p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="border-2 border-primary">
-              <Plus className="w-4 h-4 mr-1" />
-              Add Item
-            </Button>
+        <Button variant="outline" size="sm" className="border-2 border-primary">
+          <Plus className="w-4 h-4 mr-1" />
+          Add Item
+        </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {addableKinds.map((kind) => (
@@ -5117,6 +5385,16 @@ export function VideoEditorTimeline({
             }
           }}
           title={editingSceneForModal.title}
+        />
+      )}
+
+      {/* 🎬 SHOT CARD MODAL (opens from timeline click instead of switching to dropdown) */}
+      {timelineCtx && (
+        <ShotCardModal
+          open={!!selectedShotId}
+          onOpenChange={(open) => { if (!open) setSelectedShotId(null); }}
+          shotId={selectedShotId}
+          projectId={projectId}
         />
       )}
     </div>

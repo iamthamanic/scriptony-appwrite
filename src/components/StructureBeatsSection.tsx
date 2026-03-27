@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Plus, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
@@ -19,6 +19,7 @@ import { generateBeatsFromTemplate, LITE_7_TEMPLATE, SAVE_THE_CAT_TEMPLATE } fro
 import { useBeats, useCreateBeat, useUpdateBeat, useDeleteBeat } from '../hooks/useBeats';
 import * as TimelineAPI from '../lib/api/timeline-api';
 import { toast } from 'sonner';
+import { TimelineStateProvider, useTimelineUndo, useOptionalTimelineState } from '../contexts/TimelineStateContext';
 
 /**
  * 🎬 STRUCTURE & BEATS SECTION
@@ -56,6 +57,45 @@ const TEST_BEAT_HOOK: BeatCardData = {
   pctTo: 8,   // Ende bei 8% (6% hoch = ca. 60px bei 1000px Höhe)
 };
 
+type SearchEntryType = 'act' | 'sequence' | 'scene' | 'shot';
+
+interface SearchEntry {
+  id: string;
+  type: SearchEntryType;
+  title: string;
+  subtitle: string;
+  parentTitle?: string;
+  searchBlob: string;
+}
+
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function extractPlainTextFromUnknown(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map(extractPlainTextFromUnknown).join(' ');
+  if (!isRecord(value)) return '';
+
+  if (typeof value.text === 'string') {
+    const nested = Array.isArray(value.content)
+      ? value.content.map(extractPlainTextFromUnknown).join(' ')
+      : '';
+    return `${value.text} ${nested}`.trim();
+  }
+
+  return Object.values(value).map(extractPlainTextFromUnknown).join(' ');
+}
+
+function makeSearchBlob(parts: unknown[]): string {
+  return normalizeSearchText(parts.map(extractPlainTextFromUnknown).join(' '));
+}
+
 function parseTargetMinutes(v: string | number | null | undefined): number | null {
   if (v == null || v === '') return null;
   const n = typeof v === 'number' ? v : parseFloat(String(v).trim().replace(',', '.'));
@@ -63,12 +103,47 @@ function parseTargetMinutes(v: string | number | null | undefined): number | nul
   return n;
 }
 
+/**
+ * 🔄 Keyboard shortcut handler for Undo/Redo (Cmd+Z / Cmd+Shift+Z)
+ * Must be INSIDE TimelineStateProvider to access the context.
+ */
+function TimelineUndoRedoShortcuts() {
+  const { undo, redo, canUndo, canRedo } = useTimelineUndo();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod || e.key.toLowerCase() !== 'z') return;
+
+      // Don't intercept when user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+
+      e.preventDefault();
+      if (e.shiftKey) {
+        if (canRedo) redo();
+      } else {
+        if (canUndo) undo();
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo, canUndo, canRedo]);
+
+  return null; // Render nothing — pure side-effect component
+}
+
 export function StructureBeatsSection({ projectId, projectType, beatTemplate, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, targetDurationMinutes, isLoadingCache }: StructureBeatsSectionProps) {
   const containerStackRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(true); // DEFAULT: OPEN
   const [structureView, setStructureView] = useState<'dropdown' | 'timeline' | 'native'>('dropdown');
   /** Timeline → FilmDropdown: welcher Shot aufgeklappt & gescrollt werden soll */
   const [expandShotId, setExpandShotId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
   
   // 🚀 REACT QUERY: Lade Beats für dieses Projekt (mit Cache!)
   const { data: beatsData, isLoading: beatsLoading } = useBeats(projectId);
@@ -253,6 +328,162 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
 
   const timelineNodes = convertToTimelineNodes(timelineData);
 
+  const searchEntries = useMemo<SearchEntry[]>(() => {
+    if (!timelineData) return [];
+    const out: SearchEntry[] = [];
+    const acts = timelineData.acts || [];
+    const sequences = timelineData.sequences || [];
+    const scenes = timelineData.scenes || [];
+    const shots = 'shots' in timelineData && Array.isArray((timelineData as TimelineData).shots)
+      ? (timelineData as TimelineData).shots
+      : [];
+
+    const actById = new Map(acts.map((a) => [a.id, a]));
+    const sequenceById = new Map(sequences.map((s) => [s.id, s]));
+
+    for (const act of acts) {
+      out.push({
+        id: act.id,
+        type: 'act',
+        title: act.title || 'Akt',
+        subtitle: 'Akt',
+        searchBlob: makeSearchBlob([act.title, act.description, act.summary, act.metadata]),
+      });
+    }
+
+    for (const seq of sequences) {
+      const parentAct = actById.get(seq.actId);
+      out.push({
+        id: seq.id,
+        type: 'sequence',
+        title: seq.title || 'Sequenz',
+        subtitle: projectType === 'book' ? 'Kapitel' : 'Sequenz',
+        parentTitle: parentAct?.title,
+        searchBlob: makeSearchBlob([seq.title, seq.description, seq.summary, seq.metadata, parentAct?.title]),
+      });
+    }
+
+    for (const scene of scenes) {
+      const parentSeq = sequenceById.get(scene.sequenceId);
+      out.push({
+        id: scene.id,
+        type: 'scene',
+        title: scene.title || (projectType === 'book' ? 'Abschnitt' : 'Szene'),
+        subtitle: projectType === 'book' ? 'Abschnitt' : 'Szene',
+        parentTitle: parentSeq?.title,
+        searchBlob: makeSearchBlob([
+          scene.title,
+          scene.description,
+          scene.summary,
+          scene.content,
+          scene.metadata,
+          parentSeq?.title,
+        ]),
+      });
+    }
+
+    for (const shot of shots) {
+      const parentScene = scenes.find((s) => s.id === shot.sceneId);
+      out.push({
+        id: shot.id,
+        type: 'shot',
+        title: shot.shotNumber || shot.description || 'Shot',
+        subtitle: 'Shot',
+        parentTitle: parentScene?.title,
+        searchBlob: makeSearchBlob([
+          shot.shotNumber,
+          shot.description,
+          shot.dialog,
+          shot.notes,
+          shot.soundNotes,
+          shot.composition,
+          shot.lightingNotes,
+          shot.cameraAngle,
+          shot.cameraMovement,
+          shot.framing,
+          shot.lens,
+          parentScene?.title,
+        ]),
+      });
+    }
+
+    return out;
+  }, [timelineData, projectType]);
+
+  const searchResults = useMemo(() => {
+    const q = normalizeSearchText(searchQuery);
+    if (!q) return [];
+    const terms = q.split(' ').filter(Boolean);
+    if (terms.length === 0) return [];
+
+    return searchEntries
+      .filter((entry) => terms.every((term) => entry.searchBlob.includes(term)))
+      .sort((a, b) => {
+        const aTitle = normalizeSearchText(a.title);
+        const bTitle = normalizeSearchText(b.title);
+        const aStarts = terms.some((t) => aTitle.startsWith(t));
+        const bStarts = terms.some((t) => bTitle.startsWith(t));
+        if (aStarts !== bStarts) return aStarts ? -1 : 1;
+        return a.title.localeCompare(b.title, 'de');
+      })
+      .slice(0, 30);
+  }, [searchEntries, searchQuery]);
+
+  useEffect(() => {
+    if (selectedSearchIndex > 0 && selectedSearchIndex >= searchResults.length) {
+      setSelectedSearchIndex(0);
+    }
+  }, [selectedSearchIndex, searchResults.length]);
+
+  useEffect(() => {
+    const onDocClick = (ev: MouseEvent) => {
+      const t = ev.target as Node | null;
+      if (!searchContainerRef.current || !t) return;
+      if (!searchContainerRef.current.contains(t)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const openSearchHit = (entry: SearchEntry) => {
+    setStructureView('dropdown');
+    setSearchOpen(false);
+    if (entry.type === 'shot') {
+      setExpandShotId(entry.id);
+      toast.message(`Treffer geöffnet: ${entry.title}`);
+      return;
+    }
+    toast.message(`Treffer in Struktur: ${entry.title}`);
+  };
+
+  const onSearchKeyDown = (ev: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!searchOpen && (ev.key === 'ArrowDown' || ev.key === 'Enter')) {
+      setSearchOpen(true);
+    }
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      setSelectedSearchIndex((prev) => Math.min(prev + 1, Math.max(searchResults.length - 1, 0)));
+      return;
+    }
+    if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      setSelectedSearchIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+    if (ev.key === 'Enter') {
+      if (searchResults.length > 0) {
+        ev.preventDefault();
+        openSearchHit(searchResults[selectedSearchIndex] || searchResults[0]);
+      }
+      return;
+    }
+    if (ev.key === 'Escape') {
+      setSearchOpen(false);
+    }
+  };
+
   // 🎬 Sync beats from React Query data
   useEffect(() => {
     if (beatsData && !beatsLoading) {
@@ -360,7 +591,27 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     autoGenerateBeats();
   }, [projectId, beatTemplate, beatsData, beatsLoading]); // 🔥 FIX: Entferne createBeatMutation von deps!
 
+  // 🔄 Prepare initialData for TimelineStateProvider
+  const providerInitialData = useMemo(() => {
+    if (!timelineData) return undefined;
+    const base = {
+      acts: timelineData.acts || [],
+      sequences: timelineData.sequences || [],
+      scenes: timelineData.scenes || [],
+    };
+    // Film/Series have shots; Book does not
+    if ('shots' in timelineData) {
+      return { ...base, shots: (timelineData as any).shots || [] };
+    }
+    return base;
+  }, [timelineData]);
+
   return (
+    <TimelineStateProvider
+      initialData={providerInitialData}
+      onDataChange={handleTimelineChange}
+    >
+    <TimelineUndoRedoShortcuts />
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -382,6 +633,62 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
         </div>
 
         <div className="flex items-center gap-3">
+          <div ref={searchContainerRef} className="relative w-[360px] max-w-[42vw]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                value={searchQuery}
+                onChange={(ev) => {
+                  setSearchQuery(ev.target.value);
+                  setSearchOpen(true);
+                  setSelectedSearchIndex(0);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                onKeyDown={onSearchKeyDown}
+                placeholder="In Projekt Suche"
+                className="h-9 w-full rounded-md border border-input bg-background pl-10 pr-8 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchOpen(false);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Suche leeren"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {searchOpen && searchQuery.trim().length > 0 && (
+              <div className="absolute right-0 mt-1 w-full rounded-md border bg-popover shadow-md z-20 max-h-80 overflow-auto">
+                {searchResults.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Keine Treffer</div>
+                ) : (
+                  searchResults.map((result, index) => (
+                    <button
+                      key={`${result.type}-${result.id}`}
+                      type="button"
+                      onClick={() => openSearchHit(result)}
+                      className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-accent hover:text-accent-foreground ${
+                        selectedSearchIndex === index ? 'bg-accent text-accent-foreground' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium truncate">{result.title}</span>
+                        <span className="text-[11px] text-muted-foreground uppercase tracking-wide">{result.subtitle}</span>
+                      </div>
+                      {result.parentTitle && (
+                        <div className="text-xs text-muted-foreground truncate">In: {result.parentTitle}</div>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <ScriptStructureImportButton
             projectId={projectId}
             projectType={projectType}
@@ -482,5 +789,6 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
         </div>
       </CollapsibleContent>
     </Collapsible>
+    </TimelineStateProvider>
   );
 }

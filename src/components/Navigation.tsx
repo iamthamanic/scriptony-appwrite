@@ -205,7 +205,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
     { id: "projekte", label: "Projekte", icon: Layers },
     { id: "worldbuilding", label: "Welten", icon: Globe },
     { id: "gym", label: "Gym", icon: Dumbbell },
-    { id: "present", label: "Present", icon: Presentation },
+    { id: "stage", label: "Stage", icon: Presentation },
   ];
   
   const navItems = userRole === "superadmin" 
@@ -224,7 +224,9 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
     admin: "Admin",
     settings: "Einstellungen",
     superadmin: "Superadmin",
-    present: "Present",
+    stage: "Stage",
+    create: "Stage",
+    present: "Stage",
   };
 
   const currentPageTitle = pageTitles[currentPage] || "Scriptony";
@@ -276,24 +278,6 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
             
             {/* Right Actions */}
             <div className="flex items-center gap-1">
-              {/* Clean Beats Button - only show on project detail page */}
-              {currentProjectId && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCleanBeats}
-                  disabled={isCleaningBeats}
-                  className="rounded-full w-9 h-9"
-                  title="Duplizierte Beats löschen"
-                >
-                  {isCleaningBeats ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-4" />
-                  )}
-                </Button>
-              )}
-              
               <Button
                 variant="ghost"
                 size="icon"
@@ -354,24 +338,6 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
           
           {/* Right Actions */}
           <div className="flex items-center gap-1">
-
-            {/* 🧹 Clean Beats Button - only show on project detail page */}
-            {currentProjectId && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCleanBeats}
-                disabled={isCleaningBeats}
-                className="rounded-full w-9 h-9"
-                title="Duplizierte Beats löschen"
-              >
-                {isCleaningBeats ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="size-4" />
-                )}
-              </Button>
-            )}
 
             {/* Removed 🎨 Proto button */}
             

@@ -11,7 +11,7 @@ import { UploadPage } from "../components/pages/UploadPage";
 import { AdminPage } from "../components/pages/AdminPage";
 import { SettingsPage } from "../components/pages/SettingsPage";
 import { SuperadminPage } from "../components/pages/SuperadminPage";
-import { PresentPage } from "../components/pages/PresentPage";
+import { StagePage } from "../components/pages/StagePage";
 import { AuthPage } from "../components/pages/AuthPage";
 import { ResetPasswordPage } from "../components/pages/ResetPasswordPage";
 import { ApiTestPage } from "../components/pages/ApiTestPage";
@@ -32,6 +32,7 @@ export function AppContent() {
   const { state: router, navigate } = useRouter();
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
+  const isStagePage = router.page === "stage" || router.page === "create" || router.page === "present";
 
   // Setup undo/redo keyboard shortcuts
   useEffect(() => {
@@ -97,8 +98,10 @@ export function AppContent() {
         return <SettingsPage />;
       case "superadmin":
         return <SuperadminPage onNavigate={navigate} />;
+      case "stage":
+      case "create":
       case "present":
-        return <PresentPage />;
+        return <StagePage />;
       case "api-test":
         return <ApiTestPage />;
       case "project-recovery":
@@ -128,7 +131,9 @@ export function AppContent() {
       <main className={`pb-safe w-full ${
         isMobile
           ? 'pb-20'
-          : 'pt-14 max-w-7xl mx-auto px-6'
+          : isStagePage
+            ? 'h-[calc(100dvh-56px)] overflow-hidden max-w-none px-0'
+            : 'pt-14 max-w-7xl mx-auto px-6'
       }`}>
         {renderPage()}
       </main>

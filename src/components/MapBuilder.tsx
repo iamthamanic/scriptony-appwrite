@@ -18,7 +18,7 @@ import { RoadIcon } from "./RoadIcon";
 
 export type TileType = "grass" | "forest" | "water" | "mountain" | "road" | "city" | "custom";
 export type ToolType = "brush" | "eraser" | "select" | "pin" | "character" | "path";
-export type MapMode = "edit" | "present";
+export type MapMode = "edit" | "stage";
 
 interface Tile {
   type: TileType;
@@ -182,7 +182,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   // Reset tool when switching modes
   useEffect(() => {
-    if (mapMode === "present") {
+    if (mapMode === "stage") {
       setSelectedTool("path");
     } else {
       setSelectedTool("brush");
@@ -262,7 +262,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   };
 
   const handleTileClick = (x: number, y: number) => {
-    if (mapMode === "present" && selectedTool === "path" && selectedCharacterForPath) {
+    if (mapMode === "stage" && selectedTool === "path" && selectedCharacterForPath) {
       // Add point to path
       setCurrentPathPoints([...currentPathPoints, { x, y }]);
     } else if (selectedTool === "brush" || selectedTool === "eraser") {
@@ -604,14 +604,14 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   Edit
                 </Button>
                 <Button
-                  variant={mapMode === "present" ? "default" : "ghost"}
+                  variant={mapMode === "stage" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setMapMode("present")}
+                  onClick={() => setMapMode("stage")}
                   className="h-9 px-3"
-                  title="Präsentieren"
+                  title="Stage"
                 >
                   <Presentation className="size-4 mr-1.5" />
-                  Present
+                  Stage
                 </Button>
               </div>
 
@@ -726,8 +726,8 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                 </>
               )}
 
-              {/* Present Mode Controls */}
-              {mapMode === "present" && (
+              {/* Stage Mode Controls */}
+              {mapMode === "stage" && (
                 <div className="flex items-center gap-2 border-r pr-2 flex-wrap">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Charakter:</Label>
                   <Select value={selectedCharacterForPath || ""} onValueChange={setSelectedCharacterForPath}>
@@ -1113,7 +1113,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                 ))}
 
                 {/* Current Path Preview */}
-                {mapMode === "present" && currentPathPoints.length > 0 && (
+                {mapMode === "stage" && currentPathPoints.length > 0 && (
                   <svg
                     className="absolute top-0 left-0 pointer-events-none"
                     style={{

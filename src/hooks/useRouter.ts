@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const VALID_PAGES = [
   "home", "projekte", "welten", "worldbuilding", "creative-gym", "upload",
-  "admin", "superadmin", "einstellungen", "settings", "present", "auth",
+  "admin", "superadmin", "einstellungen", "settings", "stage", "create", "present", "auth",
   "migration", "reset-password", "api-test", "project-recovery"
 ] as const;
 
@@ -12,6 +12,14 @@ interface RouterState {
   page: ValidPage;
   id?: string;
   categoryId?: string;
+}
+
+function normalizePage(page: string | undefined): ValidPage {
+  if (page === "present" || page === "create") {
+    return "stage";
+  }
+
+  return VALID_PAGES.includes(page as ValidPage) ? (page as ValidPage) : "home";
 }
 
 export function useRouter(): {
@@ -35,7 +43,7 @@ export function useRouter(): {
     const [page, id, categoryId] = hash.split('/');
 
     return {
-      page: VALID_PAGES.includes(page as ValidPage) ? (page as ValidPage) : "home",
+      page: normalizePage(page),
       id: id || undefined,
       categoryId: categoryId || undefined
     };
@@ -57,7 +65,7 @@ export function useRouter(): {
       const [page, id, categoryId] = hash.split('/');
       
       setState({
-        page: VALID_PAGES.includes(page as ValidPage) ? (page as ValidPage) : "home",
+        page: normalizePage(page),
         id: id || undefined,
         categoryId: categoryId || undefined
       });

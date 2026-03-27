@@ -34,7 +34,6 @@ async function getWorld(worldId: string, organizationId: string) {
           id
           name
           description
-          lore
           image_url
           cover_image_url
           linked_project_id
@@ -88,7 +87,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               id
               name
               description
-              lore
               image_url
               cover_image_url
               linked_project_id

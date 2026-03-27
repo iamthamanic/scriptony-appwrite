@@ -86,7 +86,6 @@ export function normalizeWorldInput(body: Record<string, any>): Record<string, a
   const world = {
     name: body.name,
     description: body.description ?? null,
-    lore: body.lore ?? null,
     image_url: body.image_url ?? body.imageUrl ?? null,
     cover_image_url: body.cover_image_url ?? body.coverImageUrl ?? body.image_url ?? body.imageUrl ?? null,
     linked_project_id: body.linked_project_id ?? body.linkedProjectId ?? null,
