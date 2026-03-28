@@ -87,7 +87,7 @@ export function AppContent() {
             onNavigate={navigate}
           />
         );
-      case "creative-gym":
+      case "gym":
         return <CreativeGymPage />;
       case "upload":
         return <UploadPage onNavigate={navigate} />;
@@ -101,7 +101,12 @@ export function AppContent() {
       case "stage":
       case "create":
       case "present":
-        return <StagePage />;
+        return (
+          <StagePage
+            projectId={router.id ?? null}
+            shotId={router.categoryId ?? null}
+          />
+        );
       case "api-test":
         return <ApiTestPage />;
       case "project-recovery":
@@ -128,13 +133,15 @@ export function AppContent() {
         !window.location.hostname.startsWith("127.0.0.1") && (
           <BackendNotConfiguredBanner />
         )}
-      <main className={`pb-safe w-full ${
-        isMobile
-          ? 'pb-20'
-          : isStagePage
-            ? 'h-[calc(100dvh-56px)] overflow-hidden max-w-none px-0'
-            : 'pt-14 max-w-7xl mx-auto px-6'
-      }`}>
+      <main
+        className={`w-full ${
+          isMobile
+            ? 'pb-[calc(5rem+env(safe-area-inset-bottom,0px))]'
+            : isStagePage
+              ? 'h-[calc(100dvh-56px)] overflow-hidden max-w-none px-0'
+              : 'pt-0 max-w-7xl mx-auto px-6 pb-safe'
+        }`}
+      >
         {renderPage()}
       </main>
       <Toaster position="top-center" />

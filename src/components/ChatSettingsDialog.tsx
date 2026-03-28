@@ -372,7 +372,7 @@ export function ChatSettingsDialog({ open, onOpenChange, onUpdate }: ChatSetting
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] flex flex-col md:w-auto">
           <DialogHeader>
             <DialogTitle>Chat Settings</DialogTitle>
             <DialogDescription>AI-Konfiguration lädt...</DialogDescription>
@@ -388,7 +388,7 @@ export function ChatSettingsDialog({ open, onOpenChange, onUpdate }: ChatSetting
   if (!settings) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl md:w-auto">
           <DialogHeader>
             <DialogTitle>Chat Settings</DialogTitle>
           </DialogHeader>

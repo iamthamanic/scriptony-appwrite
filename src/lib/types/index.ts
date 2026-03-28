@@ -198,6 +198,15 @@ export interface Shot {
   composition?: string;
   lightingNotes?: string;
   imageUrl?: string; // Shot preview image
+  /** Appwrite Storage file ID for Stage2D JSON (`stage-schema-info` document) */
+  stage2dFileId?: string;
+  stage2d_file_id?: string;
+  /** Appwrite Storage file ID for Stage3D document */
+  stage3dFileId?: string;
+  stage3d_file_id?: string;
+  /** Set when image was uploaded (e.g. image/png, image/jpeg) for UI badge */
+  shotImageMime?: string;
+  shot_image_mime?: string;
   // Audio
   soundNotes?: string;
   // Production

@@ -1,4 +1,17 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+/**
+ * StageCanvas — 2D-Zeichenfläche (Konva) mit Layern, Export und Zuweisung zu Shot/Welt-Asset.
+ * Engine-Modul: src/engines/stage-2d/ — Host-App bindet API/Router ein (siehe index.ts).
+ */
+import {
+  Fragment,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowUpFromLine,
   Brush,
@@ -36,22 +49,106 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import type { Node as KonvaNode } from "konva/lib/Node";
 import type { Stage as KonvaStageType } from "konva/lib/Stage";
 import type { Transformer as KonvaTransformerType } from "konva/lib/shapes/Transformer";
-import { Button } from "../ui/button";
-import { cn } from "../ui/utils";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Slider } from "../ui/slider";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/components/ui/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { StageLayerStylingDialog } from "./StageLayerStylingDialog";
 import { toast } from "sonner@2.0.3";
-import { getAuthToken } from "../../lib/auth/getAuthToken";
-import { getAllShotsByProject, uploadShotImage } from "../../lib/api/shots-api";
-import { uploadWorldImage } from "../../lib/api/image-upload-api";
-import { itemsApi, projectsApi, worldsApi } from "../../utils/api";
+import type { Act, Scene, Sequence, Shot } from "@/lib/types";
+import type {
+  Stage2DExportAdapter,
+  StageExportAssetRow,
+  StageExportProjectRow,
+  StageExportWorldRow,
+} from "./export-adapter";
+import {
+  createStage2DDocument,
+  createStage2DPayloadFromState,
+  type Stage2DLayer,
+  type Stage2DPayload,
+} from "@/lib/stage-schema-info";
 
 type StageTool = "draw" | "erase" | "pan";
 type StagePoint = [number, number, number];
 type ExportMode = "download" | "assign";
 type AssignTarget = "project" | "world";
+
+const byOrderIndex = <T extends { orderIndex?: number }>(a: T, b: T) =>
+  (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+
+function shotSceneId(sh: { sceneId?: string; scene_id?: string }): string {
+  return String(sh.sceneId ?? sh.scene_id ?? "");
+}
+
+function formatActLabel(act: Act): string {
+  return `Akt ${act.actNumber ?? act.orderIndex ?? "?"}${act.title ? ` – ${act.title}` : ""}`;
+}
+
+function formatSequenceLabel(seq: Sequence): string {
+  return `Sequenz ${seq.sequenceNumber ?? seq.orderIndex ?? "?"}${seq.title ? ` – ${seq.title}` : ""}`;
+}
+
+function formatSceneLabel(scene: Scene): string {
+  return `Szene ${scene.sceneNumber ?? scene.number ?? "?"}${scene.title ? ` – ${scene.title}` : ""}`;
+}
+
+function formatShotLabel(sh: Shot): string {
+  const n = sh.shotNumber || "";
+  const tail = sh.description?.trim() || "Ohne Titel";
+  const idShort = sh.id.length > 10 ? `${sh.id.slice(0, 8)}…` : sh.id;
+  return n ? `Shot ${n} – ${tail} (${idShort})` : `${tail} (${idShort})`;
+}
+
+function getClientXYFromPointerEvent(evt: MouseEvent | TouchEvent): { x: number; y: number } {
+  if ("touches" in evt && evt.touches && evt.touches.length > 0) {
+    return { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
+  }
+  if ("changedTouches" in evt && evt.changedTouches && evt.changedTouches.length > 0) {
+    return { x: evt.changedTouches[0].clientX, y: evt.changedTouches[0].clientY };
+  }
+  const me = evt as MouseEvent;
+  return { x: me.clientX, y: me.clientY };
+}
+
+/** Imperative API for StagePage toolbar (Undo/Redo/Export row beside 2D/3D tabs). */
+export type StageCanvasHandle = {
+  undo: () => void;
+  redo: () => void;
+  resetView: () => void;
+  clearDrawLayer: () => void;
+  openExport: () => void;
+};
+
+export interface StageCanvasProps {
+  /** Host liefert Laden/Zuweisung (Scriptony: `createScriptonyStageExportAdapter`). */
+  exportAdapter: Stage2DExportAdapter;
+  /** Nach Laden vom Shot: hydratisiert Layer + Kamera (einmalig bei Änderung). */
+  initialStage2DPayload?: Stage2DPayload | null;
+  /** Shot hat nur Rasterbild: als eine Image-Layer laden (optional). */
+  initialRasterImageUrl?: string | null;
+  /**
+   * Ohne gespeichertes Stage-Dokument: logische Artboard-Größe aus Shot-Vorschaubild (Seitenverhältnis).
+   * Wird von der Host-Seite aus Bildabmessungen abgeleitet.
+   */
+  shotArtboardHint?: { width: number; height: number } | null;
+  /** If false, Cmd/Ctrl+Z shortcuts are not handled (e.g. 3D tab active). */
+  shortcutsActive?: boolean;
+  onToolbarCapabilitiesChange?: (c: {
+    canUndo: boolean;
+    canRedo: boolean;
+    canClear: boolean;
+  }) => void;
+}
 
 interface StageStroke {
   id: string;
@@ -120,6 +217,43 @@ function formatLayerName(index: number): string {
   return `Layer ${String(index).padStart(2, "0")}`;
 }
 
+/**
+ * Klick-/Drag-Fläche für Draw-Layer im Pan-Modus: alle Stroke-Shapes haben `listening={false}`,
+ * daher wäre die Group sonst nicht greifbar (Konva-Hittest).
+ */
+function getDrawLayerHitBoundsFromStrokes(strokes: StageStroke[]): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const stroke of strokes) {
+    const pad = Math.max(6, stroke.size / 2 + 6);
+    for (const pt of stroke.points) {
+      const px = pt[0];
+      const py = pt[1];
+      minX = Math.min(minX, px - pad);
+      minY = Math.min(minY, py - pad);
+      maxX = Math.max(maxX, px + pad);
+      maxY = Math.max(maxY, py + pad);
+    }
+  }
+  if (!Number.isFinite(minX)) {
+    return { x: 0, y: 0, width: 200, height: 150 };
+  }
+  const outer = 16;
+  return {
+    x: minX - outer,
+    y: minY - outer,
+    width: Math.max(80, maxX - minX + outer * 2),
+    height: Math.max(80, maxY - minY + outer * 2),
+  };
+}
+
 /** Fill/Outline-Slider: Standard 100 %; 60/40 = frühere Defaults (Migration in withLayerStrengthDefaults). */
 const LAYER_STRENGTH_DEFAULT = 100;
 const LEGACY_FILL_STRENGTH = 60;
@@ -167,6 +301,42 @@ function withLayerStrengthDefaults(layer: StageLayer): StageLayer {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Zwischen zwei Layer-lokalen Stützpunkten interpolieren, wenn der Abstand zu groß ist.
+ * Ohne das wirken Striche nach Artboard-Skalierung „eckig“, weil die Polylinie zu grob ist
+ * (wenige Samples pro Bildschirm-Pixel).
+ */
+function interpolateStrokeSegmentLayer(
+  from: [number, number, number],
+  to: [number, number, number],
+  maxStepLayer: number
+): [number, number, number][] {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const dist = Math.hypot(dx, dy);
+  if (dist <= maxStepLayer || dist < 1e-10) {
+    return [[to[0], to[1], to[2]]];
+  }
+  const n = Math.ceil(dist / maxStepLayer);
+  const out: [number, number, number][] = [];
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
+    out.push([from[0] + dx * t, from[1] + dy * t, from[2] + (to[2] - from[2]) * t]);
+  }
+  return out;
+}
+
+/** Ziel: ~1 px Schritt auf dem Screen → max. Abstand in Layer-Lokal-Koordinaten. */
+function maxStepLayerForScreenPx(
+  layer: DrawStageLayer,
+  cameraScale: number,
+  worldToDisplayScale: number
+): number {
+  const layerScale = Math.max(Math.abs(layer.scaleX), Math.abs(layer.scaleY), 1e-6);
+  const screenToWorld = 1 / (cameraScale * worldToDisplayScale);
+  return Math.max(0.12, screenToWorld / layerScale);
 }
 
 function hexToRgba(hex: string, alpha01: number): string {
@@ -219,8 +389,8 @@ function getStrokeOutlinePoints(stroke: StageStroke, pressureSensitive: boolean)
   const outline = getStroke(stroke.points, {
     size: stroke.size,
     thinning: pressureSensitive ? 0.6 : 0,
-    smoothing: 0.55,
-    streamline: 0.5,
+    smoothing: 0.62,
+    streamline: 0.58,
     simulatePressure: pressureSensitive,
     last: true,
   });
@@ -251,14 +421,53 @@ function readImageDimensions(imageUrl: string) {
   });
 }
 
-export function StageCanvas() {
+/** Feste Zeichenfläche: gespeichertes Artboard, sonst Legacy-Viewport, sonst Shot-Hint, sonst 16:9-HD. */
+function resolveStageArtboard(
+  payload: Stage2DPayload | null | undefined,
+  shotHint: { width: number; height: number } | null | undefined
+): { width: number; height: number } {
+  const fromPayload =
+    payload?.artboard && payload.artboard.width > 0 && payload.artboard.height > 0
+      ? payload.artboard
+      : payload?.viewport && payload.viewport.width > 0 && payload.viewport.height > 0
+        ? payload.viewport
+        : null;
+  if (fromPayload) {
+    return {
+      width: Math.max(64, Math.round(fromPayload.width)),
+      height: Math.max(64, Math.round(fromPayload.height)),
+    };
+  }
+  if (shotHint && shotHint.width > 0 && shotHint.height > 0) {
+    return {
+      width: Math.max(64, Math.round(shotHint.width)),
+      height: Math.max(64, Math.round(shotHint.height)),
+    };
+  }
+  return { width: 1920, height: 1080 };
+}
+
+export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(function StageCanvas(
+  {
+    exportAdapter,
+    initialStage2DPayload = null,
+    initialRasterImageUrl = null,
+    shotArtboardHint = null,
+    shortcutsActive = true,
+    onToolbarCapabilitiesChange,
+  },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<KonvaStageType | null>(null);
   const transformerRef = useRef<KonvaTransformerType | null>(null);
   const layerNodeRefs = useRef<Record<string, KonvaNode>>({});
 
-  const [viewport, setViewport] = useState({ width: 1200, height: 720 });
+  const [artboard, setArtboard] = useState({ width: 1920, height: 1080 });
+  const artboardRef = useRef(artboard);
+  artboardRef.current = artboard;
+  const [displaySize, setDisplaySize] = useState({ width: 1200, height: 720 });
   const [tool, setTool] = useState<StageTool>("draw");
   const [color, setColor] = useState("#b69cff");
   const [brushSize, setBrushSize] = useState(12);
@@ -276,26 +485,31 @@ export function StageCanvas() {
   const [dropTargetLayerId, setDropTargetLayerId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"above" | "below" | null>(null);
   const [camera, setCamera] = useState<CameraState>({
-    x: 220,
-    y: 120,
+    x: 0,
+    y: 0,
     scale: 1,
   });
   const [cursorPoint, setCursorPoint] = useState<CursorPoint>({
     x: 380,
     y: 240,
   });
+  /** Viewport-Pan (Hintergrund ziehen) — getrennt von Layer-Drag; nie die Kamera-Group draggable machen. */
+  const viewportPanRef = useRef<{ lastX: number; lastY: number } | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportMode, setExportMode] = useState<ExportMode>("download");
   const [assignTarget, setAssignTarget] = useState<AssignTarget>("project");
   const [isExporting, setIsExporting] = useState(false);
-  const [availableProjects, setAvailableProjects] = useState<Array<{ id: string; title?: string; name?: string }>>([]);
-  const [availableShots, setAvailableShots] = useState<
-    Array<{ id: string; shot_number?: string; title?: string; description?: string }>
-  >([]);
-  const [availableWorlds, setAvailableWorlds] = useState<Array<{ id: string; name?: string; title?: string }>>([]);
-  const [availableAssets, setAvailableAssets] = useState<
-    Array<{ id: string; name?: string; title?: string; world_category_id?: string; category_id?: string }>
-  >([]);
+  const [availableProjects, setAvailableProjects] = useState<StageExportProjectRow[]>([]);
+  const [timelineActs, setTimelineActs] = useState<Act[]>([]);
+  const [timelineSequences, setTimelineSequences] = useState<Sequence[]>([]);
+  const [timelineScenes, setTimelineScenes] = useState<Scene[]>([]);
+  const [timelineShots, setTimelineShots] = useState<Shot[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [selectedActId, setSelectedActId] = useState("");
+  const [selectedSequenceId, setSelectedSequenceId] = useState("");
+  const [selectedSceneId, setSelectedSceneId] = useState("");
+  const [availableWorlds, setAvailableWorlds] = useState<StageExportWorldRow[]>([]);
+  const [availableAssets, setAvailableAssets] = useState<StageExportAssetRow[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedShotId, setSelectedShotId] = useState<string>("");
   const [selectedWorldId, setSelectedWorldId] = useState<string>("");
@@ -308,6 +522,15 @@ export function StageCanvas() {
     () => layers.find((l) => l.id === stylingLayerId) ?? null,
     [layers, stylingLayerId]
   );
+
+  const worldToDisplayScale = useMemo(
+    () => (artboard.width > 0 ? displaySize.width / artboard.width : 1),
+    [artboard.width, displaySize.width, displaySize.height]
+  );
+
+  useEffect(() => {
+    setArtboard(resolveStageArtboard(initialStage2DPayload, shotArtboardHint ?? null));
+  }, [initialStage2DPayload, shotArtboardHint]);
 
   useEffect(() => {
     setLayers((current) => {
@@ -324,28 +547,102 @@ export function StageCanvas() {
   }, []);
 
   useEffect(() => {
+    if (!initialStage2DPayload?.layers?.length) return;
+    const mapped = initialStage2DPayload.layers.map((layer) =>
+      withLayerStrengthDefaults(layer as unknown as StageLayer)
+    );
+    setLayers(mapped);
+    setActiveLayerId(mapped[mapped.length - 1]?.id ?? "draw_layer_1");
+    setRedoStack([]);
+    if (initialStage2DPayload.camera) {
+      setCamera({
+        x: initialStage2DPayload.camera.x,
+        y: initialStage2DPayload.camera.y,
+        scale: initialStage2DPayload.camera.scale,
+      });
+    }
+  }, [initialStage2DPayload]);
+
+  useEffect(() => {
+    if (!initialRasterImageUrl?.trim()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const dims = await readImageDimensions(initialRasterImageUrl);
+        if (cancelled) return;
+        const scale = Math.min(1, 560 / Math.max(dims.width, dims.height));
+        const width = Math.max(96, Math.round(dims.width * scale));
+        const height = Math.max(96, Math.round(dims.height * scale));
+        const ab = resolveStageArtboard(initialStage2DPayload, shotArtboardHint ?? null);
+        const x = Math.max(0, (ab.width - width) / 2);
+        const y = Math.max(0, (ab.height - height) / 2);
+        const newLayer = withLayerStrengthDefaults({
+          id: createLayerId("image"),
+          name: "Shot image",
+          kind: "image",
+          visible: true,
+          locked: false,
+          opacity: 1,
+          x,
+          y,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          fillEnabled: false,
+          fillColor: "#a78bfa",
+          fillStrength: LAYER_STRENGTH_DEFAULT,
+          outlineEnabled: false,
+          outlineColor: "#a78bfa",
+          outlineStrength: LAYER_STRENGTH_DEFAULT,
+          pressureSensitive: true,
+          imageUrl: initialRasterImageUrl,
+          width,
+          height,
+        } as StageLayer);
+        setLayers([newLayer]);
+        setActiveLayerId(newLayer.id);
+        setNextLayerNumber(2);
+        setRedoStack([]);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialRasterImageUrl, initialStage2DPayload, shotArtboardHint]);
+
+  useEffect(() => {
     if (stylingLayerId && !layers.some((l) => l.id === stylingLayerId)) {
       setStylingLayerId(null);
     }
   }, [layers, stylingLayerId]);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const element = containerRef.current;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-
-      setViewport({
-        width: Math.max(320, Math.round(entry.contentRect.width)),
-        height: Math.max(180, Math.round(entry.contentRect.height)),
-      });
+  const fitDisplayToContainer = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cw = Math.max(320, Math.round(rect.width));
+    const ch = Math.max(180, Math.round(rect.height));
+    const ab = artboardRef.current;
+    const fit = Math.min(cw / ab.width, ch / ab.height);
+    setDisplaySize({
+      width: Math.max(320, Math.round(ab.width * fit)),
+      height: Math.max(180, Math.round(ab.height * fit)),
     });
-
-    observer.observe(element);
-    return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    fitDisplayToContainer();
+  }, [artboard.width, artboard.height, fitDisplayToContainer]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => fitDisplayToContainer());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fitDisplayToContainer]);
 
   useEffect(() => {
     if (!layers.some((layer) => layer.id === activeLayerId) && layers.length > 0) {
@@ -421,9 +718,10 @@ export function StageCanvas() {
     const pointer = stage.getPointerPosition();
     if (!pointer) return null;
 
+    const w = camera.scale * worldToDisplayScale;
     return {
-      x: (pointer.x - camera.x) / camera.scale,
-      y: (pointer.y - camera.y) / camera.scale,
+      x: (pointer.x - camera.x) / w,
+      y: (pointer.y - camera.y) / w,
     };
   };
 
@@ -660,12 +958,19 @@ export function StageCanvas() {
     );
     if (!targetLayer) return;
     const localPoint = worldToLayerPoint(point, targetLayer);
+    const to: [number, number, number] = [localPoint.x, localPoint.y, 0.5];
+    const maxStep = maxStepLayerForScreenPx(targetLayer, camera.scale, worldToDisplayScale);
 
     setDraftStroke((current) => {
       if (!current) return current;
+      const last = current.points[current.points.length - 1];
+      if (!last) {
+        return { ...current, points: [...current.points, to] };
+      }
+      const inserted = interpolateStrokeSegmentLayer(last, to, maxStep);
       return {
         ...current,
-        points: [...current.points, [localPoint.x, localPoint.y, 0.5]],
+        points: [...current.points, ...inserted],
       };
     });
   };
@@ -724,8 +1029,8 @@ export function StageCanvas() {
 
   const handleResetView = () => {
     setCamera({
-      x: 220,
-      y: 120,
+      x: 0,
+      y: 0,
       scale: 1,
     });
   };
@@ -806,15 +1111,16 @@ export function StageCanvas() {
       4
     );
 
+    const w = camera.scale * worldToDisplayScale;
     const pointTo = {
-      x: (pointer.x - camera.x) / camera.scale,
-      y: (pointer.y - camera.y) / camera.scale,
+      x: (pointer.x - camera.x) / w,
+      y: (pointer.y - camera.y) / w,
     };
 
     setCamera({
       scale: nextScale,
-      x: pointer.x - pointTo.x * nextScale,
-      y: pointer.y - pointTo.y * nextScale,
+      x: pointer.x - pointTo.x * nextScale * worldToDisplayScale,
+      y: pointer.y - pointTo.y * nextScale * worldToDisplayScale,
     });
   };
 
@@ -822,8 +1128,12 @@ export function StageCanvas() {
     const stage = stageRef.current;
     if (!stage) return null;
 
+    const pr = Math.min(
+      4,
+      Math.max(1, artboard.width > 0 && displaySize.width > 0 ? artboard.width / displaySize.width : 2)
+    );
     return stage.toDataURL({
-      pixelRatio: 2,
+      pixelRatio: pr,
       mimeType: "image/png",
     });
   };
@@ -842,54 +1152,193 @@ export function StageCanvas() {
     return new File([blob], filename, { type: mimeType });
   };
 
-  const loadShotsForProject = async (projectId: string) => {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error("Nicht eingeloggt.");
+  const applyHierarchyDefaults = useCallback(
+    (acts: Act[], sequences: Sequence[], scenes: Scene[], shots: Shot[]) => {
+      const actList = [...acts].sort(byOrderIndex);
+      const pickAct = actList[0];
+      if (!pickAct) {
+        setSelectedActId("");
+        setSelectedSequenceId("");
+        setSelectedSceneId("");
+        setSelectedShotId("");
+        return;
+      }
+      setSelectedActId(pickAct.id);
+      const seqList = sequences.filter((s) => s.actId === pickAct.id).sort(byOrderIndex);
+      const pickSeq = seqList[0];
+      if (!pickSeq) {
+        setSelectedSequenceId("");
+        setSelectedSceneId("");
+        setSelectedShotId("");
+        return;
+      }
+      setSelectedSequenceId(pickSeq.id);
+      const sceneList = scenes.filter((sc) => sc.sequenceId === pickSeq.id).sort(byOrderIndex);
+      const pickScene = sceneList[0];
+      if (!pickScene) {
+        setSelectedSceneId("");
+        setSelectedShotId("");
+        return;
+      }
+      setSelectedSceneId(pickScene.id);
+      const shotList = shots
+        .filter((sh) => shotSceneId(sh) === pickScene.id)
+        .sort(byOrderIndex);
+      const byShotId = new Map<string, Shot>();
+      for (const sh of shotList) {
+        if (sh.id && !byShotId.has(sh.id)) byShotId.set(sh.id, sh);
+      }
+      const dedupedShots = [...byShotId.values()];
+      const pickShot = dedupedShots[0];
+      setSelectedShotId(pickShot?.id ?? "");
+    },
+    []
+  );
+
+  const loadTimelineForProject = async (projectId: string, projectType?: string) => {
+    setTimelineLoading(true);
+    try {
+      const bundle = await exportAdapter.loadTimelineForProject(projectId, projectType);
+      const { acts, sequences, scenes, shots } = bundle;
+
+      setTimelineActs(acts);
+      setTimelineSequences(sequences);
+      setTimelineScenes(scenes);
+      setTimelineShots(shots);
+
+      applyHierarchyDefaults(acts, sequences, scenes, shots);
+    } catch (error) {
+      console.error("[StageCanvas] Timeline load failed:", error);
+      setTimelineActs([]);
+      setTimelineSequences([]);
+      setTimelineScenes([]);
+      setTimelineShots([]);
+      setSelectedActId("");
+      setSelectedSequenceId("");
+      setSelectedSceneId("");
+      setSelectedShotId("");
+      toast.error("Projekt-Struktur konnte nicht geladen werden.");
+    } finally {
+      setTimelineLoading(false);
     }
-    const shots = await getAllShotsByProject(projectId, token);
-    const normalized = (shots || []).map((shot: any) => ({
-      id: String(shot.id),
-      shot_number: shot.shot_number ?? shot.shotNumber ?? undefined,
-      title: shot.title ?? undefined,
-      description: shot.description ?? undefined,
-    }));
-    setAvailableShots(normalized);
   };
 
+  const sortedActs = useMemo(() => [...timelineActs].sort(byOrderIndex), [timelineActs]);
+
+  const sequencesForSelectedAct = useMemo(
+    () => timelineSequences.filter((s) => s.actId === selectedActId).sort(byOrderIndex),
+    [timelineSequences, selectedActId]
+  );
+
+  const scenesForSelectedSequence = useMemo(
+    () => timelineScenes.filter((sc) => sc.sequenceId === selectedSequenceId).sort(byOrderIndex),
+    [timelineScenes, selectedSequenceId]
+  );
+
+  const shotsForSelectedScene = useMemo(() => {
+    const list = timelineShots.filter((sh) => shotSceneId(sh) === selectedSceneId).sort(byOrderIndex);
+    const m = new Map<string, Shot>();
+    for (const sh of list) {
+      if (sh.id && !m.has(sh.id)) m.set(sh.id, sh);
+    }
+    return [...m.values()];
+  }, [timelineShots, selectedSceneId]);
+
+  const handleActChange = useCallback(
+    (actId: string) => {
+      setSelectedActId(actId);
+      const seqs = timelineSequences.filter((s) => s.actId === actId).sort(byOrderIndex);
+      const fs = seqs[0];
+      setSelectedSequenceId(fs?.id ?? "");
+      if (!fs) {
+        setSelectedSceneId("");
+        setSelectedShotId("");
+        return;
+      }
+      const scs = timelineScenes.filter((sc) => sc.sequenceId === fs.id).sort(byOrderIndex);
+      const fsc = scs[0];
+      setSelectedSceneId(fsc?.id ?? "");
+      if (!fsc) {
+        setSelectedShotId("");
+        return;
+      }
+      const shs = timelineShots
+        .filter((sh) => shotSceneId(sh) === fsc.id)
+        .sort(byOrderIndex);
+      const byShotId = new Map<string, Shot>();
+      for (const sh of shs) {
+        if (sh.id && !byShotId.has(sh.id)) byShotId.set(sh.id, sh);
+      }
+      const deduped = [...byShotId.values()];
+      setSelectedShotId(deduped[0]?.id ?? "");
+    },
+    [timelineSequences, timelineScenes, timelineShots]
+  );
+
+  const handleSequenceChange = useCallback(
+    (sequenceId: string) => {
+      setSelectedSequenceId(sequenceId);
+      const scs = timelineScenes.filter((sc) => sc.sequenceId === sequenceId).sort(byOrderIndex);
+      const fsc = scs[0];
+      setSelectedSceneId(fsc?.id ?? "");
+      if (!fsc) {
+        setSelectedShotId("");
+        return;
+      }
+      const shs = timelineShots
+        .filter((sh) => shotSceneId(sh) === fsc.id)
+        .sort(byOrderIndex);
+      const byShotId = new Map<string, Shot>();
+      for (const sh of shs) {
+        if (sh.id && !byShotId.has(sh.id)) byShotId.set(sh.id, sh);
+      }
+      const deduped = [...byShotId.values()];
+      setSelectedShotId(deduped[0]?.id ?? "");
+    },
+    [timelineScenes, timelineShots]
+  );
+
+  const handleSceneChange = useCallback(
+    (sceneId: string) => {
+      setSelectedSceneId(sceneId);
+      const shs = timelineShots
+        .filter((sh) => shotSceneId(sh) === sceneId)
+        .sort(byOrderIndex);
+      const byShotId = new Map<string, Shot>();
+      for (const sh of shs) {
+        if (sh.id && !byShotId.has(sh.id)) byShotId.set(sh.id, sh);
+      }
+      const deduped = [...byShotId.values()];
+      setSelectedShotId(deduped[0]?.id ?? "");
+    },
+    [timelineShots]
+  );
+
   const loadAssetsForWorld = async (worldId: string) => {
-    const items = await itemsApi.getAllForWorld(worldId);
-    const normalized = (items || []).map((item: any) => ({
-      id: String(item.id),
-      name: item.name ?? item.title ?? undefined,
-      title: item.title ?? undefined,
-      world_category_id: item.world_category_id ?? item.worldCategoryId ?? undefined,
-      category_id: item.category_id ?? item.world_category_id ?? item.worldCategoryId ?? undefined,
-    }));
-    setAvailableAssets(normalized);
+    const assets = await exportAdapter.loadAssetsForWorld(worldId);
+    setAvailableAssets(assets);
   };
 
   const openExportDialog = async () => {
     setIsExportDialogOpen(true);
     try {
-      const [projects, worlds] = await Promise.all([projectsApi.getAll(), worldsApi.getAll()]);
-      const normalizedProjects = (projects || []).map((project: any) => ({
-        id: String(project.id),
-        title: project.title ?? project.name ?? "Unbenanntes Projekt",
-      }));
-      const normalizedWorlds = (worlds || []).map((world: any) => ({
-        id: String(world.id),
-        name: world.name ?? world.title ?? "Unbenannte Welt",
-      }));
-      setAvailableProjects(normalizedProjects);
-      setAvailableWorlds(normalizedWorlds);
-      if (!selectedProjectId && normalizedProjects.length > 0) {
-        const firstProjectId = normalizedProjects[0].id;
-        setSelectedProjectId(firstProjectId);
-        void loadShotsForProject(firstProjectId);
+      const { projects, worlds } = await exportAdapter.loadExportTargets();
+      setAvailableProjects(projects);
+      setAvailableWorlds(worlds);
+      if (projects.length > 0) {
+        const match = selectedProjectId
+          ? projects.find((p) => p.id === selectedProjectId)
+          : undefined;
+        if (match) {
+          void loadTimelineForProject(match.id, match.type);
+        } else {
+          const first = projects[0];
+          setSelectedProjectId(first.id);
+          void loadTimelineForProject(first.id, first.type);
+        }
       }
-      if (!selectedWorldId && normalizedWorlds.length > 0) {
-        const firstWorldId = normalizedWorlds[0].id;
+      if (!selectedWorldId && worlds.length > 0) {
+        const firstWorldId = worlds[0].id;
         setSelectedWorldId(firstWorldId);
         void loadAssetsForWorld(firstWorldId);
       }
@@ -898,6 +1347,82 @@ export function StageCanvas() {
       toast.error("Export-Ziele konnten nicht geladen werden.");
     }
   };
+
+  const stageActionsRef = useRef({
+    handleUndo,
+    handleRedo,
+    handleResetView,
+    handleClear,
+    openExportDialog,
+  });
+  stageActionsRef.current = {
+    handleUndo,
+    handleRedo,
+    handleResetView,
+    handleClear,
+    openExportDialog,
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      undo: () => stageActionsRef.current.handleUndo(),
+      redo: () => stageActionsRef.current.handleRedo(),
+      resetView: () => stageActionsRef.current.handleResetView(),
+      clearDrawLayer: () => stageActionsRef.current.handleClear(),
+      openExport: () => {
+        void stageActionsRef.current.openExportDialog();
+      },
+    }),
+    []
+  );
+
+  useEffect(() => {
+    onToolbarCapabilitiesChange?.({
+      canUndo: !!activeDrawLayer && activeDrawLayer.strokes.length > 0,
+      canRedo: redoStack.length > 0 && !!activeDrawLayer,
+      canClear: !!activeDrawLayer && activeDrawLayer.strokes.length > 0,
+    });
+  }, [activeDrawLayer, redoStack.length, onToolbarCapabilitiesChange]);
+
+  useEffect(() => {
+    if (!shortcutsActive) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.tagName === "SELECT" ||
+          el.isContentEditable)
+      ) {
+        return;
+      }
+
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+
+      if (e.key === "z" || e.key === "Z") {
+        if (e.shiftKey) {
+          e.preventDefault();
+          stageActionsRef.current.handleRedo();
+        } else {
+          e.preventDefault();
+          stageActionsRef.current.handleUndo();
+        }
+        return;
+      }
+
+      if (e.key === "y" && e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        stageActionsRef.current.handleRedo();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [shortcutsActive]);
 
   const executeExport = async () => {
     const dataUrl = getStagePngDataUrl();
@@ -917,15 +1442,23 @@ export function StageCanvas() {
     try {
       const file = await dataUrlToFile(dataUrl, "stage-sketch.png");
       if (assignTarget === "project") {
-        if (!selectedShotId) {
-          toast.error("Bitte einen Shot auswählen.");
+        if (!selectedProjectId || !selectedShotId) {
+          toast.error("Bitte Projekt und Shot auswählen.");
           return;
         }
-        const token = await getAuthToken();
-        if (!token) {
-          throw new Error("Nicht eingeloggt.");
-        }
-        await uploadShotImage(selectedShotId, file, token);
+        const payload = createStage2DPayloadFromState({
+          layers: layers as unknown as Stage2DLayer[],
+          camera: { x: camera.x, y: camera.y, scale: camera.scale },
+          artboard: { width: artboard.width, height: artboard.height },
+          viewport: { width: displaySize.width, height: displaySize.height },
+        });
+        const stage2dDocument = createStage2DDocument(payload);
+        await exportAdapter.assignToShot({
+          projectId: selectedProjectId,
+          shotId: selectedShotId,
+          file,
+          stage2dDocument,
+        });
         toast.success("Stage erfolgreich dem Shot zugewiesen.");
       } else {
         if (!selectedWorldId || !selectedAssetId) {
@@ -937,8 +1470,12 @@ export function StageCanvas() {
         if (!targetAsset || !categoryId) {
           throw new Error("Asset hat keine gültige Kategorie-ID.");
         }
-        const imageUrl = await uploadWorldImage(selectedWorldId, file);
-        await itemsApi.update(selectedWorldId, categoryId, selectedAssetId, { image_url: imageUrl });
+        await exportAdapter.assignToWorldAsset({
+          worldId: selectedWorldId,
+          categoryId,
+          assetId: selectedAssetId,
+          file,
+        });
         toast.success("Stage erfolgreich dem Asset zugewiesen.");
       }
       setIsExportDialogOpen(false);
@@ -950,14 +1487,35 @@ export function StageCanvas() {
     }
   };
 
-  const handlePointerMove = () => {
+  const handleStagePointerDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (tool !== "pan") {
+      beginStroke();
+      return;
+    }
+    if (e.target.name() === "viewport-bg") {
+      const { x, y } = getClientXYFromPointerEvent(e.evt);
+      viewportPanRef.current = { lastX: x, lastY: y };
+    }
+  };
+
+  const handlePointerMove = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (tool === "pan" && viewportPanRef.current) {
+      const { x, y } = getClientXYFromPointerEvent(e.evt);
+      const prev = viewportPanRef.current;
+      const dx = x - prev.lastX;
+      const dy = y - prev.lastY;
+      viewportPanRef.current = { lastX: x, lastY: y };
+      setCamera((c) => ({ ...c, x: c.x + dx, y: c.y + dy }));
+      return;
+    }
     updateCursorPoint();
     extendStroke();
   };
 
-  const canUndo = !!activeDrawLayer && activeDrawLayer.strokes.length > 0;
-  const canRedo = redoStack.length > 0 && !!activeDrawLayer;
-  const canClear = canUndo;
+  const handleStagePointerUpLeave = () => {
+    viewportPanRef.current = null;
+    finishStroke();
+  };
 
   return (
     <div className="h-full overflow-hidden rounded-2xl border border-[#3b355a] bg-[#1c1a2d] text-slate-900 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] dark:text-white">
@@ -993,26 +1551,6 @@ export function StageCanvas() {
             </Button>
 
             <div className="mx-2 hidden h-8 w-px bg-[#3b355a] md:block" />
-
-            <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo}>
-              <Undo2 className="mr-2 size-4" />
-              Undo
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo}>
-              <Redo2 className="mr-2 size-4" />
-              Redo
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleResetView}>
-              <RotateCcw className="mr-2 size-4" />
-              Reset View
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleClear} disabled={!canClear}>
-              Clear Draw Layer
-            </Button>
-            <Button size="sm" onClick={openExportDialog}>
-              <ArrowUpFromLine className="mr-2 size-4" />
-              Export
-            </Button>
 
             <div className="ml-auto rounded-full border border-[#3b355a] bg-[#221f35] px-3 py-1 text-xs text-slate-700 dark:text-[#c7c0de]">
               Tool: {activeLabel}
@@ -1056,45 +1594,49 @@ export function StageCanvas() {
               style={{
                 backgroundImage:
                   "linear-gradient(to right, rgba(15,23,42,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.06) 1px, transparent 1px)",
-                backgroundSize: `${32 * camera.scale}px ${32 * camera.scale}px`,
+                backgroundSize: `${32 * camera.scale * worldToDisplayScale}px ${32 * camera.scale * worldToDisplayScale}px`,
                 backgroundPosition: `${camera.x}px ${camera.y}px`,
                 cursor: tool === "pan" ? "grab" : "none",
               }}
             >
               <KonvaStage
                 ref={stageRef}
-                width={viewport.width}
-                height={viewport.height}
-                onMouseDown={beginStroke}
-                onTouchStart={beginStroke}
+                width={displaySize.width}
+                height={displaySize.height}
+                onMouseDown={handleStagePointerDown}
+                onTouchStart={handleStagePointerDown}
                 onMouseMove={handlePointerMove}
                 onTouchMove={handlePointerMove}
-                onMouseUp={finishStroke}
-                onTouchEnd={finishStroke}
-                onMouseLeave={finishStroke}
+                onMouseUp={handleStagePointerUpLeave}
+                onTouchEnd={handleStagePointerUpLeave}
+                onMouseLeave={handleStagePointerUpLeave}
                 onWheel={handleWheel}
               >
                 <Layer>
                   <Group
                     x={camera.x}
                     y={camera.y}
-                    scaleX={camera.scale}
-                    scaleY={camera.scale}
-                    draggable={tool === "pan"}
-                    onDragMove={(event) => {
-                      setCamera((current) => ({
-                        ...current,
-                        x: event.target.x(),
-                        y: event.target.y(),
-                      }));
-                    }}
+                    scaleX={camera.scale * worldToDisplayScale}
+                    scaleY={camera.scale * worldToDisplayScale}
                   >
                     <Rect
+                      name="viewport-bg"
                       x={-6000}
                       y={-6000}
                       width={12000}
                       height={12000}
                       fill="rgba(0,0,0,0.001)"
+                    />
+
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={artboard.width}
+                      height={artboard.height}
+                      stroke="rgba(124,58,237,0.45)"
+                      strokeWidth={1 / (camera.scale * worldToDisplayScale)}
+                      dash={[6, 4]}
+                      listening={false}
                     />
 
                     {layers.map((layer) => {
@@ -1167,6 +1709,13 @@ export function StageCanvas() {
                             </>
                           ) : (
                             <>
+                              {tool === "pan" && !layer.locked && (
+                                <Rect
+                                  {...getDrawLayerHitBoundsFromStrokes(strokesToRender)}
+                                  fill="rgba(0,0,0,0.02)"
+                                  listening
+                                />
+                              )}
                               {strokesToRender.map((stroke) => {
                                 const pressureSensitive = layer.pressureSensitive ?? true;
                                 const outlinePoints = getStrokeOutlinePoints(stroke, pressureSensitive);
@@ -1622,7 +2171,7 @@ export function StageCanvas() {
         }}
       />
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-        <DialogContent className="sm:max-w-[560px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>Stage exportieren</DialogTitle>
             <DialogDescription>
@@ -1668,37 +2217,126 @@ export function StageCanvas() {
 
                 {assignTarget === "project" ? (
                   <div className="grid gap-3">
-                    <Select
-                      value={selectedProjectId}
-                      onValueChange={(value) => {
-                        setSelectedProjectId(value);
-                        setSelectedShotId("");
-                        void loadShotsForProject(value);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Projekt auswählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableProjects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.title || project.name || "Unbenanntes Projekt"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={selectedShotId} onValueChange={setSelectedShotId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Shot auswählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableShots.map((shot) => (
-                          <SelectItem key={shot.id} value={shot.id}>
-                            {(shot.shot_number ? `${shot.shot_number} - ` : "") + (shot.title || shot.description || "Untitled Shot")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Projekt</Label>
+                      <Select
+                        value={selectedProjectId}
+                        onValueChange={(value) => {
+                          const p = availableProjects.find((x) => x.id === value);
+                          setSelectedProjectId(value);
+                          void loadTimelineForProject(value, p?.type);
+                        }}
+                        disabled={isExporting || timelineLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Projekt auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableProjects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {timelineLoading && (
+                      <p className="text-xs text-muted-foreground">Struktur wird geladen…</p>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Akt</Label>
+                      <Select
+                        value={selectedActId}
+                        onValueChange={handleActChange}
+                        disabled={isExporting || timelineLoading || sortedActs.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Akt wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sortedActs.map((act) => (
+                            <SelectItem key={act.id} value={act.id}>
+                              {formatActLabel(act)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {sortedActs.length === 0 && !timelineLoading && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Keine Akte im Projekt.</p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Sequenz</Label>
+                      <Select
+                        value={selectedSequenceId}
+                        onValueChange={handleSequenceChange}
+                        disabled={
+                          isExporting || timelineLoading || sequencesForSelectedAct.length === 0
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sequenz wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sequencesForSelectedAct.map((seq) => (
+                            <SelectItem key={seq.id} value={seq.id}>
+                              {formatSequenceLabel(seq)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedActId && sequencesForSelectedAct.length === 0 && !timelineLoading && (
+                        <p className="text-xs text-muted-foreground">Keine Sequenz in diesem Akt.</p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Szene</Label>
+                      <Select
+                        value={selectedSceneId}
+                        onValueChange={handleSceneChange}
+                        disabled={
+                          isExporting || timelineLoading || scenesForSelectedSequence.length === 0
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Szene wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {scenesForSelectedSequence.map((scene) => (
+                            <SelectItem key={scene.id} value={scene.id}>
+                              {formatSceneLabel(scene)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedSequenceId && scenesForSelectedSequence.length === 0 && !timelineLoading && (
+                        <p className="text-xs text-muted-foreground">Keine Szene in dieser Sequenz.</p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Shot</Label>
+                      <Select
+                        value={selectedShotId}
+                        onValueChange={setSelectedShotId}
+                        disabled={
+                          isExporting || timelineLoading || shotsForSelectedScene.length === 0
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Shot auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shotsForSelectedScene.map((shot) => (
+                            <SelectItem key={shot.id} value={shot.id}>
+                              {formatShotLabel(shot)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedSceneId && shotsForSelectedScene.length === 0 && !timelineLoading && (
+                        <p className="text-xs text-muted-foreground">Keine Shots in dieser Szene.</p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid gap-3">
@@ -1716,7 +2354,7 @@ export function StageCanvas() {
                       <SelectContent>
                         {availableWorlds.map((world) => (
                           <SelectItem key={world.id} value={world.id}>
-                            {world.name || world.title || "Unbenannte Welt"}
+                            {world.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1750,4 +2388,6 @@ export function StageCanvas() {
       </Dialog>
     </div>
   );
-}
+});
+
+StageCanvas.displayName = "StageCanvas";

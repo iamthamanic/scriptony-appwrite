@@ -354,6 +354,14 @@ Das System **warnt automatisch** in der Console bei SLA-Verletzungen:
 | Timeline Load (API) | < 1s | ⚠️ Work in progress |
 | User Interaction | < 100ms | ✅ |
 
+## Timeline bundle (React Query)
+
+- **Single loader**: `loadProjectTimelineBundle` in `src/lib/timeline-map.ts` (ultra batch, fallback batch + shots, 3-act init).
+- **Hook**: `useProjectTimeline(projectId, projectType)` in `src/hooks/useProjectTimeline.ts` — query key `queryKeys.timeline.byProject`.
+- **Prefetch**: `prefetchProjectTimeline(queryClient, …)` on project list hover / carousel cards.
+- **Updates**: `setProjectTimelineCache(queryClient, projectId, data)` when dropdown/timeline mutates local tree.
+- **Next step for huge books**: optional two-phase load using `loadTimelineStructure` (`excludeContent`) before full scene hydration.
+
 ## Future Optimizations
 
 1. **Server-Side Aggregation** - Counts ohne Full Data

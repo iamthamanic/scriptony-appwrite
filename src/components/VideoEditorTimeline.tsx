@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { ShotCardModal } from './ShotCardModal';
 import { useOptionalTimelineState } from '../contexts/TimelineStateContext';
 import { useTrimDragEngine, applyBeatPreviewToDOM } from '../lib/trim-drag-engine';
+import { enrichBookTimelineData, loadProjectTimelineBundle } from '../lib/timeline-map';
 
 /**
  * 🎬 VIDEO EDITOR TIMELINE (CapCut Style)
@@ -2757,129 +2758,66 @@ export function VideoEditorTimeline({
     }
   };
   
-  // 📊 LOAD TIMELINE DATA
+  // 📊 LOAD TIMELINE DATA (props → context hydrate → single batch fetch)
   useEffect(() => {
     if (initialData) {
       setTimelineData(initialData);
+      setIsLoadingData(false);
     }
   }, [initialData]);
-  
+
   useEffect(() => {
-    const loadTimelineData = async () => {
-      if (timelineData || isLoadingData) return;
-      
+    let cancelled = false;
+
+    void (async () => {
+      if (timelineData) return;
+
+      if (timelineCtx) {
+        const has =
+          timelineCtx.acts.length > 0 ||
+          timelineCtx.sequences.length > 0 ||
+          timelineCtx.scenes.length > 0;
+        if (has) {
+          const data = isBookProject
+            ? enrichBookTimelineData(timelineCtx.getBookTimelineData())
+            : (timelineCtx.getTimelineData() as TimelineData);
+          setTimelineData(data);
+          setIsLoadingData(false);
+          return;
+        }
+      }
+
       try {
         setIsLoadingData(true);
         const token = await getAccessToken();
-        if (!token) return;
-        
-        console.log('[VideoEditorTimeline] 📥 Loading timeline data...');
-        
-        const loadedActs = await TimelineAPI.getActs(projectId, token);
-        const allSequences = await TimelineAPI.getAllSequencesByProject(projectId, token);
-        const allScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
-        const allShots = await ShotsAPI.getAllShotsByProject(projectId, token);
-        
-        if (isBookProject) {
-          // Helper to extract text from Tiptap JSON
-          const extractTextFromTiptap = (node: any): string => {
-            if (!node) return '';
-            let text = '';
-            if (node.text) {
-              text += node.text;
-            }
-            if (node.content && Array.isArray(node.content)) {
-              node.content.forEach((child: any) => {
-                text += extractTextFromTiptap(child);
-                if (child.type === 'paragraph' || child.type === 'heading') {
-                  text += ' ';
-                }
-              });
-            }
-            return text;
-          };
-          
-          const parsedScenes = allScenes.map(scene => {
-            // 🚀 PRIORITY: Use wordCount from database (metadata->wordCount) if available
-            if (scene.metadata?.wordCount !== undefined && scene.metadata?.wordCount !== null) {
-              return { ...scene, wordCount: scene.metadata.wordCount };
-            }
-            
-            // 🔄 FALLBACK: Calculate from TipTap content if DB value is missing
-            const contentSource = scene.content || scene.metadata?.content;
-            
-            if (contentSource && typeof contentSource === 'string') {
-              try {
-                const parsed = JSON.parse(contentSource);
-                const textContent = extractTextFromTiptap(parsed);
-                const wordCount = textContent.trim() 
-                  ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
-                  : 0;
-                return { ...scene, content: parsed, wordCount };
-              } catch (e) {
-                const textContent = typeof contentSource === 'string' ? contentSource : '';
-                const wordCount = textContent.trim() 
-                  ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
-                  : 0;
-                return { ...scene, wordCount };
-              }
-            }
-            
-            return { ...scene, wordCount: 0 };
-          });
-          
-          const sequencesWithWordCounts = allSequences.map(seq => {
-            // 🚀 Use DB wordCount if available
-            const dbWordCount = seq.metadata?.wordCount;
-            if (dbWordCount !== undefined && dbWordCount !== null) {
-              return { ...seq, wordCount: dbWordCount };
-            }
-            // Fallback: Calculate from scenes
-            const sequenceScenes = parsedScenes.filter(sc => sc.sequenceId === seq.id);
-            const totalWords = sequenceScenes.reduce((sum, sc) => sum + (sc.wordCount || 0), 0);
-            return { ...seq, wordCount: totalWords };
-          });
-          
-          const actsWithWordCounts = loadedActs.map(act => {
-            // 🚀 Use DB wordCount if available
-            const dbWordCount = act.metadata?.wordCount;
-            if (dbWordCount !== undefined && dbWordCount !== null) {
-              return { ...act, wordCount: dbWordCount };
-            }
-            // Fallback: Calculate from sequences
-            const actSequences = sequencesWithWordCounts.filter(s => s.actId === act.id);
-            const totalWords = actSequences.reduce((sum, s) => sum + (s.wordCount || 0), 0);
-            return { ...act, wordCount: totalWords };
-          });
-          
-          const data: BookTimelineData = {
-            acts: actsWithWordCounts,
-            sequences: sequencesWithWordCounts,
-            scenes: parsedScenes,
-          };
-          
-          setTimelineData(data);
-          onDataChange?.(data);
-        } else {
-          const data: TimelineData = {
-            acts: loadedActs,
-            sequences: allSequences,
-            scenes: allScenes,
-            shots: allShots,
-          };
-          
-          setTimelineData(data);
-          onDataChange?.(data);
-        }
+        if (!token || cancelled) return;
+
+        const data = await loadProjectTimelineBundle(projectId, token, isBookProject);
+        if (cancelled) return;
+
+        setTimelineData(data);
+        onDataChange?.(data);
       } catch (error) {
         console.error('[VideoEditorTimeline] Error loading timeline data:', error);
       } finally {
-        setIsLoadingData(false);
+        if (!cancelled) setIsLoadingData(false);
       }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    
-    loadTimelineData();
-  }, [projectId, timelineData, isLoadingData, isBookProject, getAccessToken, onDataChange]);
+  }, [
+    projectId,
+    timelineData,
+    isBookProject,
+    getAccessToken,
+    onDataChange,
+    timelineCtx,
+    timelineCtx?.acts.length,
+    timelineCtx?.sequences.length,
+    timelineCtx?.scenes.length,
+  ]);
   
   // 🛠️ AUTO-FIX OVERLAPS: Repair all overlapping beats
   const fixOverlappingBeats = (beatsToFix: BeatsAPI.StoryBeat[]): BeatsAPI.StoryBeat[] => {

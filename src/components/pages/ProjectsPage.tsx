@@ -45,13 +45,16 @@ import { STORAGE_CONFIG } from "../../lib/config";
 import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
 import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
 import * as TimelineAPI from "../../lib/api/timeline-api";
-import { nodeToAct, nodeToSequence, nodeToScene } from "../../lib/api/timeline-api"; // 🔥 Import converters
-import * as TimelineAPIV2 from "../../lib/api/timeline-api-v2";
 import * as ShotsAPI from "../../lib/api/shots-api";
+import { queryClient } from "../../lib/react-query";
+import { prefetchProjectTimeline, setProjectTimelineCache } from "../../hooks/useProjectTimeline";
 import * as InspirationsAPI from "../../lib/api/inspirations-api";
 import * as BeatsAPI from "../../lib/api/beats-api";
 import { BEAT_TEMPLATES } from "../../lib/beat-templates";
 import type { TimelineData } from "../FilmDropdown";
+import type { BookTimelineData } from "../BookDropdown";
+import { useProjectTimeline } from "../../hooks/useProjectTimeline";
+import { useAuth } from "../../hooks/useAuth";
 import { importScriptFileToProject, SCRIPT_IMPORT_ACCEPT } from "../../lib/script-import";
 import { cn } from "../ui/utils";
 import {
@@ -355,10 +358,6 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const [showStatsDialog, setShowStatsDialog] = useState(false);
   const [selectedStatsProject, setSelectedStatsProject] = useState<any | null>(null);
 
-  // 🚀 PERFORMANCE: Timeline Cache for instant loading
-  const [timelineCache, setTimelineCache] = useState<Record<string, any>>({});
-  const [timelineCacheLoading, setTimelineCacheLoading] = useState<Record<string, boolean>>({});
-
   // 🎨 Collapsible Sections State
   const [structureOpen, setStructureOpen] = useState(true); // Default: OPEN
   const [charactersOpen, setCharactersOpen] = useState(true); // Default: OPEN
@@ -395,16 +394,12 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     if (selectedProjectId && projects.length > 0) {
       console.time(`⏱️ [PERF] Total Project Load: ${selectedProjectId}`);
       console.time(`⏱️ [PERF] Worldbuilding Load: ${selectedProjectId}`);
-      console.time(`⏱️ [PERF] Timeline Cache Load: ${selectedProjectId}`);
-      
+
       const project = projects.find(p => p.id === selectedProjectId);
       if (project && project.linkedWorldId) {
         loadWorldbuildingItems(project.linkedWorldId);
       }
-      // 🚀 PERFORMANCE: Preload timeline data for instant dropdown
-      loadTimelineDataForProject(selectedProjectId);
-      
-      // 🎨 INSPIRATION: Load inspirations
+
       loadInspirations(selectedProjectId);
     }
   }, [selectedProjectId, projects]);
@@ -446,149 +441,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     }
   };
 
-  // 🚀 PERFORMANCE: Load timeline data for cache
-  const loadTimelineDataForProject = async (projectId: string) => {
-    // Skip if already loading or cached
-    if (timelineCacheLoading[projectId] || timelineCache[projectId]) {
-      console.log('[ProjectsPage] Timeline data already loading or cached for project:', projectId);
-      console.timeEnd(`⏱️ [PERF] Timeline Cache Load: ${projectId}`);
-      return;
-    }
-
-    try {
-      console.log('[ProjectsPage] 🚀 Loading timeline data for cache:', projectId);
-      console.time(`⏱️ [PERF] Timeline API - Acts: ${projectId}`);
-      console.time(`⏱️ [PERF] Timeline API - All Nodes: ${projectId}`);
-      setTimelineCacheLoading(prev => ({ ...prev, [projectId]: true }));
-
-      const token = await getAuthToken();
-      if (!token) {
-        console.log('[ProjectsPage] No auth token available');
-        return;
-      }
-
-      // 🚀🚀🚀 ULTRA-FAST: Load EVERYTHING in ONE request!
-      let loadedActs: any[] = [];
-      let allSequences: any[] = [];
-      let allScenes: any[] = [];
-      let allShots: any[] = [];
-      let loadedCharacters: any[] = [];
-      
-      try {
-        // Try ULTRA BATCH LOAD first (Timeline + Characters + Shots in 1 request!)
-        const ultraData = await TimelineAPIV2.ultraBatchLoadProject(projectId, token);
-        
-        console.timeEnd(`⏱️ [PERF] Timeline API - Acts: ${projectId}`);
-        console.timeEnd(`⏱️ [PERF] Timeline API - All Nodes: ${projectId}`);
-        console.log(`[ProjectsPage] 🚀🚀🚀 ULTRA batch load completed: ${ultraData.stats.totalNodes} nodes, ${ultraData.stats.characters} characters, ${ultraData.stats.shots} shots in 1 request!`);
-        
-        // 🔥 CONVERT: TimelineNode[] → Act[], Sequence[], Scene[] (with actId/sequenceId)
-        loadedActs = (ultraData.timeline.acts || []).map(nodeToAct);
-        allSequences = (ultraData.timeline.sequences || []).map(nodeToSequence);
-        allScenes = (ultraData.timeline.scenes || []).map(nodeToScene);
-        allShots = ultraData.shots;
-        loadedCharacters = ultraData.characters;
-        
-      } catch (error) {
-        console.error('[ProjectsPage] ULTRA batch load failed, falling back to regular batch:', error);
-        
-        // Fallback: Regular batch load (2 requests)
-        const [batchData, allShotsData] = await Promise.all([
-          TimelineAPIV2.batchLoadTimeline(projectId, token).catch(err => {
-            console.error('[ProjectsPage] Error batch loading timeline:', err);
-            return { acts: [], sequences: [], scenes: [], stats: { totalNodes: 0, acts: 0, sequences: 0, scenes: 0 } };
-          }),
-          
-          ShotsAPI.getAllShotsByProject(projectId, token).catch(err => {
-            console.error('[ProjectsPage] Error loading shots:', err);
-            return [];
-          })
-        ]);
-        
-        console.timeEnd(`⏱️ [PERF] Timeline API - Acts: ${projectId}`);
-        console.timeEnd(`⏱️ [PERF] Timeline API - All Nodes: ${projectId}`);
-        console.log(`[ProjectsPage] 🚀 Batch load completed: ${batchData.stats.totalNodes} nodes in 1 request!`);
-        
-        // 🔥 CONVERT: TimelineNode[] → Act[], Sequence[], Scene[] (with actId/sequenceId)
-        loadedActs = (batchData.acts || []).map(nodeToAct);
-        allSequences = (batchData.sequences || []).map(nodeToSequence);
-        allScenes = (batchData.scenes || []).map(nodeToScene);
-        allShots = allShotsData;
-      }
-      
-      // If no acts exist, initialize 3-Act structure
-      if (!loadedActs || loadedActs.length === 0) {
-        console.log('[ProjectsPage] No acts found, initializing 3-act structure...');
-        await ShotsAPI.initializeThreeActStructure(projectId, token);
-        
-        // Reload after initialization - try ULTRA first, fallback to regular
-        try {
-          const reloadedUltra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token);
-          
-          // 🔥 CONVERT: TimelineNode[] → Act[], Sequence[], Scene[] (with actId/sequenceId)
-          const timelineData: TimelineData = {
-            acts: (reloadedUltra.timeline.acts || []).map(nodeToAct),
-            sequences: (reloadedUltra.timeline.sequences || []).map(nodeToSequence),
-            scenes: (reloadedUltra.timeline.scenes || []).map(nodeToScene),
-            shots: reloadedUltra.shots || [],
-          };
-
-          setTimelineCache(prev => ({ ...prev, [projectId]: timelineData }));
-          // Note: Characters are now loaded directly in FilmDropdown, not cached here
-          console.timeEnd(`⏱️ [PERF] Timeline Cache Load: ${projectId}`);
-          console.log('[ProjectsPage] ✅ Timeline data cached for project (after init):', projectId, timelineData);
-          return;
-        } catch (error) {
-          console.error('[ProjectsPage] ULTRA reload failed, using regular batch:', error);
-          
-          const [reloadedBatch, reloadedShots] = await Promise.all([
-            TimelineAPIV2.batchLoadTimeline(projectId, token),
-            ShotsAPI.getAllShotsByProject(projectId, token)
-          ]);
-          
-          // 🔥 CONVERT: TimelineNode[] → Act[], Sequence[], Scene[] (with actId/sequenceId)
-          const timelineData: TimelineData = {
-            acts: (reloadedBatch.acts || []).map(nodeToAct),
-            sequences: (reloadedBatch.sequences || []).map(nodeToSequence),
-            scenes: (reloadedBatch.scenes || []).map(nodeToScene),
-            shots: reloadedShots || [],
-          };
-
-          setTimelineCache(prev => ({ ...prev, [projectId]: timelineData }));
-          console.timeEnd(`⏱️ [PERF] Timeline Cache Load: ${projectId}`);
-          console.log('[ProjectsPage] ✅ Timeline data cached for project (after init):', projectId, timelineData);
-          return;
-        }
-      }
-
-      const timelineData: TimelineData = {
-        acts: loadedActs || [],
-        sequences: allSequences || [],
-        scenes: allScenes || [],
-        shots: allShots || [],
-      };
-
-      setTimelineCache(prev => ({ ...prev, [projectId]: timelineData }));
-      console.timeEnd(`⏱️ [PERF] Timeline Cache Load: ${projectId}`);
-      console.log('[ProjectsPage] ✅ Timeline data cached for project:', projectId, {
-        acts: timelineData.acts.length,
-        sequences: timelineData.sequences.length,
-        scenes: timelineData.scenes.length,
-        shots: timelineData.shots.length,
-      });
-
-    } catch (error) {
-      console.error('[ProjectsPage] Error loading timeline data:', error);
-      console.timeEnd(`⏱️ [PERF] Timeline Cache Load: ${projectId}`);
-    } finally {
-      setTimelineCacheLoading(prev => ({ ...prev, [projectId]: false }));
-    }
-  };
-
-  // 🚀 PERFORMANCE: Update timeline cache when FilmDropdown/BookDropdown changes data
-  const handleTimelineDataChange = (projectId: string, data: TimelineData) => {
-    console.log('[ProjectsPage] 🔄 Updating timeline cache for project:', projectId);
-    setTimelineCache(prev => ({ ...prev, [projectId]: data }));
+  const handleTimelineDataChange = (projectId: string, data: TimelineData | BookTimelineData) => {
+    console.log("[ProjectsPage] Updating React Query timeline cache for project:", projectId);
+    setProjectTimelineCache(queryClient, projectId, data);
   };
 
   // 🎨 INSPIRATION: Load inspirations for project
@@ -990,8 +845,6 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         }}
         showStatsDialog={showStatsDialog}
         setShowStatsDialog={setShowStatsDialog}
-        timelineCache={timelineCache}
-        timelineCacheLoading={timelineCacheLoading}
         onTimelineDataChange={handleTimelineDataChange}
         structureOpen={structureOpen}
         setStructureOpen={setStructureOpen}
@@ -1263,6 +1116,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                       <Card
                         className="active:scale-[0.99] transition-transform cursor-pointer overflow-hidden hover:border-primary/30 relative"
                         onClick={() => onNavigate("projekte", project.id)}
+                        onMouseEnter={() => {
+                          void prefetchProjectTimeline(queryClient, project.id, project.type, getAuthToken);
+                        }}
                       >
                         <div className="flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-primary/20 border-2 border-transparent hover:border-primary/30">
                           {/* Thumbnail Left - Portrait 2:3 Ratio */}
@@ -3075,9 +2931,7 @@ interface ProjectDetailProps {
   showStatsDialog: boolean;
   setShowStatsDialog: (show: boolean) => void;
   // Timeline Cache
-  timelineCache: Record<string, TimelineData>;
-  timelineCacheLoading: Record<string, boolean>;
-  onTimelineDataChange: (projectId: string, data: TimelineData) => void;
+  onTimelineDataChange: (projectId: string, data: TimelineData | BookTimelineData) => void;
   // Collapsible Sections
   structureOpen: boolean;
   setStructureOpen: (open: boolean) => void;
@@ -3097,7 +2951,7 @@ interface ProjectDetailProps {
   onEditInspiration: (inspiration: ProjectInspiration) => void;
 }
 
-function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, timelineCache, timelineCacheLoading, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration }: ProjectDetailProps) {
+function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration }: ProjectDetailProps) {
   const [structureView, setStructureView] = useState<"dropdown" | "timeline">("dropdown");
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
@@ -3141,6 +2995,17 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const [editedReadingSpeed, setEditedReadingSpeed] = useState<string>(project.reading_speed_wpm?.toString() || "230");
   const [isCalculatingWords, setIsCalculatingWords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { loading: authLoading } = useAuth();
+  const {
+    data: rqTimeline,
+    isPending: rqTimelinePending,
+    isFetching: rqTimelineFetching,
+    isError: rqTimelineError,
+  } = useProjectTimeline(project.id, project.type);
+
+  const isTimelineQueryBusy =
+    !rqTimelineError && (authLoading || rqTimelinePending || rqTimelineFetching);
 
   // 🎯 Performance Monitoring: Track when ProjectDetail is rendered
   useEffect(() => {
@@ -3192,7 +3057,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   useEffect(() => {
     if (project.type !== 'book') return;
     
-    const timelineData = timelineCache[project.id];
+    const timelineData = rqTimeline as BookTimelineData | undefined;
     if (!timelineData?.scenes) {
       // Fallback to stored value
       setCalculatedWords(project.current_words || 0);
@@ -3236,7 +3101,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     
     console.log(`📊 [BOOK METRICS] Calculated ${totalWords} words from timeline cache (${timelineData.scenes.length} scenes)`);
     setCalculatedWords(totalWords);
-  }, [project.id, project.type, timelineCache, project.current_words]);
+  }, [project.id, project.type, rqTimeline, project.current_words]);
 
   // Scenes State with localStorage persistence
   const getInitialScenes = () => {
@@ -5417,9 +5282,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           projectId={project.id}
           projectType={project.type}
           beatTemplate={project.beat_template}
-          initialData={timelineCache[project.id]}
+          initialData={rqTimeline}
           onDataChange={(data) => onTimelineDataChange(project.id, data)}
-          isLoadingCache={timelineCacheLoading[project.id]}
+          isLoadingCache={!rqTimeline && isTimelineQueryBusy}
           // 📖 Book Metrics for Timeline Duration
           totalWords={calculatedWords}
           wordsPerPage={project.words_per_page || 250}

@@ -10,7 +10,7 @@
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       /** One copy of React — avoids "Invalid hook call" / useState from null in dev. */
-      dedupe: ['react', 'react-dom', 'scheduler'],
+      dedupe: ['react', 'react-dom', 'scheduler', 'sonner'],
       alias: {
         buffer: path.resolve(__dirname, 'node_modules/buffer'),
         react: path.resolve(__dirname, 'node_modules/react'),

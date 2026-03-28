@@ -307,7 +307,7 @@ export function ShotCardModal({ open, onOpenChange, shotId, projectId }: ShotCar
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto p-0 md:w-auto">
           <DialogHeader className="px-6 pt-6 pb-2">
             {/* Breadcrumb: Act > Sequence > Scene > Shot */}
             {breadcrumb && (

@@ -380,7 +380,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
 
       {/* Mobile Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.1)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.3)]">
-        <div className="flex items-center justify-around px-2 py-2 pb-safe">
+        <div className="flex items-center justify-around px-2 py-2">
           {navItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;

@@ -1,7 +1,7 @@
 /**
  * Layer-Styling-Dialog (Fill / Outline / Strichverhalten) für die Stage-2D-Ansicht.
  * Eine Seite: je Zeile Bezeichnung, Checkbox, Farbe, Stärke-Slider; plus Strich-Block.
- * Ort: src/components/stage/StageLayerStylingDialog.tsx
+ * Engine: src/engines/stage-2d/
  */
 
 import { useEffect, useState } from "react";
@@ -12,10 +12,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Slider } from "../ui/slider";
-import { Switch } from "../ui/switch";
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 
 export type StageLayerStylingValues = {
   fillEnabled: boolean;

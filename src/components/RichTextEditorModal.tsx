@@ -560,7 +560,7 @@ export function RichTextEditorModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
-        className="max-w-[75vw] max-h-[75vh] flex flex-col p-0 gap-0 border-2 border-yellow-400 dark:border-yellow-600"
+        className="w-[95vw] max-w-[56rem] max-h-[75vh] flex flex-col p-0 gap-0 border-2 border-yellow-400 dark:border-yellow-600 md:w-[75vw]"
       >
         {/* Custom styles for mentions */}
         <style>{`

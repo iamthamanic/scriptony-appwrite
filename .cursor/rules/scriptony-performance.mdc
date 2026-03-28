@@ -1,0 +1,13 @@
+---
+description: Performance and data-loading conventions for Scriptony (timeline, lists, new features)
+---
+
+# Scriptony performance (SPA)
+
+- **One batch per domain**: Prefer `ultraBatchLoadProject` / shared helpers in `src/lib/timeline-map.ts` instead of chained `getActs` → `getAllSequences` → … calls. New timeline-related features should use `useProjectTimeline` + `queryKeys.timeline.byProject` so React Query owns cache and prefetch.
+
+- **No full-panel blocking loaders**: Large sections (e.g. Structure & Beats) should use skeletons, stale-while-revalidate, or a slim banner — not a single empty state that hides the whole tree while data loads.
+
+- **Prefetch**: Project list / cards may prefetch on hover (see `prefetchProjectTimeline`, `ProjectCardWithPrefetch`, Projects list `Card`).
+
+- **Payload size**: When the API supports it, use structure-only loads (`excludeContent` / `loadTimelineStructure`) for huge book payloads before pulling full scene content.

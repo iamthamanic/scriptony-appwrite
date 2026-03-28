@@ -15,6 +15,7 @@ import { ReadonlyTiptapView } from './ReadonlyTiptapView';
 import { ShotImageCropDialog } from './ShotImageCropDialog';
 import { ImageUploadWaveOverlay } from './ImageUploadWaveOverlay';
 import { useAuth } from '../hooks/useAuth';
+import { useRouter } from '../hooks/useRouter';
 import {
   Select,
   SelectContent,
@@ -37,6 +38,7 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { cn } from './ui/utils';
 import type { Shot, Character, ShotAudio } from '../lib/types';
+import { deriveShotSourceLabel } from '../lib/shot-source-badge';
 import { AudioFileList } from './AudioFileList';
 import { AudioLabelDialog } from './AudioLabelDialog';
 import { AudioEditDialog } from './AudioEditDialog';
@@ -150,6 +152,21 @@ export const ShotCard = memo(function ShotCard({
 }: ShotCardProps) {
   // Auth context for user info
   const { user } = useAuth();
+  const { navigate: navigateRoute } = useRouter();
+
+  const canOpenInStage = Boolean(
+    shot.imageUrl ||
+      shot.stage2dFileId ||
+      shot.stage2d_file_id ||
+      shot.stage3dFileId ||
+      shot.stage3d_file_id
+  );
+
+  const openShotInStage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateRoute("stage", projectId, shot.id);
+  };
   
   // Unified edit state like Scene
   const [isEditing, setIsEditing] = useState(false);
@@ -697,6 +714,17 @@ export const ShotCard = memo(function ShotCard({
                     </div>
                   )}
                   <ImageUploadWaveOverlay visible={showImageUploadBusy} compact />
+                  {canOpenInStage ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-0.5 right-0.5 h-5 min-h-0 px-1.5 py-0 text-[9px] font-medium leading-none shadow-sm"
+                      onClick={openShotInStage}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
                 </div>
               )}
               
@@ -798,7 +826,26 @@ export const ShotCard = memo(function ShotCard({
                       </div>
                     </div>
                   )}
+                  {canOpenInStage ? (
+                    <div
+                      className="pointer-events-none absolute bottom-2 left-2 z-[9] rounded-md border border-border bg-background/95 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shadow-sm"
+                      aria-live="polite"
+                    >
+                      Quelle: {deriveShotSourceLabel(shot)}
+                    </div>
+                  ) : null}
                   <ImageUploadWaveOverlay visible={showImageUploadBusy} label="Wird hochgeladen…" />
+                  {canOpenInStage ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-2 right-2 z-10 text-xs shadow-md"
+                      onClick={openShotInStage}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
                   <input
                     type="file"
                     accept="image/*"

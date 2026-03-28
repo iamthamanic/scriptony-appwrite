@@ -73,7 +73,8 @@ type ComparableTimelineData = {
   acts: Array<{ id?: string; updatedAt?: string }>;
   sequences: Array<{ id?: string; updatedAt?: string }>;
   scenes: Array<{ id?: string; updatedAt?: string }>;
-  shots: Array<{ id?: string; updatedAt?: string }>;
+  /** imageUrl included so server-side preview updates (e.g. Stage upload) reflow into context */
+  shots: Array<{ id?: string; updatedAt?: string; imageUrl?: string }>;
 };
 
 function toComparableTimelineData(data?: Partial<TimelineStateData>): ComparableTimelineData {
@@ -85,11 +86,20 @@ function toComparableTimelineData(data?: Partial<TimelineStateData>): Comparable
       }))
       .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
 
+  const mapShots = (items: Array<any> | undefined) =>
+    (items || [])
+      .map((item) => ({
+        id: item?.id,
+        updatedAt: item?.updatedAt,
+        imageUrl: item?.imageUrl ?? item?.image_url ?? "",
+      }))
+      .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+
   return {
     acts: mapItems(data?.acts),
     sequences: mapItems(data?.sequences),
     scenes: mapItems(data?.scenes),
-    shots: mapItems(data?.shots),
+    shots: mapShots(data?.shots),
   };
 }
 

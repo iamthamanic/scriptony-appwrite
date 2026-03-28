@@ -29,7 +29,7 @@ export async function getShots(sceneId: string, accessToken: string): Promise<Sh
 }
 
 export async function getShot(shotId: string, accessToken: string): Promise<Shot> {
-  const result = await apiGet(`/shots/by-id/${shotId}`);
+  const result = await apiGet(`/shots/${shotId}`);
   const data = unwrapApiResult(result);
   return data?.shot || data;
 }
@@ -165,6 +165,23 @@ export async function uploadShotImage(
     throw new Error("Upload antwortete ohne imageUrl — bitte scriptony-shots deployen und Logs prüfen.");
   }
   return url;
+}
+
+/**
+ * Lädt ein StageDocument (JSON) in den stage-documents Bucket und setzt stage2d_file_id / stage3d_file_id am Shot.
+ */
+export async function uploadShotStageDocument(
+  shotId: string,
+  document: unknown,
+  kind: "stage2d" | "stage3d",
+  _accessToken: string
+): Promise<{ fileId?: string; fileUrl?: string }> {
+  const result = await apiPost(`/shots/${shotId}/upload-stage-document`, {
+    kind,
+    document,
+  });
+  const data = unwrapApiResult(result) as { fileId?: string; fileUrl?: string; shot?: Shot };
+  return { fileId: data?.fileId, fileUrl: data?.fileUrl };
 }
 
 export async function uploadShotAudio(

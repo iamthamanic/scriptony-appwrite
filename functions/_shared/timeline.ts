@@ -26,6 +26,15 @@ function optionalUrlField(v: unknown): string | null | undefined {
   return t;
 }
 
+/** Storage file IDs, optional strings (trimmed; empty clears to null). */
+function optionalIdField(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  return t.length ? t : null;
+}
+
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
@@ -92,6 +101,16 @@ export function normalizeShotInput(body: JsonRecord): JsonRecord {
     notes: body.notes ?? null,
     order_index: body.order_index ?? body.orderIndex,
     user_id: body.user_id ?? body.userId ?? null,
+    stage2d_file_id: optionalIdField(body.stage2d_file_id ?? body.stage2dFileId),
+    stage3d_file_id: optionalIdField(body.stage3d_file_id ?? body.stage3dFileId),
+    shot_image_mime: (() => {
+      const v = body.shot_image_mime ?? body.shotImageMime;
+      if (v === undefined) return undefined;
+      if (v === null) return null;
+      if (typeof v !== "string") return undefined;
+      const t = v.trim();
+      return t || null;
+    })(),
   });
 }
 
@@ -206,6 +225,12 @@ export function mapShot(row: JsonRecord): JsonRecord {
     lighting_notes: row.lighting_notes ?? undefined,
     imageUrl: row.image_url ?? undefined,
     image_url: row.image_url ?? undefined,
+    stage2dFileId: row.stage2d_file_id ?? undefined,
+    stage2d_file_id: row.stage2d_file_id ?? undefined,
+    stage3dFileId: row.stage3d_file_id ?? undefined,
+    stage3d_file_id: row.stage3d_file_id ?? undefined,
+    shotImageMime: row.shot_image_mime ?? undefined,
+    shot_image_mime: row.shot_image_mime ?? undefined,
     soundNotes: row.sound_notes ?? undefined,
     sound_notes: row.sound_notes ?? undefined,
     storyboardUrl: row.storyboard_url ?? undefined,
@@ -461,6 +486,9 @@ export async function getShots(filters: {
             composition
             lighting_notes
             image_url
+            stage2d_file_id
+            stage3d_file_id
+            shot_image_mime
             sound_notes
             storyboard_url
             reference_image_url
@@ -538,6 +566,9 @@ export async function getShots(filters: {
             composition
             lighting_notes
             image_url
+            stage2d_file_id
+            stage3d_file_id
+            shot_image_mime
             sound_notes
             storyboard_url
             reference_image_url
@@ -615,6 +646,9 @@ export async function getShotById(shotId: string): Promise<JsonRecord | null> {
           composition
           lighting_notes
           image_url
+          stage2d_file_id
+          stage3d_file_id
+          shot_image_mime
           sound_notes
           storyboard_url
           reference_image_url

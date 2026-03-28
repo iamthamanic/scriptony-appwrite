@@ -693,7 +693,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
             projectId={projectId}
             projectType={projectType}
             onImported={handleTimelineChange}
-            enabled={!isLoadingCache && !!projectType}
+            enabled={!!projectType && (!isLoadingCache || !!initialData)}
           />
           {/* View Toggle */}
           <Tabs value={structureView} onValueChange={(v) => setStructureView(v as any)}>
@@ -711,33 +711,52 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
         <div className="flex border border-border rounded-lg overflow-hidden bg-background" style={{ height: structureView === 'timeline' ? '600px' : 'auto' }}>
           {/* Container Stack - Dynamic Dropdown based on projectType */}
           <div className="flex-1 overflow-y-auto h-full">
-            {/* 🚀 PERFORMANCE: Show loading skeleton while cache is loading */}
-            {isLoadingCache ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6E59A5]"></div>
-                  <p className="text-sm text-muted-foreground">Lade Timeline-Daten...</p>
-                </div>
-              </div>
-            ) : structureView === 'dropdown' ? (
+            {/* Never block Film/Book dropdown: they must mount to load from API if parent cache is empty. */}
+            {structureView === 'dropdown' ? (
               projectType === 'book' ? (
-                <BookDropdown
-                  projectId={projectId}
-                  projectType={projectType}
-                  initialData={initialData}
-                  onDataChange={handleTimelineChange}
-                  containerRef={containerStackRef}
-                />
+                <>
+                  {isLoadingCache && !initialData ? (
+                    <div className="flex items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
+                      <span className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[#6E59A5] border-t-transparent" />
+                      Timeline wird geladen…
+                    </div>
+                  ) : null}
+                  {isLoadingCache && initialData ? (
+                    <div className="border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
+                      Timeline wird aktualisiert…
+                    </div>
+                  ) : null}
+                  <BookDropdown
+                    projectId={projectId}
+                    projectType={projectType}
+                    initialData={initialData}
+                    onDataChange={handleTimelineChange}
+                    containerRef={containerStackRef}
+                  />
+                </>
               ) : (
-                <FilmDropdown
-                  projectId={projectId}
-                  projectType={projectType}
-                  initialData={(timelineData ?? initialData) as TimelineData}
-                  onDataChange={handleTimelineChange}
-                  containerRef={containerStackRef}
-                  expandShotId={expandShotId}
-                  onExpandShotIdConsumed={() => setExpandShotId(null)}
-                />
+                <>
+                  {isLoadingCache && !initialData ? (
+                    <div className="flex items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
+                      <span className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[#6E59A5] border-t-transparent" />
+                      Timeline wird geladen…
+                    </div>
+                  ) : null}
+                  {isLoadingCache && initialData ? (
+                    <div className="border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
+                      Timeline wird aktualisiert…
+                    </div>
+                  ) : null}
+                  <FilmDropdown
+                    projectId={projectId}
+                    projectType={projectType}
+                    initialData={(timelineData ?? initialData) as TimelineData}
+                    onDataChange={handleTimelineChange}
+                    containerRef={containerStackRef}
+                    expandShotId={expandShotId}
+                    onExpandShotIdConsumed={() => setExpandShotId(null)}
+                  />
+                </>
               )
             ) : structureView === 'timeline' ? (
               <VideoEditorTimeline
@@ -747,8 +766,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
                 onDataChange={handleTimelineChange}
                 duration={bookTimelineDuration}
                 beats={beats}
-                // 📖 Book Metrics for timeline markers
-                totalWords={totalWords} // Actually written words
+                totalWords={totalWords}
                 wordsPerPage={wordsPerPage}
                 targetPages={targetPages}
                 readingSpeedWpm={readingSpeedWpm}

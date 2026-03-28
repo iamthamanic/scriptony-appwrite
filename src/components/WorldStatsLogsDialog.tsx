@@ -307,7 +307,7 @@ export function WorldStatsLogsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[85vh] overflow-hidden flex flex-col md:w-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">

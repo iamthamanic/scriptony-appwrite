@@ -70,6 +70,11 @@ export const queryKeys = {
     all: ['acts'] as const,
     byProject: (projectId: string) => ['acts', 'project', projectId] as const,
   },
+
+  /** Full timeline bundle (acts/sequences/scenes[/shots]) per project */
+  timeline: {
+    byProject: (projectId: string) => ['timeline', 'bundle', projectId] as const,
+  },
   
   // Playbook
   playbook: {

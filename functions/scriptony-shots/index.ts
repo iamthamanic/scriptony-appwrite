@@ -6,6 +6,7 @@ import shotsHandler from "./shots/index";
 import shotBySceneHandler from "./shots/[sceneId]";
 import shotByIdHandler from "./shots/[id]/index";
 import shotUploadImageHandler from "./shots/[id]/upload-image";
+import shotUploadStageDocumentHandler from "./shots/[id]/upload-stage-document";
 import shotReorderHandler from "./shots/reorder";
 import { sendJson, sendNotFound, type RequestLike, type ResponseLike } from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
@@ -58,6 +59,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   const uploadImageMatch = pathname.match(/^\/shots\/([^/]+)\/upload-image$/);
   if (uploadImageMatch) {
     await shotUploadImageHandler(withParams(req, { id: uploadImageMatch[1] }), res);
+    return;
+  }
+
+  const uploadStageDocMatch = pathname.match(/^\/shots\/([^/]+)\/upload-stage-document$/);
+  if (uploadStageDocMatch) {
+    await shotUploadStageDocumentHandler(withParams(req, { id: uploadStageDocMatch[1] }), res);
     return;
   }
 

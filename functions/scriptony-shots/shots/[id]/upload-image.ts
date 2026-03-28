@@ -80,12 +80,14 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       },
     });
 
+    const mime = typeof file.type === "string" && file.type.startsWith("image/") ? file.type : "image/jpeg";
+
     await requestGraphql(
       `
-        mutation UpdateShotImage($id: uuid!, $imageUrl: String!, $userId: uuid!) {
+        mutation UpdateShotImage($id: uuid!, $imageUrl: String!, $userId: uuid!, $shotImageMime: String!) {
           update_shots_by_pk(
             pk_columns: { id: $id }
-            _set: { image_url: $imageUrl, user_id: $userId }
+            _set: { image_url: $imageUrl, user_id: $userId, shot_image_mime: $shotImageMime }
           ) {
             id
           }
@@ -95,6 +97,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         id: shotId,
         imageUrl: uploaded.url,
         userId: bootstrap.user.id,
+        shotImageMime: mime,
       }
     );
 

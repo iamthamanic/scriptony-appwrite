@@ -62,6 +62,7 @@ export type StorageBucketKind =
   | "projectImages"
   | "worldImages"
   | "shotImages"
+  | "stageDocuments"
   | "audioFiles";
 
 const STORAGE_BUCKET_DEFAULTS: Record<StorageBucketKind, string> = {
@@ -69,6 +70,7 @@ const STORAGE_BUCKET_DEFAULTS: Record<StorageBucketKind, string> = {
   projectImages: "project-images",
   worldImages: "world-images",
   shotImages: "shots",
+  stageDocuments: "stage-documents",
   audioFiles: "audio-files",
 };
 
@@ -78,6 +80,7 @@ export function getStorageBucketId(kind: StorageBucketKind): string {
     projectImages: "SCRIPTONY_STORAGE_BUCKET_PROJECT_IMAGES",
     worldImages: "SCRIPTONY_STORAGE_BUCKET_WORLD_IMAGES",
     shotImages: "SCRIPTONY_STORAGE_BUCKET_SHOT_IMAGES",
+    stageDocuments: "SCRIPTONY_STORAGE_BUCKET_STAGE_DOCUMENTS",
     audioFiles: "SCRIPTONY_STORAGE_BUCKET_AUDIO_FILES",
   };
 

@@ -3,6 +3,9 @@ import { Film, Calendar as CalendarIcon } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useTimelineCache } from "../hooks/useTimelineCache";
+import { queryClient } from "../lib/react-query";
+import { prefetchProjectTimeline } from "../hooks/useProjectTimeline";
+import { getAuthToken } from "../lib/auth/getAuthToken";
 
 interface ProjectCardWithPrefetchProps {
   project: {
@@ -40,21 +43,26 @@ export function ProjectCardWithPrefetch({
   const cardRef = useRef<HTMLDivElement>(null);
   const { prefetchTimeline, prefetchCharacters, prefetchBeats } = useTimelineCache(project.id);
 
-  // Setup prefetching on mount
   useEffect(() => {
     if (!cardRef.current) return;
 
-    // Setup hover prefetch for all data
     const cleanupTimeline = prefetchTimeline(cardRef.current);
     const cleanupCharacters = prefetchCharacters(cardRef.current);
     const cleanupBeats = prefetchBeats(cardRef.current);
+
+    const el = cardRef.current;
+    const onEnter = () => {
+      void prefetchProjectTimeline(queryClient, project.id, project.type, getAuthToken);
+    };
+    el.addEventListener("mouseenter", onEnter);
 
     return () => {
       cleanupTimeline();
       cleanupCharacters();
       cleanupBeats();
+      el.removeEventListener("mouseenter", onEnter);
     };
-  }, [project.id, prefetchTimeline, prefetchCharacters, prefetchBeats]);
+  }, [project.id, project.type, prefetchTimeline, prefetchCharacters, prefetchBeats]);
 
   const { label: typeLabel, Icon: TypeIcon } = getProjectTypeInfo(project.type);
 

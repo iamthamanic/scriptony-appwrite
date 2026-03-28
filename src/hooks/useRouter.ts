@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 const VALID_PAGES = [
-  "home", "projekte", "welten", "worldbuilding", "creative-gym", "upload",
+  "home", "projekte", "welten", "worldbuilding", "gym", "upload",
   "admin", "superadmin", "einstellungen", "settings", "stage", "create", "present", "auth",
   "migration", "reset-password", "api-test", "project-recovery"
 ] as const;
@@ -17,6 +17,11 @@ interface RouterState {
 function normalizePage(page: string | undefined): ValidPage {
   if (page === "present" || page === "create") {
     return "stage";
+  }
+
+  // Older links used #creative-gym; canonical hash is #gym.
+  if (page === "creative-gym") {
+    return "gym";
   }
 
   return VALID_PAGES.includes(page as ValidPage) ? (page as ValidPage) : "home";

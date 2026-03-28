@@ -32,6 +32,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
+    if (req.method === "GET") {
+      const row = await getShotById(shotId);
+      if (!row) {
+        sendNotFound(res, "Shot not found");
+        return;
+      }
+      sendJson(res, 200, { shot: mapShot(row) });
+      return;
+    }
+
     if (req.method === "PUT") {
       const existing = await getShotById(shotId);
       if (!existing) {
@@ -67,6 +77,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               composition
               lighting_notes
               image_url
+              stage2d_file_id
+              stage3d_file_id
+              shot_image_mime
               sound_notes
               storyboard_url
               reference_image_url
@@ -133,6 +146,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             ...(updates.shotlength_seconds !== undefined && updates.shotlength_seconds !== null
               ? { shotlength_seconds: updates.shotlength_seconds }
               : {}),
+            ...(updates.stage2d_file_id !== undefined
+              ? { stage2d_file_id: updates.stage2d_file_id }
+              : {}),
+            ...(updates.stage3d_file_id !== undefined
+              ? { stage3d_file_id: updates.stage3d_file_id }
+              : {}),
+            ...(updates.shot_image_mime !== undefined ? { shot_image_mime: updates.shot_image_mime } : {}),
             user_id: bootstrap.user.id,
           },
         }
@@ -158,7 +178,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    sendMethodNotAllowed(res, ["PUT", "DELETE"]);
+    sendMethodNotAllowed(res, ["GET", "PUT", "DELETE"]);
   } catch (error) {
     sendServerError(res, error);
   }

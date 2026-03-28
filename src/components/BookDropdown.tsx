@@ -38,6 +38,7 @@ import { BookDropdownMobile } from './BookDropdownMobile';
 import { useAuth } from '../hooks/useAuth';
 import * as TimelineAPI from '../lib/api/timeline-api';
 import * as TimelineAPIV2 from '../lib/api/timeline-api-v2';
+import { loadProjectTimelineBundle } from '../lib/timeline-map';
 import * as CharactersAPI from '../lib/api/characters-api';
 import type { Act, Sequence, Scene, Character } from '../lib/types';
 import { toast } from 'sonner';
@@ -444,71 +445,30 @@ export function BookDropdown({
       if (!token) return;
 
       setLoading(true);
-      
-      // Load Acts (Level 1)
-      const loadedActs = await TimelineAPI.getActs(projectId, token);
 
-      // Load all Sequences (Level 2) for this project
-      const allSequences = await TimelineAPI.getAllSequencesByProject(projectId, token);
+      const bundle = (await loadProjectTimelineBundle(projectId, token, true)) as BookTimelineData;
+      const actsWithWordCounts = bundle.acts;
+      const sequencesWithWordCounts = bundle.sequences;
+      const parsedScenes = bundle.scenes;
 
-      // Load all Scenes (Level 3) for this project
-      const allScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
-      const parsedScenes = allScenes.map(parseSceneContent);
-      
-      // 📖 CALCULATE WORD COUNTS IMMEDIATELY AFTER LOADING
-      console.log('[BookDropdown] 📖 Using DB word counts (metadata->wordCount)...');
-      
-      // Use word counts from DB for sequences (metadata->wordCount)
-      const sequencesWithWordCounts = allSequences.map(seq => {
-        const dbWordCount = seq.metadata?.wordCount;
-        if (dbWordCount !== undefined && dbWordCount !== null) {
-          console.log(`[BookDropdown] ✅ Sequence "${seq.title}": ${dbWordCount} words (from DB)`);
-          return { ...seq, wordCount: dbWordCount };
-        }
-        // Fallback: Calculate from scenes
-        const sequenceScenes = parsedScenes.filter(sc => sc.sequenceId === seq.id);
-        const totalWords = sequenceScenes.reduce((sum, sc) => sum + (sc.wordCount || 0), 0);
-        console.log(`[BookDropdown] ⚠️ Sequence "${seq.title}": ${totalWords} words (calculated from ${sequenceScenes.length} scenes)`);
-        return { ...seq, wordCount: totalWords };
-      });
-      
-      // Use word counts from DB for acts (metadata->wordCount)
-      const actsWithWordCounts = loadedActs.map(act => {
-        const dbWordCount = act.metadata?.wordCount;
-        if (dbWordCount !== undefined && dbWordCount !== null) {
-          console.log(`[BookDropdown] ✅ Act "${act.title}": ${dbWordCount} words (from DB)`);
-          return { ...act, wordCount: dbWordCount };
-        }
-        // Fallback: Calculate from sequences
-        const actSequences = sequencesWithWordCounts.filter(s => s.actId === act.id);
-        const totalWords = actSequences.reduce((sum, s) => sum + (s.wordCount || 0), 0);
-        console.log(`[BookDropdown] ⚠️ Act "${act.title}": ${totalWords} words (calculated from ${actSequences.length} sequences)`);
-        return { ...act, wordCount: totalWords };
-      });
-      
       setActs(actsWithWordCounts);
       setSequences(sequencesWithWordCounts);
       setScenes(parsedScenes);
-      
-      // 📤 IMMEDIATELY notify parent with calculated word counts
+
       if (onDataChange) {
-        console.log('[BookDropdown] 📤 Notifying parent with word counts');
-        onDataChange({ 
-          acts: actsWithWordCounts, 
-          sequences: sequencesWithWordCounts, 
-          scenes: parsedScenes 
+        onDataChange({
+          acts: actsWithWordCounts,
+          sequences: sequencesWithWordCounts,
+          scenes: parsedScenes,
         });
       }
 
-      // 🔥 AUTO-EXPAND: Automatically expand first act and its sequences on initial load
       if (actsWithWordCounts.length > 0 && expandedActs.size === 0) {
         const firstActId = actsWithWordCounts[0].id;
         setExpandedActs(new Set([firstActId]));
-        
-        // Also expand all sequences of the first act
-        const firstActSequences = sequencesWithWordCounts.filter(s => s.actId === firstActId);
+        const firstActSequences = sequencesWithWordCounts.filter((s) => s.actId === firstActId);
         if (firstActSequences.length > 0) {
-          setExpandedSequences(new Set(firstActSequences.map(s => s.id)));
+          setExpandedSequences(new Set(firstActSequences.map((s) => s.id)));
         }
       }
 
