@@ -9,6 +9,6 @@ alwaysApply: true
 
 **Appwrite Console:** OAuth- und Web-Redirects müssen die gleichen Origins enthalten wie die Vite-App (lokal und Production).
 
-**Testumgebung:** `npm run dev` + erreichbare Appwrite-Instanz + Functions-Basis-URL. Prüfen: `npm run verify:test-env` (liest `.env.local`).
+**Testumgebung:** `npm run dev` + erreichbare Appwrite-Instanz + Functions-Basis-URL. Prüfen: `npm run verify:test-env` (liest `.env.local`). KI (`scriptony-assistant`): nach CLI-Login `npm run appwrite:setup:assistant`, Domains in der Console, optional `npm run appwrite:sync:function-domains`.
 
 **Backend-Code:** `functions/` — gemeinsame GraphQL-kompatible Schicht unter `functions/_shared/` spricht mit Appwrite Databases/Storage (kein Hasura/Postgres im Browser).

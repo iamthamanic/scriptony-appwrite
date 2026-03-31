@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_APPWRITE_FUNCTIONS_BASE_URL?: string;
   /** One-line JSON: { "scriptony-projects": "https://…", … } — Appwrite function HTTP domains from the console. */
   readonly VITE_BACKEND_FUNCTION_DOMAIN_MAP?: string;
+  /** Dev: function HTTP origin — when set, Vite proxies scriptony-assistant and the app uses same-origin URLs (no CORS). */
+  readonly VITE_DEV_PROXY_SCRIPTONY_ASSISTANT_TARGET?: string;
   readonly VITE_BACKEND_PUBLIC_TOKEN?: string;
   readonly VITE_APPWRITE_ENDPOINT?: string;
   readonly VITE_APPWRITE_PROJECT_ID?: string;

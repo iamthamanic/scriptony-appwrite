@@ -6,7 +6,12 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { BookTimelineData } from "@/components/BookDropdown";
 import type { TimelineData } from "@/components/FilmDropdown";
 import { getAuthToken } from "@/lib/auth/getAuthToken";
-import { getAllShotsByProject, uploadShotImage, uploadShotStageDocument } from "@/lib/api/shots-api";
+import {
+  getAllShotsByProject,
+  getShot,
+  uploadShotImage,
+  uploadShotStageDocument,
+} from "@/lib/api/shots-api";
 import { loadProjectTimelineBundle } from "@/lib/timeline-map";
 import { queryKeys } from "@/lib/react-query";
 import { uploadWorldImage } from "@/lib/api/image-upload-api";
@@ -16,9 +21,16 @@ import type {
   StageExportAssetRow,
   StageExportProjectRow,
   StageExportWorldRow,
+  StageShotImportBundle,
   StageTimelineBundle,
 } from "@/engines/stage-2d/export-adapter";
-import type { StageDocumentStage2D } from "@/lib/stage-schema-info";
+import type { Stage2DPayload, StageDocumentStage2D, StageDocumentStage3D } from "@/lib/stage-schema-info";
+import {
+  isStage2DDocument,
+  isStage3DDocument,
+  parseStageDocumentJson,
+} from "@/lib/stage-schema-info";
+import { buildStorageFileViewUrl, getStageDocumentsBucketId } from "@/lib/stage-storage-url";
 import { normalizeTimelineShot } from "@/engines/stage-2d/normalize-timeline-shot";
 import type { Act, Scene, Sequence, Shot } from "@/lib/types";
 
@@ -41,10 +53,10 @@ async function loadTimelineBundle(projectId: string, projectType: string | undef
   const isBook = (projectType || "").toLowerCase() === "book";
   const bundle = await loadProjectTimelineBundle(projectId, token, isBook);
 
-  let acts: Act[] = [];
-  let sequences: Sequence[] = [];
-  let scenes: Scene[] = [];
-  let shotsRaw: unknown[] = [];
+  let acts: Act[];
+  let sequences: Sequence[];
+  let scenes: Scene[];
+  let shotsRaw: unknown[];
 
   if (isBook) {
     const b = bundle as BookTimelineData;
@@ -66,6 +78,92 @@ async function loadTimelineBundle(projectId: string, projectType: string | undef
   );
 
   return { acts, sequences, scenes, shots };
+}
+
+function readImageDimensionsFromUrl(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = document.createElement("img");
+    img.crossOrigin = "anonymous";
+    img.onload = () =>
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => reject(new Error("Bild konnte nicht geladen werden"));
+    img.src = url;
+  });
+}
+
+function artboardHintFromImageDimensions(dims: { width: number; height: number }) {
+  const longEdge = 1080;
+  const scale = longEdge / Math.max(dims.width, dims.height);
+  return {
+    width: Math.max(64, Math.round(dims.width * scale)),
+    height: Math.max(64, Math.round(dims.height * scale)),
+  };
+}
+
+async function loadShotStageImportBundleFromApi(shotId: string): Promise<StageShotImportBundle> {
+  const token = await getAuthToken();
+  if (!token) throw new Error("Nicht eingeloggt.");
+  const shot = await getShot(shotId, token);
+
+  let stage2dPayload: Stage2DPayload | null = null;
+  let stage3dDocument: StageDocumentStage3D | null = null;
+
+  const stage2Id = shot.stage2dFileId ?? shot.stage2d_file_id;
+  if (stage2Id) {
+    const docUrl = buildStorageFileViewUrl(getStageDocumentsBucketId(), stage2Id);
+    if (docUrl) {
+      try {
+        const res = await fetch(docUrl);
+        const text = await res.text();
+        const parsed = parseStageDocumentJson(text);
+        if (parsed.ok && isStage2DDocument(parsed.document)) {
+          stage2dPayload = parsed.document.payload;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  const stage3Id = shot.stage3dFileId ?? shot.stage3d_file_id;
+  if (stage3Id) {
+    const docUrl = buildStorageFileViewUrl(getStageDocumentsBucketId(), stage3Id);
+    if (docUrl) {
+      try {
+        const res = await fetch(docUrl);
+        const text = await res.text();
+        const parsed = parseStageDocumentJson(text);
+        if (parsed.ok && isStage3DDocument(parsed.document)) {
+          stage3dDocument = parsed.document;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  let rasterImageUrl: string | null = null;
+  let shotArtboardHint: { width: number; height: number } | null = null;
+
+  if (!stage2dPayload) {
+    const imgUrl = shot.imageUrl?.trim() ? shot.imageUrl : null;
+    if (imgUrl) {
+      rasterImageUrl = imgUrl;
+      try {
+        const dims = await readImageDimensionsFromUrl(imgUrl);
+        shotArtboardHint = artboardHintFromImageDimensions(dims);
+      } catch {
+        shotArtboardHint = null;
+      }
+    }
+  }
+
+  return {
+    stage2dPayload,
+    stage3dDocument,
+    rasterImageUrl: stage2dPayload ? null : rasterImageUrl,
+    shotArtboardHint: stage2dPayload ? null : shotArtboardHint,
+  };
 }
 
 export function createScriptonyStageExportAdapter(queryClient: QueryClient): Stage2DExportAdapter {
@@ -157,5 +255,7 @@ export function createScriptonyStageExportAdapter(queryClient: QueryClient): Sta
       const imageUrl = await uploadWorldImage(worldId, file);
       await itemsApi.update(worldId, categoryId, assetId, { image_url: imageUrl });
     },
+
+    loadShotStageImportBundle: (shotId: string) => loadShotStageImportBundleFromApi(shotId),
   };
 }

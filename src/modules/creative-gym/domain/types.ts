@@ -142,7 +142,12 @@ export interface SessionContent {
   title?: string;
   body: string;
   blocks?: unknown[];
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> & {
+    gymAi?: {
+      generatedAt?: string;
+      challengeTemplateId?: string;
+    };
+  };
 }
 
 export interface SessionMetrics {

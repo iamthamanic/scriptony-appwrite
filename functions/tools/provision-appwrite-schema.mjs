@@ -224,11 +224,26 @@ const SCHEMA = {
   },
   ai_chat_settings: {
     user_id: S(64),
+    /** Legacy (older clients); assistant uses active_provider / active_model / system_prompt. */
     provider: S(128),
     model: S(256),
     settings_json: XL(32000),
     temperature: F(),
     system_prompt_default: XL(32000),
+    /** Per-provider BYOK keys (scriptony-assistant /ai/settings). Use L() so keys fit MariaDB large-string columns. */
+    openai_api_key: L(8000),
+    anthropic_api_key: L(8000),
+    google_api_key: L(8000),
+    openrouter_api_key: L(8000),
+    deepseek_api_key: L(8000),
+    /** Ollama: OpenAI-kompatibler Endpoint, z. B. http://localhost:11434 (Server muss von der Function erreichbar sein). */
+    ollama_base_url: S(512),
+    ollama_api_key: L(8000),
+    active_provider: S(128),
+    active_model: S(256),
+    system_prompt: XL(32000),
+    max_tokens: I(),
+    use_rag: B(),
   },
   ai_conversations: {
     user_id: S(64),

@@ -14,3 +14,14 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/**
+ * Radix Tabs: active trigger must stay Scriptony primary (lila). Bundled utilities / merge
+ * order can prevent data-[state=active]:bg-primary from winning over inherited tab styles.
+ * Loaded via main.tsx (unlike styles/globals.css).
+ */
+[data-slot="tabs-list"] [data-slot="tabs-trigger"][data-state="active"] {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}

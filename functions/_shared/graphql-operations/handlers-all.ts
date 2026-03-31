@@ -18,6 +18,65 @@ import { queriesForUserProjects, hydrateShot, hydrateShots } from "./helpers";
 type V = Record<string, unknown>;
 type Op = (v: V) => Promise<unknown>;
 
+/**
+ * Writable attributes on `ai_chat_settings` — must match provision-appwrite-schema.mjs.
+ * Stops stray keys / null payloads from reaching Appwrite ("Unknown attribute" / invalid structure).
+ */
+const AI_CHAT_SETTINGS_WRITABLE = new Set([
+  "user_id",
+  "provider",
+  "model",
+  "settings_json",
+  "temperature",
+  "system_prompt_default",
+  "openai_api_key",
+  "anthropic_api_key",
+  "google_api_key",
+  "openrouter_api_key",
+  "deepseek_api_key",
+  "ollama_base_url",
+  "ollama_api_key",
+  "active_provider",
+  "active_model",
+  "system_prompt",
+  "max_tokens",
+  "use_rag",
+]);
+
+const AI_CHAT_API_KEY_FIELDS = new Set([
+  "openai_api_key",
+  "anthropic_api_key",
+  "google_api_key",
+  "openrouter_api_key",
+  "deepseek_api_key",
+  "ollama_api_key",
+]);
+
+function sanitizeAiChatSettingsInsert(data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
+    if (v === null || v === undefined) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+function sanitizeAiChatSettingsUpdate(data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
+    if (v === undefined) continue;
+    if (v === null && AI_CHAT_API_KEY_FIELDS.has(k)) {
+      out[k] = "";
+      continue;
+    }
+    if (v === null) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 async function upsertUser(object: Record<string, unknown>): Promise<{ insert_users_one: { id: string } }> {
   const id = object.id as string;
   const { id: _drop, ...rest } = object;
@@ -49,6 +108,25 @@ async function listShotAudioForOrg(organizationId: string): Promise<
     }
   }
   return out;
+}
+
+/** `ai_chat_messages` schema only has `metadata_json` for model/provider/tokens; expand for GraphQL-shaped clients. */
+function enrichAiChatMessageRow(row: Record<string, unknown>): Record<string, unknown> {
+  let meta: Record<string, unknown> = {};
+  try {
+    const mj = row.metadata_json;
+    if (typeof mj === "string" && mj.trim()) meta = JSON.parse(mj) as Record<string, unknown>;
+    else if (mj && typeof mj === "object" && !Array.isArray(mj)) meta = mj as Record<string, unknown>;
+  } catch {
+    /* ignore */
+  }
+  return {
+    ...row,
+    model: meta.model ?? row.model,
+    provider: meta.provider ?? row.provider,
+    tokens_used: meta.tokens_used ?? row.tokens_used,
+    tool_calls: meta.tool_calls ?? row.tool_calls,
+  };
 }
 
 export const allHandlers: Record<string, Op> = {
@@ -552,11 +630,19 @@ export const allHandlers: Record<string, Op> = {
     ]),
   }),
 
+  /** Used by `scriptony-assistant/ai/models.ts` to load keys/settings for dynamic model listing. */
+  GetAiModelsContext: async (v) => ({
+    ai_chat_settings: await listDocumentsFull(C.ai_chat_settings, [
+      Query.equal("user_id", v.userId as string),
+      Query.limit(1),
+    ]),
+  }),
+
   CreateAiSettings: async (v) => ({
     insert_ai_chat_settings_one: await createDocument(
       C.ai_chat_settings,
       ID.unique(),
-      v.object as Record<string, unknown>
+      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>)
     ),
   }),
 
@@ -564,7 +650,7 @@ export const allHandlers: Record<string, Op> = {
     update_ai_chat_settings_by_pk: await updateDocument(
       C.ai_chat_settings,
       v.id as string,
-      v.changes as Record<string, unknown>
+      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>)
     ),
   }),
 
@@ -590,12 +676,13 @@ export const allHandlers: Record<string, Op> = {
     ),
   }),
 
-  GetConversationMessages: async (v) => ({
-    ai_chat_messages: await listDocumentsFull(C.ai_chat_messages, [
+  GetConversationMessages: async (v) => {
+    const rows = await listDocumentsFull(C.ai_chat_messages, [
       Query.equal("conversation_id", v.conversationId as string),
       Query.orderAsc("$createdAt"),
-    ]),
-  }),
+    ]);
+    return { ai_chat_messages: rows.map((r) => enrichAiChatMessageRow(r)) };
+  },
 
   UpdateConversationPrompt: async (v) => ({
     update_ai_conversations_by_pk: await updateDocument(C.ai_conversations, v.id as string, {
@@ -620,11 +707,17 @@ export const allHandlers: Record<string, Op> = {
 
   CreateChatMessages: async (v) => {
     const objects = v.objects as Record<string, unknown>[];
-    const returning = [];
+    const returning: Record<string, unknown>[] = [];
     for (const o of objects) {
-      returning.push(await createDocument(C.ai_chat_messages, ID.unique(), o));
+      const payload: Record<string, unknown> = {
+        conversation_id: o.conversation_id,
+        role: o.role,
+        content: o.content,
+      };
+      if (typeof o.metadata_json === "string") payload.metadata_json = o.metadata_json;
+      returning.push(await createDocument(C.ai_chat_messages, ID.unique(), payload));
     }
-    return { insert_ai_chat_messages: { returning } };
+    return { insert_ai_chat_messages: { returning: returning.map((r) => enrichAiChatMessageRow(r)) } };
   },
 
   TouchConversation: async (v) => ({

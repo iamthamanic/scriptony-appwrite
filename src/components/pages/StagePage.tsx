@@ -16,8 +16,10 @@ import { getShot } from "@/lib/api/shots-api";
 import type { Shot } from "@/lib/types";
 import {
   isStage2DDocument,
+  isStage3DDocument,
   parseStageDocumentJson,
   type Stage2DPayload,
+  type StageDocumentStage3D,
 } from "@/lib/stage-schema-info";
 import { buildStorageFileViewUrl, getStageDocumentsBucketId } from "@/lib/stage-storage-url";
 import { deriveShotSourceLabel, type ShotSourceBadgeLabel } from "@/lib/shot-source-badge";
@@ -71,6 +73,7 @@ export function StagePage({ projectId = null, shotId = null }: StagePageProps) {
   } | null>(null);
   /** Platzhalter für künftigen Vector-Workflow; steuert die Engine noch nicht. */
   const [stage2dRenderMode, setStage2dRenderMode] = useState<"pixel" | "vector">("pixel");
+  const [importedStage3D, setImportedStage3D] = useState<StageDocumentStage3D | null>(null);
 
   useEffect(() => {
     if (!shotId || !projectId) {
@@ -78,6 +81,7 @@ export function StagePage({ projectId = null, shotId = null }: StagePageProps) {
       setInitial2dPayload(null);
       setRasterFallbackUrl(null);
       setShotArtboardHint(null);
+      setImportedStage3D(null);
       return;
     }
 
@@ -89,6 +93,33 @@ export function StagePage({ projectId = null, shotId = null }: StagePageProps) {
         const shot = await getShot(shotId, token);
         if (cancelled) return;
         setLoadedShot(shot);
+
+        const stage3Id = shot.stage3dFileId ?? shot.stage3d_file_id;
+        if (stage3Id) {
+          const url3 = buildStorageFileViewUrl(getStageDocumentsBucketId(), stage3Id);
+          if (url3) {
+            try {
+              const res3 = await fetch(url3);
+              const text3 = await res3.text();
+              const parsed3 = parseStageDocumentJson(text3);
+              if (
+                !cancelled &&
+                parsed3.ok &&
+                isStage3DDocument(parsed3.document)
+              ) {
+                setImportedStage3D(parsed3.document);
+              } else if (!cancelled) {
+                setImportedStage3D(null);
+              }
+            } catch {
+              if (!cancelled) setImportedStage3D(null);
+            }
+          } else if (!cancelled) {
+            setImportedStage3D(null);
+          }
+        } else if (!cancelled) {
+          setImportedStage3D(null);
+        }
 
         const stage2Id = shot.stage2dFileId ?? shot.stage2d_file_id;
         if (stage2Id) {
@@ -268,12 +299,17 @@ export function StagePage({ projectId = null, shotId = null }: StagePageProps) {
             initialRasterImageUrl={initial2dPayload ? null : rasterFallbackUrl}
             shotArtboardHint={initial2dPayload ? null : shotArtboardHint}
             shortcutsActive={stageActive}
+            onImportedStage2DDocument={() => setTab("2d")}
+            onImportedStage3DDocument={(doc) => {
+              setImportedStage3D(doc);
+              setTab("3d");
+            }}
             onToolbarCapabilitiesChange={onToolbarCapabilitiesChange}
           />
         </TabsContent>
 
         <TabsContent value="3d" className="mt-0">
-          <Stage3DPlaceholder />
+          <Stage3DPlaceholder document={importedStage3D} />
         </TabsContent>
       </Tabs>
     </section>

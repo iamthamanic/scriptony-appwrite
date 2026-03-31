@@ -2765,7 +2765,7 @@ export function VideoEditorTimeline({
       setIsLoadingData(false);
     }
   }, [initialData]);
-
+  
   useEffect(() => {
     let cancelled = false;
 
@@ -2794,9 +2794,9 @@ export function VideoEditorTimeline({
 
         const data = await loadProjectTimelineBundle(projectId, token, isBookProject);
         if (cancelled) return;
-
-        setTimelineData(data);
-        onDataChange?.(data);
+          
+          setTimelineData(data);
+          onDataChange?.(data);
       } catch (error) {
         console.error('[VideoEditorTimeline] Error loading timeline data:', error);
       } finally {

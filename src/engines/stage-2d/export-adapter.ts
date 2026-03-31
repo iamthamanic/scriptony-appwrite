@@ -1,5 +1,17 @@
-import type { StageDocumentStage2D } from "@/lib/stage-schema-info";
+import type {
+  Stage2DPayload,
+  StageDocumentStage2D,
+  StageDocumentStage3D,
+} from "@/lib/stage-schema-info";
 import type { Act, Scene, Sequence, Shot } from "@/lib/types";
+
+/** Ergebnis eines Shot-Imports (Storage + Vorschaubild). */
+export interface StageShotImportBundle {
+  stage2dPayload: Stage2DPayload | null;
+  stage3dDocument: StageDocumentStage3D | null;
+  rasterImageUrl: string | null;
+  shotArtboardHint: { width: number; height: number } | null;
+}
 
 /** Zeilen für Projekt-/Welt-Dropdowns im Export-Dialog. */
 export interface StageExportProjectRow {
@@ -53,4 +65,6 @@ export interface Stage2DExportAdapter {
     assetId: string;
     file: File;
   }) => Promise<void>;
+  /** Shot per API + Stage-Dokumente aus Storage — für Import aus Scriptony-Timeline. */
+  loadShotStageImportBundle: (shotId: string) => Promise<StageShotImportBundle>;
 }

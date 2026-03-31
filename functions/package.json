@@ -8,6 +8,7 @@
     "delete-collection": "node ./tools/delete-appwrite-collection.mjs"
   },
   "dependencies": {
-    "node-appwrite": "^22.1.3"
+    "node-appwrite": "^22.1.3",
+    "undici": "^5.29.0"
   }
 }

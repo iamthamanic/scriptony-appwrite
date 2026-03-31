@@ -42,7 +42,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    if (req.method === "PUT") {
+    if (req.method === "PUT" || req.method === "PATCH") {
       const existing = await getShotById(shotId);
       if (!existing) {
         sendNotFound(res, "Shot not found");
@@ -178,7 +178,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    sendMethodNotAllowed(res, ["GET", "PUT", "DELETE"]);
+    sendMethodNotAllowed(res, ["GET", "PUT", "PATCH", "DELETE"]);
   } catch (error) {
     sendServerError(res, error);
   }

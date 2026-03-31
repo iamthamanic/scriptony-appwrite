@@ -192,7 +192,7 @@ if (withDomain === 0) {
   console.log(
     "Die Appwrite-API liefert in der Function-Liste keine HTTP-Domain-Felder (self-hosted oft erst nach Domains/SSL in der Konsole).\n" +
       "Trage die URLs manuell ein (Console → Functions → Domains), z. B.:\n" +
-      `  VITE_BACKEND_FUNCTION_DOMAIN_MAP={"scriptony-projects":"https://…","scriptony-auth":"https://…"}\n`
+      `  VITE_BACKEND_FUNCTION_DOMAIN_MAP={"scriptony-projects":"https://…","scriptony-assistant":"https://…","scriptony-auth":"https://…"}\n`
   );
   console.log("Function-IDs auf dem Server:");
   for (const fn of relevant) {

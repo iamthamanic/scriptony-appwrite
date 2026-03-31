@@ -10,13 +10,16 @@ type ChatMessage = {
   content: string;
 };
 
-type ProviderSettings = {
-  provider: "openai" | "anthropic" | "google" | "openrouter" | "deepseek";
+export type ProviderSettings = {
+  provider: "openai" | "anthropic" | "google" | "openrouter" | "deepseek" | "ollama";
   model: string;
   apiKey: string;
   systemPrompt: string;
   temperature: number;
   maxTokens: number;
+  /** Nur Ollama: Basis-URL ohne trailing slash; Cloud = fest https://ollama.com */
+  ollamaBaseUrl?: string;
+  ollamaMode?: "local" | "cloud";
 };
 
 function cleanMessages(messages: ChatMessage[]): ChatMessage[] {
@@ -33,13 +36,16 @@ async function callOpenAiCompatible(
   endpoint: string,
   extraHeaders?: Record<string, string>
 ) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...extraHeaders,
+  };
+  if (settings.apiKey && settings.apiKey !== "__ollama_local__") {
+    headers.Authorization = `Bearer ${settings.apiKey}`;
+  }
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${settings.apiKey}`,
-      ...extraHeaders,
-    },
+    headers,
     body: JSON.stringify({
       model: settings.model,
       messages,
@@ -205,6 +211,16 @@ export async function generateAiResponse(input: {
       input.settings,
       messages,
       "https://api.deepseek.com/chat/completions"
+    );
+  } else if (input.settings.provider === "ollama") {
+    const base = (input.settings.ollamaBaseUrl || "").trim().replace(/\/$/, "");
+    if (!base) {
+      throw new Error("Ollama: ollama_base_url fehlt in den KI-Einstellungen.");
+    }
+    content = await callOpenAiCompatible(
+      input.settings,
+      messages,
+      `${base}/v1/chat/completions`
     );
   } else {
     content = await callOpenAiCompatible(

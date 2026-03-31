@@ -97,8 +97,16 @@ export function useTokenCounter(options: UseTokenCounterOptions = {}) {
         });
 
         if (result.data) {
-          const accurateTokens = result.data.tokens;
-          setState(prev => ({
+          const d = result.data as {
+            tokens?: number;
+            token_count?: number;
+            input_tokens?: number;
+            total_tokens?: number;
+          };
+          const accurateTokens = Number(
+            d.token_count ?? d.input_tokens ?? d.tokens ?? d.total_tokens ?? 0,
+          );
+          setState((prev) => ({
             ...prev,
             inputTokens: accurateTokens,
             totalTokens: accurateTokens + prev.outputTokens,
@@ -165,7 +173,8 @@ export function useTokenCounter(options: UseTokenCounterOptions = {}) {
 
   // Computed values
   const remainingTokens = Math.max(0, state.contextWindow - state.totalTokens);
-  const usagePercent = (state.totalTokens / state.contextWindow) * 100;
+  const usagePercent =
+    state.contextWindow > 0 ? (state.totalTokens / state.contextWindow) * 100 : 0;
   const isNearLimit = usagePercent > 80;
   const isOverLimit = state.totalTokens > state.contextWindow;
 
@@ -201,11 +210,12 @@ export function useTokenCounter(options: UseTokenCounterOptions = {}) {
  * Format token count for display
  */
 function formatTokens(tokens: number): string {
-  if (tokens >= 1000000) {
-    return `${(tokens / 1000000).toFixed(2)}M`;
+  const n = Number.isFinite(tokens) ? tokens : 0;
+  if (n >= 1000000) {
+    return `${(n / 1000000).toFixed(2)}M`;
   }
-  if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(1)}K`;
+  if (n >= 1000) {
+    return `${(n / 1000).toFixed(1)}K`;
   }
-  return tokens.toLocaleString();
+  return n.toLocaleString();
 }

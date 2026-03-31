@@ -1,11 +1,61 @@
 
-  import { defineConfig } from 'vite';
+  import { defineConfig, loadEnv } from 'vite';
   import react from '@vitejs/plugin-react-swc';
   import wasm from 'vite-plugin-wasm';
   import topLevelAwait from 'vite-plugin-top-level-await';
   import path from 'path';
 
-  export default defineConfig({
+  export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, process.cwd(), '');
+
+    // ── Dev proxy: route ALL function domains through localhost to avoid CORS ──
+    // Appwrite's executor can return errors without CORS headers (cold starts, crashes).
+    // By proxying through Vite's dev server, requests stay same-origin → no CORS issues.
+    const proxy: Record<
+      string,
+      { target: string; changeOrigin: boolean; secure: boolean; rewrite: (p: string) => string }
+    > = {};
+
+    // Parse VITE_BACKEND_FUNCTION_DOMAIN_MAP and create a proxy entry for every function.
+    const domainMapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
+    if (domainMapRaw) {
+      try {
+        const domainMap: Record<string, string> = JSON.parse(domainMapRaw);
+        for (const [funcName, target] of Object.entries(domainMap)) {
+          if (!funcName || !target) continue;
+          const cleanTarget = target.replace(/\/+$/, '');
+          proxy[`/__dev-proxy/${funcName}`] = {
+            target: cleanTarget,
+            changeOrigin: true,
+            secure: false,
+            rewrite: (p) => {
+              const stripped = p.replace(new RegExp(`^/__dev-proxy/${funcName}`), '');
+              return stripped.length > 0 ? stripped : '/';
+            },
+          };
+        }
+      } catch {
+        console.warn('[vite.config] Could not parse VITE_BACKEND_FUNCTION_DOMAIN_MAP for dev proxy');
+      }
+    }
+
+    // Legacy: single-function proxy override (kept for backwards compatibility)
+    const assistantProxyTarget =
+      env.VITE_DEV_PROXY_SCRIPTONY_ASSISTANT_TARGET?.trim() ||
+      env.DEV_PROXY_SCRIPTONY_ASSISTANT_TARGET?.trim();
+    if (assistantProxyTarget) {
+      proxy['/__dev-proxy/scriptony-assistant'] = {
+        target: assistantProxyTarget.replace(/\/+$/, ''),
+        changeOrigin: true,
+        secure: false,
+        rewrite: (p) => {
+          const stripped = p.replace(/^\/__dev-proxy\/scriptony-assistant/, '');
+          return stripped.length > 0 ? stripped : '/';
+        },
+      };
+    }
+
+    return {
     plugins: [react(), wasm(), topLevelAwait()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -82,5 +132,7 @@
     server: {
       port: 3000,
       open: true,
+      proxy,
     },
+  };
   });

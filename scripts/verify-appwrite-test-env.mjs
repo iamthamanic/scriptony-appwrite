@@ -71,12 +71,24 @@ const fnBase =
   env.VITE_APPWRITE_FUNCTIONS_BASE_URL?.trim() || env.VITE_BACKEND_API_BASE_URL?.trim();
 
 let projectsDomain = null;
+let assistantDomain = null;
+let mcpAppwriteDomain = null;
+let domainMap = null;
 const mapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
 if (mapRaw) {
   try {
     const m = JSON.parse(mapRaw);
-    if (m && typeof m === "object" && typeof m["scriptony-projects"] === "string") {
-      projectsDomain = m["scriptony-projects"].trim();
+    if (m && typeof m === "object") {
+      domainMap = m;
+      if (typeof m["scriptony-projects"] === "string") {
+        projectsDomain = m["scriptony-projects"].trim();
+      }
+      if (typeof m["scriptony-assistant"] === "string") {
+        assistantDomain = m["scriptony-assistant"].trim();
+      }
+      if (typeof m["scriptony-mcp-appwrite"] === "string") {
+        mcpAppwriteDomain = m["scriptony-mcp-appwrite"].trim();
+      }
     }
   } catch {
     /* ignore */
@@ -108,10 +120,47 @@ const projectsHealth = projectsDomain
   ? `${trimSlash(projectsDomain)}/health`
   : `${trimSlash(fnBase)}/scriptony-projects/health`;
 
+/** KI & LLM: gleiche URL-Logik wie die SPA (api-gateway buildFunctionRouteUrl). */
+const assistantHealth = assistantDomain
+  ? `${trimSlash(assistantDomain)}/health`
+  : fnBase
+    ? `${trimSlash(fnBase)}/scriptony-assistant/health`
+    : null;
+
+const mcpAppwriteHealth = mcpAppwriteDomain
+  ? `${trimSlash(mcpAppwriteDomain)}/health`
+  : fnBase
+    ? `${trimSlash(fnBase)}/scriptony-mcp-appwrite/health`
+    : null;
+
 let failed = false;
 
-for (const url of [appwriteHealth, projectsHealth]) {
-  const label = url.includes("scriptony-projects") ? "scriptony-projects /health" : "Appwrite /health";
+const checks = [
+  { url: appwriteHealth, label: "Appwrite /health" },
+  { url: projectsHealth, label: "scriptony-projects /health" },
+];
+if (assistantHealth) {
+  checks.push({ url: assistantHealth, label: "scriptony-assistant /health (KI & LLM)" });
+} else {
+  console.warn(
+    "Hinweis: Keine URL für scriptony-assistant ermittelbar (KI-Einstellungen).\n" +
+      "  Setze VITE_APPWRITE_FUNCTIONS_BASE_URL **oder** ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-assistant\".\n"
+  );
+}
+
+if (mcpAppwriteHealth) {
+  checks.push({
+    url: mcpAppwriteHealth,
+    label: "scriptony-mcp-appwrite /health (interne Capabilities)",
+  });
+} else {
+  console.warn(
+    "Hinweis: Keine URL für scriptony-mcp-appwrite ermittelbar.\n" +
+      "  Setze VITE_APPWRITE_FUNCTIONS_BASE_URL **oder** ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-mcp-appwrite\".\n"
+  );
+}
+
+for (const { url, label } of checks) {
   process.stdout.write(`→ ${label}\n  GET ${url}\n`);
   const r = await fetchJson(url, label);
   // Appwrite 1.8+ returns 401 on /v1/health for guests — that still means the server is reachable.
@@ -123,6 +172,20 @@ for (const url of [appwriteHealth, projectsHealth]) {
   } else {
     failed = true;
     console.log(`  FEHLER (${r.status})`, r.text.slice(0, 200));
+    if (label.includes("scriptony-assistant") || label.includes("scriptony-mcp-appwrite")) {
+      const t = typeof r.text === "string" ? r.text : "";
+      const looksHtml = t.includes("<!DOCTYPE") || t.includes("<html");
+      if (r.status === 404 || looksHtml) {
+        const fnId = label.includes("scriptony-mcp-appwrite")
+          ? "scriptony-mcp-appwrite"
+          : "scriptony-assistant";
+        console.log(
+          `  → Die URL liefert keine Function-JSON-Antwort (HTML/404). Appwrite: Function \`${fnId}\` deployen,\n` +
+            "     aktives Deployment wählen und unter Functions → Domains dieselbe Host-URL wie in .env eintragen.\n" +
+            "     Browser: „Failed to fetch“ entsteht oft durch fehlende CORS auf der Fehlerseite — nach Deploy behoben."
+        );
+      }
+    }
   }
   console.log("");
 }

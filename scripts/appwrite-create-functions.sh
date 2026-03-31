@@ -18,6 +18,7 @@ RUNTIME="${APPWRITE_FUNCTIONS_RUNTIME:-node-16.0}"
 FUNCTIONS=(
   make-server-3b52693b
   scriptony-assistant
+  scriptony-mcp-appwrite
   scriptony-audio
   scriptony-auth
   scriptony-beats

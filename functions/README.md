@@ -57,6 +57,42 @@ The deploy script runs **esbuild** from `functions/`: it bundles `scriptony-shot
 
 Ensure the function’s active deployment entrypoint in the Console is **`index.js`** after you deploy (the CLI sets it per deployment).
 
+### Deploy `scriptony-assistant` (KI & LLM, `/ai/settings`, Chat)
+
+Required for **Einstellungen → Integrationen → KI & LLM** and any route under `/ai/*` in the SPA.
+
+From the **repo root** (same CLI login as above):
+
+```bash
+npm run appwrite:deploy:assistant
+# alias:
+npm run appwrite:deploy:ai
+```
+
+Then in **Appwrite Console → Functions → scriptony-assistant → Domains**, attach the HTTP URL that matches `VITE_BACKEND_FUNCTION_DOMAIN_MAP` (`"scriptony-assistant": "https://…"`). Without a deployment **and** a domain, `/health` returns HTML/404 and the browser shows **Failed to fetch**.
+
+Verify: `npm run verify:test-env` (checks `scriptony-assistant/health` when the URL is derivable from `.env.local`).
+
+**First-time / self-hosted (CLI logged in):** create if missing + deploy in one step:
+
+```bash
+npm run appwrite:setup:assistant
+```
+
+Then attach the function’s HTTP domain in the Console and sync into Vite: `npm run appwrite:sync:function-domains` (needs `.env.server.local` with `APPWRITE_API_KEY`).
+
+### Deploy `scriptony-mcp-appwrite` (internal MCP-style capabilities)
+
+Thin HTTP host for deterministic tools (`src/scriptony-mcp` + `src/scriptony-runtime`). Routes: `GET /health`, `POST /invoke` (body: `action`: `list_tools` | `invoke`, optional `tool`, `input`, `approved`, `project_id`).
+
+From repo root (CLI login as for other functions):
+
+```bash
+npm run appwrite:deploy:mcp
+```
+
+Add `"scriptony-mcp-appwrite":"https://…"` to `VITE_BACKEND_FUNCTION_DOMAIN_MAP` so the SPA can call `/scriptony-mcp/…` via [`src/lib/api-gateway.ts`](../src/lib/api-gateway.ts). Verify: `npm run verify:test-env` includes this function’s `/health` when the URL is derivable; `npm run verify:functions-cli` logs MCP health but only fails on assistant errors.
+
 ## Further reading
 
 - [docs/SOURCE_OF_TRUTH.md](../docs/SOURCE_OF_TRUTH.md)

@@ -2,7 +2,7 @@
  * Token counting route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
+import { requireUserBootstrap } from "../../_shared/auth";
 import {
   readJsonBody,
   sendJson,
@@ -10,7 +10,7 @@ import {
   sendUnauthorized,
   type RequestLike,
   type ResponseLike,
-} from "../../../_shared/http";
+} from "../../_shared/http";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   const bootstrap = await requireUserBootstrap(req.headers.authorization);

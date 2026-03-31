@@ -9,5 +9,6 @@ export type {
   StageExportAssetRow,
   StageExportProjectRow,
   StageExportWorldRow,
+  StageShotImportBundle,
   StageTimelineBundle,
 } from "./export-adapter";

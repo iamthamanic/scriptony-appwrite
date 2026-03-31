@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   BookOpen,
   Dumbbell,
+  RefreshCw,
   Sparkles,
   Wrench,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import {
 } from "./setup-intent-storage";
 import { CHALLENGE_SEEDS } from "../infrastructure/seeds/challenge-seeds";
 import { GymHubMenu } from "./gym-hub-menu";
+import { requestGymStarter } from "../../scriptony-ai";
 
 type NavigateFn = (page: "gym", id?: string, categoryId?: string) => void;
 
@@ -68,6 +70,8 @@ interface CreativeGymAppProps {
   segment?: string;
   subSegment?: string;
   navigate: NavigateFn;
+  /** Optional: open shared AI / Chat settings (same dialog as Settings → Integrationen). */
+  onOpenAiSettings?: () => void;
 }
 
 export function CreativeGymAppWithProvider(props: CreativeGymAppProps) {
@@ -78,9 +82,9 @@ export function CreativeGymAppWithProvider(props: CreativeGymAppProps) {
   );
 }
 
-function CreativeGymRouter({ segment, subSegment, navigate }: CreativeGymAppProps) {
+function CreativeGymRouter({ segment, subSegment, navigate, onOpenAiSettings }: CreativeGymAppProps) {
   if (!segment) {
-    return <HomeScreen navigate={navigate} />;
+    return <HomeScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />;
   }
   if (segment === "library") {
     return <LibraryScreen navigate={navigate} librarySubSegment={subSegment} />;
@@ -92,15 +96,23 @@ function CreativeGymRouter({ segment, subSegment, navigate }: CreativeGymAppProp
     return <AssetsScreen navigate={navigate} />;
   }
   if (segment === "session" && subSegment === "new") {
-    return <SessionSetupScreen navigate={navigate} />;
+    return <SessionSetupScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />;
   }
   if (segment === "session" && subSegment && subSegment !== "new") {
-    return <SessionFlowScreen sessionId={subSegment} navigate={navigate} />;
+    return (
+      <SessionFlowScreen sessionId={subSegment} navigate={navigate} onOpenAiSettings={onOpenAiSettings} />
+    );
   }
-  return <HomeScreen navigate={navigate} />;
+  return <HomeScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />;
 }
 
-function HomeScreen({ navigate }: { navigate: NavigateFn }) {
+function HomeScreen({
+  navigate,
+  onOpenAiSettings,
+}: {
+  navigate: NavigateFn;
+  onOpenAiSettings?: () => void;
+}) {
   const { progressOverview: overview } = useCreativeGym();
 
   const startIntent = (intent: CreativeIntent) => {
@@ -113,7 +125,20 @@ function HomeScreen({ navigate }: { navigate: NavigateFn }) {
       {/* Kein doppeltes px: main hat bereits px-6 */}
       <div className="border-b border-border/60 bg-gradient-to-b from-muted/25 to-transparent pb-3 pt-2 md:pb-4 md:pt-3">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <GymHubMenu navigate={navigate} current="home" className="shrink-0" />
+          <div className="flex flex-wrap items-center gap-2">
+            <GymHubMenu navigate={navigate} current="home" className="shrink-0" />
+            {onOpenAiSettings ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="rounded-xl"
+                onClick={() => onOpenAiSettings()}
+              >
+                KI-Einstellungen
+              </Button>
+            ) : null}
+          </div>
           <div className="min-w-0 flex-1 text-left">
             <h1 className="text-balance text-xl font-semibold tracking-tight md:text-xl">
               Was brauchst du gerade?
@@ -478,7 +503,13 @@ function AssetsScreen({ navigate }: { navigate: NavigateFn }) {
   );
 }
 
-function SessionSetupScreen({ navigate }: { navigate: NavigateFn }) {
+function SessionSetupScreen({
+  navigate,
+  onOpenAiSettings,
+}: {
+  navigate: NavigateFn;
+  onOpenAiSettings?: () => void;
+}) {
   const { deps } = useCreativeGym();
   const intent = readSetupIntent() ?? "unblock";
   const [medium, setMedium] = useState<CreativeMedium>("prose");
@@ -619,6 +650,13 @@ function SessionSetupScreen({ navigate }: { navigate: NavigateFn }) {
             onChange={(e) => setTimeBudget(Number(e.target.value))}
           />
         </div>
+        {onOpenAiSettings ? (
+          <p className="text-xs text-muted-foreground">
+            <button type="button" className="underline underline-offset-2" onClick={() => onOpenAiSettings()}>
+              KI &amp; API-Keys konfigurieren
+            </button>
+          </p>
+        ) : null}
         <Button className="w-full" onClick={() => void start()}>
           Session starten
         </Button>
@@ -630,9 +668,11 @@ function SessionSetupScreen({ navigate }: { navigate: NavigateFn }) {
 function SessionFlowScreen({
   sessionId,
   navigate,
+  onOpenAiSettings,
 }: {
   sessionId: string;
   navigate: NavigateFn;
+  onOpenAiSettings?: () => void;
 }) {
   const { deps, mode } = useCreativeGym();
   const [session, setSession] = useState<CreativeSession | null>(null);
@@ -651,6 +691,8 @@ function SessionFlowScreen({
   );
   const [capsuleId, setCapsuleId] = useState("");
   const startedAt = useRef(Date.now());
+  const starterRequestedRef = useRef(false);
+  const [starterLoading, setStarterLoading] = useState(false);
 
   const load = useCallback(async () => {
     const s = await deps.sessions.getById(sessionId);
@@ -669,6 +711,59 @@ function SessionFlowScreen({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!session || !tpl || phase !== "active") return;
+    if (starterRequestedRef.current) return;
+    if (session.content.body.trim() !== "") {
+      starterRequestedRef.current = true;
+      return;
+    }
+    starterRequestedRef.current = true;
+    setStarterLoading(true);
+    const projectId =
+      session.sourceContext?.sourceType === "project" ? session.sourceContext.sourceId : undefined;
+    const uiLang = typeof document !== "undefined" && document.documentElement.lang?.startsWith("en") ? "en" : "de";
+    void (async () => {
+      try {
+        const res = await requestGymStarter({
+          challenge_template_id: session.challengeTemplateId,
+          medium: session.medium,
+          source_project_id: projectId,
+          regenerate: false,
+          ui_language: uiLang,
+        });
+        const latest = await deps.sessions.getById(sessionId);
+        if (!latest) return;
+        await deps.sessions.update({
+          ...latest,
+          content: {
+            ...latest.content,
+            body: res.text,
+            metadata: {
+              ...latest.content.metadata,
+              gymAi: {
+                generatedAt: new Date().toISOString(),
+                challengeTemplateId: session.challengeTemplateId,
+              },
+            },
+          },
+        });
+        setBody(res.text);
+        await load();
+      } catch (e) {
+        starterRequestedRef.current = false;
+        const msg = e instanceof Error ? e.message : "Starter-Text konnte nicht geladen werden.";
+        toast.error(
+          onOpenAiSettings && /API|Key|Hosted|konfiguriert/i.test(msg)
+            ? `${msg} — Button „KI-Einstellungen“ oben.`
+            : msg
+        );
+      } finally {
+        setStarterLoading(false);
+      }
+    })();
+  }, [session, tpl, phase, deps, sessionId, load, onOpenAiSettings]);
 
   useEffect(() => {
     void deps.projectBridge.listProjects(deps.userId).then((p) => {
@@ -690,6 +785,51 @@ function SessionFlowScreen({
   }, [phase, artifactId, deps, sessionId]);
 
   const renderer = tpl?.renderers?.[session?.medium ?? "prose"];
+
+  const shuffleStarter = async () => {
+    if (!session) return;
+    setStarterLoading(true);
+    const projectId =
+      session.sourceContext?.sourceType === "project" ? session.sourceContext.sourceId : undefined;
+    const uiLang = typeof document !== "undefined" && document.documentElement.lang?.startsWith("en") ? "en" : "de";
+    try {
+      const res = await requestGymStarter({
+        challenge_template_id: session.challengeTemplateId,
+        medium: session.medium,
+        source_project_id: projectId,
+        regenerate: true,
+        ui_language: uiLang,
+      });
+      const latest = await deps.sessions.getById(sessionId);
+      if (!latest) return;
+      await deps.sessions.update({
+        ...latest,
+        content: {
+          ...latest.content,
+          body: res.text,
+          metadata: {
+            ...latest.content.metadata,
+            gymAi: {
+              generatedAt: new Date().toISOString(),
+              challengeTemplateId: session.challengeTemplateId,
+            },
+          },
+        },
+      });
+      setBody(res.text);
+      await load();
+      toast.success("Neuer Starter-Text");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Neu würfeln fehlgeschlagen.";
+      toast.error(
+        onOpenAiSettings && /API|Key|Hosted|konfiguriert/i.test(msg)
+          ? `${msg} — Button „KI-Einstellungen“ oben.`
+          : msg
+      );
+    } finally {
+      setStarterLoading(false);
+    }
+  };
 
   const runRescue = async (action: RescueActionId) => {
     try {
@@ -831,7 +971,23 @@ function SessionFlowScreen({
       </aside>
       <main className="flex-1 flex flex-col min-h-[50vh]">
         <div className="flex-1 p-4 space-y-3">
-          <Label className="text-xs text-[#8c85a8]">Arbeitsfläche</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-xs text-[#8c85a8]">Arbeitsfläche</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-[10px] border-[#3b355a]"
+              disabled={starterLoading}
+              onClick={() => void shuffleStarter()}
+            >
+              <RefreshCw className={starterLoading ? "size-3 animate-spin" : "size-3"} />
+              <span className="ml-1">Neu würfeln</span>
+            </Button>
+          </div>
+          {starterLoading && (
+            <p className="text-[10px] text-[#8c85a8]">KI erzeugt Starter-Text…</p>
+          )}
           <Textarea
             className="min-h-[240px] mt-1 border-[#2b2740] bg-[#14121c] font-mono text-sm"
             placeholder={renderer?.suggestedOutputFormat}

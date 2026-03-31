@@ -16,5 +16,23 @@ export function normalizeTimelineShot(raw: Record<string, unknown>): Shot {
         : typeof raw.imageUrl === "string"
           ? raw.imageUrl
           : undefined,
+    stage2dFileId:
+      typeof raw.stage2d_file_id === "string"
+        ? raw.stage2d_file_id
+        : typeof raw.stage2dFileId === "string"
+          ? raw.stage2dFileId
+          : undefined,
+    stage3dFileId:
+      typeof raw.stage3d_file_id === "string"
+        ? raw.stage3d_file_id
+        : typeof raw.stage3dFileId === "string"
+          ? raw.stage3dFileId
+          : undefined,
+    shotImageMime:
+      typeof raw.shot_image_mime === "string"
+        ? raw.shot_image_mime
+        : typeof raw.shotImageMime === "string"
+          ? raw.shotImageMime
+          : undefined,
   } as Shot;
 }

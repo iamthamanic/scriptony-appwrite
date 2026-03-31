@@ -16,14 +16,13 @@ import {
   ArrowUpFromLine,
   Brush,
   ChevronRight,
+  Upload,
   CircleOff,
   Eraser,
   Eye,
   EyeOff,
   GripVertical,
   Hand,
-  Image as ImageIcon,
-  ImagePlus,
   Layers3,
   Lock,
   LockOpen,
@@ -74,9 +73,14 @@ import type {
 import {
   createStage2DDocument,
   createStage2DPayloadFromState,
+  isStage2DDocument,
+  isStage3DDocument,
+  parseStageDocumentJson,
   type Stage2DLayer,
   type Stage2DPayload,
+  type StageDocumentStage3D,
 } from "@/lib/stage-schema-info";
+import { getShotStageSourceTags } from "@/lib/shot-source-badge";
 
 type StageTool = "draw" | "erase" | "pan";
 type StagePoint = [number, number, number];
@@ -143,6 +147,10 @@ export interface StageCanvasProps {
   shotArtboardHint?: { width: number; height: number } | null;
   /** If false, Cmd/Ctrl+Z shortcuts are not handled (e.g. 3D tab active). */
   shortcutsActive?: boolean;
+  /** Nach Import einer gültigen `stage2d`-JSON (z. B. Tab auf 2D wechseln). */
+  onImportedStage2DDocument?: () => void;
+  /** `stage3d`-Dokument an Host (3D-Tab / Vorschau) — Engine 2D lädt das nicht. */
+  onImportedStage3DDocument?: (doc: StageDocumentStage3D) => void;
   onToolbarCapabilitiesChange?: (c: {
     canUndo: boolean;
     canRedo: boolean;
@@ -407,6 +415,24 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
+function readFileAsText(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+function inferNextLayerNumberAfterImport(layers: StageLayer[]): number {
+  let max = 0;
+  for (const l of layers) {
+    const m = /^Layer\s+(\d+)/i.exec(l.name);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return Math.max(max + 1, layers.length + 1);
+}
+
 function readImageDimensions(imageUrl: string) {
   return new Promise<{ width: number; height: number }>((resolve, reject) => {
     const image = document.createElement("img");
@@ -454,12 +480,14 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
     initialRasterImageUrl = null,
     shotArtboardHint = null,
     shortcutsActive = true,
+    onImportedStage2DDocument,
+    onImportedStage3DDocument,
     onToolbarCapabilitiesChange,
   },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const deviceImportInputRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<KonvaStageType | null>(null);
   const transformerRef = useRef<KonvaTransformerType | null>(null);
   const layerNodeRefs = useRef<Record<string, KonvaNode>>({});
@@ -480,6 +508,7 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
   const [draftLayerId, setDraftLayerId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isImportingImages, setIsImportingImages] = useState(false);
+  const [isImportingStageDoc, setIsImportingStageDoc] = useState(false);
   const [nextLayerNumber, setNextLayerNumber] = useState(2);
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dropTargetLayerId, setDropTargetLayerId] = useState<string | null>(null);
@@ -499,6 +528,9 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
   const [exportMode, setExportMode] = useState<ExportMode>("download");
   const [assignTarget, setAssignTarget] = useState<AssignTarget>("project");
   const [isExporting, setIsExporting] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importPanel, setImportPanel] = useState<"choice" | "scriptony">("choice");
+  const [isImportingScriptony, setIsImportingScriptony] = useState(false);
   const [availableProjects, setAvailableProjects] = useState<StageExportProjectRow[]>([]);
   const [timelineActs, setTimelineActs] = useState<Act[]>([]);
   const [timelineSequences, setTimelineSequences] = useState<Sequence[]>([]);
@@ -526,6 +558,117 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
   const worldToDisplayScale = useMemo(
     () => (artboard.width > 0 ? displaySize.width / artboard.width : 1),
     [artboard.width, displaySize.width, displaySize.height]
+  );
+
+  const applyImportedStage2DPayload = useCallback(
+    (payload: Stage2DPayload) => {
+      if (!payload.layers?.length) {
+        toast.error("Stage-Datei enthält keine Layer.");
+        return;
+      }
+      const mapped = payload.layers.map((layer) =>
+        withLayerStrengthDefaults(layer as unknown as StageLayer)
+      );
+      setArtboard(resolveStageArtboard(payload, null));
+      setLayers(mapped);
+      setActiveLayerId(mapped[mapped.length - 1]?.id ?? mapped[0].id);
+      setRedoStack([]);
+      setNextLayerNumber(inferNextLayerNumberAfterImport(mapped));
+      if (payload.camera) {
+        setCamera({
+          x: payload.camera.x,
+          y: payload.camera.y,
+          scale: payload.camera.scale,
+        });
+      } else {
+        setCamera({ x: 0, y: 0, scale: 1 });
+      }
+      toast.success("Stage-Stand (2D) importiert.");
+      onImportedStage2DDocument?.();
+    },
+    [onImportedStage2DDocument]
+  );
+
+  const handleStageJsonFile = useCallback(
+    async (file: File) => {
+      setIsImportingStageDoc(true);
+      try {
+        const text = await readFileAsText(file);
+        const parsed = parseStageDocumentJson(text);
+        if (!parsed.ok) {
+          toast.error(
+            parsed.errors.slice(0, 4).join(" · ") || "Ungültige Stage-Datei"
+          );
+          return;
+        }
+        if (isStage2DDocument(parsed.document)) {
+          applyImportedStage2DPayload(parsed.document.payload);
+          return;
+        }
+        if (isStage3DDocument(parsed.document)) {
+          onImportedStage3DDocument?.(parsed.document);
+          toast.success("3D-Stage-Stand importiert.");
+          return;
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen.");
+      } finally {
+        setIsImportingStageDoc(false);
+      }
+    },
+    [applyImportedStage2DPayload, onImportedStage3DDocument]
+  );
+
+  const applyRasterLayerFromUrl = useCallback(
+    async (
+      rasterUrl: string,
+      payloadForArtboard: Stage2DPayload | null | undefined,
+      artboardHint: { width: number; height: number } | null,
+      isCancelled?: () => boolean
+    ) => {
+      try {
+        const dims = await readImageDimensions(rasterUrl);
+        if (isCancelled?.()) return;
+        const scale = Math.min(1, 560 / Math.max(dims.width, dims.height));
+        const width = Math.max(96, Math.round(dims.width * scale));
+        const height = Math.max(96, Math.round(dims.height * scale));
+        const ab = resolveStageArtboard(payloadForArtboard ?? null, artboardHint ?? null);
+        const x = Math.max(0, (ab.width - width) / 2);
+        const y = Math.max(0, (ab.height - height) / 2);
+        const newLayer = withLayerStrengthDefaults({
+          id: createLayerId("image"),
+          name: "Shot image",
+          kind: "image",
+          visible: true,
+          locked: false,
+          opacity: 1,
+          x,
+          y,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          fillEnabled: false,
+          fillColor: "#a78bfa",
+          fillStrength: LAYER_STRENGTH_DEFAULT,
+          outlineEnabled: false,
+          outlineColor: "#a78bfa",
+          outlineStrength: LAYER_STRENGTH_DEFAULT,
+          pressureSensitive: true,
+          imageUrl: rasterUrl,
+          width,
+          height,
+        } as StageLayer);
+        setArtboard(ab);
+        setLayers([newLayer]);
+        setActiveLayerId(newLayer.id);
+        setNextLayerNumber(2);
+        setRedoStack([]);
+        setCamera({ x: 0, y: 0, scale: 1 });
+      } catch {
+        /* ignore */
+      }
+    },
+    []
   );
 
   useEffect(() => {
@@ -566,51 +709,18 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
   useEffect(() => {
     if (!initialRasterImageUrl?.trim()) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const dims = await readImageDimensions(initialRasterImageUrl);
-        if (cancelled) return;
-        const scale = Math.min(1, 560 / Math.max(dims.width, dims.height));
-        const width = Math.max(96, Math.round(dims.width * scale));
-        const height = Math.max(96, Math.round(dims.height * scale));
-        const ab = resolveStageArtboard(initialStage2DPayload, shotArtboardHint ?? null);
-        const x = Math.max(0, (ab.width - width) / 2);
-        const y = Math.max(0, (ab.height - height) / 2);
-        const newLayer = withLayerStrengthDefaults({
-          id: createLayerId("image"),
-          name: "Shot image",
-          kind: "image",
-          visible: true,
-          locked: false,
-          opacity: 1,
-          x,
-          y,
-          scaleX: 1,
-          scaleY: 1,
-          rotation: 0,
-          fillEnabled: false,
-          fillColor: "#a78bfa",
-          fillStrength: LAYER_STRENGTH_DEFAULT,
-          outlineEnabled: false,
-          outlineColor: "#a78bfa",
-          outlineStrength: LAYER_STRENGTH_DEFAULT,
-          pressureSensitive: true,
-          imageUrl: initialRasterImageUrl,
-          width,
-          height,
-        } as StageLayer);
-        setLayers([newLayer]);
-        setActiveLayerId(newLayer.id);
-        setNextLayerNumber(2);
-        setRedoStack([]);
-      } catch {
-        /* ignore */
-      }
+    void (async () => {
+      await applyRasterLayerFromUrl(
+        initialRasterImageUrl,
+        initialStage2DPayload,
+        shotArtboardHint ?? null,
+        () => cancelled
+      );
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialRasterImageUrl, initialStage2DPayload, shotArtboardHint]);
+  }, [initialRasterImageUrl, initialStage2DPayload, shotArtboardHint, applyRasterLayerFromUrl]);
 
   useEffect(() => {
     if (stylingLayerId && !layers.some((l) => l.id === stylingLayerId)) {
@@ -919,6 +1029,26 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
     } finally {
       setIsImportingImages(false);
     }
+  };
+
+  const handleDeviceImportFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    const jsonFiles = list.filter(
+      (f) => f.type === "application/json" || f.name.toLowerCase().endsWith(".json")
+    );
+    const imageFiles = list.filter((f) => f.type.startsWith("image/"));
+    if (jsonFiles.length === 0 && imageFiles.length === 0) {
+      toast.error("Keine unterstützten Dateien (Bilder oder Stage-JSON).");
+      return;
+    }
+    for (const f of jsonFiles) {
+      await handleStageJsonFile(f);
+    }
+    if (imageFiles.length > 0) {
+      await handleImageImport(imageFiles);
+    }
+    setIsImportDialogOpen(false);
+    setImportPanel("choice");
   };
 
   const beginStroke = () => {
@@ -1345,6 +1475,77 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
     } catch (error) {
       console.error("Failed to load export targets:", error);
       toast.error("Export-Ziele konnten nicht geladen werden.");
+    }
+  };
+
+  const openImportDialog = () => {
+    setImportPanel("choice");
+    setIsImportDialogOpen(true);
+  };
+
+  const startScriptonyImportPanel = async () => {
+    setImportPanel("scriptony");
+    try {
+      const { projects, worlds } = await exportAdapter.loadExportTargets();
+      setAvailableProjects(projects);
+      setAvailableWorlds(worlds);
+      if (projects.length > 0) {
+        const match = selectedProjectId
+          ? projects.find((p) => p.id === selectedProjectId)
+          : undefined;
+        if (match) {
+          void loadTimelineForProject(match.id, match.type);
+        } else {
+          const first = projects[0];
+          setSelectedProjectId(first.id);
+          void loadTimelineForProject(first.id, first.type);
+        }
+      }
+      if (!selectedWorldId && worlds.length > 0) {
+        const firstWorldId = worlds[0].id;
+        setSelectedWorldId(firstWorldId);
+        void loadAssetsForWorld(firstWorldId);
+      }
+    } catch (error) {
+      console.error("[StageCanvas] Import targets load failed:", error);
+      toast.error("Projekte konnten nicht geladen werden.");
+    }
+  };
+
+  const executeScriptonyImport = async () => {
+    if (!selectedShotId) {
+      toast.error("Bitte einen Shot auswählen.");
+      return;
+    }
+    setIsImportingScriptony(true);
+    try {
+      const bundle = await exportAdapter.loadShotStageImportBundle(selectedShotId);
+      setIsImportDialogOpen(false);
+      setImportPanel("choice");
+      if (bundle.stage2dPayload?.layers?.length) {
+        applyImportedStage2DPayload(bundle.stage2dPayload);
+        return;
+      }
+      if (bundle.stage3dDocument) {
+        onImportedStage3DDocument?.(bundle.stage3dDocument);
+        toast.success("3D-Stand aus Shot geladen.");
+        return;
+      }
+      if (bundle.rasterImageUrl) {
+        await applyRasterLayerFromUrl(
+          bundle.rasterImageUrl,
+          null,
+          bundle.shotArtboardHint ?? null
+        );
+        toast.success("Bild aus Shot geladen.");
+        onImportedStage2DDocument?.();
+        return;
+      }
+      toast.error("Dieser Shot enthält keine Stage- oder Bilddaten.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen.");
+    } finally {
+      setIsImportingScriptony(false);
     }
   };
 
@@ -1857,23 +2058,25 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
               </Button>
               <Button
                 size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isImportingImages}
+                type="button"
+                title="Import: vom Gerät oder aus Scriptony (Projekt → Shot)"
+                onClick={openImportDialog}
+                disabled={isImportingImages || isImportingStageDoc}
               >
-                <ImagePlus className="mr-2 size-4" />
-                {isImportingImages ? "Importing..." : "Import"}
+                <Upload className="mr-2 size-4" />
+                {isImportingImages || isImportingStageDoc ? "…" : "Import"}
               </Button>
             </div>
 
             <input
-              ref={fileInputRef}
+              ref={deviceImportInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.json,application/json"
               multiple
               className="hidden"
               onChange={async (event) => {
                 if (!event.target.files?.length) return;
-                await handleImageImport(event.target.files);
+                await handleDeviceImportFiles(event.target.files);
                 event.target.value = "";
               }}
             />
@@ -2170,6 +2373,205 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(funct
           updateLayer(stylingLayerId, (current) => ({ ...current, ...patch }));
         }}
       />
+      <Dialog
+        open={isImportDialogOpen}
+        onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) setImportPanel("choice");
+        }}
+      >
+        <DialogContent className="sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Import</DialogTitle>
+            <DialogDescription>
+              Vom Gerät (Bilder und Stage-JSON) oder einen Shot aus Scriptony laden.
+            </DialogDescription>
+          </DialogHeader>
+          {importPanel === "choice" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex h-auto min-h-[96px] flex-col gap-2 py-5"
+                onClick={() => {
+                  setIsImportDialogOpen(false);
+                  setImportPanel("choice");
+                  window.setTimeout(() => deviceImportInputRef.current?.click(), 0);
+                }}
+              >
+                <span className="text-sm font-semibold">Vom Gerät</span>
+                <span className="text-center text-xs text-muted-foreground">
+                  PNG, JPG, WebP, GIF, Stage-JSON (stage2d / stage3d)
+                </span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex h-auto min-h-[96px] flex-col gap-2 py-5"
+                onClick={() => void startScriptonyImportPanel()}
+              >
+                <span className="text-sm font-semibold">Scriptony</span>
+                <span className="text-center text-xs text-muted-foreground">
+                  Projekt → Akt → Sequenz → Szene → Shot
+                </span>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-2 w-fit"
+                onClick={() => setImportPanel("choice")}
+              >
+                ← Zurück
+              </Button>
+              <div className="grid gap-3 rounded-lg border border-border p-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Projekt</Label>
+                  <Select
+                    value={selectedProjectId}
+                    onValueChange={(value) => {
+                      const p = availableProjects.find((x) => x.id === value);
+                      setSelectedProjectId(value);
+                      void loadTimelineForProject(value, p?.type);
+                    }}
+                    disabled={isImportingScriptony || timelineLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Projekt auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {timelineLoading && (
+                  <p className="text-xs text-muted-foreground">Struktur wird geladen…</p>
+                )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Akt</Label>
+                  <Select
+                    value={selectedActId}
+                    onValueChange={handleActChange}
+                    disabled={isImportingScriptony || timelineLoading || sortedActs.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Akt wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortedActs.map((act) => (
+                        <SelectItem key={act.id} value={act.id}>
+                          {formatActLabel(act)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Sequenz</Label>
+                  <Select
+                    value={selectedSequenceId}
+                    onValueChange={handleSequenceChange}
+                    disabled={
+                      isImportingScriptony ||
+                      timelineLoading ||
+                      sequencesForSelectedAct.length === 0
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sequenz wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sequencesForSelectedAct.map((seq) => (
+                        <SelectItem key={seq.id} value={seq.id}>
+                          {formatSequenceLabel(seq)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Szene</Label>
+                  <Select
+                    value={selectedSceneId}
+                    onValueChange={handleSceneChange}
+                    disabled={
+                      isImportingScriptony ||
+                      timelineLoading ||
+                      scenesForSelectedSequence.length === 0
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Szene wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scenesForSelectedSequence.map((scene) => (
+                        <SelectItem key={scene.id} value={scene.id}>
+                          {formatSceneLabel(scene)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Shot (Quelle)</Label>
+                  <Select
+                    value={selectedShotId}
+                    onValueChange={setSelectedShotId}
+                    disabled={
+                      isImportingScriptony ||
+                      timelineLoading ||
+                      shotsForSelectedScene.length === 0
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Shot auswählen" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(60vh,320px)]">
+                      {shotsForSelectedScene.map((shot) => (
+                        <SelectItem key={shot.id} value={shot.id}>
+                          <span className="flex flex-col gap-0.5 text-left sm:flex-row sm:items-center sm:gap-2">
+                            <span className="truncate">{formatShotLabel(shot)}</span>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">
+                              {getShotStageSourceTags(shot).join(" · ")}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    STAGE2D / STAGE3D = gespeicherte Stage-Dateien; PNG–GIF = Vorschaubild am Shot.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:justify-end">
+                <Button variant="outline" type="button" onClick={() => setImportPanel("choice")}>
+                  Zurück
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void executeScriptonyImport()}
+                  disabled={
+                    isImportingScriptony ||
+                    timelineLoading ||
+                    !selectedShotId ||
+                    shotsForSelectedScene.length === 0
+                  }
+                >
+                  {isImportingScriptony ? "Wird geladen…" : "Importieren"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
         <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>

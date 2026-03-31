@@ -34,6 +34,8 @@ export const BACKEND_FUNCTIONS = {
   SUPERADMIN: 'scriptony-superadmin',
   STATS: 'scriptony-stats',
   LOGS: 'scriptony-logs',
+  /** Internal MCP-style capability host (thin HTTP entry). */
+  MCP_APPWRITE: 'scriptony-mcp-appwrite',
 } as const;
 
 export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
@@ -42,6 +44,19 @@ export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
  * Backend function base URLs
  */
 export function buildFunctionBaseUrl(functionName: string): string {
+  /**
+   * Dev-only: same-origin proxy in vite.config.ts avoids browser CORS when
+   * Appwrite's executor returns errors without CORS headers (cold starts, crashes).
+   * Works for ALL functions that have an entry in VITE_BACKEND_FUNCTION_DOMAIN_MAP.
+   */
+  if (import.meta.env.DEV && backendConfig.functionDomainMap?.[functionName]) {
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : 'http://localhost:3000';
+    return `${origin}/__dev-proxy/${functionName}`.replace(/\/+$/, '');
+  }
+
   const domain = backendConfig.functionDomainMap?.[functionName]?.trim();
   if (domain) {
     return domain.replace(/\/+$/, "");
@@ -107,6 +122,9 @@ const ROUTE_MAP: Record<string, string> = {
   // scriptony-worldbuilding
   '/worlds': BACKEND_FUNCTIONS.WORLDBUILDING,
   '/locations': BACKEND_FUNCTIONS.WORLDBUILDING,
+
+  // scriptony-mcp-appwrite (longer prefix before shorter assistant routes if path overlaps)
+  '/scriptony-mcp': BACKEND_FUNCTIONS.MCP_APPWRITE,
 
   // scriptony-assistant
   '/ai': BACKEND_FUNCTIONS.ASSISTANT,

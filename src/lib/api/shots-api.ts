@@ -23,7 +23,8 @@ const AUDIO_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUDIO);
 // =============================================================================
 
 export async function getShots(sceneId: string, accessToken: string): Promise<Shot[]> {
-  const result = await apiGet(`/shots/${sceneId}`);
+  // scriptony-shots: GET /shots/by-scene/:sceneId (nicht /shots/:id — das ist ein einzelner Shot)
+  const result = await apiGet(`/shots/by-scene/${encodeURIComponent(sceneId)}`);
   const data = unwrapApiResult(result);
   return data?.shots || [];
 }

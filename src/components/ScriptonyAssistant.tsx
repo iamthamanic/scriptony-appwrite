@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { MessageCircle, X, Mic, Search, Calendar, Plus, Upload, FileText, Image as ImageIcon, CheckSquare, Square } from "lucide-react";
+import { MessageCircle, X, Mic, Search, Calendar, Plus, Upload, FileText, Image as ImageIcon, CheckSquare, Square, ChevronDown } from "lucide-react";
 import { useColoredTags } from "./hooks/useColoredTags";
 import { useTokenCounter } from "./hooks/useTokenCounter";
 import { projectsApi, charactersApi, scenesApi, worldsApi, itemsApi } from "../utils/api";
@@ -7,7 +7,6 @@ import { apiGet, apiPost, apiDelete, apiPut } from "../lib/api-client";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
@@ -21,6 +20,10 @@ import svgPaths from "../imports/svg-s01rzl305m";
 import systemPromptSvg from "../imports/svg-moj859ikvp";
 import BxEdit from "../imports/BxEdit";
 import { ChatSettingsDialog } from "./ChatSettingsDialog";
+import { resolveModelDisplayName } from "../lib/llm-provider-registry";
+import { normalizeAssistantSystemPrompt } from "../../functions/_shared/default-assistant-system-prompt";
+import { getEffectiveProviderForFeature } from "../lib/ai-feature-routing";
+import { SCRIPTONY_AI_SETTINGS_UPDATED_EVENT } from "../lib/ai-settings-updated";
 
 interface Message {
   id: string;
@@ -171,6 +174,41 @@ interface ModelInfo {
   id: string;
   name: string;
   context_window: number;
+}
+
+type AssistantSettingsJson = {
+  feature_profiles?: Partial<Record<"assistant" | "gym" | "stage", { provider?: string; model?: string }>>;
+  provider_profiles?: Partial<Record<string, { model?: string }>>;
+  ollama?: { mode?: "local" | "cloud" };
+};
+
+/** Exact id match, then case-insensitive (API vs. settings often differ only by casing). */
+function findModelByIdLoose(list: ModelInfo[], id: string): ModelInfo | undefined {
+  const t = id.trim();
+  if (!t) return undefined;
+  const exact = list.find((m) => m.id === t);
+  if (exact) return exact;
+  const lower = t.toLowerCase();
+  return list.find((m) => m.id.toLowerCase() === lower);
+}
+
+/**
+ * If settings store a model id the API list omits (even ignoring case), prepend one row for labels/context in the assistant header.
+ * Label is a normal display name — no „(gespeichert)“ suffix in the UI.
+ */
+function mergeSavedModelIfMissing(
+  models: ModelInfo[],
+  preferredId: string,
+  provider: string,
+): ModelInfo[] {
+  let list = models.filter((m) => m.id);
+  const pref = preferredId.trim();
+  if (!pref || findModelByIdLoose(list, pref)) return list;
+  const baseLabel = resolveModelDisplayName(provider, pref);
+  const name = baseLabel;
+  const context_window =
+    provider === "deepseek" ? 64000 : list.length > 0 ? list[0].context_window : 128000;
+  return [{ id: pref, name, context_window }, ...list];
 }
 
 export function ScriptonyAssistant() {
@@ -348,27 +386,88 @@ export function ScriptonyAssistant() {
       } else {
         console.log('🔄 Loading fresh settings...');
         const settingsResult = await apiGet('/ai/settings');
+        if ('error' in settingsResult && settingsResult.error && import.meta.env.DEV) {
+          console.warn('[ScriptonyAssistant] loadModels: /ai/settings error', settingsResult.error);
+        }
         if (settingsResult.data?.settings) {
           settingsData = settingsResult.data.settings;
           setSettingsCache(settingsData);
           setSettingsCacheTime(now);
         }
       }
-      
+
       let apiKeyExists = false;
-      
+      let assistantProvider = "";
+      let preferredAssistantModel = "";
+      let assistantOllamaMode: "local" | "cloud" | undefined;
+
+      const ollamaConfigured = (row: Record<string, unknown>): boolean => {
+        const key = typeof row.ollama_api_key === "string" ? row.ollama_api_key.trim() : "";
+        const base = typeof row.ollama_base_url === "string" ? row.ollama_base_url.trim() : "";
+        let json: { ollama?: { mode?: string } } = {};
+        const parsed = row.settings_json_parsed;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          json = parsed as typeof json;
+        } else {
+          try {
+            const raw = row.settings_json;
+            if (typeof raw === "string") json = JSON.parse(raw) as typeof json;
+            else if (raw && typeof raw === "object") json = raw as typeof json;
+          } catch {
+            /* ignore */
+          }
+        }
+        const m = json?.ollama?.mode;
+        if (m === "cloud") return Boolean(key);
+        if (m === "local") return Boolean(base);
+        if (base) return true;
+        if (key) return true;
+        return false;
+      };
+
+      const parseAssistantSettingsJson = (row: Record<string, unknown>): AssistantSettingsJson => {
+        const parsed = row.settings_json_parsed;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return parsed as AssistantSettingsJson;
+        }
+        try {
+          const raw = row.settings_json;
+          if (typeof raw === "string") return JSON.parse(raw) as AssistantSettingsJson;
+          if (raw && typeof raw === "object") return raw as AssistantSettingsJson;
+        } catch {
+          /* ignore */
+        }
+        return {};
+      };
+
       if (settingsData) {
-        const provider = settingsData.active_provider;
-        
-        // Check if active provider has API key
-        if (provider === 'openai' && settingsData.openai_api_key) {
+        const row = settingsData as Record<string, unknown>;
+        const active = typeof row.active_provider === "string" ? row.active_provider : "";
+        const activeModel = typeof row.active_model === "string" ? row.active_model : "";
+        const json = parseAssistantSettingsJson(row);
+        const feature = json.feature_profiles?.assistant;
+        const provider =
+          getEffectiveProviderForFeature(json, "assistant", active || undefined) || active;
+        const profileModel = provider ? json.provider_profiles?.[provider]?.model : undefined;
+        const resolvedModel = feature?.model || profileModel || activeModel;
+        const om = json.ollama?.mode;
+
+        assistantProvider = provider;
+        preferredAssistantModel = resolvedModel;
+        assistantOllamaMode = om === "cloud" || om === "local" ? om : undefined;
+
+        if (provider === "openai" && settingsData.openai_api_key) {
           apiKeyExists = true;
-        } else if (provider === 'anthropic' && settingsData.anthropic_api_key) {
+        } else if (provider === "anthropic" && settingsData.anthropic_api_key) {
           apiKeyExists = true;
-        } else if (provider === 'google' && settingsData.google_api_key) {
+        } else if (provider === "google" && settingsData.google_api_key) {
           apiKeyExists = true;
-        } else if (provider === 'openrouter' && settingsData.openrouter_api_key) {
+        } else if (provider === "openrouter" && settingsData.openrouter_api_key) {
           apiKeyExists = true;
+        } else if (provider === "deepseek" && settingsData.deepseek_api_key) {
+          apiKeyExists = true;
+        } else if (provider === "ollama") {
+          apiKeyExists = ollamaConfigured(settingsData as Record<string, unknown>);
         }
       }
       
@@ -382,26 +481,92 @@ export function ScriptonyAssistant() {
         setModel('');
         return;
       }
-      
-      const result = await apiGet('/ai/models');
+
+      const modelsRoute =
+        assistantProvider === "ollama" && assistantOllamaMode
+          ? `/ai/models?provider=${encodeURIComponent(assistantProvider)}&ollama_mode=${encodeURIComponent(assistantOllamaMode)}`
+          : assistantProvider
+            ? `/ai/models?provider=${encodeURIComponent(assistantProvider)}`
+            : "/ai/models";
+
+      const result = await apiGet(modelsRoute);
+      const providerFromResponse =
+        result.data && typeof (result.data as any).provider === 'string'
+          ? (result.data as any).provider
+          : '';
+      const providerForMerge = providerFromResponse || assistantProvider || '';
+
+      if ('error' in result && result.error) {
+        if (import.meta.env.DEV) {
+          console.warn('[ScriptonyAssistant] loadModels: /ai/models error', result.error, modelsRoute);
+        }
+        const fallbackList = mergeSavedModelIfMissing(
+          [],
+          preferredAssistantModel,
+          providerForMerge,
+        );
+        setAvailableModels(fallbackList);
+        setActiveProvider(assistantProvider);
+        const pick =
+          (preferredAssistantModel.trim() &&
+            fallbackList.find((m) => m.id === preferredAssistantModel.trim())) ||
+          fallbackList[0];
+        if (pick) {
+          setModel(pick.id);
+          tokenCounter.setContextWindow(pick.context_window);
+        }
+        return;
+      }
+
       if (result.data) {
-        setAvailableModels(result.data.models || []);
-        setActiveProvider(result.data.provider || '');
-        
-        // Set default model if not set or if current model not in new list
-        const currentModelExists = result.data.models.some((m: any) => m.id === model);
-        if (!model || !currentModelExists) {
-          if (result.data.models.length > 0) {
-            const defaultModel = result.data.models[0];
-            setModel(defaultModel.id);
-            tokenCounter.setContextWindow(defaultModel.context_window);
-          }
-        } else {
-          // Update context window for current model
-          const currentModel = result.data.models.find((m: any) => m.id === model);
-          if (currentModel) {
-            tokenCounter.setContextWindow(currentModel.context_window);
-          }
+        const rawModelsWithContext = Array.isArray((result.data as any).models_with_context)
+          ? (result.data as any).models_with_context
+          : [];
+        const rawModelIds = Array.isArray((result.data as any).models)
+          ? (result.data as any).models
+          : [];
+
+        const normalizedModels: ModelInfo[] =
+          rawModelsWithContext.length > 0
+            ? rawModelsWithContext.map((m: any) => ({
+                id: String(m.id ?? ""),
+                name: String(m.name ?? m.id ?? ""),
+                context_window: Number(m.context_window ?? 200000),
+              }))
+            : rawModelIds.map((id: any) => ({
+                id: String(id),
+                name: String(id),
+                context_window: 200000,
+              }));
+
+        const list = mergeSavedModelIfMissing(
+          normalizedModels,
+          preferredAssistantModel,
+          providerForMerge,
+        );
+        setAvailableModels(list);
+        const providerFromModels = result.data.provider || assistantProvider || "";
+        setActiveProvider(providerFromModels);
+
+        if (import.meta.env.DEV) {
+          const pref = preferredAssistantModel.trim();
+          console.log('[ScriptonyAssistant] loadModels', {
+            modelsRoute,
+            assistantProvider,
+            preferredAssistantModel: pref,
+            mergedSavedNotInApi: Boolean(pref && !findModelByIdLoose(normalizedModels, pref)),
+            modelIds: list.map((m) => m.id),
+          });
+        }
+
+        const preferred =
+          findModelByIdLoose(list, preferredAssistantModel) ||
+          findModelByIdLoose(list, model) ||
+          list[0];
+
+        if (preferred) {
+          setModel(preferred.id);
+          tokenCounter.setContextWindow(preferred.context_window);
         }
       }
     } catch (error) {
@@ -410,6 +575,17 @@ export function ScriptonyAssistant() {
       setAvailableModels([]);
     }
   };
+
+  const loadModelsRef = useRef(loadModels);
+  loadModelsRef.current = loadModels;
+
+  useEffect(() => {
+    const onAiSettingsUpdated = () => {
+      void loadModelsRef.current(true);
+    };
+    window.addEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, onAiSettingsUpdated);
+    return () => window.removeEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, onAiSettingsUpdated);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -443,15 +619,6 @@ export function ScriptonyAssistant() {
     }
   };
 
-  // Handle model change - update context window
-  const handleModelChange = (newModelId: string) => {
-    setModel(newModelId);
-    const selectedModel = availableModels.find(m => m.id === newModelId);
-    if (selectedModel) {
-      tokenCounter.setContextWindow(selectedModel.context_window);
-    }
-  };
-
   const loadCurrentConversation = async () => {
     // If there's a current conversation ID, load its messages
     if (currentConversationId) {
@@ -479,7 +646,10 @@ export function ScriptonyAssistant() {
         // Load global system prompt
         const settingsResult = await apiGet('/ai/settings');
         if (settingsResult.data?.settings) {
-          setSystemPrompt(settingsResult.data.settings.system_prompt || '');
+          const raw = settingsResult.data.settings.system_prompt;
+          setSystemPrompt(
+            normalizeAssistantSystemPrompt(typeof raw === "string" ? raw : null)
+          );
         }
       } catch (error) {
         console.error('Failed to load system prompt:', error);
@@ -1273,30 +1443,29 @@ export function ScriptonyAssistant() {
                     )}
                   </div>
                   {!hasApiKey ? (
-                    <div className="h-[32px] bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsChatSettingsOpen(true)}
+                      className="h-[32px] w-full bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center hover:bg-destructive/15 dark:hover:bg-destructive/25 transition-colors"
+                    >
                       <span className="text-destructive text-[9px] font-medium text-center leading-tight">
                         Configure API Key
                       </span>
-                    </div>
+                    </button>
                   ) : (
-                    <Select value={model} onValueChange={handleModelChange}>
-                      <SelectTrigger className="h-[32px] bg-[#e4e6ea] dark:bg-muted border-0 rounded-[10px] text-[#646567] dark:text-foreground text-[11px]">
-                        <SelectValue placeholder="Modell wählen..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableModels.length > 0 ? (
-                          availableModels.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="loading" disabled>
-                            Modelle werden geladen...
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <button
+                      type="button"
+                      title="Öffnet die KI-Einstellungen (Provider, API-Keys, Modell — wie Einstellungen → Integrationen)."
+                      aria-label="KI-Einstellungen und Modell"
+                      onClick={() => setIsChatSettingsOpen(true)}
+                      className="flex w-full items-center justify-between gap-2 border-0 bg-[#e4e6ea] px-3 dark:bg-muted rounded-[10px] h-[32px] text-[#646567] dark:text-foreground text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
+                    >
+                      <span className="min-w-0 truncate text-left">
+                        {availableModels.find((m) => m.id === model)?.name ??
+                          (model ? model : "Modell wählen…")}
+                      </span>
+                      <ChevronDown className="size-4 shrink-0 opacity-50 pointer-events-none" aria-hidden />
+                    </button>
                   )}
                 </div>
 
@@ -1304,11 +1473,15 @@ export function ScriptonyAssistant() {
                 <div>
                   <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px] mb-1 block">Context:</label>
                   {!hasApiKey ? (
-                    <div className="h-[32px] bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsChatSettingsOpen(true)}
+                      className="h-[32px] w-full bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center hover:bg-destructive/15 dark:hover:bg-destructive/25 transition-colors"
+                    >
                       <span className="text-destructive text-[9px] font-medium text-center leading-tight">
                         in Chat Settings
                       </span>
-                    </div>
+                    </button>
                   ) : (
                     <div className="bg-[#e4e6ea] dark:bg-muted rounded-[10px] px-3 py-2 h-[32px] flex items-center justify-between">
                       <span className="text-[#727375] dark:text-muted-foreground text-[10px]">
@@ -2377,7 +2550,7 @@ export function ScriptonyAssistant() {
       <ChatSettingsDialog
         open={isChatSettingsOpen}
         onOpenChange={setIsChatSettingsOpen}
-        onUpdate={loadModels}
+        onUpdate={() => void loadModels(true)}
       />
     </>
   );

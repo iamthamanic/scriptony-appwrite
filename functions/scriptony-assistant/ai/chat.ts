@@ -2,9 +2,10 @@
  * AI chat route for the Scriptony HTTP API.
  */
 
-import { generateAiResponse } from "../../../_shared/ai";
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { generateAiResponse } from "../../_shared/ai";
+import { resolveAiFeatureProfile } from "../../_shared/ai-feature-profile";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
   sendBadRequest,
@@ -14,7 +15,28 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../_shared/http";
+} from "../../_shared/http";
+
+function chatMessageMetadata(model: string, provider: string, tokensUsed: number): string {
+  return JSON.stringify({ model, provider, tokens_used: tokensUsed });
+}
+
+function enrichChatMessageForApi(entry: Record<string, any>): Record<string, any> {
+  let meta: Record<string, any> = {};
+  try {
+    if (typeof entry.metadata_json === "string" && entry.metadata_json.trim()) {
+      meta = JSON.parse(entry.metadata_json);
+    }
+  } catch {
+    /* ignore */
+  }
+  return {
+    ...entry,
+    model: meta.model,
+    provider: meta.provider,
+    tokens_used: meta.tokens_used,
+  };
+}
 
 async function getSettings(userId: string): Promise<Record<string, any> | null> {
   const data = await requestGraphql<{
@@ -27,12 +49,17 @@ async function getSettings(userId: string): Promise<Record<string, any> | null> 
           active_provider
           active_model
           system_prompt
+          temperature
+          max_tokens
           use_rag
+          settings_json
           openai_api_key
           anthropic_api_key
           google_api_key
           openrouter_api_key
           deepseek_api_key
+          ollama_base_url
+          ollama_api_key
         }
       }
     `,
@@ -91,21 +118,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const settings = await getSettings(bootstrap.user.id);
-    const provider = settings?.active_provider || "openai";
-    const model = settings?.active_model || "gpt-4o-mini";
-    const providerKey = settings?.[`${provider}_api_key`];
-    const systemPrompt =
-      settings?.system_prompt ||
-      "Du bist ein hilfreicher Assistent fuer Drehbuchautoren.";
-    const temperature =
-      typeof settings?.temperature === "number" ? settings.temperature : 0.7;
-    const maxTokens =
-      typeof settings?.max_tokens === "number" ? settings.max_tokens : 2000;
-
-    if (!providerKey) {
-      sendBadRequest(res, "No API key configured for the active provider");
+    const resolved = resolveAiFeatureProfile(settings, "assistant");
+    if (!resolved.ok) {
+      sendBadRequest(res, resolved.error);
       return;
     }
+    const provider = resolved.settings.provider;
+    const model = resolved.settings.model;
 
     let conversationId = body.conversation_id ?? body.conversationId ?? null;
 
@@ -134,14 +153,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     const priorMessages = await getConversationMessages(conversationId);
     const generated = await generateAiResponse({
-      settings: {
-        provider,
-        model,
-        apiKey: providerKey,
-        systemPrompt,
-        temperature,
-        maxTokens,
-      },
+      settings: resolved.settings,
       conversationMessages: priorMessages,
       latestMessage: rawMessage,
     });
@@ -157,9 +169,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               conversation_id
               role
               content
-              model
-              provider
-              tokens_used
+              metadata_json
               created_at
             }
           }
@@ -171,17 +181,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             conversation_id: conversationId,
             role: "user",
             content: rawMessage,
-            model,
-            provider,
-            tokens_used: rawMessage.split(/\s+/).filter(Boolean).length,
+            metadata_json: chatMessageMetadata(
+              model,
+              provider,
+              rawMessage.split(/\s+/).filter(Boolean).length,
+            ),
           },
           {
             conversation_id: conversationId,
             role: "assistant",
             content: generated.content,
-            model,
-            provider,
-            tokens_used: generated.outputTokens,
+            metadata_json: chatMessageMetadata(model, provider, generated.outputTokens),
           },
         ],
       }
@@ -215,7 +225,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     sendJson(res, 200, {
       conversation_id: conversationId,
-      message: assistantMessage,
+      message: enrichChatMessageForApi(assistantMessage),
       token_details: {
         input_tokens: generated.inputTokens,
         output_tokens: generated.outputTokens,

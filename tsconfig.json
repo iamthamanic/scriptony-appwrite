@@ -20,6 +20,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "functions/_shared/default-assistant-system-prompt.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
