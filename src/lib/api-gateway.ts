@@ -29,6 +29,7 @@ export const BACKEND_FUNCTIONS = {
   BEATS: 'scriptony-beats',
   WORLDBUILDING: 'scriptony-worldbuilding',
   ASSISTANT: 'scriptony-assistant',
+  IMAGE: 'scriptony-image',
   GYM: 'scriptony-gym',
   AUTH: 'scriptony-auth',
   SUPERADMIN: 'scriptony-superadmin',
@@ -126,6 +127,9 @@ const ROUTE_MAP: Record<string, string> = {
   // scriptony-mcp-appwrite (longer prefix before shorter assistant routes if path overlaps)
   '/scriptony-mcp': BACKEND_FUNCTIONS.MCP_APPWRITE,
 
+  // scriptony-image (must be above /ai prefix)
+  '/ai/image': BACKEND_FUNCTIONS.IMAGE,
+
   // scriptony-assistant
   '/ai': BACKEND_FUNCTIONS.ASSISTANT,
   '/conversations': BACKEND_FUNCTIONS.ASSISTANT,
@@ -178,6 +182,35 @@ export interface ApiGatewayOptions {
   body?: any;
   headers?: Record<string, string>;
   accessToken?: string;
+}
+
+/** Appwrite/proxy sometimes returns an HTML error page instead of `{ error: string }` JSON. */
+function humanizeHtmlOrGatewayError(
+  functionName: string,
+  status: number,
+  raw: string
+): string {
+  const trimmed = raw.trim();
+  if (status === 408) {
+    return (
+      `Gateway timeout (408) before the function finished — common for slow image APIs. ` +
+      `Restart \`npm run dev\` after vite proxy changes; on self‑hosted stacks increase reverse-proxy read timeouts ` +
+      `(e.g. nginx \`proxy_read_timeout\`) in front of the function host. ` +
+      `Appwrite → Functions → ${functionName}: execution timeout 300s+; optional env SCRIPTONY_IMAGE_UPSTREAM_TIMEOUT_MS on the function.`
+    );
+  }
+  const looksHtml =
+    trimmed.startsWith('<!DOCTYPE') ||
+    trimmed.startsWith('<html') ||
+    /unexpected server error/i.test(trimmed);
+  if (!looksHtml) {
+    return trimmed.slice(0, 2000);
+  }
+  return (
+    `Appwrite/proxy returned HTML (${status}) instead of JSON — often a function timeout, executor crash, or dev-proxy timeout. ` +
+    `Check Appwrite → Functions → ${functionName} (Logs, increase timeout for image generation). ` +
+    `After changing vite.config proxy timeouts, restart \`npm run dev\`.`
+  );
 }
 
 /**
@@ -277,10 +310,11 @@ export async function apiGateway<T = any>(
     });
     
     // Extract error message if available
-    const errorMessage = typeof errorData === 'object' 
-      ? (errorData.error || errorData.message || errorData.details || JSON.stringify(errorData))
-      : errorData;
-    
+    const errorMessage =
+      typeof errorData === 'object'
+        ? errorData.error || errorData.message || errorData.details || JSON.stringify(errorData)
+        : humanizeHtmlOrGatewayError(functionName, response.status, String(errorData));
+
     throw new Error(`API Error: ${response.status} - ${errorMessage}`);
   }
   

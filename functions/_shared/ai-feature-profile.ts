@@ -8,6 +8,16 @@ import { normalizeAssistantSystemPrompt } from "./default-assistant-system-promp
 
 export type AiFeatureId = "assistant" | "gym" | "stage";
 
+/** Routable image surfaces (Cover, 2DStage) — settings_json.image.feature_profiles */
+export type ImageFeatureId = "cover" | "stage2d";
+
+export type ImageProviderId = "ollama" | "openrouter";
+
+export interface ImageFeatureProfileOverride {
+  provider?: ImageProviderId;
+  model?: string;
+}
+
 export { DEFAULT_ASSISTANT_SYSTEM_PROMPT, normalizeAssistantSystemPrompt } from "./default-assistant-system-prompt";
 
 export type LlmProviderId = ProviderSettings["provider"];
@@ -52,6 +62,19 @@ export interface AiSettingsJsonV1 {
    */
   enabled_features?: AiFeatureId[];
   ollama?: OllamaSettingsBlock | null;
+  image?: {
+    provider?: "ollama" | "openrouter";
+    model?: string;
+    api_key?: string;
+    ollama_api_key?: string;
+    openrouter_api_key?: string;
+    enabled_features?: Array<"cover" | "stage2d">;
+    /** Per feature: which image provider + optional model pin (like LLM feature_profiles). */
+    feature_profiles?: Partial<Record<ImageFeatureId, ImageFeatureProfileOverride | null>>;
+    /** Last-selected model per image provider card (persisted independently). */
+    provider_models?: Partial<Record<ImageProviderId, string>>;
+    ollama?: { mode?: "cloud" } | null;
+  } | null;
 }
 
 /** Öffentlicher Host für Ollama Cloud (OpenAI-kompatibel unter /v1/chat/completions). */
@@ -244,6 +267,89 @@ export function resolveAiFeatureProfile(
   };
 }
 
+function getImageBlock(json: AiSettingsJsonV1): NonNullable<AiSettingsJsonV1["image"]> | undefined {
+  const im = json.image;
+  return im && typeof im === "object" ? im : undefined;
+}
+
+/** Global image feature flags; missing enabled_features => both cover and stage2d on (legacy). */
+export function getImageFeatureFlags(
+  json: AiSettingsJsonV1 | undefined
+): Record<ImageFeatureId, boolean> {
+  const ef = json?.image?.enabled_features;
+  if (ef === undefined) {
+    return { cover: true, stage2d: true };
+  }
+  return {
+    cover: ef.includes("cover"),
+    stage2d: ef.includes("stage2d"),
+  };
+}
+
+export function getRoutedImageProviderForFeature(
+  json: AiSettingsJsonV1 | undefined,
+  fid: ImageFeatureId
+): ImageProviderId | undefined {
+  const p = json?.image?.feature_profiles?.[fid]?.provider;
+  if (p === "openrouter" || p === "ollama") return p;
+  return undefined;
+}
+
+/**
+ * Explicit feature_profiles routing, else legacy: single image.provider when feature is globally enabled.
+ */
+export function getEffectiveImageProviderForFeature(
+  json: AiSettingsJsonV1 | undefined,
+  fid: ImageFeatureId
+): ImageProviderId | undefined {
+  const explicit = getRoutedImageProviderForFeature(json, fid);
+  if (explicit) return explicit;
+  const flags = getImageFeatureFlags(json);
+  if (!flags[fid]) return undefined;
+  const fallback = json?.image?.provider === "openrouter" ? "openrouter" : "ollama";
+  return fallback;
+}
+
+export function getEffectiveImageModelForFeature(
+  json: AiSettingsJsonV1 | undefined,
+  fid: ImageFeatureId
+): string {
+  const img = getImageBlock(json);
+  if (!img) return "";
+  const routedPid = getEffectiveImageProviderForFeature(json, fid);
+  const fpModel = img.feature_profiles?.[fid]?.model?.trim();
+  if (fpModel) return fpModel;
+  if (routedPid && typeof img.provider_models?.[routedPid] === "string") {
+    const m = img.provider_models[routedPid]!.trim();
+    if (m) return m;
+  }
+  const legacy = typeof img.model === "string" ? img.model.trim() : "";
+  return legacy || "";
+}
+
+export type ResolveCoverImageRouteResult =
+  | {
+      ok: true;
+      provider: ImageProviderId;
+      model: string;
+    }
+  | { ok: false; error: string };
+
+/** Resolves provider + model + enabled state for POST /ai/image/generate-cover */
+export function resolveCoverImageRoute(json: AiSettingsJsonV1 | undefined, bodyModel?: string): ResolveCoverImageRouteResult {
+  const flags = getImageFeatureFlags(json);
+  if (!flags.cover) {
+    return { ok: false, error: "Cover-Bildgenerierung ist unter Einstellungen → Integrationen (Image) deaktiviert." };
+  }
+  const provider = getEffectiveImageProviderForFeature(json, "cover");
+  if (!provider) {
+    return { ok: false, error: "Kein Image-Provider für Cover zugewiesen. Bitte unter Image einen Anbieter konfigurieren und Cover zuweisen." };
+  }
+  const model =
+    (bodyModel && bodyModel.trim()) || getEffectiveImageModelForFeature(json, "cover") || "gpt-image-1";
+  return { ok: true, provider, model };
+}
+
 export function mergeSettingsJson(
   existingRaw: unknown,
   patch: Partial<AiSettingsJsonV1>
@@ -287,8 +393,45 @@ export function mergeSettingsJson(
       ollama = { ...(cur.ollama ?? {}), ...patch.ollama };
     }
   }
+  let image = cur.image;
+  if (Object.prototype.hasOwnProperty.call(patch, "image")) {
+    if (patch.image === null) {
+      image = undefined;
+    } else if (patch.image && typeof patch.image === "object") {
+      image = { ...(cur.image ?? {}), ...patch.image };
+      if (patch.image.feature_profiles) {
+        const curFp = { ...(cur.image?.feature_profiles ?? {}) };
+        for (const [key, val] of Object.entries(patch.image.feature_profiles) as [
+          ImageFeatureId,
+          ImageFeatureProfileOverride | null | undefined,
+        ][]) {
+          if (val === null) {
+            delete curFp[key];
+            continue;
+          }
+          if (!val) continue;
+          curFp[key] = { ...(cur.image?.feature_profiles?.[key] ?? {}), ...val };
+        }
+        image.feature_profiles = Object.keys(curFp).length > 0 ? curFp : undefined;
+      }
+      if (patch.image.provider_models) {
+        image.provider_models = {
+          ...(cur.image?.provider_models ?? {}),
+          ...patch.image.provider_models,
+        };
+      }
+      if (Object.prototype.hasOwnProperty.call(patch.image, "ollama")) {
+        if (patch.image.ollama === null) {
+          delete image.ollama;
+        } else if (patch.image.ollama && typeof patch.image.ollama === "object") {
+          image.ollama = { ...(cur.image?.ollama ?? {}), ...patch.image.ollama };
+        }
+      }
+    }
+  }
 
-  const { feature_profiles: _fp, provider_profiles: _pp, ollama: _ollamaPatch, ...patchRest } = patch;
+  const { feature_profiles: _fp, provider_profiles: _pp, ollama: _ollamaPatch, image: _imagePatch, ...patchRest } =
+    patch;
   const out: AiSettingsJsonV1 = {
     ...cur,
     ...patchRest,
@@ -301,6 +444,13 @@ export function mergeSettingsJson(
       delete out.ollama;
     } else {
       out.ollama = ollama;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "image")) {
+    if (patch.image === null) {
+      delete out.image;
+    } else {
+      out.image = image;
     }
   }
   return out;

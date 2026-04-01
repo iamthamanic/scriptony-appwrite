@@ -20,6 +20,7 @@ import svgPaths from "../imports/svg-s01rzl305m";
 import systemPromptSvg from "../imports/svg-moj859ikvp";
 import BxEdit from "../imports/BxEdit";
 import { ChatSettingsDialog } from "./ChatSettingsDialog";
+import { AssistantParticleLoader } from "./ai/AssistantParticleLoader";
 import { resolveModelDisplayName } from "../lib/llm-provider-registry";
 import { normalizeAssistantSystemPrompt } from "../../functions/_shared/default-assistant-system-prompt";
 import { getEffectiveProviderForFeature } from "../lib/ai-feature-routing";
@@ -221,9 +222,8 @@ export function ScriptonyAssistant() {
   const [activeProvider, setActiveProvider] = useState<string>("");
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   
-  // Token counter hook
+  // Token counter hook (context window comes from selected model via loadModels / sync effect)
   const tokenCounter = useTokenCounter({
-    contextWindow: 200000, // Will be updated when model changes
     model: model,
   });
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -366,14 +366,26 @@ export function ScriptonyAssistant() {
     }
   };
 
+  /** Projekte/Welten/… laden sobald die RAG-Datenbank geöffnet wird (nicht nur bei @ / # in der Eingabe). */
+  useEffect(() => {
+    if (!isRAGDatabaseOpen) return;
+    void loadRAGDataLazy();
+  }, [isRAGDatabaseOpen]);
+
   // ✅ PERFORMANCE FIX: Cache settings to avoid repeated API calls
   const [settingsCache, setSettingsCache] = useState<any>(null);
   const [settingsCacheTime, setSettingsCacheTime] = useState<number>(0);
   const CACHE_DURATION = 60000; // 1 minute cache
 
+  /** Bumps on each loadModels call so overlapping async runs cannot clobber UI (context flicker). */
+  const loadModelsGenRef = useRef(0);
+
   // Load models, chat history and current conversation when assistant opens
   // Load available models function (can be called from outside)
   const loadModels = async (forceRefresh = false) => {
+    const gen = ++loadModelsGenRef.current;
+    const isStale = () => gen !== loadModelsGenRef.current;
+
     try {
       // ✅ Use cached settings if available and not expired
       const now = Date.now();
@@ -395,6 +407,8 @@ export function ScriptonyAssistant() {
           setSettingsCacheTime(now);
         }
       }
+
+      if (isStale()) return;
 
       let apiKeyExists = false;
       let assistantProvider = "";
@@ -476,6 +490,7 @@ export function ScriptonyAssistant() {
       // Only load models if API key exists
       if (!apiKeyExists) {
         console.warn('No API key configured for active provider');
+        if (isStale()) return;
         setAvailableModels([]);
         setActiveProvider('');
         setModel('');
@@ -490,6 +505,8 @@ export function ScriptonyAssistant() {
             : "/ai/models";
 
       const result = await apiGet(modelsRoute);
+      if (isStale()) return;
+
       const providerFromResponse =
         result.data && typeof (result.data as any).provider === 'string'
           ? (result.data as any).provider
@@ -505,6 +522,7 @@ export function ScriptonyAssistant() {
           preferredAssistantModel,
           providerForMerge,
         );
+        if (isStale()) return;
         setAvailableModels(fallbackList);
         setActiveProvider(assistantProvider);
         const pick =
@@ -544,6 +562,7 @@ export function ScriptonyAssistant() {
           preferredAssistantModel,
           providerForMerge,
         );
+        if (isStale()) return;
         setAvailableModels(list);
         const providerFromModels = result.data.provider || assistantProvider || "";
         setActiveProvider(providerFromModels);
@@ -565,12 +584,14 @@ export function ScriptonyAssistant() {
           list[0];
 
         if (preferred) {
+          if (isStale()) return;
           setModel(preferred.id);
           tokenCounter.setContextWindow(preferred.context_window);
         }
       }
     } catch (error) {
       console.error('Error loading models:', error);
+      if (gen !== loadModelsGenRef.current) return;
       setHasApiKey(false);
       setAvailableModels([]);
     }
@@ -578,6 +599,15 @@ export function ScriptonyAssistant() {
 
   const loadModelsRef = useRef(loadModels);
   loadModelsRef.current = loadModels;
+
+  /** Keep context bar aligned with the merged model row (survives races and chat history model changes). */
+  useEffect(() => {
+    if (!model.trim() || availableModels.length === 0) return;
+    const row = findModelByIdLoose(availableModels, model);
+    if (row && Number.isFinite(row.context_window) && row.context_window > 0) {
+      tokenCounter.setContextWindow(row.context_window);
+    }
+  }, [model, availableModels, tokenCounter.setContextWindow]);
 
   useEffect(() => {
     const onAiSettingsUpdated = () => {
@@ -882,7 +912,10 @@ export function ScriptonyAssistant() {
       const result = await apiPost("/ai/chat", {
         conversation_id: currentConversationId,
         message: messageContent,
-        use_rag: true, // Use RAG if enabled in settings
+        use_rag: true,
+        rag_project_ids: selectedRAGProjects,
+        rag_world_ids: selectedRAGWorlds,
+        rag_character_ids: selectedRAGCharacters,
       });
 
       if (result.data) {
@@ -897,11 +930,11 @@ export function ScriptonyAssistant() {
           return;
         }
 
-        // If new conversation was created, update ID
-        if (!currentConversationId && conversation_id) {
+        // Always trust backend conversation_id to keep one continuous session while assistant stays open.
+        if (conversation_id && conversation_id !== currentConversationId) {
           setCurrentConversationId(conversation_id);
           // Update title from first message
-          if (messages.length === 0) {
+          if (!currentConversationId && messages.length === 0) {
             const shortTitle = messageContent.slice(0, 50) + (messageContent.length > 50 ? '...' : '');
             setChatTitle(shortTitle);
           }
@@ -1335,16 +1368,17 @@ export function ScriptonyAssistant() {
     <>
       {/* Floating Button */}
       <button
+        type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="fixed bottom-20 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95"
-        style={{ zIndex: 60 }}
+        className="fixed bottom-20 right-4 z-[60] flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-0 shadow-lg transition-all hover:scale-110 hover:shadow-xl hover:brightness-105 active:scale-95"
+        style={{ backgroundColor: "rgba(142, 117, 209, 1)" }}
         aria-label={isOpen ? "Scriptony Assistant schließen" : "Scriptony Assistant öffnen"}
         aria-expanded={isOpen}
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-primary-foreground" />
+          <X className="h-6 w-6 text-white" />
         ) : (
-          <MessageCircle className="h-6 w-6 text-primary-foreground" />
+          <MessageCircle className="h-6 w-6 text-white" />
         )}
       </button>
 
@@ -1364,7 +1398,8 @@ export function ScriptonyAssistant() {
             height: "670px",
             maxHeight: "calc(100vh - 11rem)",
             borderRadius: "1.5rem",
-            zIndex: 55,
+            /* Above sticky nav / bottom bars (z-50); below modal layer (z-[100]) */
+            zIndex: 60,
           }}
         >
           <SheetHeader className="sr-only">
@@ -1421,10 +1456,10 @@ export function ScriptonyAssistant() {
                 )}
                 <button
                   onClick={handleTitleClick}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 size-[24px] flex items-center justify-center hover:bg-gray-300 dark:hover:bg-muted/60 rounded-md transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 size-[24px] flex items-center justify-center rounded-md text-[#6e59a5] hover:bg-[#6e59a5]/15 dark:text-primary dark:hover:bg-primary/20 transition-colors"
                   aria-label="Titel bearbeiten"
                 >
-                  <div className="size-[16px] text-[#727375] dark:text-muted-foreground">
+                  <div className="size-[16px] text-inherit">
                     <BxEdit />
                   </div>
                 </button>
@@ -1637,13 +1672,7 @@ export function ScriptonyAssistant() {
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-white dark:bg-card border border-border rounded-xl px-4 py-3">
-                        <div className="flex gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                          <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                          <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
-                        </div>
-                      </div>
+                      <AssistantParticleLoader className="shadow-sm border border-white/20" />
                     </div>
                   )}
                 </div>

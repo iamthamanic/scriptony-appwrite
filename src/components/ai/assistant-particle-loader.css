@@ -1,0 +1,73 @@
+/**
+ * 3D particle loader — same structure as reference SCSS (62 × i, one transform + spin).
+ * Used by AssistantParticleLoader (assistant chat, cover generation modal).
+ */
+
+.assistant-pl-root {
+  background-color: #8e75d1;
+  border-radius: 0.75rem;
+  min-height: 140px;
+  min-width: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+/** Fills a parent overlay (e.g. cover generation modal). */
+.assistant-pl-root--fill {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  min-width: 100%;
+  border-radius: inherit;
+}
+
+/**
+ * Semi-transparent layer so underlying text (e.g. cover prompt) remains visible.
+ * Only for overlays; assistant FAB chat keeps solid purple.
+ */
+.assistant-pl-root--translucent {
+  background-color: rgba(142, 117, 209, 0.38);
+  backdrop-filter: blur(1.5px);
+}
+
+/* Like .wrapper: centered origin + perspective on the same node as particles */
+.assistant-pl-wrapper {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  perspective: 500px;
+  transform-style: preserve-3d;
+}
+
+/* Like `i` in reference: placement + animation on one element */
+.assistant-pl-particle {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 8px;
+  opacity: 0;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 1);
+  animation-name: assistant-pl-spin;
+  animation-duration: 3s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  transform-style: preserve-3d;
+}
+
+@keyframes assistant-pl-spin {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.6;
+    /* $particleSize/2 for centering — matches reference keyframes */
+    transform: translate3d(-4px, -4px, 570px);
+  }
+}

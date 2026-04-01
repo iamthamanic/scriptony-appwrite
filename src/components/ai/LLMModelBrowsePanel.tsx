@@ -11,7 +11,18 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { getLlmModelHint } from "../../lib/llm-model-hints";
 
-export type ModelWithContextRow = { id: string; name: string; context_window: number };
+export type CapabilityState = "true" | "false" | "unknown";
+export type ModelWithContextRow = {
+  id: string;
+  name: string;
+  context_window: number;
+  provider?: string;
+  image_gen?: CapabilityState;
+  vision?: CapabilityState;
+  tools?: CapabilityState;
+  thinking?: CapabilityState;
+  video_gen?: CapabilityState;
+};
 
 type SortKey = "id" | "context";
 
@@ -28,6 +39,25 @@ function formatContext(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${Math.round(n / 1000)}k`;
   return String(n);
+}
+
+function capBadgeMeta(v?: CapabilityState): { label: string; className: string } {
+  if (v === "true") {
+    return {
+      label: "yes",
+      className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+    };
+  }
+  if (v === "false") {
+    return {
+      label: "no",
+      className: "border-rose-500/40 bg-rose-500/15 text-rose-300",
+    };
+  }
+  return {
+    label: "unknown",
+    className: "border-border/70 bg-muted/30 text-muted-foreground",
+  };
 }
 
 export function LLMModelBrowsePanel({
@@ -129,9 +159,12 @@ export function LLMModelBrowsePanel({
               <th className="px-2 py-1.5">
                 <SortBtn k="context" label="Kontext" />
               </th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
-                Typisch / Preis*
-              </th>
+              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Provider</th>
+              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Image</th>
+              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Vision</th>
+              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Tools</th>
+              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Thinking</th>
+              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Video</th>
               {onSelectModel ? <th className="w-20 px-2 py-1.5" /> : null}
             </tr>
           </thead>
@@ -147,24 +180,31 @@ export function LLMModelBrowsePanel({
                 <td className="px-2 py-1.5 text-muted-foreground">
                   {m.context_window > 0 ? formatContext(m.context_window) : "—"}
                 </td>
+                <td className="px-2 py-1.5 text-muted-foreground">{m.provider || m.hint?.bestFor?.[0] || "—"}</td>
                 <td className="px-2 py-1.5">
-                  <div className="flex flex-wrap gap-1">
-                    {m.hint?.bestFor.slice(0, 3).map((t) => (
-                      <Badge key={t} variant="secondary" className="px-1 py-0 text-[0.6rem] font-normal">
-                        {t}
-                      </Badge>
-                    ))}
-                    {!m.hint ? <span className="text-[0.65rem] text-muted-foreground">—</span> : null}
-                  </div>
-                  {m.hint?.inputPerMUsd != null ? (
-                    <p className="mt-0.5 text-[0.6rem] text-muted-foreground">
-                      ca. ${m.hint.inputPerMUsd} in /{" "}
-                      {m.hint.outputPerMUsd != null ? `$${m.hint.outputPerMUsd}` : "?"}{" "}
-                      out je 1M Tokens
-                    </p>
-                  ) : m.hint?.note ? (
-                    <p className="mt-0.5 text-[0.6rem] text-muted-foreground">{m.hint.note}</p>
-                  ) : null}
+                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.image_gen).className}`}>
+                    {capBadgeMeta(m.image_gen).label}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5">
+                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.vision).className}`}>
+                    {capBadgeMeta(m.vision).label}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5">
+                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.tools).className}`}>
+                    {capBadgeMeta(m.tools).label}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5">
+                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.thinking).className}`}>
+                    {capBadgeMeta(m.thinking).label}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5">
+                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.video_gen).className}`}>
+                    {capBadgeMeta(m.video_gen).label}
+                  </Badge>
                 </td>
                 {onSelectModel ? (
                   <td className="px-2 py-1.5 text-right">
@@ -178,9 +218,7 @@ export function LLMModelBrowsePanel({
           </tbody>
           </table>
         </div>
-        <p className="text-[0.6rem] leading-snug text-muted-foreground">
-          * Ungefähre Marktpreise / Stärken — bitte beim Anbieter verifizieren. Kontext kommt aus der API-Abfrage.
-        </p>
+        <p className="text-[0.6rem] leading-snug text-muted-foreground">Capabilities: yes / no / unknown (provider metadata + probes).</p>
       </div>
     </details>
   );

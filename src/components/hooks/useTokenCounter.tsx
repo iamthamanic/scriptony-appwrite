@@ -5,7 +5,7 @@
  * Estimates tokens locally for instant feedback.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { apiPost } from '../../lib/api-client';
 
 interface TokenCounterState {
@@ -48,13 +48,6 @@ export function useTokenCounter(options: UseTokenCounterOptions = {}) {
   });
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-
-  /**
-   * Update context window when it changes
-   */
-  useEffect(() => {
-    setState(prev => ({ ...prev, contextWindow }));
-  }, [contextWindow]);
 
   /**
    * Estimate tokens for input text (instant local estimation)
@@ -155,14 +148,14 @@ export function useTokenCounter(options: UseTokenCounterOptions = {}) {
    * Reset counter
    */
   const reset = useCallback(() => {
-    setState({
+    setState((prev) => ({
       inputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
-      contextWindow,
+      contextWindow: prev.contextWindow,
       isEstimating: false,
-    });
-  }, [contextWindow]);
+    }));
+  }, []);
 
   /**
    * Update context window

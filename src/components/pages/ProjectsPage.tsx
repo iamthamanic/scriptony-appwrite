@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
-import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock } from "lucide-react";
+import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock, Share2 } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../ui/button";
@@ -26,6 +26,7 @@ import { LoadingSpinner } from "../LoadingSpinner";
 import { FilmDropdown } from "../FilmDropdown";
 import { StructureBeatsSection } from "../StructureBeatsSection";
 import { ProjectStatsLogsDialog } from "../ProjectStatsLogsDialogEnhanced";
+import { ProjectExportDialog } from "../ProjectExportDialog";
 import { InspirationCard, ProjectInspiration } from "../InspirationCard";
 import { AddInspirationDialog, InspirationData } from "../AddInspirationDialog";
 import { ProjectCarousel } from "../ProjectCarousel";
@@ -44,6 +45,13 @@ import { startBackgroundUpload } from "../../lib/background-upload";
 import { STORAGE_CONFIG } from "../../lib/config";
 import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
 import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
+import { apiPost } from "../../lib/api-client";
+import { CoverActionModal } from "../ai/CoverActionModal";
+import { CoverGenerateModal } from "../ai/CoverGenerateModal";
+import { AssistantParticleLoader } from "../ai/AssistantParticleLoader";
+import { buildProjectCoverPrompt, type CoverVisualStyle } from "../../lib/cover-prompt";
+import { applyScriptonyWatermarkToImageBase64 } from "../../lib/cover-watermark";
+import scriptonyLogo from "../../assets/scriptony-logo.png";
 import * as TimelineAPI from "../../lib/api/timeline-api";
 import * as ShotsAPI from "../../lib/api/shots-api";
 import { queryClient } from "../../lib/react-query";
@@ -357,6 +365,23 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   // Stats & Logs Dialog
   const [showStatsDialog, setShowStatsDialog] = useState(false);
   const [selectedStatsProject, setSelectedStatsProject] = useState<any | null>(null);
+
+  const [projectExportOpen, setProjectExportOpen] = useState(false);
+  const [projectExportSnapshot, setProjectExportSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [projectExportWorldLabel, setProjectExportWorldLabel] = useState<string | null>(null);
+
+  const openProjectExportFromList = (proj: any) => {
+    const wl = proj.linkedWorldId
+      ? worlds.find((w: any) => w.id === proj.linkedWorldId)?.name ?? null
+      : null;
+    const coverUrl = projectCoverImages[proj.id] || proj.cover_image_url;
+    setProjectExportSnapshot({
+      ...proj,
+      ...(coverUrl ? { cover_image_url: coverUrl } : {}),
+    });
+    setProjectExportWorldLabel(wl);
+    setProjectExportOpen(true);
+  };
 
   // 🎨 Collapsible Sections State
   const [structureOpen, setStructureOpen] = useState(true); // Default: OPEN
@@ -807,6 +832,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
 
   if (selectedProjectId && currentProject) {
     return (
+      <>
       <ProjectDetail 
         project={currentProject} 
         worlds={worlds}
@@ -861,7 +887,25 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         onSaveInspiration={handleSaveInspiration}
         onDeleteInspiration={handleDeleteInspiration}
         onEditInspiration={handleEditInspiration}
+        onRequestProjectExport={(snapshot, worldLabel) => {
+          setProjectExportSnapshot(snapshot);
+          setProjectExportWorldLabel(worldLabel);
+          setProjectExportOpen(true);
+        }}
       />
+      <ProjectExportDialog
+        open={projectExportOpen}
+        onOpenChange={(o) => {
+          setProjectExportOpen(o);
+          if (!o) {
+            setProjectExportSnapshot(null);
+            setProjectExportWorldLabel(null);
+          }
+        }}
+        projectSnapshot={projectExportSnapshot}
+        linkedWorldLabel={projectExportWorldLabel}
+      />
+      </>
     );
   }
 
@@ -1180,6 +1224,15 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                                   <DropdownMenuItem onClick={(e) => handleOpenStatsDialog(project, e)}>
                                     <BarChart3 className="size-3.5 mr-2" />
                                     Project Stats & Logs
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openProjectExportFromList(project);
+                                    }}
+                                  >
+                                    <Share2 className="size-3.5 mr-2" />
+                                    Teilen / Export
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={(e) => {
@@ -1733,7 +1786,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewProjectDialog(false)} className="h-11">
               Cancel
             </Button>
@@ -1783,6 +1836,19 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
           project={selectedStatsProject}
         />
       )}
+
+      <ProjectExportDialog
+        open={projectExportOpen}
+        onOpenChange={(o) => {
+          setProjectExportOpen(o);
+          if (!o) {
+            setProjectExportSnapshot(null);
+            setProjectExportWorldLabel(null);
+          }
+        }}
+        projectSnapshot={projectExportSnapshot}
+        linkedWorldLabel={projectExportWorldLabel}
+      />
 
       {/* Delete Project Dialog - Must be here for list delete! */}
       <AlertDialog open={showDeleteDialog && !selectedProjectId} onOpenChange={setShowDeleteDialog}>
@@ -2949,9 +3015,10 @@ interface ProjectDetailProps {
   onSaveInspiration: (data: InspirationData) => Promise<void>;
   onDeleteInspiration: (id: string) => Promise<void>;
   onEditInspiration: (inspiration: ProjectInspiration) => void;
+  onRequestProjectExport?: (snapshot: Record<string, unknown>, linkedWorldLabel: string | null) => void;
 }
 
-function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration }: ProjectDetailProps) {
+function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration, onRequestProjectExport }: ProjectDetailProps) {
   const [structureView, setStructureView] = useState<"dropdown" | "timeline">("dropdown");
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
@@ -3051,6 +3118,61 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   );
   const editedDurationForApi = durationPartsToApiString(editedDurationHours, editedDurationMinutes);
 
+  const linkedWorldLabelForExport = useMemo(
+    () =>
+      project.linkedWorldId
+        ? worlds.find((w: any) => w.id === project.linkedWorldId)?.name ?? null
+        : null,
+    [worlds, project.linkedWorldId]
+  );
+
+  const exportProjectSnapshot = useMemo((): Record<string, unknown> => {
+    const coverUrl = coverImage || project.cover_image_url;
+    const coverPatch = coverUrl ? { cover_image_url: coverUrl } : {};
+    if (!isEditingInfo) {
+      return { ...project, ...coverPatch };
+    }
+    return {
+      ...project,
+      title: editedTitle,
+      logline: editedLogline,
+      type: editedType,
+      genre: editedGenresMulti.join(", "),
+      duration: editedDurationForApi,
+      linkedWorldId: editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
+      concept_blocks: editedConceptBlocks,
+      episode_layout: editedType === "series" ? editedEpisodeLayout || undefined : undefined,
+      season_engine: editedType === "series" ? editedSeasonEngine || undefined : undefined,
+      narrative_structure: editedType !== "series" ? editedNarrativeStructure || undefined : undefined,
+      beat_template: editedBeatTemplate || undefined,
+      target_pages:
+        editedType === "book" ? (editedTargetPages ? parseInt(editedTargetPages, 10) : undefined) : undefined,
+      words_per_page:
+        editedType === "book" ? (editedWordsPerPage ? parseInt(editedWordsPerPage, 10) : 250) : undefined,
+      reading_speed_wpm:
+        editedType === "book" ? (editedReadingSpeed ? parseInt(editedReadingSpeed, 10) : 230) : undefined,
+      ...coverPatch,
+    };
+  }, [
+    isEditingInfo,
+    project,
+    coverImage,
+    editedTitle,
+    editedLogline,
+    editedType,
+    editedGenresMulti,
+    editedDurationForApi,
+    editedLinkedWorldId,
+    editedConceptBlocks,
+    editedEpisodeLayout,
+    editedSeasonEngine,
+    editedNarrativeStructure,
+    editedBeatTemplate,
+    editedTargetPages,
+    editedWordsPerPage,
+    editedReadingSpeed,
+  ]);
+
   // 📖 Calculate word count from timeline cache (live recalculation)
   const [calculatedWords, setCalculatedWords] = useState(project.current_words || 0);
   
@@ -3142,13 +3264,45 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictSceneData, setConflictSceneData] = useState<any>(null);
   const [gifCoverPending, setGifCoverPending] = useState<File | null>(null);
+  const [isCoverActionModalOpen, setIsCoverActionModalOpen] = useState(false);
+  const [isCoverGenerateModalOpen, setIsCoverGenerateModalOpen] = useState(false);
+  const [coverPromptDraft, setCoverPromptDraft] = useState("");
+  const [coverVisualStyle, setCoverVisualStyle] = useState<CoverVisualStyle>("realistic");
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   // Upload runs in background via startBackgroundUpload — no local loading state needed
 
   const handleCoverClick = () => {
+    setIsCoverActionModalOpen(true);
+  };
+
+  const handleCoverUploadChoice = () => {
     fileInputRef.current?.click();
   };
 
-  const uploadProjectCoverFile = (file: File, gifMode?: ImageUploadGifMode) => {
+  const handleCoverGenerateChoice = () => {
+    setCoverPromptDraft(
+      buildProjectCoverPrompt({
+        project,
+        worldbuildingItems,
+        characters: [],
+        projectType: editedType || project.type || "",
+        concept: {
+          premise: getConceptContent("premise"),
+          hook: getConceptContent("hook"),
+          theme: getConceptContent("theme"),
+        },
+        visualStyle: coverVisualStyle,
+      })
+    );
+    setIsCoverGenerateModalOpen(true);
+  };
+
+  const uploadProjectCoverFile = (
+    file: File,
+    gifMode?: ImageUploadGifMode,
+    /** e.g. clear AI cover loading state after background upload finishes */
+    onUploadSettled?: () => void
+  ) => {
     startBackgroundUpload({
       file,
       target: { kind: 'project-cover', projectId: project.id },
@@ -3156,6 +3310,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       onSuccess: (imageUrl) => {
         onCoverImageChange(imageUrl);
       },
+      onSettled: onUploadSettled,
     });
   };
 
@@ -3177,6 +3332,56 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     }
 
     uploadProjectCoverFile(file, undefined);
+  };
+
+  const handleGenerateCover = async () => {
+    const prompt = coverPromptDraft.trim();
+    if (!prompt) {
+      toast.error("Bitte einen Prompt eingeben.");
+      return;
+    }
+    setIsGeneratingCover(true);
+    try {
+      const result = await apiPost<{
+        ok?: boolean;
+        image_base64?: string;
+        mime_type?: string;
+        error?: string;
+      }>("/ai/image/generate-cover", {
+        projectId: project.id,
+        prompt,
+      });
+      if ("error" in result && result.error) {
+        toast.error(result.error.message || "Cover konnte nicht generiert werden");
+        setIsGeneratingCover(false);
+        return;
+      }
+      const b64 = result.data?.image_base64 || "";
+      const mime = result.data?.mime_type || "image/png";
+      if (!b64) {
+        toast.error(result.data?.error || "Provider hat kein Bild zurückgegeben.");
+        setIsGeneratingCover(false);
+        return;
+      }
+      let generatedFile: File;
+      try {
+        const watermarked = await applyScriptonyWatermarkToImageBase64(b64, mime, scriptonyLogo);
+        generatedFile = new File([watermarked], `cover-${project.id}.png`, { type: "image/png" });
+      } catch (wmErr) {
+        console.error("[Cover] watermark failed", wmErr);
+        toast.error("Scriptony-Logo konnte nicht eingebettet werden. Bitte erneut versuchen.");
+        setIsGeneratingCover(false);
+        return;
+      }
+      uploadProjectCoverFile(generatedFile, undefined, () => {
+        setIsGeneratingCover(false);
+        setIsCoverGenerateModalOpen(false);
+      });
+      toast.success("Cover wird generiert und hochgeladen…");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Cover-Generierung fehlgeschlagen");
+      setIsGeneratingCover(false);
+    }
   };
 
   const moveScene = (dragIndex: number, hoverIndex: number) => {
@@ -3284,6 +3489,52 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
   const [charactersState, setCharactersState] = useState(getInitialCharacters);
   const [charactersLoading, setCharactersLoading] = useState(true);
+
+  const handleCoverVisualStyleChange = (style: CoverVisualStyle) => {
+    setCoverVisualStyle(style);
+    setCoverPromptDraft(
+      buildProjectCoverPrompt({
+        project,
+        worldbuildingItems,
+        characters: Array.isArray(charactersState) ? charactersState : [],
+        projectType: editedType || project.type || "",
+        concept: {
+          premise: getConceptContent("premise"),
+          hook: getConceptContent("hook"),
+          theme: getConceptContent("theme"),
+        },
+        visualStyle: style,
+      })
+    );
+  };
+
+  useEffect(() => {
+    if (!isCoverGenerateModalOpen) return;
+    setCoverPromptDraft((prev) =>
+      prev.trim()
+        ? prev
+        : buildProjectCoverPrompt({
+            project,
+            worldbuildingItems,
+            characters: Array.isArray(charactersState) ? charactersState : [],
+            projectType: editedType || project.type || "",
+            concept: {
+              premise: getConceptContent("premise"),
+              hook: getConceptContent("hook"),
+              theme: getConceptContent("theme"),
+            },
+            visualStyle: coverVisualStyle,
+          })
+    );
+  }, [
+    isCoverGenerateModalOpen,
+    project,
+    worldbuildingItems,
+    charactersState,
+    editedType,
+    editedConceptBlocks,
+    coverVisualStyle,
+  ]);
 
   // Load characters from backend on mount
   useEffect(() => {
@@ -3716,6 +3967,24 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         }}
       />
 
+      <CoverActionModal
+        open={isCoverActionModalOpen}
+        onOpenChange={setIsCoverActionModalOpen}
+        onUpload={handleCoverUploadChoice}
+        onGenerate={handleCoverGenerateChoice}
+      />
+
+      <CoverGenerateModal
+        open={isCoverGenerateModalOpen}
+        onOpenChange={setIsCoverGenerateModalOpen}
+        prompt={coverPromptDraft}
+        onPromptChange={setCoverPromptDraft}
+        visualStyle={coverVisualStyle}
+        onVisualStyleChange={handleCoverVisualStyleChange}
+        onGenerate={() => void handleGenerateCover()}
+        generating={isGeneratingCover}
+      />
+
       {/* MOBILE LAYOUT (<768px): Cover oben + Collapsible Info */}
       <div className="md:hidden">
         {/* Cover Top Centered */}
@@ -3740,13 +4009,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   <p className="text-xs text-muted-foreground">800 × 1200 px</p>
                 </div>
               )}
+              {isGeneratingCover && !isCoverGenerateModalOpen ? (
+                <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-lg">
+                  <AssistantParticleLoader
+                    className="assistant-pl-root--fill assistant-pl-root--translucent min-h-0"
+                    ariaLabel="Cover wird generiert und hochgeladen"
+                  />
+                </div>
+              ) : null}
               {/* Hover overlay for camera icon */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-lg px-4 py-2 backdrop-blur-sm">
                   <Camera className="size-6 text-primary" />
                 </div>
               </div>
-              {/* Upload overlay removed — uploads run in background with toast notifications */}
             </div>
           </div>
         </div>
@@ -3852,6 +4128,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                           Statistiken & Logs
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onRequestProjectExport?.(
+                            exportProjectSnapshot,
+                            isEditingInfo
+                              ? editedLinkedWorldId === "none"
+                                ? null
+                                : worlds.find((w: any) => w.id === editedLinkedWorldId)?.name ?? null
+                              : linkedWorldLabelForExport
+                          )
+                        }
+                      >
+                        <Share2 className="size-3.5 mr-2" />
+                        Teilen / Export
+                      </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => setShowDeleteDialog(true)}
                         className="text-red-600 focus:text-red-600"
@@ -4571,6 +4862,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               Statistiken & Logs
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={() =>
+                              onRequestProjectExport?.(
+                                exportProjectSnapshot,
+                                isEditingInfo
+                                  ? editedLinkedWorldId === "none"
+                                    ? null
+                                    : worlds.find((w: any) => w.id === editedLinkedWorldId)?.name ?? null
+                                  : linkedWorldLabelForExport
+                              )
+                            }
+                          >
+                            <Share2 className="size-3.5 mr-2" />
+                            Teilen / Export
+                          </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => setShowDeleteDialog(true)}
                             className="text-red-600 focus:text-red-600"
@@ -5261,13 +5567,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   </div>
                 )}
                 {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
+                {isGeneratingCover && !isCoverGenerateModalOpen ? (
+                  <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-lg">
+                    <AssistantParticleLoader
+                      className="assistant-pl-root--fill assistant-pl-root--translucent min-h-0"
+                      ariaLabel="Cover wird generiert und hochgeladen"
+                    />
+                  </div>
+                ) : null}
                 {/* Hover overlay for camera icon */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-full p-3 backdrop-blur-sm">
                     <Camera className="size-6 text-primary" />
                   </div>
                 </div>
-                {/* Upload overlay removed — uploads run in background with toast notifications */}
               </div>
             </div>
           </div>
@@ -5511,7 +5824,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowNewScene(false);
               resetNewSceneForm();
@@ -5718,7 +6031,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowNewCharacter(false);
               resetNewCharacterForm();

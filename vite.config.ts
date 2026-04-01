@@ -11,10 +11,16 @@
     // ── Dev proxy: route ALL function domains through localhost to avoid CORS ──
     // Appwrite's executor can return errors without CORS headers (cold starts, crashes).
     // By proxying through Vite's dev server, requests stay same-origin → no CORS issues.
-    const proxy: Record<
-      string,
-      { target: string; changeOrigin: boolean; secure: boolean; rewrite: (p: string) => string }
-    > = {};
+    const proxy: Record<string, import('vite').ProxyOptions> = {};
+
+    /**
+     * Image generation often needs several minutes. http-proxy defaults (e.g. 120s proxyTimeout) or
+     * intermediate values can yield 408/HTML before Appwrite returns — use 0 to disable these timeouts in dev.
+     */
+    const longRunningProxyOpts = {
+      timeout: 0,
+      proxyTimeout: 0,
+    } as const;
 
     // Parse VITE_BACKEND_FUNCTION_DOMAIN_MAP and create a proxy entry for every function.
     const domainMapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
@@ -28,6 +34,7 @@
             target: cleanTarget,
             changeOrigin: true,
             secure: false,
+            ...longRunningProxyOpts,
             rewrite: (p) => {
               const stripped = p.replace(new RegExp(`^/__dev-proxy/${funcName}`), '');
               return stripped.length > 0 ? stripped : '/';
@@ -48,6 +55,7 @@
         target: assistantProxyTarget.replace(/\/+$/, ''),
         changeOrigin: true,
         secure: false,
+        ...longRunningProxyOpts,
         rewrite: (p) => {
           const stripped = p.replace(/^\/__dev-proxy\/scriptony-assistant/, '');
           return stripped.length > 0 ? stripped : '/';

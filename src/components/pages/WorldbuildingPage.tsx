@@ -656,7 +656,7 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
               </button>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button 
               variant="outline" 
               onClick={() => {
@@ -1818,7 +1818,7 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
               </button>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewAssetDialog(false)} className="h-11">
               Abbrechen
             </Button>
@@ -1940,7 +1940,7 @@ function WorldDetail({ world, onBack, onUpdate, onDuplicate, onShowStats, coverI
               </Select>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowNewCategoryDialog(false);
               setNewCategoryName("");

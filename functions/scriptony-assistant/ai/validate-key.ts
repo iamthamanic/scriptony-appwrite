@@ -15,7 +15,7 @@ import {
 import { OLLAMA_CLOUD_ORIGIN } from "../../_shared/ai-feature-profile";
 import { fetchOllamaTags } from "../../_shared/ollama-tags-request";
 import { getProviderModels } from "./settings";
-import { listRemoteModels } from "./fetch-dynamic-models";
+import { listRemoteModels, listRemoteModelsWithCapabilities } from "./fetch-dynamic-models";
 
 const KNOWN_PROVIDERS = ["openai", "anthropic", "google", "openrouter", "deepseek", "ollama"] as const;
 
@@ -112,6 +112,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       ollamaBaseUrl: mode === "local" ? baseLocal : "",
       ollamaMode: mode,
     });
+    const caps = await listRemoteModelsWithCapabilities("ollama", {
+      apiKey,
+      ollamaBaseUrl: mode === "local" ? baseLocal : "",
+      ollamaMode: mode,
+    });
     sendJson(res, 200, {
       valid: true,
       provider: "ollama",
@@ -119,6 +124,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       models: models.map((e) => e.id),
       available_models: models.map((e) => e.id),
       models_with_context: models,
+      models_with_capabilities: caps.models,
       source,
     });
     return;
@@ -143,6 +149,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   }
 
   const { models, source } = await listRemoteModels(provider, { apiKey });
+  const caps = await listRemoteModelsWithCapabilities(provider, { apiKey });
   const fallback = getProviderModels(provider);
   const usedRemote = models.length > 0;
   const finalList = usedRemote ? models : fallback;
@@ -154,6 +161,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     models: finalList.map((entry) => entry.id),
     available_models: finalList.map((entry) => entry.id),
     models_with_context: finalList,
+    models_with_capabilities: caps.models,
     source: outSource,
   });
 }

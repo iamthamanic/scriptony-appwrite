@@ -208,7 +208,7 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter>
           <Button variant="outline" onClick={onCancel} className="h-11">
             Abbrechen
           </Button>

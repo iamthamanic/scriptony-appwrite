@@ -72,6 +72,7 @@ const fnBase =
 
 let projectsDomain = null;
 let assistantDomain = null;
+let imageDomain = null;
 let mcpAppwriteDomain = null;
 let domainMap = null;
 const mapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
@@ -85,6 +86,9 @@ if (mapRaw) {
       }
       if (typeof m["scriptony-assistant"] === "string") {
         assistantDomain = m["scriptony-assistant"].trim();
+      }
+      if (typeof m["scriptony-image"] === "string") {
+        imageDomain = m["scriptony-image"].trim();
       }
       if (typeof m["scriptony-mcp-appwrite"] === "string") {
         mcpAppwriteDomain = m["scriptony-mcp-appwrite"].trim();
@@ -127,6 +131,12 @@ const assistantHealth = assistantDomain
     ? `${trimSlash(fnBase)}/scriptony-assistant/health`
     : null;
 
+const imageHealth = imageDomain
+  ? `${trimSlash(imageDomain)}/health`
+  : fnBase
+    ? `${trimSlash(fnBase)}/scriptony-image/health`
+    : null;
+
 const mcpAppwriteHealth = mcpAppwriteDomain
   ? `${trimSlash(mcpAppwriteDomain)}/health`
   : fnBase
@@ -145,6 +155,15 @@ if (assistantHealth) {
   console.warn(
     "Hinweis: Keine URL für scriptony-assistant ermittelbar (KI-Einstellungen).\n" +
       "  Setze VITE_APPWRITE_FUNCTIONS_BASE_URL **oder** ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-assistant\".\n"
+  );
+}
+
+if (imageHealth) {
+  checks.push({ url: imageHealth, label: "scriptony-image /health (Cover & Image-API)" });
+} else {
+  console.warn(
+    "Hinweis: Keine URL für scriptony-image ermittelbar (Cover-Generierung).\n" +
+      "  Ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-image\" (Function-Domain aus der Console).\n"
   );
 }
 
@@ -172,13 +191,19 @@ for (const { url, label } of checks) {
   } else {
     failed = true;
     console.log(`  FEHLER (${r.status})`, r.text.slice(0, 200));
-    if (label.includes("scriptony-assistant") || label.includes("scriptony-mcp-appwrite")) {
+    if (
+      label.includes("scriptony-assistant") ||
+      label.includes("scriptony-mcp-appwrite") ||
+      label.includes("scriptony-image")
+    ) {
       const t = typeof r.text === "string" ? r.text : "";
       const looksHtml = t.includes("<!DOCTYPE") || t.includes("<html");
       if (r.status === 404 || looksHtml) {
         const fnId = label.includes("scriptony-mcp-appwrite")
           ? "scriptony-mcp-appwrite"
-          : "scriptony-assistant";
+          : label.includes("scriptony-image")
+            ? "scriptony-image"
+            : "scriptony-assistant";
         console.log(
           `  → Die URL liefert keine Function-JSON-Antwort (HTML/404). Appwrite: Function \`${fnId}\` deployen,\n` +
             "     aktives Deployment wählen und unter Functions → Domains dieselbe Host-URL wie in .env eintragen.\n" +

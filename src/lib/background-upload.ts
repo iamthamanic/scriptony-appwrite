@@ -18,6 +18,8 @@ interface BackgroundUploadOptions {
   prepOptions?: ClientImageUploadPrepOptions;
   /** Called with the resulting URL when the upload succeeds (if component is still mounted). */
   onSuccess?: (imageUrl: string) => void;
+  /** After upload finishes (success or error); not called when aborted. */
+  onSettled?: () => void;
 }
 
 const activeUploads = new Map<string, AbortController>();
@@ -33,7 +35,7 @@ export function isBackgroundUploadActive(target: UploadTarget): boolean {
 }
 
 export function startBackgroundUpload(options: BackgroundUploadOptions): void {
-  const { file, target, prepOptions, onSuccess } = options;
+  const { file, target, prepOptions, onSuccess, onSettled } = options;
   const key = uploadKey(target);
 
   // Cancel any existing upload for the same target
@@ -58,10 +60,12 @@ export function startBackgroundUpload(options: BackgroundUploadOptions): void {
 
       toast.success('Bild erfolgreich hochgeladen!', { id: toastId });
       onSuccess?.(imageUrl);
+      if (!controller.signal.aborted) onSettled?.();
     } catch (err) {
       if (controller.signal.aborted) return;
       console.error('[background-upload] Failed:', err);
       toast.error(err instanceof Error ? err.message : 'Fehler beim Hochladen', { id: toastId });
+      onSettled?.();
     } finally {
       activeUploads.delete(key);
     }

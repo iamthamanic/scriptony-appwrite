@@ -30,6 +30,23 @@ function estimateTokens(value: string): number {
   return value.trim() ? value.trim().split(/\s+/).length : 0;
 }
 
+const PROVIDER_TIMEOUT_MS = 25_000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if ((error as Error)?.name === "AbortError") {
+      throw new Error(`Provider timeout after ${Math.round(PROVIDER_TIMEOUT_MS / 1000)}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function callOpenAiCompatible(
   settings: ProviderSettings,
   messages: ChatMessage[],
@@ -43,7 +60,7 @@ async function callOpenAiCompatible(
   if (settings.apiKey && settings.apiKey !== "__ollama_local__") {
     headers.Authorization = `Bearer ${settings.apiKey}`;
   }
-  const response = await fetch(endpoint, {
+  const response = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -84,7 +101,7 @@ async function callAnthropic(settings: ProviderSettings, messages: ChatMessage[]
       content: entry.content,
     }));
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -131,7 +148,7 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
       parts: [{ text: entry.content }],
     }));
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
       settings.model
     )}:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
@@ -176,29 +193,45 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
   return text;
 }
 
+const RAG_CONTEXT_SEPARATOR =
+  "\n\n--- Scriptony Kontext (Auszug, nur zur Orientierung) ---\n";
+
 export async function generateAiResponse(input: {
   settings: ProviderSettings;
   conversationMessages: ChatMessage[];
   latestMessage: string;
+  /** Optional retrieved text from projects/worlds/characters; merged into system prompt. */
+  retrievalContext?: string;
 }): Promise<{
   content: string;
   inputTokens: number;
   outputTokens: number;
 }> {
+  const rag = typeof input.retrievalContext === "string" ? input.retrievalContext.trim() : "";
+  const effectiveSystemPrompt =
+    rag.length > 0
+      ? `${input.settings.systemPrompt}${RAG_CONTEXT_SEPARATOR}${rag}`
+      : input.settings.systemPrompt;
+
+  const settingsForCall: ProviderSettings = {
+    ...input.settings,
+    systemPrompt: effectiveSystemPrompt,
+  };
+
   const messages = cleanMessages([
-    { role: "system", content: input.settings.systemPrompt },
+    { role: "system", content: settingsForCall.systemPrompt },
     ...input.conversationMessages,
     { role: "user", content: input.latestMessage },
   ]);
 
   let content = "";
   if (input.settings.provider === "anthropic") {
-    content = await callAnthropic(input.settings, messages);
+    content = await callAnthropic(settingsForCall, messages);
   } else if (input.settings.provider === "google") {
-    content = await callGoogle(input.settings, messages);
+    content = await callGoogle(settingsForCall, messages);
   } else if (input.settings.provider === "openrouter") {
     content = await callOpenAiCompatible(
-      input.settings,
+      settingsForCall,
       messages,
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -208,7 +241,7 @@ export async function generateAiResponse(input: {
     );
   } else if (input.settings.provider === "deepseek") {
     content = await callOpenAiCompatible(
-      input.settings,
+      settingsForCall,
       messages,
       "https://api.deepseek.com/chat/completions"
     );
@@ -218,13 +251,13 @@ export async function generateAiResponse(input: {
       throw new Error("Ollama: ollama_base_url fehlt in den KI-Einstellungen.");
     }
     content = await callOpenAiCompatible(
-      input.settings,
+      settingsForCall,
       messages,
       `${base}/v1/chat/completions`
     );
   } else {
     content = await callOpenAiCompatible(
-      input.settings,
+      settingsForCall,
       messages,
       "https://api.openai.com/v1/chat/completions"
     );

@@ -1,0 +1,8 @@
+---
+description: AI settings — unified provider feature toggles (KI & LLM + Image)
+alwaysApply: false
+---
+
+# AI provider toggles (Scriptony)
+
+**Do not** duplicate Badge+Switch styling for routable features in forms. Use **`FeatureToggleBadge`** ([`src/components/ai/FeatureToggleBadge.tsx`](src/components/ai/FeatureToggleBadge.tsx)) and wrap rows with **`ProviderFeatureToggleBadges`** (LLM: [`ai-feature-routing.ts`](src/lib/ai-feature-routing.ts)) or **`ImageFeatureToggleBadges`** (Image: [`ai-image-feature-routing.ts`](src/lib/ai-image-feature-routing.ts)). New routable features belong in the appropriate **`_*_ROUTABLE_FEATURES`** array so all provider cards update together. Image provider **`<details>`** summaries should mirror the KI & LLM layout: status column + toggle row + chevron column.

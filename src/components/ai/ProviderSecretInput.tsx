@@ -27,6 +27,8 @@ export interface ProviderSecretInputProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  /** Optional: always render eye button (used for consistent UI parity). */
+  alwaysShowToggle?: boolean;
 }
 
 export function ProviderSecretInput({
@@ -37,6 +39,7 @@ export function ProviderSecretInput({
   disabled = false,
   placeholder = "",
   className,
+  alwaysShowToggle = false,
 }: ProviderSecretInputProps) {
   const hasStored = Boolean(storedSecret?.trim());
   const [revealStored, setRevealStored] = useState(false);
@@ -74,8 +77,7 @@ export function ProviderSecretInput({
     inputType = "password";
   }
 
-  const showEye =
-    (hasStored && !d) || d.length > 0;
+  const showEye = alwaysShowToggle || (hasStored && !d) || d.length > 0;
 
   return (
     <div className={cn("relative w-full min-w-0", className)}>
@@ -109,7 +111,7 @@ export function ProviderSecretInput({
             variant="ghost"
             size="icon"
             className="pointer-events-auto h-8 w-8 text-muted-foreground hover:text-foreground"
-            disabled={disabled}
+            disabled={disabled || (!hasStored && d.length === 0)}
             aria-label={revealStored ? "Zugangsdaten verbergen" : "Zugangsdaten anzeigen"}
             onMouseDown={(e) => {
               e.preventDefault();

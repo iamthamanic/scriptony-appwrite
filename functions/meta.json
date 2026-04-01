@@ -1,0 +1,5776 @@
+{
+  "inputs": {
+    "node_modules/undici/lib/core/symbols.js": {
+      "bytes": 2421,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/core/errors.js": {
+      "bytes": 6609,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/core/constants.js": {
+      "bytes": 2610,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/core/util.js": {
+      "bytes": 14267,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./errors"
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "querystring",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/timers.js": {
+      "bytes": 1878,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/deps/streamsearch/sbmh.js": {
+      "bytes": 7202,
+      "imports": [
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/deps/dicer/lib/PartStream.js": {
+      "bytes": 294,
+      "imports": [
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/utils/getLimit.js": {
+      "bytes": 359,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/deps/dicer/lib/HeaderParser.js": {
+      "bytes": 2773,
+      "imports": [
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/getLimit.js",
+          "kind": "require-call",
+          "original": "../../../lib/utils/getLimit"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/deps/streamsearch/sbmh.js",
+          "kind": "require-call",
+          "original": "../../streamsearch/sbmh"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/deps/dicer/lib/Dicer.js": {
+      "bytes": 6408,
+      "imports": [
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/@fastify/busboy/deps/streamsearch/sbmh.js",
+          "kind": "require-call",
+          "original": "../../streamsearch/sbmh"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/deps/dicer/lib/PartStream.js",
+          "kind": "require-call",
+          "original": "./PartStream"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/deps/dicer/lib/HeaderParser.js",
+          "kind": "require-call",
+          "original": "./HeaderParser"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/utils/decodeText.js": {
+      "bytes": 2488,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/utils/parseParams.js": {
+      "bytes": 9921,
+      "imports": [
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/decodeText.js",
+          "kind": "require-call",
+          "original": "./decodeText"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/utils/basename.js": {
+      "bytes": 420,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/types/multipart.js": {
+      "bytes": 8712,
+      "imports": [
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/@fastify/busboy/deps/dicer/lib/Dicer.js",
+          "kind": "require-call",
+          "original": "../../deps/dicer/lib/Dicer"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/parseParams.js",
+          "kind": "require-call",
+          "original": "../utils/parseParams"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/decodeText.js",
+          "kind": "require-call",
+          "original": "../utils/decodeText"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/basename.js",
+          "kind": "require-call",
+          "original": "../utils/basename"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/getLimit.js",
+          "kind": "require-call",
+          "original": "../utils/getLimit"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/utils/Decoder.js": {
+      "bytes": 1425,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/types/urlencoded.js": {
+      "bytes": 5841,
+      "imports": [
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/Decoder.js",
+          "kind": "require-call",
+          "original": "../utils/Decoder"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/decodeText.js",
+          "kind": "require-call",
+          "original": "../utils/decodeText"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/getLimit.js",
+          "kind": "require-call",
+          "original": "../utils/getLimit"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/@fastify/busboy/lib/main.js": {
+      "bytes": 2169,
+      "imports": [
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/@fastify/busboy/deps/dicer/lib/Dicer.js",
+          "kind": "require-call",
+          "original": "../deps/dicer/lib/Dicer"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/types/multipart.js",
+          "kind": "require-call",
+          "original": "./types/multipart"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/types/urlencoded.js",
+          "kind": "require-call",
+          "original": "./types/urlencoded"
+        },
+        {
+          "path": "node_modules/@fastify/busboy/lib/utils/parseParams.js",
+          "kind": "require-call",
+          "original": "./utils/parseParams"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/constants.js": {
+      "bytes": 4068,
+      "imports": [
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/global.js": {
+      "bytes": 890,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/util.js": {
+      "bytes": 33949,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/global.js",
+          "kind": "require-call",
+          "original": "./global"
+        },
+        {
+          "path": "perf_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/symbols.js": {
+      "bytes": 198,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/webidl.js": {
+      "bytes": 18538,
+      "imports": [
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/dataURL.js": {
+      "bytes": 18268,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/file.js": {
+      "bytes": 9543,
+      "imports": [
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "./dataURL"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/formdata.js": {
+      "bytes": 7885,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/file.js",
+          "kind": "require-call",
+          "original": "./file"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/body.js": {
+      "bytes": 19464,
+      "imports": [
+        {
+          "path": "node_modules/@fastify/busboy/lib/main.js",
+          "kind": "require-call",
+          "original": "@fastify/busboy"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/formdata.js",
+          "kind": "require-call",
+          "original": "./formdata"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/file.js",
+          "kind": "require-call",
+          "original": "./file"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "./dataURL"
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/core/request.js": {
+      "bytes": 13936,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./errors"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/body.js",
+          "kind": "require-call",
+          "original": "../fetch/body.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/dispatcher.js": {
+      "bytes": 300,
+      "imports": [
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/dispatcher-base.js": {
+      "bytes": 4585,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/dispatcher.js",
+          "kind": "require-call",
+          "original": "./dispatcher"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/core/connect.js": {
+      "bytes": 5709,
+      "imports": [
+        {
+          "path": "net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./errors"
+        },
+        {
+          "path": "tls",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/llhttp/utils.js": {
+      "bytes": 394,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/llhttp/constants.js": {
+      "bytes": 11002,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/llhttp/utils.js",
+          "kind": "require-call",
+          "original": "./utils"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/handler/RedirectHandler.js": {
+      "bytes": 7340,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/interceptor/redirectInterceptor.js": {
+      "bytes": 660,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/handler/RedirectHandler.js",
+          "kind": "require-call",
+          "original": "../handler/RedirectHandler"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/llhttp/llhttp-wasm.js": {
+      "bytes": 73976,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/llhttp/llhttp_simd-wasm.js": {
+      "bytes": 73956,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/client.js": {
+      "bytes": 62100,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/timers.js",
+          "kind": "require-call",
+          "original": "./timers"
+        },
+        {
+          "path": "node_modules/undici/lib/core/request.js",
+          "kind": "require-call",
+          "original": "./core/request"
+        },
+        {
+          "path": "node_modules/undici/lib/dispatcher-base.js",
+          "kind": "require-call",
+          "original": "./dispatcher-base"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/connect.js",
+          "kind": "require-call",
+          "original": "./core/connect"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        },
+        {
+          "path": "http2",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/llhttp/constants.js",
+          "kind": "require-call",
+          "original": "./llhttp/constants"
+        },
+        {
+          "path": "node_modules/undici/lib/interceptor/redirectInterceptor.js",
+          "kind": "require-call",
+          "original": "./interceptor/redirectInterceptor"
+        },
+        {
+          "path": "node_modules/undici/lib/llhttp/llhttp-wasm.js",
+          "kind": "require-call",
+          "original": "./llhttp/llhttp-wasm.js"
+        },
+        {
+          "path": "node_modules/undici/lib/llhttp/llhttp_simd-wasm.js",
+          "kind": "require-call",
+          "original": "./llhttp/llhttp_simd-wasm.js"
+        },
+        {
+          "path": "node_modules/undici/lib/llhttp/llhttp-wasm.js",
+          "kind": "require-call",
+          "original": "./llhttp/llhttp-wasm.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/node/fixed-queue.js": {
+      "bytes": 4222,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/pool-stats.js": {
+      "bytes": 552,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/pool-base.js": {
+      "bytes": 4559,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/dispatcher-base.js",
+          "kind": "require-call",
+          "original": "./dispatcher-base"
+        },
+        {
+          "path": "node_modules/undici/lib/node/fixed-queue.js",
+          "kind": "require-call",
+          "original": "./node/fixed-queue"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/pool-stats.js",
+          "kind": "require-call",
+          "original": "./pool-stats"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/pool.js": {
+      "bytes": 3071,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/pool-base.js",
+          "kind": "require-call",
+          "original": "./pool-base"
+        },
+        {
+          "path": "node_modules/undici/lib/client.js",
+          "kind": "require-call",
+          "original": "./client"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/connect.js",
+          "kind": "require-call",
+          "original": "./core/connect"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/balanced-pool.js": {
+      "bytes": 5258,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/pool-base.js",
+          "kind": "require-call",
+          "original": "./pool-base"
+        },
+        {
+          "path": "node_modules/undici/lib/pool.js",
+          "kind": "require-call",
+          "original": "./pool"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/compat/dispatcher-weakref.js": {
+      "bytes": 1067,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/agent.js": {
+      "bytes": 4623,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/dispatcher-base.js",
+          "kind": "require-call",
+          "original": "./dispatcher-base"
+        },
+        {
+          "path": "node_modules/undici/lib/pool.js",
+          "kind": "require-call",
+          "original": "./pool"
+        },
+        {
+          "path": "node_modules/undici/lib/client.js",
+          "kind": "require-call",
+          "original": "./client"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/interceptor/redirectInterceptor.js",
+          "kind": "require-call",
+          "original": "./interceptor/redirectInterceptor"
+        },
+        {
+          "path": "node_modules/undici/lib/compat/dispatcher-weakref.js",
+          "kind": "require-call",
+          "original": "./compat/dispatcher-weakref"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/readable.js": {
+      "bytes": 7252,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/util.js": {
+      "bytes": 1596,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/abort-signal.js": {
+      "bytes": 968,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/api-request.js": {
+      "bytes": 4593,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/api/readable.js",
+          "kind": "require-call",
+          "original": "./readable"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/api/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/api/abort-signal.js",
+          "kind": "require-call",
+          "original": "./abort-signal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/api-stream.js": {
+      "bytes": 5303,
+      "imports": [
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/api/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/api/abort-signal.js",
+          "kind": "require-call",
+          "original": "./abort-signal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/api-pipeline.js": {
+      "bytes": 5412,
+      "imports": [
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/api/abort-signal.js",
+          "kind": "require-call",
+          "original": "./abort-signal"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/api-upgrade.js": {
+      "bytes": 2579,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/api/abort-signal.js",
+          "kind": "require-call",
+          "original": "./abort-signal"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/api-connect.js": {
+      "bytes": 2526,
+      "imports": [
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/api/abort-signal.js",
+          "kind": "require-call",
+          "original": "./abort-signal"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/api/index.js": {
+      "bytes": 264,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/api/api-request.js",
+          "kind": "require-call",
+          "original": "./api-request"
+        },
+        {
+          "path": "node_modules/undici/lib/api/api-stream.js",
+          "kind": "require-call",
+          "original": "./api-stream"
+        },
+        {
+          "path": "node_modules/undici/lib/api/api-pipeline.js",
+          "kind": "require-call",
+          "original": "./api-pipeline"
+        },
+        {
+          "path": "node_modules/undici/lib/api/api-upgrade.js",
+          "kind": "require-call",
+          "original": "./api-upgrade"
+        },
+        {
+          "path": "node_modules/undici/lib/api/api-connect.js",
+          "kind": "require-call",
+          "original": "./api-connect"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-errors.js": {
+      "bytes": 439,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-symbols.js": {
+      "bytes": 769,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-utils.js": {
+      "bytes": 10291,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/mock/mock-errors.js",
+          "kind": "require-call",
+          "original": "./mock-errors"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-symbols.js",
+          "kind": "require-call",
+          "original": "./mock-symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-interceptor.js": {
+      "bytes": 6696,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/mock/mock-utils.js",
+          "kind": "require-call",
+          "original": "./mock-utils"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-symbols.js",
+          "kind": "require-call",
+          "original": "./mock-symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-client.js": {
+      "bytes": 1497,
+      "imports": [
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/client.js",
+          "kind": "require-call",
+          "original": "../client"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-utils.js",
+          "kind": "require-call",
+          "original": "./mock-utils"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-symbols.js",
+          "kind": "require-call",
+          "original": "./mock-symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-interceptor.js",
+          "kind": "require-call",
+          "original": "./mock-interceptor"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-pool.js": {
+      "bytes": 1483,
+      "imports": [
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/pool.js",
+          "kind": "require-call",
+          "original": "../pool"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-utils.js",
+          "kind": "require-call",
+          "original": "./mock-utils"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-symbols.js",
+          "kind": "require-call",
+          "original": "./mock-symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-interceptor.js",
+          "kind": "require-call",
+          "original": "./mock-interceptor"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/pluralizer.js": {
+      "bytes": 495,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/pending-interceptors-formatter.js": {
+      "bytes": 1047,
+      "imports": [
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "console",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/mock/mock-agent.js": {
+      "bytes": 4738,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/agent.js",
+          "kind": "require-call",
+          "original": "../agent"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-symbols.js",
+          "kind": "require-call",
+          "original": "./mock-symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-client.js",
+          "kind": "require-call",
+          "original": "./mock-client"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-pool.js",
+          "kind": "require-call",
+          "original": "./mock-pool"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-utils.js",
+          "kind": "require-call",
+          "original": "./mock-utils"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/dispatcher.js",
+          "kind": "require-call",
+          "original": "../dispatcher"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/pluralizer.js",
+          "kind": "require-call",
+          "original": "./pluralizer"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/pending-interceptors-formatter.js",
+          "kind": "require-call",
+          "original": "./pending-interceptors-formatter"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/proxy-agent.js": {
+      "bytes": 5586,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "./core/symbols"
+        },
+        {
+          "path": "url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/agent.js",
+          "kind": "require-call",
+          "original": "./agent"
+        },
+        {
+          "path": "node_modules/undici/lib/pool.js",
+          "kind": "require-call",
+          "original": "./pool"
+        },
+        {
+          "path": "node_modules/undici/lib/dispatcher-base.js",
+          "kind": "require-call",
+          "original": "./dispatcher-base"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/connect.js",
+          "kind": "require-call",
+          "original": "./core/connect"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/handler/RetryHandler.js": {
+      "bytes": 8286,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "../core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/global.js": {
+      "bytes": 860,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/agent.js",
+          "kind": "require-call",
+          "original": "./agent"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/handler/DecoratorHandler.js": {
+      "bytes": 613,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/headers.js": {
+      "bytes": 17165,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/response.js": {
+      "bytes": 17864,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/headers.js",
+          "kind": "require-call",
+          "original": "./headers"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/body.js",
+          "kind": "require-call",
+          "original": "./body"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/formdata.js",
+          "kind": "require-call",
+          "original": "./formdata"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/global.js",
+          "kind": "require-call",
+          "original": "./global"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "./dataURL"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/request.js": {
+      "bytes": 30549,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/body.js",
+          "kind": "require-call",
+          "original": "./body"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/headers.js",
+          "kind": "require-call",
+          "original": "./headers"
+        },
+        {
+          "path": "node_modules/undici/lib/compat/dispatcher-weakref.js",
+          "kind": "require-call",
+          "original": "../compat/dispatcher-weakref"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/global.js",
+          "kind": "require-call",
+          "original": "./global"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "./dataURL"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fetch/index.js": {
+      "bytes": 75443,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/response.js",
+          "kind": "require-call",
+          "original": "./response"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/headers.js",
+          "kind": "require-call",
+          "original": "./headers"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/request.js",
+          "kind": "require-call",
+          "original": "./request"
+        },
+        {
+          "path": "zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/body.js",
+          "kind": "require-call",
+          "original": "./body"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "./dataURL"
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/global.js",
+          "kind": "require-call",
+          "original": "../global"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "./webidl"
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fileapi/symbols.js": {
+      "bytes": 317,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fileapi/progressevent.js": {
+      "bytes": 1578,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fileapi/encoding.js": {
+      "bytes": 6618,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fileapi/util.js": {
+      "bytes": 11570,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fileapi/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fileapi/progressevent.js",
+          "kind": "require-call",
+          "original": "./progressevent"
+        },
+        {
+          "path": "node_modules/undici/lib/fileapi/encoding.js",
+          "kind": "require-call",
+          "original": "./encoding"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "../fetch/constants"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "../fetch/dataURL"
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "string_decoder",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/fileapi/filereader.js": {
+      "bytes": 8523,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fileapi/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fileapi/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cache/symbols.js": {
+      "bytes": 87,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cache/util.js": {
+      "bytes": 1070,
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "../fetch/dataURL"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "../fetch/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cache/cache.js": {
+      "bytes": 20821,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/cache/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/cache/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/response.js",
+          "kind": "require-call",
+          "original": "../fetch/response"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/request.js",
+          "kind": "require-call",
+          "original": "../fetch/request"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/symbols.js",
+          "kind": "require-call",
+          "original": "../fetch/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/index.js",
+          "kind": "require-call",
+          "original": "../fetch/index"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/util.js",
+          "kind": "require-call",
+          "original": "../fetch/util"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/global.js",
+          "kind": "require-call",
+          "original": "../global"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cache/cachestorage.js": {
+      "bytes": 3514,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/cache/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/cache/cache.js",
+          "kind": "require-call",
+          "original": "./cache"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cookies/constants.js": {
+      "bytes": 306,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cookies/util.js": {
+      "bytes": 6987,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cookies/parse.js": {
+      "bytes": 12384,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/cookies/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/cookies/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "../fetch/dataURL"
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/cookies/index.js": {
+      "bytes": 4205,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/cookies/parse.js",
+          "kind": "require-call",
+          "original": "./parse"
+        },
+        {
+          "path": "node_modules/undici/lib/cookies/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/headers.js",
+          "kind": "require-call",
+          "original": "../fetch/headers"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/constants.js": {
+      "bytes": 881,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/symbols.js": {
+      "bytes": 330,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/events.js": {
+      "bytes": 6352,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/util.js": {
+      "bytes": 5838,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/websocket/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/events.js",
+          "kind": "require-call",
+          "original": "./events"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/connection.js": {
+      "bytes": 10895,
+      "imports": [
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/events.js",
+          "kind": "require-call",
+          "original": "./events"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/request.js",
+          "kind": "require-call",
+          "original": "../fetch/request"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/index.js",
+          "kind": "require-call",
+          "original": "../fetch/index"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/headers.js",
+          "kind": "require-call",
+          "original": "../fetch/headers"
+        },
+        {
+          "path": "node_modules/undici/lib/global.js",
+          "kind": "require-call",
+          "original": "../global"
+        },
+        {
+          "path": "node_modules/undici/lib/core/symbols.js",
+          "kind": "require-call",
+          "original": "../core/symbols"
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/frame.js": {
+      "bytes": 1704,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/websocket/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/receiver.js": {
+      "bytes": 10777,
+      "imports": [
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/frame.js",
+          "kind": "require-call",
+          "original": "./frame"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/lib/websocket/websocket.js": {
+      "bytes": 21024,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/fetch/webidl.js",
+          "kind": "require-call",
+          "original": "../fetch/webidl"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/constants.js",
+          "kind": "require-call",
+          "original": "../fetch/constants"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "../fetch/dataURL"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/global.js",
+          "kind": "require-call",
+          "original": "../fetch/global"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/constants.js",
+          "kind": "require-call",
+          "original": "./constants"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/symbols.js",
+          "kind": "require-call",
+          "original": "./symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/util.js",
+          "kind": "require-call",
+          "original": "./util"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/connection.js",
+          "kind": "require-call",
+          "original": "./connection"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/frame.js",
+          "kind": "require-call",
+          "original": "./frame"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/receiver.js",
+          "kind": "require-call",
+          "original": "./receiver"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "../core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/global.js",
+          "kind": "require-call",
+          "original": "../global"
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/undici/index.js": {
+      "bytes": 5426,
+      "imports": [
+        {
+          "path": "node_modules/undici/lib/client.js",
+          "kind": "require-call",
+          "original": "./lib/client"
+        },
+        {
+          "path": "node_modules/undici/lib/dispatcher.js",
+          "kind": "require-call",
+          "original": "./lib/dispatcher"
+        },
+        {
+          "path": "node_modules/undici/lib/core/errors.js",
+          "kind": "require-call",
+          "original": "./lib/core/errors"
+        },
+        {
+          "path": "node_modules/undici/lib/pool.js",
+          "kind": "require-call",
+          "original": "./lib/pool"
+        },
+        {
+          "path": "node_modules/undici/lib/balanced-pool.js",
+          "kind": "require-call",
+          "original": "./lib/balanced-pool"
+        },
+        {
+          "path": "node_modules/undici/lib/agent.js",
+          "kind": "require-call",
+          "original": "./lib/agent"
+        },
+        {
+          "path": "node_modules/undici/lib/core/util.js",
+          "kind": "require-call",
+          "original": "./lib/core/util"
+        },
+        {
+          "path": "node_modules/undici/lib/api/index.js",
+          "kind": "require-call",
+          "original": "./lib/api"
+        },
+        {
+          "path": "node_modules/undici/lib/core/connect.js",
+          "kind": "require-call",
+          "original": "./lib/core/connect"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-client.js",
+          "kind": "require-call",
+          "original": "./lib/mock/mock-client"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-agent.js",
+          "kind": "require-call",
+          "original": "./lib/mock/mock-agent"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-pool.js",
+          "kind": "require-call",
+          "original": "./lib/mock/mock-pool"
+        },
+        {
+          "path": "node_modules/undici/lib/mock/mock-errors.js",
+          "kind": "require-call",
+          "original": "./lib/mock/mock-errors"
+        },
+        {
+          "path": "node_modules/undici/lib/proxy-agent.js",
+          "kind": "require-call",
+          "original": "./lib/proxy-agent"
+        },
+        {
+          "path": "node_modules/undici/lib/handler/RetryHandler.js",
+          "kind": "require-call",
+          "original": "./lib/handler/RetryHandler"
+        },
+        {
+          "path": "node_modules/undici/lib/global.js",
+          "kind": "require-call",
+          "original": "./lib/global"
+        },
+        {
+          "path": "node_modules/undici/lib/handler/DecoratorHandler.js",
+          "kind": "require-call",
+          "original": "./lib/handler/DecoratorHandler"
+        },
+        {
+          "path": "node_modules/undici/lib/handler/RedirectHandler.js",
+          "kind": "require-call",
+          "original": "./lib/handler/RedirectHandler"
+        },
+        {
+          "path": "node_modules/undici/lib/interceptor/redirectInterceptor.js",
+          "kind": "require-call",
+          "original": "./lib/interceptor/redirectInterceptor"
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/index.js",
+          "kind": "require-call",
+          "original": "./lib/fetch"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/headers.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/headers"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/response.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/response"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/request.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/request"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/formdata.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/formdata"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/file.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/file"
+        },
+        {
+          "path": "node_modules/undici/lib/fileapi/filereader.js",
+          "kind": "require-call",
+          "original": "./lib/fileapi/filereader"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/global.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/global"
+        },
+        {
+          "path": "node_modules/undici/lib/cache/cachestorage.js",
+          "kind": "require-call",
+          "original": "./lib/cache/cachestorage"
+        },
+        {
+          "path": "node_modules/undici/lib/cache/symbols.js",
+          "kind": "require-call",
+          "original": "./lib/cache/symbols"
+        },
+        {
+          "path": "node_modules/undici/lib/cookies/index.js",
+          "kind": "require-call",
+          "original": "./lib/cookies"
+        },
+        {
+          "path": "node_modules/undici/lib/fetch/dataURL.js",
+          "kind": "require-call",
+          "original": "./lib/fetch/dataURL"
+        },
+        {
+          "path": "node_modules/undici/lib/websocket/websocket.js",
+          "kind": "require-call",
+          "original": "./lib/websocket/websocket"
+        }
+      ],
+      "format": "cjs"
+    },
+    "_shared/fetch-polyfill.ts": {
+      "bytes": 505,
+      "imports": [
+        {
+          "path": "node_modules/undici/index.js",
+          "kind": "import-statement",
+          "original": "undici"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.1a4a356d.mjs": {
+      "bytes": 346,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/chunks/multipart-parser.mjs": {
+      "bytes": 4966,
+      "imports": [
+        {
+          "path": "node:fs",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/node.mjs",
+          "kind": "import-statement",
+          "original": "../node.mjs"
+        },
+        {
+          "path": "node:http",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.1a4a356d.mjs",
+          "kind": "import-statement",
+          "original": "../shared/node-fetch-native-with-agent.1a4a356d.mjs"
+        },
+        {
+          "path": "node:url",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/node.mjs": {
+      "bytes": 112084,
+      "imports": [
+        {
+          "path": "node:http",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.1a4a356d.mjs",
+          "kind": "import-statement",
+          "original": "./shared/node-fetch-native-with-agent.1a4a356d.mjs"
+        },
+        {
+          "path": "node:url",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:process",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/chunks/multipart-parser.mjs",
+          "kind": "dynamic-import",
+          "original": "./chunks/multipart-parser.mjs"
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/index.mjs": {
+      "bytes": 1109,
+      "imports": [
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/node.mjs",
+          "kind": "import-statement",
+          "original": "./node.mjs"
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/node.mjs",
+          "kind": "import-statement",
+          "original": "./node.mjs"
+        },
+        {
+          "path": "node:http",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.1a4a356d.mjs",
+          "kind": "import-statement",
+          "original": "./shared/node-fetch-native-with-agent.1a4a356d.mjs"
+        },
+        {
+          "path": "node:url",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs": {
+      "bytes": 488,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.df7e6bd6.cjs": {
+      "bytes": 441135,
+      "imports": [
+        {
+          "path": "node:assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:querystring",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs",
+          "kind": "require-call",
+          "original": "./node-fetch-native-with-agent.61758d11.cjs"
+        },
+        {
+          "path": "node:tls",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:perf_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:os",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:console",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "string_decoder",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http2",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/chunks/multipart-parser.cjs": {
+      "bytes": 5181,
+      "imports": [
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/node.cjs",
+          "kind": "require-call",
+          "original": "../node.cjs"
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs",
+          "kind": "require-call",
+          "original": "../shared/node-fetch-native-with-agent.61758d11.cjs"
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/node.cjs": {
+      "bytes": 117692,
+      "imports": [
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs",
+          "kind": "require-call",
+          "original": "./shared/node-fetch-native-with-agent.61758d11.cjs"
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:process",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/chunks/multipart-parser.cjs",
+          "kind": "dynamic-import",
+          "original": "./chunks/multipart-parser.cjs"
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/index.cjs": {
+      "bytes": 1488,
+      "imports": [
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/node.cjs",
+          "kind": "require-call",
+          "original": "./node.cjs"
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs",
+          "kind": "require-call",
+          "original": "./shared/node-fetch-native-with-agent.61758d11.cjs"
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/node-fetch-native-with-agent/lib/index.cjs": {
+      "bytes": 216,
+      "imports": [
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/index.cjs",
+          "kind": "require-call",
+          "original": "../dist/index.cjs"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/node-fetch-native-with-agent/dist/agent.cjs": {
+      "bytes": 1415,
+      "imports": [
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.df7e6bd6.cjs",
+          "kind": "require-call",
+          "original": "./shared/node-fetch-native-with-agent.df7e6bd6.cjs"
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/lib/index.cjs",
+          "kind": "require-call",
+          "original": "node-fetch-native-with-agent"
+        },
+        {
+          "path": "node:assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:querystring",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs",
+          "kind": "require-call",
+          "original": "./shared/node-fetch-native-with-agent.61758d11.cjs"
+        },
+        {
+          "path": "node:tls",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:perf_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:os",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:console",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "string_decoder",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:worker_threads",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/bignumber.js/bignumber.js": {
+      "bytes": 89684,
+      "imports": [],
+      "format": "cjs"
+    },
+    "node_modules/json-bigint/lib/stringify.js": {
+      "bytes": 13501,
+      "imports": [
+        {
+          "path": "node_modules/bignumber.js/bignumber.js",
+          "kind": "require-call",
+          "original": "bignumber.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/json-bigint/lib/parse.js": {
+      "bytes": 12834,
+      "imports": [
+        {
+          "path": "node_modules/bignumber.js/bignumber.js",
+          "kind": "require-call",
+          "original": "bignumber.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/json-bigint/index.js": {
+      "bytes": 409,
+      "imports": [
+        {
+          "path": "node_modules/json-bigint/lib/stringify.js",
+          "kind": "require-call",
+          "original": "./lib/stringify.js"
+        },
+        {
+          "path": "node_modules/json-bigint/lib/parse.js",
+          "kind": "require-call",
+          "original": "./lib/parse.js"
+        }
+      ],
+      "format": "cjs"
+    },
+    "node_modules/node-appwrite/dist/query.mjs": {
+      "bytes": 14470,
+      "imports": [
+        {
+          "path": "node_modules/json-bigint/index.js",
+          "kind": "import-statement",
+          "original": "json-bigint"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/client.mjs": {
+      "bytes": 10218,
+      "imports": [
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "node-fetch-native-with-agent"
+        },
+        {
+          "path": "node_modules/node-fetch-native-with-agent/dist/agent.cjs",
+          "kind": "import-statement",
+          "original": "node-fetch-native-with-agent/agent"
+        },
+        {
+          "path": "node_modules/json-bigint/index.js",
+          "kind": "import-statement",
+          "original": "json-bigint"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/query.mjs",
+          "kind": "import-statement",
+          "original": "./query.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/account.mjs": {
+      "bytes": 47673,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/activities.mjs": {
+      "bytes": 1607,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/avatars.mjs": {
+      "bytes": 11608,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/backups.mjs": {
+      "bytes": 11903,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/databases.mjs": {
+      "bytes": 114919,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/functions.mjs": {
+      "bytes": 35164,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/graphql.mjs": {
+      "bytes": 1909,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/health.mjs": {
+      "bytes": 18712,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/locale.mjs": {
+      "bytes": 4286,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/messaging.mjs": {
+      "bytes": 91050,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/sites.mjs": {
+      "bytes": 33160,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/storage.mjs": {
+      "bytes": 18924,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/tables-db.mjs": {
+      "bytes": 111355,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/teams.mjs": {
+      "bytes": 14052,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/tokens.mjs": {
+      "bytes": 4913,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/services/users.mjs": {
+      "bytes": 52282,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "../client.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/permission.mjs": {
+      "bytes": 1169,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/role.mjs": {
+      "bytes": 2047,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/id.mjs": {
+      "bytes": 1129,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/operator.mjs": {
+      "bytes": 7087,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/authenticator-type.mjs": {
+      "bytes": 309,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/authentication-factor.mjs": {
+      "bytes": 479,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/o-auth-provider.mjs": {
+      "bytes": 1821,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/browser.mjs": {
+      "bytes": 687,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/credit-card.mjs": {
+      "bytes": 873,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/flag.mjs": {
+      "bytes": 5774,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/theme.mjs": {
+      "bytes": 240,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/timezone.mjs": {
+      "bytes": 21856,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/browser-permission.mjs": {
+      "bytes": 1348,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/image-format.mjs": {
+      "bytes": 453,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/backup-services.mjs": {
+      "bytes": 383,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/relationship-type.mjs": {
+      "bytes": 455,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/relation-mutate.mjs": {
+      "bytes": 377,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/index-type.mjs": {
+      "bytes": 354,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/order-by.mjs": {
+      "bytes": 256,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/runtime.mjs": {
+      "bytes": 3373,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/scopes.mjs": {
+      "bytes": 3131,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/template-reference-type.mjs": {
+      "bytes": 435,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/vcs-reference-type.mjs": {
+      "bytes": 385,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/deployment-download-type.mjs": {
+      "bytes": 403,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/execution-method.mjs": {
+      "bytes": 523,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/name.mjs": {
+      "bytes": 708,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/message-priority.mjs": {
+      "bytes": 334,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/smtp-encryption.mjs": {
+      "bytes": 353,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/framework.mjs": {
+      "bytes": 747,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/build-runtime.mjs": {
+      "bytes": 3840,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/adapter.mjs": {
+      "bytes": 258,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/compression.mjs": {
+      "bytes": 325,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/image-gravity.mjs": {
+      "bytes": 593,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/password-hash.mjs": {
+      "bytes": 675,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/messaging-provider-type.mjs": {
+      "bytes": 429,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/database-type.mjs": {
+      "bytes": 315,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/attribute-status.mjs": {
+      "bytes": 477,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/column-status.mjs": {
+      "bytes": 441,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/index-status.mjs": {
+      "bytes": 429,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/deployment-status.mjs": {
+      "bytes": 531,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/execution-trigger.mjs": {
+      "bytes": 387,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/execution-status.mjs": {
+      "bytes": 483,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/health-antivirus-status.mjs": {
+      "bytes": 447,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/health-check-status.mjs": {
+      "bytes": 350,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/enums/message-status.mjs": {
+      "bytes": 445,
+      "imports": [],
+      "format": "esm"
+    },
+    "node_modules/node-appwrite/dist/index.mjs": {
+      "bytes": 3540,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/client.mjs",
+          "kind": "import-statement",
+          "original": "./client.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/account.mjs",
+          "kind": "import-statement",
+          "original": "./services/account.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/activities.mjs",
+          "kind": "import-statement",
+          "original": "./services/activities.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/avatars.mjs",
+          "kind": "import-statement",
+          "original": "./services/avatars.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/backups.mjs",
+          "kind": "import-statement",
+          "original": "./services/backups.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/databases.mjs",
+          "kind": "import-statement",
+          "original": "./services/databases.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/functions.mjs",
+          "kind": "import-statement",
+          "original": "./services/functions.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/graphql.mjs",
+          "kind": "import-statement",
+          "original": "./services/graphql.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/health.mjs",
+          "kind": "import-statement",
+          "original": "./services/health.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/locale.mjs",
+          "kind": "import-statement",
+          "original": "./services/locale.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/messaging.mjs",
+          "kind": "import-statement",
+          "original": "./services/messaging.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/sites.mjs",
+          "kind": "import-statement",
+          "original": "./services/sites.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/storage.mjs",
+          "kind": "import-statement",
+          "original": "./services/storage.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/tables-db.mjs",
+          "kind": "import-statement",
+          "original": "./services/tables-db.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/teams.mjs",
+          "kind": "import-statement",
+          "original": "./services/teams.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/tokens.mjs",
+          "kind": "import-statement",
+          "original": "./services/tokens.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/services/users.mjs",
+          "kind": "import-statement",
+          "original": "./services/users.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/permission.mjs",
+          "kind": "import-statement",
+          "original": "./permission.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/role.mjs",
+          "kind": "import-statement",
+          "original": "./role.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/id.mjs",
+          "kind": "import-statement",
+          "original": "./id.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/operator.mjs",
+          "kind": "import-statement",
+          "original": "./operator.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/authenticator-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/authenticator-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/authentication-factor.mjs",
+          "kind": "import-statement",
+          "original": "./enums/authentication-factor.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/o-auth-provider.mjs",
+          "kind": "import-statement",
+          "original": "./enums/o-auth-provider.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/browser.mjs",
+          "kind": "import-statement",
+          "original": "./enums/browser.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/credit-card.mjs",
+          "kind": "import-statement",
+          "original": "./enums/credit-card.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/flag.mjs",
+          "kind": "import-statement",
+          "original": "./enums/flag.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/theme.mjs",
+          "kind": "import-statement",
+          "original": "./enums/theme.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/timezone.mjs",
+          "kind": "import-statement",
+          "original": "./enums/timezone.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/browser-permission.mjs",
+          "kind": "import-statement",
+          "original": "./enums/browser-permission.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/image-format.mjs",
+          "kind": "import-statement",
+          "original": "./enums/image-format.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/backup-services.mjs",
+          "kind": "import-statement",
+          "original": "./enums/backup-services.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/relationship-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/relationship-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/relation-mutate.mjs",
+          "kind": "import-statement",
+          "original": "./enums/relation-mutate.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/index-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/index-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/order-by.mjs",
+          "kind": "import-statement",
+          "original": "./enums/order-by.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/runtime.mjs",
+          "kind": "import-statement",
+          "original": "./enums/runtime.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/scopes.mjs",
+          "kind": "import-statement",
+          "original": "./enums/scopes.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/template-reference-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/template-reference-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/vcs-reference-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/vcs-reference-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/deployment-download-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/deployment-download-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/execution-method.mjs",
+          "kind": "import-statement",
+          "original": "./enums/execution-method.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/name.mjs",
+          "kind": "import-statement",
+          "original": "./enums/name.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/message-priority.mjs",
+          "kind": "import-statement",
+          "original": "./enums/message-priority.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/smtp-encryption.mjs",
+          "kind": "import-statement",
+          "original": "./enums/smtp-encryption.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/framework.mjs",
+          "kind": "import-statement",
+          "original": "./enums/framework.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/build-runtime.mjs",
+          "kind": "import-statement",
+          "original": "./enums/build-runtime.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/adapter.mjs",
+          "kind": "import-statement",
+          "original": "./enums/adapter.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/compression.mjs",
+          "kind": "import-statement",
+          "original": "./enums/compression.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/image-gravity.mjs",
+          "kind": "import-statement",
+          "original": "./enums/image-gravity.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/password-hash.mjs",
+          "kind": "import-statement",
+          "original": "./enums/password-hash.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/messaging-provider-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/messaging-provider-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/database-type.mjs",
+          "kind": "import-statement",
+          "original": "./enums/database-type.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/attribute-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/attribute-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/column-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/column-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/index-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/index-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/deployment-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/deployment-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/execution-trigger.mjs",
+          "kind": "import-statement",
+          "original": "./enums/execution-trigger.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/execution-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/execution-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/health-antivirus-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/health-antivirus-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/health-check-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/health-check-status.mjs"
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/enums/message-status.mjs",
+          "kind": "import-statement",
+          "original": "./enums/message-status.mjs"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/env.ts": {
+      "bytes": 3407,
+      "imports": [],
+      "format": "esm"
+    },
+    "_shared/appwrite-db.ts": {
+      "bytes": 5268,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "node-appwrite"
+        },
+        {
+          "path": "_shared/env.ts",
+          "kind": "import-statement",
+          "original": "./env"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/image-function-auth.ts": {
+      "bytes": 2738,
+      "imports": [
+        {
+          "path": "crypto",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node_modules/node-appwrite/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "node-appwrite"
+        },
+        {
+          "path": "_shared/appwrite-db.ts",
+          "kind": "import-statement",
+          "original": "./appwrite-db"
+        },
+        {
+          "path": "_shared/env.ts",
+          "kind": "import-statement",
+          "original": "./env"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/default-assistant-system-prompt.ts": {
+      "bytes": 9942,
+      "imports": [],
+      "format": "esm"
+    },
+    "_shared/ai-feature-profile.ts": {
+      "bytes": 15690,
+      "imports": [
+        {
+          "path": "_shared/default-assistant-system-prompt.ts",
+          "kind": "import-statement",
+          "original": "./default-assistant-system-prompt"
+        },
+        {
+          "path": "_shared/default-assistant-system-prompt.ts",
+          "kind": "import-statement",
+          "original": "./default-assistant-system-prompt"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/ollama-tags-request.ts": {
+      "bytes": 2715,
+      "imports": [
+        {
+          "path": "node:http",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/ollama-v1-models-request.ts": {
+      "bytes": 2640,
+      "imports": [
+        {
+          "path": "node:http",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/ollama-show-request.ts": {
+      "bytes": 6231,
+      "imports": [
+        {
+          "path": "node:http",
+          "kind": "import-statement",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "import-statement",
+          "external": true
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/model-capabilities.ts": {
+      "bytes": 11014,
+      "imports": [
+        {
+          "path": "_shared/ai-feature-profile.ts",
+          "kind": "import-statement",
+          "original": "./ai-feature-profile"
+        },
+        {
+          "path": "_shared/ollama-tags-request.ts",
+          "kind": "import-statement",
+          "original": "./ollama-tags-request"
+        },
+        {
+          "path": "_shared/ollama-v1-models-request.ts",
+          "kind": "import-statement",
+          "original": "./ollama-v1-models-request"
+        },
+        {
+          "path": "_shared/ollama-show-request.ts",
+          "kind": "import-statement",
+          "original": "./ollama-show-request"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/http.ts": {
+      "bytes": 3966,
+      "imports": [],
+      "format": "esm"
+    },
+    "scriptony-image/ai/image-validate-key.ts": {
+      "bytes": 1577,
+      "imports": [
+        {
+          "path": "_shared/image-function-auth.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/image-function-auth"
+        },
+        {
+          "path": "_shared/model-capabilities.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/model-capabilities"
+        },
+        {
+          "path": "_shared/http.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/http"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/image-function-settings-db.ts": {
+      "bytes": 2813,
+      "imports": [
+        {
+          "path": "node_modules/node-appwrite/dist/index.mjs",
+          "kind": "import-statement",
+          "original": "node-appwrite"
+        },
+        {
+          "path": "_shared/appwrite-db.ts",
+          "kind": "import-statement",
+          "original": "./appwrite-db"
+        }
+      ],
+      "format": "esm"
+    },
+    "scriptony-image/ai/image-generate-cover.ts": {
+      "bytes": 8317,
+      "imports": [
+        {
+          "path": "_shared/ai-feature-profile.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/ai-feature-profile"
+        },
+        {
+          "path": "_shared/image-function-settings-db.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/image-function-settings-db"
+        },
+        {
+          "path": "_shared/image-function-auth.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/image-function-auth"
+        },
+        {
+          "path": "_shared/http.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/http"
+        }
+      ],
+      "format": "esm"
+    },
+    "scriptony-image/ai/image-settings.ts": {
+      "bytes": 5599,
+      "imports": [
+        {
+          "path": "_shared/ai-feature-profile.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/ai-feature-profile"
+        },
+        {
+          "path": "_shared/image-function-auth.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/image-function-auth"
+        },
+        {
+          "path": "_shared/image-function-settings-db.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/image-function-settings-db"
+        },
+        {
+          "path": "_shared/http.ts",
+          "kind": "import-statement",
+          "original": "../../_shared/http"
+        }
+      ],
+      "format": "esm"
+    },
+    "_shared/appwrite-handler.ts": {
+      "bytes": 2836,
+      "imports": [
+        {
+          "path": "_shared/http.ts",
+          "kind": "import-statement",
+          "original": "./http"
+        }
+      ],
+      "format": "esm"
+    },
+    "scriptony-image/index.ts": {
+      "bytes": 1679,
+      "imports": [
+        {
+          "path": "_shared/fetch-polyfill.ts",
+          "kind": "import-statement",
+          "original": "../_shared/fetch-polyfill"
+        },
+        {
+          "path": "scriptony-image/ai/image-validate-key.ts",
+          "kind": "import-statement",
+          "original": "./ai/image-validate-key"
+        },
+        {
+          "path": "scriptony-image/ai/image-generate-cover.ts",
+          "kind": "import-statement",
+          "original": "./ai/image-generate-cover"
+        },
+        {
+          "path": "scriptony-image/ai/image-settings.ts",
+          "kind": "import-statement",
+          "original": "./ai/image-settings"
+        },
+        {
+          "path": "_shared/http.ts",
+          "kind": "import-statement",
+          "original": "../_shared/http"
+        },
+        {
+          "path": "_shared/appwrite-handler.ts",
+          "kind": "import-statement",
+          "original": "../_shared/appwrite-handler"
+        }
+      ],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    ".deploy-staging/scriptony-image-test/index.js": {
+      "imports": [
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "querystring",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "perf_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "tls",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "http2",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "console",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "string_decoder",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:process",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:querystring",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:tls",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:perf_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:os",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:console",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "string_decoder",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http2",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:process",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream/web",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:fs",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:path",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:assert",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:net",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:stream",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:buffer",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:querystring",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:diagnostics_channel",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:events",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:tls",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:zlib",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:perf_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:util/types",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:os",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:url",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:async_hooks",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:console",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "string_decoder",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:worker_threads",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "crypto",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:http",
+          "kind": "require-call",
+          "external": true
+        },
+        {
+          "path": "node:https",
+          "kind": "require-call",
+          "external": true
+        }
+      ],
+      "exports": [],
+      "entryPoint": "scriptony-image/index.ts",
+      "inputs": {
+        "node_modules/undici/lib/core/symbols.js": {
+          "bytesInOutput": 2783
+        },
+        "node_modules/undici/lib/core/errors.js": {
+          "bytesInOutput": 8176
+        },
+        "node_modules/undici/lib/core/constants.js": {
+          "bytesInOutput": 2955
+        },
+        "node_modules/undici/lib/core/util.js": {
+          "bytesInOutput": 14362
+        },
+        "node_modules/undici/lib/timers.js": {
+          "bytesInOutput": 2128
+        },
+        "node_modules/@fastify/busboy/deps/streamsearch/sbmh.js": {
+          "bytesInOutput": 4520
+        },
+        "node_modules/@fastify/busboy/deps/dicer/lib/PartStream.js": {
+          "bytesInOutput": 466
+        },
+        "node_modules/@fastify/busboy/lib/utils/getLimit.js": {
+          "bytesInOutput": 502
+        },
+        "node_modules/@fastify/busboy/deps/dicer/lib/HeaderParser.js": {
+          "bytesInOutput": 3072
+        },
+        "node_modules/@fastify/busboy/deps/dicer/lib/Dicer.js": {
+          "bytesInOutput": 7402
+        },
+        "node_modules/@fastify/busboy/lib/utils/decodeText.js": {
+          "bytesInOutput": 3036
+        },
+        "node_modules/@fastify/busboy/lib/utils/parseParams.js": {
+          "bytesInOutput": 12777
+        },
+        "node_modules/@fastify/busboy/lib/utils/basename.js": {
+          "bytesInOutput": 576
+        },
+        "node_modules/@fastify/busboy/lib/types/multipart.js": {
+          "bytesInOutput": 9383
+        },
+        "node_modules/@fastify/busboy/lib/utils/Decoder.js": {
+          "bytesInOutput": 2420
+        },
+        "node_modules/@fastify/busboy/lib/types/urlencoded.js": {
+          "bytesInOutput": 6808
+        },
+        "node_modules/@fastify/busboy/lib/main.js": {
+          "bytesInOutput": 2582
+        },
+        "node_modules/undici/lib/fetch/constants.js": {
+          "bytesInOutput": 4634
+        },
+        "node_modules/undici/lib/fetch/global.js": {
+          "bytesInOutput": 1026
+        },
+        "node_modules/undici/lib/fetch/util.js": {
+          "bytesInOutput": 20380
+        },
+        "node_modules/undici/lib/fetch/symbols.js": {
+          "bytesInOutput": 346
+        },
+        "node_modules/undici/lib/fetch/webidl.js": {
+          "bytesInOutput": 12434
+        },
+        "node_modules/undici/lib/fetch/dataURL.js": {
+          "bytesInOutput": 9633
+        },
+        "node_modules/undici/lib/fetch/file.js": {
+          "bytesInOutput": 5892
+        },
+        "node_modules/undici/lib/fetch/formdata.js": {
+          "bytesInOutput": 6082
+        },
+        "node_modules/undici/lib/fetch/body.js": {
+          "bytesInOutput": 13593
+        },
+        "node_modules/undici/lib/core/request.js": {
+          "bytesInOutput": 14649
+        },
+        "node_modules/undici/lib/dispatcher.js": {
+          "bytesInOutput": 469
+        },
+        "node_modules/undici/lib/dispatcher-base.js": {
+          "bytesInOutput": 5314
+        },
+        "node_modules/undici/lib/core/connect.js": {
+          "bytesInOutput": 5607
+        },
+        "node_modules/undici/lib/llhttp/utils.js": {
+          "bytesInOutput": 491
+        },
+        "node_modules/undici/lib/llhttp/constants.js": {
+          "bytesInOutput": 11527
+        },
+        "node_modules/undici/lib/handler/RedirectHandler.js": {
+          "bytesInOutput": 5697
+        },
+        "node_modules/undici/lib/interceptor/redirectInterceptor.js": {
+          "bytesInOutput": 814
+        },
+        "node_modules/undici/lib/llhttp/llhttp-wasm.js": {
+          "bytesInOutput": 74100
+        },
+        "node_modules/undici/lib/llhttp/llhttp_simd-wasm.js": {
+          "bytesInOutput": 74090
+        },
+        "node_modules/undici/lib/client.js": {
+          "bytesInOutput": 61043
+        },
+        "node_modules/undici/lib/node/fixed-queue.js": {
+          "bytesInOutput": 1435
+        },
+        "node_modules/undici/lib/pool-stats.js": {
+          "bytesInOutput": 756
+        },
+        "node_modules/undici/lib/pool-base.js": {
+          "bytesInOutput": 5192
+        },
+        "node_modules/undici/lib/pool.js": {
+          "bytesInOutput": 3111
+        },
+        "node_modules/undici/lib/balanced-pool.js": {
+          "bytesInOutput": 5414
+        },
+        "node_modules/undici/lib/compat/dispatcher-weakref.js": {
+          "bytesInOutput": 1155
+        },
+        "node_modules/undici/lib/agent.js": {
+          "bytesInOutput": 4959
+        },
+        "node_modules/undici/lib/api/readable.js": {
+          "bytesInOutput": 7657
+        },
+        "node_modules/undici/lib/api/util.js": {
+          "bytesInOutput": 1796
+        },
+        "node_modules/undici/lib/api/abort-signal.js": {
+          "bytesInOutput": 1261
+        },
+        "node_modules/undici/lib/api/api-request.js": {
+          "bytesInOutput": 5203
+        },
+        "node_modules/undici/lib/api/api-stream.js": {
+          "bytesInOutput": 6009
+        },
+        "node_modules/undici/lib/api/api-pipeline.js": {
+          "bytesInOutput": 6221
+        },
+        "node_modules/undici/lib/api/api-upgrade.js": {
+          "bytesInOutput": 3018
+        },
+        "node_modules/undici/lib/api/api-connect.js": {
+          "bytesInOutput": 2916
+        },
+        "node_modules/undici/lib/api/index.js": {
+          "bytesInOutput": 384
+        },
+        "node_modules/undici/lib/mock/mock-errors.js": {
+          "bytesInOutput": 634
+        },
+        "node_modules/undici/lib/mock/mock-symbols.js": {
+          "bytesInOutput": 977
+        },
+        "node_modules/undici/lib/mock/mock-utils.js": {
+          "bytesInOutput": 10391
+        },
+        "node_modules/undici/lib/mock/mock-interceptor.js": {
+          "bytesInOutput": 6150
+        },
+        "node_modules/undici/lib/mock/mock-client.js": {
+          "bytesInOutput": 1682
+        },
+        "node_modules/undici/lib/mock/mock-pool.js": {
+          "bytesInOutput": 1666
+        },
+        "node_modules/undici/lib/mock/pluralizer.js": {
+          "bytesInOutput": 710
+        },
+        "node_modules/undici/lib/mock/pending-interceptors-formatter.js": {
+          "bytesInOutput": 1279
+        },
+        "node_modules/undici/lib/mock/mock-agent.js": {
+          "bytesInOutput": 4988
+        },
+        "node_modules/undici/lib/proxy-agent.js": {
+          "bytesInOutput": 5688
+        },
+        "node_modules/undici/lib/handler/RetryHandler.js": {
+          "bytesInOutput": 8788
+        },
+        "node_modules/undici/lib/global.js": {
+          "bytesInOutput": 900
+        },
+        "node_modules/undici/lib/handler/DecoratorHandler.js": {
+          "bytesInOutput": 847
+        },
+        "node_modules/undici/lib/fetch/headers.js": {
+          "bytesInOutput": 13293
+        },
+        "node_modules/undici/lib/fetch/response.js": {
+          "bytesInOutput": 13513
+        },
+        "node_modules/undici/lib/fetch/request.js": {
+          "bytesInOutput": 23893
+        },
+        "node_modules/undici/lib/fetch/index.js": {
+          "bytesInOutput": 39966
+        },
+        "node_modules/undici/lib/fileapi/symbols.js": {
+          "bytesInOutput": 467
+        },
+        "node_modules/undici/lib/fileapi/progressevent.js": {
+          "bytesInOutput": 1900
+        },
+        "node_modules/undici/lib/fileapi/encoding.js": {
+          "bytesInOutput": 7540
+        },
+        "node_modules/undici/lib/fileapi/util.js": {
+          "bytesInOutput": 5962
+        },
+        "node_modules/undici/lib/fileapi/filereader.js": {
+          "bytesInOutput": 8194
+        },
+        "node_modules/undici/lib/cache/symbols.js": {
+          "bytesInOutput": 206
+        },
+        "node_modules/undici/lib/cache/util.js": {
+          "bytesInOutput": 906
+        },
+        "node_modules/undici/lib/cache/cache.js": {
+          "bytesInOutput": 20188
+        },
+        "node_modules/undici/lib/cache/cachestorage.js": {
+          "bytesInOutput": 3778
+        },
+        "node_modules/undici/lib/cookies/constants.js": {
+          "bytesInOutput": 296
+        },
+        "node_modules/undici/lib/cookies/util.js": {
+          "bytesInOutput": 4422
+        },
+        "node_modules/undici/lib/cookies/parse.js": {
+          "bytesInOutput": 5061
+        },
+        "node_modules/undici/lib/cookies/index.js": {
+          "bytesInOutput": 3883
+        },
+        "node_modules/undici/lib/websocket/constants.js": {
+          "bytesInOutput": 903
+        },
+        "node_modules/undici/lib/websocket/symbols.js": {
+          "bytesInOutput": 490
+        },
+        "node_modules/undici/lib/websocket/events.js": {
+          "bytesInOutput": 7209
+        },
+        "node_modules/undici/lib/websocket/util.js": {
+          "bytesInOutput": 3012
+        },
+        "node_modules/undici/lib/websocket/connection.js": {
+          "bytesInOutput": 5607
+        },
+        "node_modules/undici/lib/websocket/frame.js": {
+          "bytesInOutput": 1738
+        },
+        "node_modules/undici/lib/websocket/receiver.js": {
+          "bytesInOutput": 8939
+        },
+        "node_modules/undici/lib/websocket/websocket.js": {
+          "bytesInOutput": 14596
+        },
+        "node_modules/undici/index.js": {
+          "bytesInOutput": 5599
+        },
+        "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.1a4a356d.mjs": {
+          "bytesInOutput": 574
+        },
+        "node_modules/node-fetch-native-with-agent/dist/chunks/multipart-parser.mjs": {
+          "bytesInOutput": 7404
+        },
+        "node_modules/node-fetch-native-with-agent/dist/node.mjs": {
+          "bytesInOutput": 159824
+        },
+        "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.61758d11.cjs": {
+          "bytesInOutput": 782
+        },
+        "node_modules/node-fetch-native-with-agent/dist/shared/node-fetch-native-with-agent.df7e6bd6.cjs": {
+          "bytesInOutput": 555029
+        },
+        "node_modules/node-fetch-native-with-agent/dist/chunks/multipart-parser.cjs": {
+          "bytesInOutput": 7990
+        },
+        "node_modules/node-fetch-native-with-agent/dist/node.cjs": {
+          "bytesInOutput": 176887
+        },
+        "node_modules/node-fetch-native-with-agent/dist/index.cjs": {
+          "bytesInOutput": 1996
+        },
+        "node_modules/node-fetch-native-with-agent/lib/index.cjs": {
+          "bytesInOutput": 353
+        },
+        "node_modules/node-fetch-native-with-agent/dist/agent.cjs": {
+          "bytesInOutput": 1783
+        },
+        "node_modules/bignumber.js/bignumber.js": {
+          "bytesInOutput": 51013
+        },
+        "node_modules/json-bigint/lib/stringify.js": {
+          "bytesInOutput": 4189
+        },
+        "node_modules/json-bigint/lib/parse.js": {
+          "bytesInOutput": 9025
+        },
+        "node_modules/json-bigint/index.js": {
+          "bytesInOutput": 434
+        },
+        "scriptony-image/index.ts": {
+          "bytesInOutput": 1253
+        },
+        "_shared/fetch-polyfill.ts": {
+          "bytesInOutput": 140
+        },
+        "_shared/image-function-auth.ts": {
+          "bytesInOutput": 1951
+        },
+        "node_modules/node-fetch-native-with-agent/dist/index.mjs": {
+          "bytesInOutput": 817
+        },
+        "node_modules/node-appwrite/dist/client.mjs": {
+          "bytesInOutput": 10048
+        },
+        "node_modules/node-appwrite/dist/query.mjs": {
+          "bytesInOutput": 5916
+        },
+        "node_modules/node-appwrite/dist/index.mjs": {
+          "bytesInOutput": 0
+        },
+        "node_modules/node-appwrite/dist/services/account.mjs": {
+          "bytesInOutput": 47505
+        },
+        "node_modules/node-appwrite/dist/services/databases.mjs": {
+          "bytesInOutput": 114745
+        },
+        "node_modules/node-appwrite/dist/permission.mjs": {
+          "bytesInOutput": 347
+        },
+        "node_modules/node-appwrite/dist/id.mjs": {
+          "bytesInOutput": 1037
+        },
+        "node_modules/node-appwrite/dist/operator.mjs": {
+          "bytesInOutput": 4183
+        },
+        "_shared/env.ts": {
+          "bytesInOutput": 1013
+        },
+        "_shared/appwrite-db.ts": {
+          "bytesInOutput": 2840
+        },
+        "_shared/ai-feature-profile.ts": {
+          "bytesInOutput": 6320
+        },
+        "_shared/ollama-tags-request.ts": {
+          "bytesInOutput": 1979
+        },
+        "_shared/ollama-v1-models-request.ts": {
+          "bytesInOutput": 2003
+        },
+        "_shared/ollama-show-request.ts": {
+          "bytesInOutput": 4739
+        },
+        "_shared/model-capabilities.ts": {
+          "bytesInOutput": 8372
+        },
+        "_shared/http.ts": {
+          "bytesInOutput": 2324
+        },
+        "scriptony-image/ai/image-validate-key.ts": {
+          "bytesInOutput": 1035
+        },
+        "_shared/image-function-settings-db.ts": {
+          "bytesInOutput": 2018
+        },
+        "scriptony-image/ai/image-generate-cover.ts": {
+          "bytesInOutput": 6627
+        },
+        "scriptony-image/ai/image-settings.ts": {
+          "bytesInOutput": 4330
+        },
+        "_shared/appwrite-handler.ts": {
+          "bytesInOutput": 2402
+        }
+      },
+      "bytes": 1934880
+    }
+  }
+}

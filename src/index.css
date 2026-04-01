@@ -1065,6 +1065,10 @@
     field-sizing: content;
   }
 
+  .field-sizing-fixed {
+    field-sizing: fixed;
+  }
+
   .aspect-\[2\/3\] {
     aspect-ratio: 2 / 3;
   }

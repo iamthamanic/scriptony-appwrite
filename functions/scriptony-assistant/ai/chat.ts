@@ -3,6 +3,8 @@
  */
 
 import { generateAiResponse } from "../../_shared/ai";
+import { buildRagChatContext, normalizeRagIdList } from "../../_shared/rag-chat-context";
+
 import { resolveAiFeatureProfile } from "../../_shared/ai-feature-profile";
 import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
@@ -127,7 +129,36 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const model = resolved.settings.model;
 
     let conversationId = body.conversation_id ?? body.conversationId ?? null;
+    const priorMessages = conversationId ? await getConversationMessages(conversationId) : [];
 
+    const useRag = settings?.use_rag !== false;
+    const projectIds = normalizeRagIdList(body.rag_project_ids ?? body.ragProjectIds);
+    const worldIds = normalizeRagIdList(body.rag_world_ids ?? body.ragWorldIds);
+    const characterIds = normalizeRagIdList(body.rag_character_ids ?? body.ragCharacterIds);
+
+    let retrievalContext: string | undefined;
+    if (
+      useRag &&
+      (projectIds.length > 0 || worldIds.length > 0 || characterIds.length > 0)
+    ) {
+      const block = await buildRagChatContext({
+        userId: bootstrap.user.id,
+        organizationId: bootstrap.organizationId,
+        projectIds,
+        worldIds,
+        characterIds,
+      });
+      if (block.trim()) retrievalContext = block;
+    }
+
+    const generated = await generateAiResponse({
+      settings: resolved.settings,
+      conversationMessages: priorMessages,
+      latestMessage: rawMessage,
+      retrievalContext,
+    });
+
+    // Create conversation only after successful generation to avoid empty chat rows on provider failure/timeouts.
     if (!conversationId) {
       const createdConversation = await requestGraphql<{
         insert_ai_conversations_one: Record<string, any>;
@@ -150,13 +181,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       );
       conversationId = createdConversation.insert_ai_conversations_one.id;
     }
-
-    const priorMessages = await getConversationMessages(conversationId);
-    const generated = await generateAiResponse({
-      settings: resolved.settings,
-      conversationMessages: priorMessages,
-      latestMessage: rawMessage,
-    });
 
     const createdMessages = await requestGraphql<{
       insert_ai_chat_messages: { returning: Array<Record<string, any>> };

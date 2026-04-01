@@ -73,6 +73,20 @@ Then in **Appwrite Console → Functions → scriptony-assistant → Domains**, 
 
 Verify: `npm run verify:test-env` (checks `scriptony-assistant/health` when the URL is derivable from `.env.local`).
 
+### Deploy `scriptony-image` (Image-Key + Cover-Generierung)
+
+Routes:
+- `POST /ai/image/validate-key`
+- `POST /ai/image/generate-cover`
+
+From the repo root:
+
+```bash
+npm run appwrite:deploy:image
+```
+
+Then ensure `"scriptony-image":"https://…"` exists in `VITE_BACKEND_FUNCTION_DOMAIN_MAP` (or run `npm run appwrite:sync:function-domains`) and restart Vite.
+
 **First-time / self-hosted (CLI logged in):** create if missing + deploy in one step:
 
 ```bash

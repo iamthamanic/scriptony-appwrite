@@ -27,7 +27,15 @@ import {
 } from "../../lib/ai-feature-routing";
 import { notifyAiSettingsConsumers } from "../../lib/ai-settings-updated";
 import { useAiProviderFeatureToggles } from "../../hooks/useAiProviderFeatureToggles";
+import { useAiImageProviderFeatureToggles } from "../../hooks/useAiImageProviderFeatureToggles";
+import {
+  getEffectiveImageProviderForFeature,
+  getRoutedImageProviderForFeature,
+  type ImageFeatureId,
+  type ImageProviderId,
+} from "../../lib/ai-image-feature-routing";
 import { ProviderFeatureToggleBadges } from "./ProviderFeatureToggleBadges";
+import { ImageFeatureToggleBadges } from "./ImageFeatureToggleBadges";
 import { ProviderSecretInput } from "./ProviderSecretInput";
 import { cn } from "../ui/utils";
 
@@ -51,6 +59,16 @@ interface AiSettingsJsonParsed {
   feature_profiles?: Partial<Record<AiFeatureId, AiFeatureProfileOverride>>;
   provider_profiles?: Partial<Record<LlmProviderId, ProviderProfilePrefs>>;
   ollama?: { mode?: OllamaUiMode } | null;
+  image?: {
+    provider?: "ollama" | "openrouter";
+    model?: string;
+    enabled_features?: Array<"cover" | "stage2d">;
+    feature_profiles?: Partial<
+      Record<"cover" | "stage2d", { provider?: "ollama" | "openrouter"; model?: string } | null>
+    >;
+    provider_models?: Partial<Record<"ollama" | "openrouter", string>>;
+    ollama?: { mode?: "cloud" } | null;
+  } | null;
 }
 
 interface AISettings {
@@ -62,6 +80,7 @@ interface AISettings {
   deepseek_api_key?: string;
   ollama_base_url?: string | null;
   ollama_api_key?: string | null;
+  ollama_image_api_key?: string | null;
   active_provider: LlmProviderId;
   active_model: string;
   system_prompt: string;
@@ -95,6 +114,19 @@ const PROVIDER_NAMES: Record<string, string> = {
 type ValidateKeySuccess = {
   valid?: boolean;
   models_with_context?: ModelWithContextRow[];
+  models_with_capabilities?: Array<
+    ModelWithContextRow & {
+      model_id?: string;
+      display_name?: string;
+      provider?: string;
+      image_gen?: "true" | "false" | "unknown";
+      vision?: "true" | "false" | "unknown";
+      tools?: "true" | "false" | "unknown";
+      thinking?: "true" | "false" | "unknown";
+      video_gen?: "true" | "false" | "unknown";
+      context_window?: number | null;
+    }
+  >;
   source?: string;
   error?: string;
 };
@@ -108,6 +140,12 @@ function formatCheckedAgo(ts: number): string {
   if (h < 36) return `vor ${h} Std.`;
   const d = Math.floor(h / 24);
   return `vor ${d} Tag(en)`;
+}
+
+function capabilityBadgeClass(v?: "true" | "false" | "unknown"): string {
+  if (v === "true") return "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
+  if (v === "false") return "border-rose-500/40 bg-rose-500/15 text-rose-300";
+  return "border-border/70 bg-muted/30 text-muted-foreground";
 }
 
 /** Scriptony Akzent — gleiche Farbe wie Tabs / Rest der App */
@@ -161,6 +199,9 @@ function stableSettingsHydrationSignature(s: AISettings): string {
     feature_profiles: p.feature_profiles,
     enabled_features: p.enabled_features,
     ollama_json: p.ollama,
+    image_enabled: p.image?.enabled_features,
+    image_feature_profiles: p.image?.feature_profiles,
+    image_provider_models: p.image?.provider_models,
     ollama_base: (s.ollama_base_url && String(s.ollama_base_url).trim()) || "",
     has_openai: Boolean(s.openai_api_key && String(s.openai_api_key).trim()),
     has_anthropic: Boolean(s.anthropic_api_key && String(s.anthropic_api_key).trim()),
@@ -250,9 +291,27 @@ export function AISettingsForm({
     >
   >({});
   const [validatingPid, setValidatingPid] = useState<LlmProviderId | null>(null);
+  /** Aktiver Image-Provider in settings_json (für Cover-Generate); nach Speichern pro Karte gesetzt. */
+  const [imageProviderDraft, setImageProviderDraft] = useState<"ollama" | "openrouter">("ollama");
+  const [imageOllamaKeyDraft, setImageOllamaKeyDraft] = useState("");
+  const [imageOpenrouterKeyDraft, setImageOpenrouterKeyDraft] = useState("");
+  type ImageConnState = { ok: boolean; at: number; error?: string } | null;
+  const [imageValidationOllama, setImageValidationOllama] = useState<ImageConnState>(null);
+  const [imageValidationOpenrouter, setImageValidationOpenrouter] = useState<ImageConnState>(null);
+  const [validatingImageProvider, setValidatingImageProvider] = useState<"ollama" | "openrouter" | null>(null);
+  const [imageModelDraftOllama, setImageModelDraftOllama] = useState("gpt-image-1");
+  const [imageModelDraftOpenrouter, setImageModelDraftOpenrouter] = useState("gpt-image-1");
+  const [imageModelsOllama, setImageModelsOllama] = useState<ModelWithContextRow[]>([]);
+  const [imageModelsOpenrouter, setImageModelsOpenrouter] = useState<ModelWithContextRow[]>([]);
+  const [storedOllamaImageApiKey, setStoredOllamaImageApiKey] = useState("");
+  const [storedOpenrouterImageApiKey, setStoredOpenrouterImageApiKey] = useState("");
   const settingsHydrationSigRef = useRef<string | null>(null);
 
   const { featureFlags, isAssignedToProvider } = useAiProviderFeatureToggles(settings);
+  const {
+    featureFlags: imageFeatureFlags,
+    isOnForProvider: isImageFeatureOnForProvider,
+  } = useAiImageProviderFeatureToggles(settings);
 
   useEffect(() => {
     if (embedded) {
@@ -275,6 +334,16 @@ export function AISettingsForm({
     setProviderForm(initialProviderForm(settings));
     setOllamaBaseDraft((settings.ollama_base_url && String(settings.ollama_base_url).trim()) || "");
     setOllamaModeDraft(inferOllamaUiMode(settings));
+    const parsed = getParsed(settings);
+    const pm = parsed.image?.provider_models;
+    const mo = typeof pm?.ollama === "string" ? pm.ollama.trim() : "";
+    const mr = typeof pm?.openrouter === "string" ? pm.openrouter.trim() : "";
+    const legacyModel = (parsed.image?.model && String(parsed.image.model).trim()) || "";
+    const ip = parsed.image?.provider === "openrouter" ? "openrouter" : "ollama";
+    if (mo) setImageModelDraftOllama(mo);
+    else if (legacyModel && ip === "ollama") setImageModelDraftOllama(legacyModel);
+    if (mr) setImageModelDraftOpenrouter(mr);
+    else if (legacyModel && ip === "openrouter") setImageModelDraftOpenrouter(legacyModel);
   }, [settings]);
 
   const loadSettings = async () => {
@@ -285,6 +354,7 @@ export function AISettingsForm({
       if (settingsCache) {
         console.log("✅ Using cached settings for instant UI");
         setSettings(settingsCache);
+        void loadImageSettings();
         setLoading(false);
         loadSettingsInBackground();
         return;
@@ -306,6 +376,7 @@ export function AISettingsForm({
       }
       setSettings(row);
       setSettingsCache(row);
+      await loadImageSettings();
     } catch (error: unknown) {
       console.error("Failed to load settings:", error);
       const msg = error instanceof Error ? error.message : "Fehler beim Laden der Einstellungen";
@@ -325,8 +396,70 @@ export function AISettingsForm({
         setSettings(result.data.settings);
         setSettingsCache(result.data.settings);
       }
+      await loadImageSettings();
     } catch (error) {
       console.error('Background refresh failed:', error);
+    }
+  };
+
+  const loadImageSettings = async () => {
+    try {
+      const result = await apiGet<{
+        settings?: {
+          image_provider?: "ollama" | "openrouter";
+          ollama_image_api_key?: string | null;
+          openrouter_image_api_key?: string | null;
+          settings_json?: string | null;
+        };
+      }>(
+        "/ai/image/settings"
+      );
+      if ("error" in result && result.error) return;
+      const row = result.data?.settings;
+      const provider = row?.image_provider === "openrouter" ? "openrouter" : "ollama";
+      setImageProviderDraft(provider);
+      setStoredOllamaImageApiKey(row?.ollama_image_api_key?.trim() || "");
+      setStoredOpenrouterImageApiKey(row?.openrouter_image_api_key?.trim() || "");
+      if (typeof row?.settings_json === "string" && row.settings_json.trim()) {
+        try {
+          const parsedFull = JSON.parse(row.settings_json) as AiSettingsJsonParsed;
+          const imageCfg = parsedFull.image;
+          if (imageCfg?.provider === "openrouter" || imageCfg?.provider === "ollama") {
+            setImageProviderDraft(imageCfg.provider);
+          }
+          const pm = imageCfg?.provider_models;
+          const mo = typeof pm?.ollama === "string" ? pm.ollama.trim() : "";
+          const mr = typeof pm?.openrouter === "string" ? pm.openrouter.trim() : "";
+          const legacyModel = typeof imageCfg?.model === "string" ? imageCfg.model.trim() : "";
+          const ip = imageCfg?.provider === "openrouter" ? "openrouter" : "ollama";
+          if (mo) setImageModelDraftOllama(mo);
+          else if (legacyModel && ip === "ollama") setImageModelDraftOllama(legacyModel);
+          if (mr) setImageModelDraftOpenrouter(mr);
+          else if (legacyModel && ip === "openrouter") setImageModelDraftOpenrouter(legacyModel);
+          setSettings((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  settings_json: row.settings_json ?? prev.settings_json,
+                  settings_json_parsed: parsedFull,
+                }
+              : prev
+          );
+          setSettingsCache((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  settings_json: row.settings_json ?? prev.settings_json,
+                  settings_json_parsed: parsedFull,
+                }
+              : prev
+          );
+        } catch {
+          /* ignore invalid JSON */
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load image settings:", error);
     }
   };
 
@@ -438,7 +571,21 @@ export function AISettingsForm({
           fail(typeof data.error === "string" ? data.error : "Verbindung ungültig");
           return;
         }
-        const rows = Array.isArray(data?.models_with_context) ? data.models_with_context : [];
+        const rows = Array.isArray(data?.models_with_capabilities)
+          ? data.models_with_capabilities.map((m) => ({
+              id: m.id || m.model_id || "",
+              name: m.name || m.display_name || m.id || m.model_id || "",
+              context_window: typeof m.context_window === "number" ? m.context_window : 0,
+              provider: m.provider,
+              image_gen: m.image_gen,
+              vision: m.vision,
+              tools: m.tools,
+              thinking: m.thinking,
+              video_gen: m.video_gen,
+            }))
+          : Array.isArray(data?.models_with_context)
+            ? data.models_with_context
+            : [];
         setValidateByProvider((prev) => ({
           ...prev,
           [pid]: { ok: true, models: rows, source: data?.source, at: Date.now() },
@@ -469,7 +616,21 @@ export function AISettingsForm({
         fail(typeof data.error === "string" ? data.error : "API-Key ungültig");
         return;
       }
-      const rows = Array.isArray(data?.models_with_context) ? data.models_with_context : [];
+      const rows = Array.isArray(data?.models_with_capabilities)
+        ? data.models_with_capabilities.map((m) => ({
+            id: m.id || m.model_id || "",
+            name: m.name || m.display_name || m.id || m.model_id || "",
+            context_window: typeof m.context_window === "number" ? m.context_window : 0,
+            provider: m.provider,
+            image_gen: m.image_gen,
+            vision: m.vision,
+            tools: m.tools,
+            thinking: m.thinking,
+            video_gen: m.video_gen,
+          }))
+        : Array.isArray(data?.models_with_context)
+          ? data.models_with_context
+          : [];
       setValidateByProvider((prev) => ({
         ...prev,
         [pid]: { ok: true, models: rows, source: data?.source, at: Date.now() },
@@ -481,6 +642,116 @@ export function AISettingsForm({
       );
     } finally {
       setValidatingPid(null);
+    }
+  };
+
+  const getImageApiKeyForProvider = (pid: ImageProviderId): string =>
+    (pid === "openrouter" ? imageOpenrouterKeyDraft : imageOllamaKeyDraft).trim() ||
+    (pid === "openrouter" ? storedOpenrouterImageApiKey : storedOllamaImageApiKey);
+
+  const toggleImageFeatureForProvider = async (
+    pid: ImageProviderId,
+    fid: ImageFeatureId,
+    turnOn: boolean
+  ) => {
+    if (!settings) return;
+    const parsed = getParsed(settings);
+    if (turnOn) {
+      const key = getImageApiKeyForProvider(pid);
+      if (!key) {
+        toast.error("Zuerst Image API-Key für diesen Anbieter eintragen oder speichern.");
+        return;
+      }
+      const validation = pid === "openrouter" ? imageValidationOpenrouter : imageValidationOllama;
+      const models = pid === "openrouter" ? imageModelsOpenrouter : imageModelsOllama;
+      const modelDraft = pid === "openrouter" ? imageModelDraftOpenrouter : imageModelDraftOllama;
+      if (!validation?.ok) {
+        toast.error("Bitte zuerst „Verbindung testen“ für diesen Image-Anbieter.");
+        return;
+      }
+      if (models.length === 0 || !modelDraft || !models.some((m) => m.id === modelDraft)) {
+        toast.error("Bitte gültiges Image-Modell wählen (nach Verbindungstest).");
+        return;
+      }
+      const curEf = parsed.image?.enabled_features;
+      const nextEf: ImageFeatureId[] =
+        curEf === undefined
+          ? ["cover", "stage2d"]
+          : curEf.includes(fid)
+            ? [...curEf]
+            : [...curEf, fid];
+      setSaving(true);
+      try {
+        const result = await apiPut("/ai/image/settings", {
+          settings_json: {
+            image: {
+              feature_profiles: {
+                [fid]: { provider: pid, model: modelDraft.trim() },
+              },
+              enabled_features: nextEf,
+            },
+          },
+        });
+        if ("error" in result && result.error) {
+          toast.error(result.error.message || "Routing speichern fehlgeschlagen");
+          return;
+        }
+        await loadImageSettings();
+        afterSettingsPersist();
+        toast.success(
+          `${fid === "cover" ? "Cover" : "2DStage"} nutzt jetzt ${pid === "ollama" ? "Ollama" : "OpenRouter"}.`
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    const routed = getRoutedImageProviderForFeature(parsed, fid);
+    const eff = getEffectiveImageProviderForFeature(parsed, fid);
+    if (routed === pid) {
+      setSaving(true);
+      try {
+        const result = await apiPut("/ai/image/settings", {
+          settings_json: {
+            image: {
+              feature_profiles: { [fid]: null },
+            },
+          },
+        });
+        if ("error" in result && result.error) {
+          toast.error(result.error.message || "Routing speichern fehlgeschlagen");
+          return;
+        }
+        await loadImageSettings();
+        afterSettingsPersist();
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    if (!routed && eff === pid) {
+      const curEf = parsed.image?.enabled_features;
+      const base: ImageFeatureId[] = curEf === undefined ? ["cover", "stage2d"] : [...curEf];
+      const nextEf = base.filter((x) => x !== fid);
+      setSaving(true);
+      try {
+        const result = await apiPut("/ai/image/settings", {
+          settings_json: {
+            image: {
+              enabled_features: nextEf.length > 0 ? nextEf : [],
+            },
+          },
+        });
+        if ("error" in result && result.error) {
+          toast.error(result.error.message || "Speichern fehlgeschlagen");
+          return;
+        }
+        await loadImageSettings();
+        afterSettingsPersist();
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -817,11 +1088,204 @@ export function AISettingsForm({
 
   const filteredProviderIds = useMemo(() => {
     const qq = providerListQuery.trim().toLowerCase();
-    if (!qq) return [...LLM_PROVIDER_IDS];
-    return LLM_PROVIDER_IDS.filter(
-      (pid) => pid.toLowerCase().includes(qq) || PROVIDER_NAMES[pid].toLowerCase().includes(qq)
-    );
-  }, [providerListQuery]);
+    const base =
+      !qq
+        ? [...LLM_PROVIDER_IDS]
+        : LLM_PROVIDER_IDS.filter(
+            (pid) => pid.toLowerCase().includes(qq) || PROVIDER_NAMES[pid].toLowerCase().includes(qq)
+          );
+    if (!settings) return base;
+
+    const orderIndex = (pid: LlmProviderId) => LLM_PROVIDER_IDS.indexOf(pid);
+    return [...base].sort((a, b) => {
+      const ca = Boolean(getProviderKey(a, settings));
+      const cb = Boolean(getProviderKey(b, settings));
+      if (ca !== cb) return ca ? -1 : 1;
+      return orderIndex(a) - orderIndex(b);
+    });
+  }, [providerListQuery, settings]);
+
+  const runImageConnectionValidation = async (provider: "ollama" | "openrouter") => {
+    const key =
+      (provider === "openrouter" ? imageOpenrouterKeyDraft : imageOllamaKeyDraft).trim() ||
+      (provider === "openrouter" ? storedOpenrouterImageApiKey : storedOllamaImageApiKey);
+    if (!key) {
+      toast.error(
+        provider === "openrouter"
+          ? "OpenRouter Image API-Key eingeben oder gespeichert haben."
+          : "Ollama Image API-Key eingeben oder gespeichert haben."
+      );
+      return;
+    }
+    setValidatingImageProvider(provider);
+    const setValidation = provider === "openrouter" ? setImageValidationOpenrouter : setImageValidationOllama;
+    try {
+      const result = await apiPost<{
+        valid?: boolean;
+        error?: string;
+        models_with_context?: ModelWithContextRow[];
+        models_with_capabilities?: Array<
+          ModelWithContextRow & {
+            model_id?: string;
+            display_name?: string;
+            image_gen?: "true" | "false" | "unknown";
+            vision?: "true" | "false" | "unknown";
+            tools?: "true" | "false" | "unknown";
+            thinking?: "true" | "false" | "unknown";
+            video_gen?: "true" | "false" | "unknown";
+            provider?: string;
+            context_window?: number | null;
+          }
+        >;
+      }>("/ai/image/validate-key", { provider, api_key: key });
+      if ("error" in result && result.error) {
+        setValidation({ ok: false, at: Date.now(), error: result.error.message || "Test fehlgeschlagen" });
+        toast.error(result.error.message || "Image-Key Test fehlgeschlagen");
+        return;
+      }
+      if (result.data?.valid === false) {
+        const msg = result.data.error || "Image-Key ungültig";
+        setValidation({ ok: false, at: Date.now(), error: msg });
+        toast.error(msg);
+        return;
+      }
+      const withCaps = Array.isArray(result.data?.models_with_capabilities) ? result.data.models_with_capabilities : [];
+      const rows = withCaps.length
+        ? withCaps.map((m) => ({
+            id: m.id || m.model_id || "",
+            name: m.name || m.display_name || m.id || m.model_id || "",
+            context_window: typeof m.context_window === "number" ? m.context_window : 0,
+            provider: m.provider,
+            image_gen: m.image_gen,
+            vision: m.vision,
+            tools: m.tools,
+            thinking: m.thinking,
+            video_gen: m.video_gen,
+          }))
+        : Array.isArray(result.data?.models_with_context)
+          ? result.data.models_with_context
+          : [];
+      if (provider === "openrouter") {
+        setImageModelsOpenrouter(rows);
+        if (rows.length > 0) {
+          setImageModelDraftOpenrouter((prev) => (rows.some((m) => m.id === prev) ? prev : rows[0].id));
+        } else {
+          setImageModelDraftOpenrouter("");
+        }
+      } else {
+        setImageModelsOllama(rows);
+        if (rows.length > 0) {
+          setImageModelDraftOllama((prev) => (rows.some((m) => m.id === prev) ? prev : rows[0].id));
+        } else {
+          setImageModelDraftOllama("");
+        }
+      }
+      setValidation({ ok: true, at: Date.now() });
+      toast.success(rows.length ? `Image-Key ok · ${rows.length} Modelle geladen` : "Image Key ist gültig.");
+    } finally {
+      setValidatingImageProvider(null);
+    }
+  };
+
+  const saveImageSettings = async (provider: ImageProviderId) => {
+    if (!settings) return;
+    const key =
+      (provider === "openrouter" ? imageOpenrouterKeyDraft : imageOllamaKeyDraft).trim() ||
+      (provider === "openrouter" ? storedOpenrouterImageApiKey : storedOllamaImageApiKey);
+    if (!key) {
+      toast.error(
+        provider === "openrouter"
+          ? "Bitte OpenRouter Image API-Key eintragen."
+          : "Bitte Ollama Image API-Key eintragen."
+      );
+      return;
+    }
+    const validation = provider === "openrouter" ? imageValidationOpenrouter : imageValidationOllama;
+    const models = provider === "openrouter" ? imageModelsOpenrouter : imageModelsOllama;
+    const modelDraft = provider === "openrouter" ? imageModelDraftOpenrouter : imageModelDraftOllama;
+    if (!validation?.ok) {
+      toast.error("Bitte zuerst „Verbindung testen“ für diesen Anbieter ausführen.");
+      return;
+    }
+    if (models.length === 0) {
+      toast.error("Keine Image-Modelle geladen. Bitte Verbindung erneut testen.");
+      return;
+    }
+    if (!models.some((m) => m.id === modelDraft)) {
+      toast.error("Modell nicht in der Liste. Bitte „Verbindung testen“ und Modell wählen.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const parsedIm = getParsed(settings);
+      const prevEf = parsedIm.image?.enabled_features;
+      const enabled_features: Array<"cover" | "stage2d"> =
+        prevEf === undefined ? ["cover", "stage2d"] : [...prevEf];
+      const provider_models = {
+        ...(parsedIm.image?.provider_models ?? {}),
+        [provider]: modelDraft.trim() || "gpt-image-1",
+      };
+      const result = await apiPut<{
+        settings?: { ollama_image_api_key?: string | null; openrouter_image_api_key?: string | null };
+      }>("/ai/image/settings", {
+        image_provider: provider,
+        ...(provider === "openrouter" ? { openrouter_image_api_key: key } : { ollama_image_api_key: key }),
+        settings_json: {
+          image: {
+            provider,
+            model: modelDraft.trim() || "gpt-image-1",
+            enabled_features,
+            provider_models,
+            ...(provider === "ollama" ? { ollama: { mode: "cloud" } } : {}),
+          },
+        },
+      });
+      if ("error" in result && result.error) {
+        toast.error(result.error.message || "Image-Einstellungen konnten nicht gespeichert werden");
+        return;
+      }
+      if (result.data?.settings) {
+        const verify = await apiGet<{
+          settings?: { ollama_image_api_key?: string | null; openrouter_image_api_key?: string | null };
+        }>("/ai/image/settings");
+        if ("error" in verify && verify.error) {
+          toast.error(verify.error.message || "Image-Key gespeichert, aber Verifikation fehlgeschlagen.");
+          return;
+        }
+        const verifiedSettings = verify.data?.settings;
+        const persistedKey =
+          verifiedSettings &&
+          (provider === "openrouter"
+            ? typeof verifiedSettings.openrouter_image_api_key === "string"
+            : typeof verifiedSettings.ollama_image_api_key === "string")
+            ? String(
+                provider === "openrouter"
+                  ? verifiedSettings.openrouter_image_api_key
+                  : verifiedSettings.ollama_image_api_key
+              ).trim()
+            : "";
+        if (!persistedKey) {
+          toast.error("API-Key wurde nicht persistiert. Bitte Image Function neu deployen und erneut speichern.");
+          return;
+        }
+        setImageProviderDraft(provider);
+        if (provider === "openrouter") {
+          setStoredOpenrouterImageApiKey(persistedKey);
+          setImageOpenrouterKeyDraft("");
+        } else {
+          setStoredOllamaImageApiKey(persistedKey);
+          setImageOllamaKeyDraft("");
+        }
+        await loadImageSettings();
+        afterSettingsPersist();
+        toast.success(
+          provider === "openrouter" ? "OpenRouter Image gespeichert" : "Ollama Image gespeichert"
+        );
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -908,6 +1372,25 @@ export function AISettingsForm({
       </Alert>
     );
   }
+
+  const imageModelOptionsOllama = imageModelsOllama.map((m) => ({
+    id: m.id,
+    name: m.name || m.id,
+    image_gen: m.image_gen,
+    vision: m.vision,
+    tools: m.tools,
+    thinking: m.thinking,
+    video_gen: m.video_gen,
+  }));
+  const imageModelOptionsOpenrouter = imageModelsOpenrouter.map((m) => ({
+    id: m.id,
+    name: m.name || m.id,
+    image_gen: m.image_gen,
+    vision: m.vision,
+    tools: m.tools,
+    thinking: m.thinking,
+    video_gen: m.video_gen,
+  }));
 
   return (
     <div className={embedded ? "space-y-4" : "flex min-h-0 flex-1 flex-col"}>
@@ -1342,6 +1825,265 @@ export function AISettingsForm({
                     </details>
                   );
                 })}
+            </section>
+
+            <section className="flex flex-col gap-3">
+              <div className="px-1">
+                <h3 className="text-sm font-semibold">Image</h3>
+                <p className="text-xs text-muted-foreground">
+                  Cover- und 2DStage-Bildgenerierung via Ollama Cloud oder OpenRouter (entweder/oder).
+                </p>
+              </div>
+
+              <details className="group rounded-lg border border-border bg-card/60 open:bg-card/80">
+                <summary className="flex cursor-pointer list-none items-center gap-0 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center md:gap-x-5">
+                    <div className="flex min-w-0 max-w-full shrink-0 items-center gap-3">
+                      {storedOllamaImageApiKey ? (
+                        <span
+                          style={{
+                            backgroundColor: "#059669",
+                            color: "#ffffff",
+                            borderColor: "transparent",
+                          }}
+                          className={cn(
+                            "inline-flex shrink-0 items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium leading-none shadow-sm",
+                            "animate-[pulse_1.1s_ease-in-out_infinite] shadow-[0_0_0_2px_rgba(16,185,129,0.22)]"
+                          )}
+                        >
+                          Ollama (Cloud)
+                        </span>
+                      ) : (
+                        <Badge variant="default" className={cn(PROVIDER_BADGE_CLASS, "text-xs font-medium")}>
+                          Ollama (Cloud)
+                        </Badge>
+                      )}
+                      {storedOllamaImageApiKey ? (
+                        <span className="max-w-[200px] truncate text-xs font-mono leading-none text-muted-foreground sm:max-w-[280px]">
+                          image · Cloud · ***{storedOllamaImageApiKey.slice(-4)}
+                        </span>
+                      ) : (
+                        <span className="text-xs leading-none text-muted-foreground">nicht konfiguriert</span>
+                      )}
+                    </div>
+                    <ImageFeatureToggleBadges
+                      providerId="ollama"
+                      featureFlags={imageFeatureFlags}
+                      isOnForProvider={(fid) => isImageFeatureOnForProvider("ollama", fid)}
+                      disabled={saving}
+                      onToggle={(fid, v) => void toggleImageFeatureForProvider("ollama", fid, v)}
+                      className="w-full max-w-full border-l-0 pl-0 md:w-auto md:shrink-0 md:border-l md:border-border/60 md:pl-4"
+                      ids={{
+                        cover: "image-ollama-toggle-cover",
+                        stage2d: "image-ollama-toggle-stage2d",
+                      }}
+                    />
+                  </div>
+                  <div className="ml-2 flex shrink-0 items-center gap-1 border-l border-border/60 pl-3">
+                    <ChevronDown
+                      aria-hidden
+                      className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+                    />
+                  </div>
+                </summary>
+                <div className="space-y-3 border-t border-border/60 px-3 pb-4 pt-3">
+                  <Label htmlFor="image-ollama-key" className="text-xs">
+                    API-Key (Ollama Cloud, Images)
+                  </Label>
+                  <ProviderSecretInput
+                    id="image-ollama-key"
+                    draft={imageOllamaKeyDraft}
+                    onDraftChange={setImageOllamaKeyDraft}
+                    storedSecret={storedOllamaImageApiKey}
+                    disabled={saving}
+                    placeholder="Key von ollama.com"
+                    alwaysShowToggle
+                  />
+                  <p className="text-[0.7rem] leading-snug text-muted-foreground">
+                    {storedOllamaImageApiKey
+                      ? `Key hinterlegt · ***${storedOllamaImageApiKey.slice(-4)}`
+                      : "Noch kein Ollama-Image-Key gespeichert"}
+                  </p>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs" htmlFor="image-model-select-ollama">
+                      Image-Modell (Ollama)
+                    </Label>
+                    <SearchableModelSelect
+                      id="image-model-select-ollama"
+                      value={imageModelDraftOllama}
+                      onValueChange={setImageModelDraftOllama}
+                      options={imageModelOptionsOllama}
+                      locked={!(imageValidationOllama?.ok && imageModelsOllama.length > 0)}
+                      disabled={saving}
+                      lockedHint="Zuerst „Verbindung testen“ für Ollama — dann Modell wählbar."
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={saving || validatingImageProvider === "ollama"}
+                      onClick={() => void runImageConnectionValidation("ollama")}
+                    >
+                      {validatingImageProvider === "ollama" ? "Test…" : "Verbindung testen"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => void saveImageSettings("ollama")}
+                    >
+                      API-Key speichern
+                    </Button>
+                  </div>
+
+                  {imageValidationOllama ? (
+                    imageValidationOllama.ok ? (
+                      <Alert className="border-emerald-500/35 bg-emerald-500/[0.06] py-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <AlertDescription className="text-xs">
+                          Ollama Image-Key gültig. Geprüft {formatCheckedAgo(imageValidationOllama.at)}.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert variant="destructive" className="py-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          {imageValidationOllama.error || "Ollama Image-Key Test fehlgeschlagen"}
+                        </AlertDescription>
+                      </Alert>
+                    )
+                  ) : null}
+                </div>
+              </details>
+
+              <details className="group rounded-lg border border-border bg-card/60 open:bg-card/80">
+                <summary className="flex cursor-pointer list-none items-center gap-0 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center md:gap-x-5">
+                    <div className="flex min-w-0 max-w-full shrink-0 items-center gap-3">
+                      {storedOpenrouterImageApiKey ? (
+                        <span
+                          style={{
+                            backgroundColor: "#059669",
+                            color: "#ffffff",
+                            borderColor: "transparent",
+                          }}
+                          className={cn(
+                            "inline-flex shrink-0 items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium leading-none shadow-sm",
+                            "animate-[pulse_1.1s_ease-in-out_infinite] shadow-[0_0_0_2px_rgba(16,185,129,0.22)]"
+                          )}
+                        >
+                          OpenRouter
+                        </span>
+                      ) : (
+                        <Badge variant="default" className={cn(PROVIDER_BADGE_CLASS, "text-xs font-medium")}>
+                          OpenRouter
+                        </Badge>
+                      )}
+                      {storedOpenrouterImageApiKey ? (
+                        <span className="max-w-[200px] truncate text-xs font-mono leading-none text-muted-foreground sm:max-w-[280px]">
+                          image · sk-or-***{storedOpenrouterImageApiKey.slice(-4)}
+                        </span>
+                      ) : (
+                        <span className="text-xs leading-none text-muted-foreground">nicht konfiguriert</span>
+                      )}
+                    </div>
+                    <ImageFeatureToggleBadges
+                      providerId="openrouter"
+                      featureFlags={imageFeatureFlags}
+                      isOnForProvider={(fid) => isImageFeatureOnForProvider("openrouter", fid)}
+                      disabled={saving}
+                      onToggle={(fid, v) => void toggleImageFeatureForProvider("openrouter", fid, v)}
+                      className="w-full max-w-full border-l-0 pl-0 md:w-auto md:shrink-0 md:border-l md:border-border/60 md:pl-4"
+                      ids={{
+                        cover: "image-openrouter-toggle-cover",
+                        stage2d: "image-openrouter-toggle-stage2d",
+                      }}
+                    />
+                  </div>
+                  <div className="ml-2 flex shrink-0 items-center gap-1 border-l border-border/60 pl-3">
+                    <ChevronDown
+                      aria-hidden
+                      className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+                    />
+                  </div>
+                </summary>
+                <div className="space-y-3 border-t border-border/60 px-3 pb-4 pt-3">
+                  <Label htmlFor="image-openrouter-key" className="text-xs">
+                    API-Key (OpenRouter, Images)
+                  </Label>
+                  <ProviderSecretInput
+                    id="image-openrouter-key"
+                    draft={imageOpenrouterKeyDraft}
+                    onDraftChange={setImageOpenrouterKeyDraft}
+                    storedSecret={storedOpenrouterImageApiKey}
+                    disabled={saving}
+                    placeholder="Key von openrouter.ai"
+                    alwaysShowToggle
+                  />
+                  <p className="text-[0.7rem] leading-snug text-muted-foreground">
+                    {storedOpenrouterImageApiKey
+                      ? `Key hinterlegt · sk-or-***${storedOpenrouterImageApiKey.slice(-4)}`
+                      : "Noch kein OpenRouter-Image-Key gespeichert"}
+                  </p>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs" htmlFor="image-model-select-openrouter">
+                      Image-Modell (OpenRouter)
+                    </Label>
+                    <SearchableModelSelect
+                      id="image-model-select-openrouter"
+                      value={imageModelDraftOpenrouter}
+                      onValueChange={setImageModelDraftOpenrouter}
+                      options={imageModelOptionsOpenrouter}
+                      locked={!(imageValidationOpenrouter?.ok && imageModelsOpenrouter.length > 0)}
+                      disabled={saving}
+                      lockedHint="Zuerst „Verbindung testen“ für OpenRouter — dann Modell wählbar."
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={saving || validatingImageProvider === "openrouter"}
+                      onClick={() => void runImageConnectionValidation("openrouter")}
+                    >
+                      {validatingImageProvider === "openrouter" ? "Test…" : "Verbindung testen"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => void saveImageSettings("openrouter")}
+                    >
+                      API-Key speichern
+                    </Button>
+                  </div>
+
+                  {imageValidationOpenrouter ? (
+                    imageValidationOpenrouter.ok ? (
+                      <Alert className="border-emerald-500/35 bg-emerald-500/[0.06] py-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <AlertDescription className="text-xs">
+                          OpenRouter Image-Key gültig. Geprüft {formatCheckedAgo(imageValidationOpenrouter.at)}.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert variant="destructive" className="py-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          {imageValidationOpenrouter.error || "OpenRouter Image-Key Test fehlgeschlagen"}
+                        </AlertDescription>
+                      </Alert>
+                    )
+                  ) : null}
+                </div>
+              </details>
             </section>
           </div>
         </div>

@@ -14,7 +14,7 @@ import {
 } from "../../_shared/http";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import { inferOllamaMode, parseSettingsJsonField } from "../../_shared/ai-feature-profile";
-import { listRemoteModels } from "./fetch-dynamic-models";
+import { listRemoteModels, listRemoteModelsWithCapabilities } from "./fetch-dynamic-models";
 
 function providerFromRequest(req: RequestLike, fallback: string): string {
   const q = getQuery(req, "provider")?.trim().toLowerCase();
@@ -95,11 +95,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       ollamaBaseUrl: provider === "ollama" ? ollamaBaseUrl : undefined,
       ollamaMode: provider === "ollama" ? ollamaMode : undefined,
     });
+    const withCaps = await listRemoteModelsWithCapabilities(provider, {
+      apiKey,
+      ollamaBaseUrl: provider === "ollama" ? ollamaBaseUrl : undefined,
+      ollamaMode: provider === "ollama" ? ollamaMode : undefined,
+    });
 
     sendJson(res, 200, {
       provider,
       models: models.map((m) => m.id),
       models_with_context: models,
+      models_with_capabilities: withCaps.models,
       source,
       registry_fallback: source === "registry",
       ...(provider === "ollama" ? { ollama_mode: ollamaMode } : {}),

@@ -36,6 +36,7 @@ const AI_CHAT_SETTINGS_WRITABLE = new Set([
   "deepseek_api_key",
   "ollama_base_url",
   "ollama_api_key",
+  "ollama_image_api_key",
   "active_provider",
   "active_model",
   "system_prompt",
@@ -50,6 +51,7 @@ const AI_CHAT_API_KEY_FIELDS = new Set([
   "openrouter_api_key",
   "deepseek_api_key",
   "ollama_api_key",
+  "ollama_image_api_key",
 ]);
 
 function sanitizeAiChatSettingsInsert(data: Record<string, unknown>): Record<string, unknown> {
@@ -330,6 +332,15 @@ export const allHandlers: Record<string, Op> = {
     ]),
   }),
 
+  /** Alias for RAG context loader query name. */
+  RagWorld: async (v) => ({
+    worlds: await listDocumentsFull(C.worlds, [
+      Query.equal("id", v.worldId as string),
+      Query.equal("organization_id", v.organizationId as string),
+      Query.limit(1),
+    ]),
+  }),
+
   UpdateWorld: async (v) => ({
     update_worlds_by_pk: await updateDocument(C.worlds, v.worldId as string, v.changes as Record<string, unknown>),
   }),
@@ -440,6 +451,14 @@ export const allHandlers: Record<string, Op> = {
   },
 
   GetStoryBeats: async (v) => ({
+    story_beats: await listDocumentsFull(C.story_beats, [
+      Query.equal("project_id", v.projectId as string),
+      Query.orderAsc("order_index"),
+    ]),
+  }),
+
+  /** Alias for RAG context loader query name. */
+  RagStoryBeats: async (v) => ({
     story_beats: await listDocumentsFull(C.story_beats, [
       Query.equal("project_id", v.projectId as string),
       Query.orderAsc("order_index"),
@@ -630,6 +649,23 @@ export const allHandlers: Record<string, Op> = {
     ]),
   }),
 
+  /** Alias used by scriptony-image cover generation settings lookup. */
+  GetImageSettings: async (v) => ({
+    ai_chat_settings: await listDocumentsFull(C.ai_chat_settings, [
+      Query.equal("user_id", v.userId as string),
+      Query.limit(1),
+    ]),
+  }),
+
+  /** Alias used by scriptony-image image-settings route. */
+  CreateImageSettings: async (v) => ({
+    insert_ai_chat_settings_one: await createDocument(
+      C.ai_chat_settings,
+      ID.unique(),
+      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>)
+    ),
+  }),
+
   /** Used by `scriptony-assistant/ai/models.ts` to load keys/settings for dynamic model listing. */
   GetAiModelsContext: async (v) => ({
     ai_chat_settings: await listDocumentsFull(C.ai_chat_settings, [
@@ -647,6 +683,15 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   UpdateAiSettings: async (v) => ({
+    update_ai_chat_settings_by_pk: await updateDocument(
+      C.ai_chat_settings,
+      v.id as string,
+      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>)
+    ),
+  }),
+
+  /** Alias used by scriptony-image image-settings route. */
+  UpdateImageSettings: async (v) => ({
     update_ai_chat_settings_by_pk: await updateDocument(
       C.ai_chat_settings,
       v.id as string,
