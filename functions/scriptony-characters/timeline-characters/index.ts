@@ -69,6 +69,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               backstory
               personality
               color
+              reference_images_json
               created_at
               updated_at
             }

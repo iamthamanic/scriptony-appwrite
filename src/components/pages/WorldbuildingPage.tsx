@@ -35,6 +35,13 @@ import { WorldStatsLogsDialog } from "../WorldStatsLogsDialog";
 import { WorldCarousel } from "../WorldCarousel";
 import { toast } from "sonner@2.0.3";
 
+/** Appwrite/GraphQL can expose `$id` or `id`; without `id`, hash stays `#worldbuilding` (navigate drops segment). */
+function normalizeWorldRow(w: any) {
+  if (!w) return w;
+  const id = w.id ?? w.$id;
+  return id ? { ...w, id: String(id) } : { ...w };
+}
+
 interface WorldbuildingPageProps {
   selectedWorldId?: string;
   selectedCategoryId?: string;
@@ -96,11 +103,14 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
           characters: [] // Empty array, will be loaded on-demand
         })));
         
-        // Set worlds
-        const worldsWithDates = worldsData.map((world: any) => ({
-          ...world,
-          lastEdited: new Date(world.updated_at || world.created_at)
-        }));
+        // Set worlds (ensure `id` so navigation can set #worldbuilding/<id>)
+        const worldsWithDates = worldsData.map((world: any) => {
+          const n = normalizeWorldRow(world);
+          return {
+            ...n,
+            lastEdited: new Date(n.updated_at || n.created_at)
+          };
+        });
         setWorlds(worldsWithDates);
         
         // 📸 Load cover images from DB into state
@@ -141,7 +151,7 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
 
       // Add to local state with formatted date
       setWorlds([...worlds, {
-        ...newWorld,
+        ...normalizeWorldRow(newWorld),
         lastEdited: new Date(newWorld.updated_at || new Date())
       }]);
 
@@ -208,7 +218,7 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
       });
 
       setWorlds([...worlds, {
-        ...duplicated,
+        ...normalizeWorldRow(duplicated),
         lastEdited: new Date(duplicated.updated_at || new Date())
       }]);
       
@@ -233,8 +243,7 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
       
       // Update local state
       setWorlds(worlds.map(w => w.id === worldId ? {
-        ...w,
-        ...updated,
+        ...normalizeWorldRow({ ...w, ...updated }),
         lastEdited: new Date(updated.updated_at || new Date())
       } : w));
       
@@ -261,7 +270,9 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
 
   // Show world detail if world is selected
   if (selectedWorldId && worlds.length > 0) {
-    const selectedWorldData = worlds.find(w => w.id === selectedWorldId);
+    const selectedWorldData = worlds.find(
+      (w) => String(w.id).trim() === String(selectedWorldId).trim()
+    );
     if (!selectedWorldData) {
       return (
         <div className="flex items-center justify-center min-h-screen">
@@ -465,7 +476,7 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
             worlds={worlds.filter(world => 
               searchQuery === "" || 
               world.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              world.description.toLowerCase().includes(searchQuery.toLowerCase())
+              (world.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
             )}
             worldCoverImages={worldCoverImages}
             onNavigate={onNavigate}
@@ -481,7 +492,7 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
                 .filter(world => 
                   searchQuery === "" || 
                   world.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  world.description.toLowerCase().includes(searchQuery.toLowerCase())
+                  (world.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
                 )
                 .map((world, index) => (
                   <motion.div
@@ -492,93 +503,38 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {/* LIST VIEW */}
-                      <Card
-                        className="active:scale-[0.99] transition-transform cursor-pointer overflow-hidden hover:border-primary/30 relative"
-                        onClick={() => onNavigate("worldbuilding", world.id)}
-                      >
-                        {/* "Zuletzt bearbeitet" Badge - ONLY first item - TOP RIGHT */}
-                        {index === 0 && (
-                          <Badge variant="default" className="absolute top-2 right-2 z-10 text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
-                            <Clock className="size-2" />
-                            Zuletzt bearbeitet
-                          </Badge>
-                        )}
-                        
-                        <div className="flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-primary/20 border-2 border-transparent hover:border-primary/30">
-                          {/* Icon/Thumbnail Left - Portrait 2:3 Ratio */}
-                          <div 
-                            className="w-[56px] h-[84px] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shrink-0 flex items-center justify-center"
-                            style={worldCoverImages[world.id] ? { 
-                              backgroundImage: `url(${worldCoverImages[world.id]})`, 
-                              backgroundSize: 'cover', 
-                              backgroundPosition: 'center',
-                              backgroundBlendMode: 'overlay'
-                            } : {}}
+                    {/* LIST VIEW — click target = left block only; ⋮ column never under overlay */}
+                      <Card className="active:scale-[0.99] transition-transform overflow-hidden hover:border-primary/30 group/card">
+                        <div className="flex w-full items-start justify-between gap-2 p-3 rounded-lg transition-all group-hover:bg-primary/10 border-2 border-transparent group-hover:border-primary/30">
+                          <button
+                            type="button"
+                            disabled={!world.id}
+                            className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left border-0 bg-transparent p-0 hover:bg-transparent disabled:opacity-60"
+                            aria-label={`Welt „${world.name}“ öffnen`}
+                            onClick={() => world.id && onNavigate("worldbuilding", world.id)}
                           >
-                            {!worldCoverImages[world.id] && (
-                              <Globe className="size-8 text-primary/40" />
-                            )}
-                          </div>
-
-                          {/* Content Right */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <h3 className="font-semibold text-sm leading-snug line-clamp-1">
+                            <div 
+                              className="w-[56px] h-[84px] shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden flex items-center justify-center"
+                              style={worldCoverImages[world.id] ? { 
+                                backgroundImage: `url(${worldCoverImages[world.id]})`, 
+                                backgroundSize: 'cover', 
+                                backgroundPosition: 'center',
+                                backgroundBlendMode: 'overlay'
+                              } : {}}
+                            >
+                              {!worldCoverImages[world.id] && (
+                                <Globe className="size-8 text-primary/40" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold text-sm leading-snug line-clamp-1 mb-1.5">
                                 {world.name}
                               </h3>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 shrink-0"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <MoreVertical className="size-3.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigate("worldbuilding", world.id);
-                                  }}>
-                                    <Edit2 className="size-3.5 mr-2" />
-                                    Welt bearbeiten
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDuplicateWorld(world.id);
-                                  }}>
-                                    <Copy className="size-3.5 mr-2" />
-                                    Welt duplizieren
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => handleOpenStatsDialog(world, e)}>
-                                    <BarChart3 className="size-3.5 mr-2" />
-                                    Statistiken & Logs
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedWorld(world.id);
-                                      setShowDeleteDialog(true);
-                                    }}
-                                    className="text-red-600 focus:text-red-600"
-                                  >
-                                    <Trash2 className="size-3.5 mr-2" />
-                                    Welt löschen
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            
-                            {world.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                {world.description}
-                              </p>
-                            )}
-
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {world.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                  {world.description}
+                                </p>
+                              )}
                               <span className="text-[10px] text-muted-foreground">
                                 Zuletzt: {world.lastEdited.toLocaleDateString("de-DE", { 
                                   day: "2-digit", 
@@ -590,6 +546,51 @@ export function WorldbuildingPage({ selectedWorldId, onNavigate }: Worldbuilding
                                 })}
                               </span>
                             </div>
+                          </button>
+                          <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+                            {index === 0 && (
+                              <Badge variant="default" className="text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
+                                <Clock className="size-2" />
+                                Zuletzt bearbeitet
+                              </Badge>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 shrink-0"
+                                  aria-label="Welten-Menü"
+                                >
+                                  <MoreVertical className="size-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => world.id && onNavigate("worldbuilding", world.id)}>
+                                  <Edit2 className="size-3.5 mr-2" />
+                                  Welt bearbeiten
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicateWorld(world.id)}>
+                                  <Copy className="size-3.5 mr-2" />
+                                  Welt duplizieren
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => handleOpenStatsDialog(world, e)}>
+                                  <BarChart3 className="size-3.5 mr-2" />
+                                  Statistiken & Logs
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    setSelectedWorld(world.id);
+                                    setShowDeleteDialog(true);
+                                  }}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="size-3.5 mr-2" />
+                                  Welt löschen
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </Card>

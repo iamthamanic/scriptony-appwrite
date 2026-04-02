@@ -150,9 +150,12 @@ export function buildProjectCoverPrompt(args: {
   concept?: CoverConceptExcerpt;
   /** Illustration look (user picks in cover modal). */
   visualStyle?: CoverVisualStyle;
+  /** Optional Style Guide compact prompt (English) appended when „Für Cover verwenden“ is on. */
+  styleGuideCompactPrompt?: string;
 }): string {
   const { project, worldbuildingItems, characters, concept } = args;
   const visualStyle = args.visualStyle ?? "realistic";
+  const styleGuideBlock = clean(args.styleGuideCompactPrompt);
   const title = clean(project.title);
   const logline = clean(project.logline);
   const type = clean(args.projectType ?? project.type);
@@ -194,6 +197,9 @@ export function buildProjectCoverPrompt(args: {
     beatTemplate ? `Beat template hint: ${beatTemplate}.` : "",
     wb ? `Worldbuilding anchors: ${wb}.` : "",
     charLine ? `Main characters (visual cues only): ${charLine}.` : "",
+    styleGuideBlock
+      ? `Project style guide (canonical — follow for look, palette, and constraints):\n${styleGuideBlock}`
+      : "",
     "Use dramatic lighting, high detail, coherent color palette, and clear foreground/background separation.",
   ]
     .filter(Boolean)

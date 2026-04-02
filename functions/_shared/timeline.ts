@@ -55,6 +55,14 @@ export function normalizeNodeInput(body: JsonRecord): JsonRecord {
   });
 }
 
+function referenceImagesJsonFromBody(body: JsonRecord): string | undefined {
+  const urls = body.referenceImageUrls ?? body.reference_image_urls;
+  if (!Array.isArray(urls)) return undefined;
+  const cleaned = urls.filter((u) => typeof u === "string" && u.trim());
+  if (cleaned.length === 0) return undefined;
+  return JSON.stringify(cleaned.slice(0, 24));
+}
+
 export function normalizeCharacterInput(body: JsonRecord): JsonRecord {
   return compact({
     project_id: body.project_id ?? body.projectId,
@@ -68,6 +76,7 @@ export function normalizeCharacterInput(body: JsonRecord): JsonRecord {
     backstory: body.backstory ?? null,
     personality: body.personality ?? null,
     color: body.color ?? null,
+    reference_images_json: referenceImagesJsonFromBody(body),
   });
 }
 
@@ -114,7 +123,20 @@ export function normalizeShotInput(body: JsonRecord): JsonRecord {
   });
 }
 
+function parseReferenceImageUrls(raw: unknown): string[] | undefined {
+  if (raw == null || raw === "") return undefined;
+  if (typeof raw !== "string") return undefined;
+  try {
+    const p = JSON.parse(raw);
+    if (!Array.isArray(p)) return undefined;
+    return p.filter((x) => typeof x === "string" && x.trim());
+  } catch {
+    return undefined;
+  }
+}
+
 export function mapCharacter(row: JsonRecord): JsonRecord {
+  const referenceImageUrls = parseReferenceImageUrls(row.reference_images_json);
   return {
     id: row.id,
     projectId: row.project_id ?? null,
@@ -132,6 +154,8 @@ export function mapCharacter(row: JsonRecord): JsonRecord {
     backstory: row.backstory ?? undefined,
     personality: row.personality ?? undefined,
     color: row.color ?? undefined,
+    referenceImageUrls,
+    reference_image_urls: referenceImageUrls,
     createdAt: row.created_at,
     created_at: row.created_at,
     updatedAt: row.updated_at,
@@ -416,6 +440,7 @@ export async function getCharactersByProject(projectId: string): Promise<JsonRec
           backstory
           personality
           color
+          reference_images_json
           created_at
           updated_at
         }
@@ -446,6 +471,7 @@ export async function getCharacterById(characterId: string): Promise<JsonRecord 
           backstory
           personality
           color
+          reference_images_json
           created_at
           updated_at
         }

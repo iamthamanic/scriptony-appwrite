@@ -83,17 +83,52 @@ export function normalizeProjectInput(body: Record<string, any>): Record<string,
 }
 
 export function normalizeWorldInput(body: Record<string, any>): Record<string, any> {
+  // Appwrite `worlds` collection uses `cover_image_url` only (no separate `image_url` attribute).
+  const cover =
+    body.cover_image_url ?? body.coverImageUrl ?? body.image_url ?? body.imageUrl ?? null;
   const world = {
     name: body.name,
     description: body.description ?? null,
-    image_url: body.image_url ?? body.imageUrl ?? null,
-    cover_image_url: body.cover_image_url ?? body.coverImageUrl ?? body.image_url ?? body.imageUrl ?? null,
+    cover_image_url: cover,
     linked_project_id: body.linked_project_id ?? body.linkedProjectId ?? null,
   };
 
   return Object.fromEntries(
     Object.entries(world).filter(([_, value]) => value !== undefined)
   );
+}
+
+const WORLD_DOC_KEYS = ["name", "description", "cover_image_url", "linked_project_id"] as const;
+
+/**
+ * Only attributes that exist on the Appwrite `worlds` collection may be sent to createDocument.
+ * Strips unknown keys (e.g. `lore`, stray client fields) to avoid
+ * "Invalid document structure: Unknown attribute".
+ */
+export function worldsInsertPayload(
+  body: Record<string, any>,
+  organizationId: string
+): Record<string, unknown> {
+  const n = normalizeWorldInput(body);
+  return {
+    name: n.name as string,
+    description: n.description ?? null,
+    cover_image_url: n.cover_image_url ?? null,
+    linked_project_id: n.linked_project_id ?? null,
+    organization_id: organizationId,
+  };
+}
+
+/** Allowed fields for worlds update only — no extra keys from the request body. */
+export function worldsUpdatePayload(body: Record<string, any>): Record<string, unknown> {
+  const n = normalizeWorldInput(body);
+  const out: Record<string, unknown> = {};
+  for (const k of WORLD_DOC_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(n, k)) {
+      out[k] = n[k];
+    }
+  }
+  return out;
 }
 
 export function normalizeBeatInput(body: Record<string, any>): Record<string, any> {

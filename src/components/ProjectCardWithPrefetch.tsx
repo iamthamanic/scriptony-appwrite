@@ -67,16 +67,26 @@ export function ProjectCardWithPrefetch({
   const { label: typeLabel, Icon: TypeIcon } = getProjectTypeInfo(project.type);
 
   return (
-    <Card
-      ref={cardRef}
-      className={`cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-xl w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px] ${
-        isCenter ? "border-primary/50 shadow-lg" : ""
-      } ${className}`}
-      onClick={onClick}
-    >
-      {/* Cover Image - Portrait 2:3 */}
-      <div
-        className="aspect-[2/3] bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden w-full"
+    <div ref={cardRef} className="w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px]">
+      <Card
+        className={`relative transition-all duration-300 overflow-hidden hover:shadow-xl w-full ${
+          isCenter ? "border-primary/50 shadow-lg" : "cursor-pointer"
+        } ${className}`}
+        onClick={isCenter ? undefined : onClick}
+      >
+        {isCenter && project.id ? (
+          <button
+            type="button"
+            className="absolute inset-0 z-[1] cursor-pointer rounded-xl border-0 bg-transparent p-0"
+            aria-label={`Projekt „${project.title}“ öffnen`}
+            onClick={onClick}
+          />
+        ) : null}
+        {/* Cover Image - Portrait 2:3 */}
+        <div
+          className={`aspect-[2/3] bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden w-full ${
+            isCenter ? "relative z-[2] pointer-events-none" : ""
+          }`}
         style={
           coverImage
             ? {
@@ -99,7 +109,9 @@ export function ProjectCardWithPrefetch({
       </div>
 
       {/* Project Info */}
-      <CardHeader className="p-2.5 md:p-3 space-y-1.5">
+      <CardHeader
+        className={`p-2.5 md:p-3 space-y-1.5 ${isCenter ? "relative z-[2] pointer-events-none" : ""}`}
+      >
         <CardTitle className="text-xs md:text-sm leading-tight line-clamp-2">
           {project.title}
         </CardTitle>
@@ -139,5 +151,6 @@ export function ProjectCardWithPrefetch({
         </div>
       </CardHeader>
     </Card>
+    </div>
   );
 }

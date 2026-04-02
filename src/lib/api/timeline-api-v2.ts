@@ -231,7 +231,8 @@ export async function initializeProject(
  */
 export async function batchLoadTimeline(
   projectId: string,
-  token: string
+  token: string,
+  options?: { excludeContent?: boolean }
 ): Promise<{
   acts: TimelineNode[];
   sequences: TimelineNode[];
@@ -247,7 +248,11 @@ export async function batchLoadTimeline(
   const timerLabel = `[Timeline API V2] Batch Load ${projectId}`;
   console.time(timerLabel);
   
-  const result = await apiGet(`/nodes/batch-load?project_id=${projectId}`, token);
+  const params = new URLSearchParams({ project_id: projectId });
+  if (options?.excludeContent) {
+    params.set('exclude_content', 'true');
+  }
+  const result = await apiGet(`/nodes/batch-load?${params.toString()}`, token);
   const data = unwrapApiResult(result);
   
   console.timeEnd(timerLabel);
@@ -267,7 +272,11 @@ export async function batchLoadTimeline(
 
 export async function ultraBatchLoadProject(
   projectId: string,
-  token: string
+  token: string,
+  options?: {
+    includeShots?: boolean;
+    excludeContent?: boolean;
+  }
 ): Promise<{
   timeline: {
     acts: TimelineNode[];
@@ -288,8 +297,16 @@ export async function ultraBatchLoadProject(
   console.log('[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project:', projectId);
   const timerLabel = `[Timeline API V2] ULTRA Batch Load ${projectId}`;
   console.time(timerLabel);
-  
-  const result = await apiGet(`/nodes/ultra-batch-load?project_id=${projectId}`, token);
+
+  const params = new URLSearchParams({ project_id: projectId });
+  if (options?.includeShots === false) {
+    params.set('include_shots', 'false');
+  }
+  if (options?.excludeContent) {
+    params.set('exclude_content', 'true');
+  }
+
+  const result = await apiGet(`/nodes/ultra-batch-load?${params.toString()}`, token);
   const data = unwrapApiResult(result);
   
   console.timeEnd(timerLabel);

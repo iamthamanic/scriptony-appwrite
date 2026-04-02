@@ -73,6 +73,8 @@ const fnBase =
 let projectsDomain = null;
 let assistantDomain = null;
 let imageDomain = null;
+let styleGuideDomain = null;
+let worldbuildingDomain = null;
 let mcpAppwriteDomain = null;
 let domainMap = null;
 const mapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
@@ -89,6 +91,12 @@ if (mapRaw) {
       }
       if (typeof m["scriptony-image"] === "string") {
         imageDomain = m["scriptony-image"].trim();
+      }
+      if (typeof m["scriptony-style-guide"] === "string") {
+        styleGuideDomain = m["scriptony-style-guide"].trim();
+      }
+      if (typeof m["scriptony-worldbuilding"] === "string") {
+        worldbuildingDomain = m["scriptony-worldbuilding"].trim();
       }
       if (typeof m["scriptony-mcp-appwrite"] === "string") {
         mcpAppwriteDomain = m["scriptony-mcp-appwrite"].trim();
@@ -143,6 +151,18 @@ const mcpAppwriteHealth = mcpAppwriteDomain
     ? `${trimSlash(fnBase)}/scriptony-mcp-appwrite/health`
     : null;
 
+const styleGuideHealth = styleGuideDomain
+  ? `${trimSlash(styleGuideDomain)}/health`
+  : fnBase
+    ? `${trimSlash(fnBase)}/scriptony-style-guide/health`
+    : null;
+
+const worldbuildingHealth = worldbuildingDomain
+  ? `${trimSlash(worldbuildingDomain)}/health`
+  : fnBase
+    ? `${trimSlash(fnBase)}/scriptony-worldbuilding/health`
+    : null;
+
 let failed = false;
 
 const checks = [
@@ -179,6 +199,31 @@ if (mcpAppwriteHealth) {
   );
 }
 
+if (styleGuideHealth) {
+  checks.push({
+    url: styleGuideHealth,
+    label: "scriptony-style-guide /health (Style Guide)",
+  });
+} else {
+  console.warn(
+    "Hinweis: Keine URL für scriptony-style-guide ermittelbar (Style Guide im Projekt).\n" +
+      "  Ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-style-guide\" nach Deploy.\n"
+  );
+}
+
+if (worldbuildingHealth) {
+  checks.push({
+    url: worldbuildingHealth,
+    label: "scriptony-worldbuilding /health (Welten)",
+  });
+} else {
+  console.warn(
+    "Hinweis: Keine URL für scriptony-worldbuilding ermittelbar (Welten erstellen/laden).\n" +
+      "  Ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-worldbuilding\" (Function-Domain aus der Console).\n" +
+      "  Deploy: npm run appwrite:deploy:worldbuilding\n"
+  );
+}
+
 for (const { url, label } of checks) {
   process.stdout.write(`→ ${label}\n  GET ${url}\n`);
   const r = await fetchJson(url, label);
@@ -194,7 +239,9 @@ for (const { url, label } of checks) {
     if (
       label.includes("scriptony-assistant") ||
       label.includes("scriptony-mcp-appwrite") ||
-      label.includes("scriptony-image")
+      label.includes("scriptony-image") ||
+      label.includes("scriptony-style-guide") ||
+      label.includes("scriptony-worldbuilding")
     ) {
       const t = typeof r.text === "string" ? r.text : "";
       const looksHtml = t.includes("<!DOCTYPE") || t.includes("<html");
@@ -203,12 +250,26 @@ for (const { url, label } of checks) {
           ? "scriptony-mcp-appwrite"
           : label.includes("scriptony-image")
             ? "scriptony-image"
-            : "scriptony-assistant";
+            : label.includes("scriptony-style-guide")
+              ? "scriptony-style-guide"
+              : label.includes("scriptony-worldbuilding")
+                ? "scriptony-worldbuilding"
+                : "scriptony-assistant";
         console.log(
           `  → Die URL liefert keine Function-JSON-Antwort (HTML/404). Appwrite: Function \`${fnId}\` deployen,\n` +
             "     aktives Deployment wählen und unter Functions → Domains dieselbe Host-URL wie in .env eintragen.\n" +
             "     Browser: „Failed to fetch“ entsteht oft durch fehlende CORS auf der Fehlerseite — nach Deploy behoben."
         );
+        if (fnId === "scriptony-style-guide") {
+          console.log(
+            "     CLI (im Projekt, Appwrite eingeloggt): npm run appwrite:deploy:style-guide\n"
+          );
+        }
+        if (fnId === "scriptony-worldbuilding") {
+          console.log(
+            "     CLI (im Projekt, Appwrite eingeloggt): npm run appwrite:deploy:worldbuilding\n"
+          );
+        }
       }
     }
   }

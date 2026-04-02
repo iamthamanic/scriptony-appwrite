@@ -41,13 +41,31 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
+    const includeShots = (getQuery(req, "include_shots") || "true") !== "false";
+    const excludeContent = (getQuery(req, "exclude_content") || "false") === "true";
+
     const [nodes, characters, shots] = await Promise.all([
       getAllProjectNodes(projectId),
       getCharactersByProject(projectId),
-      getShots({ projectId }),
+      includeShots ? getShots({ projectId }) : Promise.resolve([]),
     ]);
 
-    const mappedNodes = nodes.map(mapNode);
+    const mappedNodes = nodes.map(mapNode).map((node) => {
+      if (!excludeContent || !node || typeof node !== "object") return node;
+      const n = node as Record<string, unknown>;
+      const metadata =
+        n.metadata && typeof n.metadata === "object"
+          ? { ...(n.metadata as Record<string, unknown>) }
+          : undefined;
+      if (metadata && "content" in metadata) {
+        delete metadata.content;
+      }
+      return {
+        ...n,
+        metadata,
+        content: undefined,
+      };
+    });
     const acts = mappedNodes.filter((node) => node.level === 1);
     const sequences = mappedNodes.filter((node) => node.level === 2);
     const scenes = mappedNodes.filter((node) => node.level === 3);

@@ -16,7 +16,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../_shared/http";
-import { normalizeWorldInput } from "../../_shared/scriptony";
+import { worldsUpdatePayload } from "../../_shared/scriptony";
 
 async function getWorld(worldId: string, organizationId: string) {
   const data = await requestGraphql<{
@@ -34,7 +34,6 @@ async function getWorld(worldId: string, organizationId: string) {
           id
           name
           description
-          image_url
           cover_image_url
           linked_project_id
           organization_id
@@ -76,7 +75,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     if (req.method === "PUT") {
       const body = await readJsonBody<Record<string, any>>(req);
-      const changes = normalizeWorldInput(body);
+      const changes = worldsUpdatePayload(body);
 
       const updated = await requestGraphql<{
         update_worlds_by_pk: Record<string, any> | null;
@@ -87,7 +86,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               id
               name
               description
-              image_url
               cover_image_url
               linked_project_id
               organization_id

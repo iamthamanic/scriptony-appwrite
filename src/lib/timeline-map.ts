@@ -116,23 +116,25 @@ export async function loadProjectTimelineBundle(
   let allShots: unknown[] = [];
 
   try {
-    const ultraData = await TimelineAPIV2.ultraBatchLoadProject(projectId, token);
+    const ultraData = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
+      includeShots: false,
+      excludeContent: true,
+    });
     const film = ultraBatchToTimelineData(ultraData);
     loadedActs = film.acts;
     allSequences = film.sequences;
     allScenes = film.scenes;
     allShots = film.shots;
   } catch {
-    const [batchData, allShotsData] = await Promise.all([
-      TimelineAPIV2.batchLoadTimeline(projectId, token).catch(() => ({
-        acts: [],
-        sequences: [],
-        scenes: [],
-        stats: { totalNodes: 0, acts: 0, sequences: 0, scenes: 0 },
-      })),
-      ShotsAPI.getAllShotsByProject(projectId, token).catch(() => []),
-    ]);
-    const film = batchTimelineToTimelineData(batchData, allShotsData);
+    const batchData = await TimelineAPIV2.batchLoadTimeline(projectId, token, {
+      excludeContent: true,
+    }).catch(() => ({
+      acts: [],
+      sequences: [],
+      scenes: [],
+      stats: { totalNodes: 0, acts: 0, sequences: 0, scenes: 0 },
+    }));
+    const film = batchTimelineToTimelineData(batchData, []);
     loadedActs = film.acts;
     allSequences = film.sequences;
     allScenes = film.scenes;
@@ -142,18 +144,20 @@ export async function loadProjectTimelineBundle(
   if (!loadedActs || loadedActs.length === 0) {
     await ShotsAPI.initializeThreeActStructure(projectId, token);
     try {
-      const reloadedUltra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token);
+      const reloadedUltra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
+        includeShots: false,
+        excludeContent: true,
+      });
       const film = ultraBatchToTimelineData(reloadedUltra);
       loadedActs = film.acts;
       allSequences = film.sequences;
       allScenes = film.scenes;
       allShots = film.shots;
     } catch {
-      const [reloadedBatch, reloadedShots] = await Promise.all([
-        TimelineAPIV2.batchLoadTimeline(projectId, token),
-        ShotsAPI.getAllShotsByProject(projectId, token),
-      ]);
-      const film = batchTimelineToTimelineData(reloadedBatch, reloadedShots);
+      const reloadedBatch = await TimelineAPIV2.batchLoadTimeline(projectId, token, {
+        excludeContent: true,
+      });
+      const film = batchTimelineToTimelineData(reloadedBatch, []);
       loadedActs = film.acts;
       allSequences = film.sequences;
       allScenes = film.scenes;

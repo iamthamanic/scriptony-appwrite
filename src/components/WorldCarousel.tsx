@@ -207,19 +207,30 @@ export function WorldCarousel({
             >
               <div className="transition-all duration-300 flex justify-center">
                 <Card
-                  className={`cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-xl w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px] ${
-                    index === current ? "border-primary/50 shadow-lg" : ""
+                  className={`relative transition-all duration-300 overflow-hidden hover:shadow-xl w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px] ${
+                    index === current ? "border-primary/50 shadow-lg" : "cursor-pointer"
                   }`}
-                  onClick={() => {
-                    if (index === current) {
-                      // Click on center world → Navigate
-                      onNavigate("worldbuilding", world.id);
-                    } else {
-                      // Click on side world → Scroll to center
-                      api?.scrollTo(index);
-                    }
-                  }}
+                  onClick={
+                    index === current
+                      ? undefined
+                      : () => {
+                          api?.scrollTo(index);
+                        }
+                  }
                 >
+                  {index === current && world.id ? (
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-[1] cursor-pointer rounded-xl border-0 bg-transparent p-0"
+                      aria-label={`Welt „${world.name}“ öffnen`}
+                      onClick={() => onNavigate("worldbuilding", world.id)}
+                    />
+                  ) : null}
+                  <div
+                    className={
+                      index === current ? "relative z-[2] pointer-events-none" : undefined
+                    }
+                  >
                   {/* Cover Image - Portrait 2:3 */}
                   <div
                     className="aspect-[2/3] bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden w-full"
@@ -279,6 +290,7 @@ export function WorldCarousel({
                       )}
                     </div>
                   </CardHeader>
+                  </div>
                 </Card>
               </div>
             </CarouselItem>

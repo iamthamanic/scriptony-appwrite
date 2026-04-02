@@ -27,11 +27,11 @@ FUNCTIONS=(
   scriptony-beats
   scriptony-characters
   scriptony-gym
-  scriptony-inspiration
   scriptony-logs
   scriptony-project-nodes
   scriptony-projects
   scriptony-shots
+  scriptony-style-guide
   scriptony-stats
   scriptony-timeline-v2
   scriptony-superadmin

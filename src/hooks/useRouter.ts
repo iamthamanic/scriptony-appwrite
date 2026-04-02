@@ -27,57 +27,60 @@ function normalizePage(page: string | undefined): ValidPage {
   return VALID_PAGES.includes(page as ValidPage) ? (page as ValidPage) : "home";
 }
 
+function safeDecodeHashSegment(segment: string | undefined): string | undefined {
+  if (segment == null || segment === "") return undefined;
+  try {
+    return decodeURIComponent(segment).trim();
+  } catch {
+    return segment.trim();
+  }
+}
+
+/** Single source of truth for hash → router state (also used after programmatic navigate). */
+function readRouterStateFromWindow(): RouterState {
+  if (typeof window === "undefined") {
+    return { page: "home" };
+  }
+
+  if (
+    window.location.pathname === "/reset-password" ||
+    window.location.hash.includes("type=recovery")
+  ) {
+    return { page: "reset-password" };
+  }
+
+  const hash = window.location.hash.slice(1);
+  const [page, id, categoryId] = hash.split("/");
+
+  return {
+    page: normalizePage(page),
+    id: safeDecodeHashSegment(id),
+    categoryId: safeDecodeHashSegment(categoryId),
+  };
+}
+
 export function useRouter(): {
   state: RouterState;
   navigate: (page: ValidPage, id?: string, categoryId?: string) => void;
 } {
-  const getInitialState = useCallback((): RouterState => {
-    if (typeof window === "undefined") {
-      return { page: "home" };
-    }
-    
-    // Check reset password path first
-    if (
-      window.location.pathname === "/reset-password" ||
-      window.location.hash.includes("type=recovery")
-    ) {
-      return { page: "reset-password" };
-    }
-
-    const hash = window.location.hash.slice(1);
-    const [page, id, categoryId] = hash.split('/');
-
-    return {
-      page: normalizePage(page),
-      id: id || undefined,
-      categoryId: categoryId || undefined
-    };
-  }, []);
-
-  const [state, setState] = useState<RouterState>(getInitialState);
+  const [state, setState] = useState<RouterState>(readRouterStateFromWindow);
 
   const navigate = useCallback((page: ValidPage, id?: string, categoryId?: string) => {
-    if (typeof window !== "undefined") {
-      window.location.hash = [page, id, categoryId].filter(Boolean).join('/');
-    }
+    if (typeof window === "undefined") return;
+    window.location.hash = [page, id, categoryId].filter(Boolean).join("/");
+    // Sync immediately: some environments defer or skip hashchange when updating the hash.
+    setState(readRouterStateFromWindow());
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1);
-      const [page, id, categoryId] = hash.split('/');
-      
-      setState({
-        page: normalizePage(page),
-        id: id || undefined,
-        categoryId: categoryId || undefined
-      });
+      setState(readRouterStateFromWindow());
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   return { state, navigate };

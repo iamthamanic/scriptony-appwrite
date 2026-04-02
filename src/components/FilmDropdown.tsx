@@ -47,12 +47,12 @@ import { STORAGE_CONFIG } from '../lib/config';
 import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
 import * as TimelineAPI from '../lib/api/timeline-api';
 import * as TimelineAPIV2 from '../lib/api/timeline-api-v2';
-import * as CharactersAPI from '../lib/api/characters-api';
 import type { Act, Sequence, Scene, Shot, Character } from '../lib/types';
 import { toast } from 'sonner';
 import { perfMonitor } from '../lib/performance-monitor';
 import { cacheManager } from '../lib/cache-manager';
 import { useOptimizedFilmDropdown } from '../hooks/useOptimizedFilmDropdown';
+import { LoadingSkeleton } from './OptimizedDropdownComponents';
 
 // Timeline Cache Data Structure
 export interface TimelineData {
@@ -412,6 +412,7 @@ export function FilmDropdown({
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(new Set());
   const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
   const [expandedShots, setExpandedShots] = useState<Set<string>>(new Set());
+  const [loadingSceneShots, setLoadingSceneShots] = useState<Set<string>>(new Set());
   
   // Project Characters for @-mentions
   // Use external characters if provided, otherwise load from API
@@ -450,19 +451,47 @@ export function FilmDropdown({
     expandedScenes,
   });
 
+  const ensureSceneShotsLoaded = useCallback(async (sceneId: string) => {
+    if (!labels.showShots) return;
+    if (!sceneId || loadingSceneShots.has(sceneId)) return;
+    const hasLoaded = shots.some((s) => s.sceneId === sceneId);
+    if (hasLoaded) return;
+
+    try {
+      setLoadingSceneShots((prev) => new Set(prev).add(sceneId));
+      const token = await getAccessToken();
+      if (!token) return;
+      const sceneShots = await ShotsAPI.getShots(sceneId, token);
+      setShots((prev) => {
+        const others = prev.filter((s) => s.sceneId !== sceneId);
+        return [...others, ...(sceneShots || [])];
+      });
+    } catch (error) {
+      console.error('[FilmDropdown] Failed lazy loading shots for scene:', sceneId, error);
+    } finally {
+      setLoadingSceneShots((prev) => {
+        const next = new Set(prev);
+        next.delete(sceneId);
+        return next;
+      });
+    }
+  }, [getAccessToken, labels.showShots, loadingSceneShots, shots]);
+
   // =====================================================
-  // LOAD DATA - Only if no initialData provided
+  // LOAD DATA - Single path (ultra batch) + optional initialData
   // =====================================================
 
   useEffect(() => {
-    // 🚀 PERFORMANCE: Skip loading if we already have initialData
-    if (!initialData) {
-      console.time(`⏱️ [PERF] FilmDropdown Full Load: ${projectId}`);
-      loadTimelineData();
-    } else {
-      console.log('[FilmDropdown] 🚀 Using cached initialData - INSTANT LOAD!');
-      console.log(`⏱️ [PERF] FilmDropdown with cache: ${projectId} - 0ms (instant)`);
+    if (initialData) {
+      setActs(initialData.acts || []);
+      setSequences(initialData.sequences || []);
+      setScenes(initialData.scenes || []);
+      setShots(initialData.shots || []);
+      setLoading(false);
+      return;
     }
+    console.time(`⏱️ [PERF] FilmDropdown Full Load: ${projectId}`);
+    void loadTimelineData();
   }, [projectId, initialData]);
 
   // Update characters when external characters change
@@ -489,6 +518,7 @@ export function FilmDropdown({
     setExpandedActs((prev) => new Set([...prev, act.id]));
     setExpandedSequences((prev) => new Set([...prev, sequence.id]));
     setExpandedScenes((prev) => new Set([...prev, scene.id]));
+    void ensureSceneShotsLoaded(scene.id);
     setExpandedShots((prev) => new Set([...prev, shot.id]));
 
     const t = window.setTimeout(() => {
@@ -497,7 +527,7 @@ export function FilmDropdown({
       onExpandShotIdConsumed?.();
     }, 120);
     return () => window.clearTimeout(t);
-  }, [expandShotId, shots, scenes, sequences, acts, onExpandShotIdConsumed]);
+  }, [expandShotId, shots, scenes, sequences, acts, onExpandShotIdConsumed, ensureSceneShotsLoaded]);
 
   // 🚀 PERFORMANCE: Notify parent of data changes to update cache
   // Use ref to avoid re-triggering the effect on every render
@@ -553,66 +583,58 @@ export function FilmDropdown({
 
       perfMonitor.start(perfId);
 
-      // 🚀🚀🚀 ULTRA FAST: Load EVERYTHING in parallel (optimized without backend changes)
-      console.log('[FilmDropdown] 🚀 Parallel loading timeline data...');
-      
-      const [loadedActs, allSequences, allScenes, allShots, loadedCharacters] = await Promise.all([
-        TimelineAPI.getActs(projectId, token).catch(err => {
-          console.error('Error loading acts:', err);
-          return [];
-        }),
-        TimelineAPI.getAllSequencesByProject(projectId, token).catch(err => {
-          console.error('Error loading sequences:', err);
-          return [];
-        }),
-        TimelineAPI.getAllScenesByProject(projectId, token).catch(err => {
-          console.error('Error loading scenes:', err);
-          return [];
-        }),
-        ShotsAPI.getAllShotsByProject(projectId, token).catch(err => {
-          console.error('Error loading shots:', err);
-          return [];
-        }),
-        // Load characters in parallel (only if not provided by parent)
-        externalCharacters 
-          ? Promise.resolve([]) 
-          : CharactersAPI.getCharacters(projectId, token).catch(err => {
-              console.error('Error loading characters:', err);
-              return [];
-            })
-      ]);
+      // Single fast path: one ultra-batch call, no eager shots, no scene content.
+      const ultra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
+        includeShots: false,
+        excludeContent: true,
+      });
+      const loadedActs = (ultra.timeline?.acts || []).map((n: any) => TimelineAPI.nodeToAct(n));
+      const loadedSequences = (ultra.timeline?.sequences || []).map((n: any) => TimelineAPI.nodeToSequence(n));
+      const loadedScenes = (ultra.timeline?.scenes || []).map((n: any) => TimelineAPI.nodeToScene(n));
+      const loadedShots: Shot[] = [];
+      const loadedCharacters = externalCharacters
+        ? []
+        : ((ultra.characters || []) as Character[]);
       
       console.log('[FilmDropdown] ✅ Parallel load complete:', {
         acts: loadedActs.length,
-        sequences: allSequences.length,
-        scenes: allScenes.length,
-        shots: allShots.length,
+        sequences: loadedSequences.length,
+        scenes: loadedScenes.length,
+        shots: loadedShots.length,
         characters: loadedCharacters.length,
       });
 
       // If no acts exist, initialize 3-Act structure (OUTSIDE perf tracking)
       let finalActs = loadedActs;
+      let finalSequences = loadedSequences;
+      let finalScenes = loadedScenes;
       if (!finalActs || finalActs.length === 0) {
         // Stop perf monitoring before initialization
         perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (API): ${projectId}`, {
           acts: 0,
-          sequences: allSequences.length,
-          scenes: allScenes.length,
-          shots: allShots.length,
+          sequences: loadedSequences.length,
+          scenes: loadedScenes.length,
+          shots: loadedShots.length,
         });
         
         console.log('[FilmDropdown] 🏗️ Initializing 3-act structure...');
         await ShotsAPI.initializeThreeActStructure(projectId, token);
         
-        // Reload acts after initialization (not tracked)
-        finalActs = await TimelineAPI.getActs(projectId, token);
+        // Reload minimal structure after initialization (single path).
+        const ultraReload = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
+          includeShots: false,
+          excludeContent: true,
+        });
+        finalActs = (ultraReload.timeline?.acts || []).map((n: any) => TimelineAPI.nodeToAct(n));
+        finalSequences = (ultraReload.timeline?.sequences || []).map((n: any) => TimelineAPI.nodeToSequence(n));
+        finalScenes = (ultraReload.timeline?.scenes || []).map((n: any) => TimelineAPI.nodeToScene(n));
         console.log('[FilmDropdown] ✅ 3-act structure initialized:', finalActs.length);
       }
       
       setActs(finalActs);
-      setSequences(allSequences);
-      setScenes(allScenes);
-      setShots(allShots);
+      setSequences(finalSequences);
+      setScenes(finalScenes);
+      setShots(loadedShots);
 
       // Use characters from parallel load (only if not provided by parent)
       if (!externalCharacters) {
@@ -625,9 +647,9 @@ export function FilmDropdown({
       // 🚀 CACHE: Save to cache
       const timelineData: TimelineData = {
         acts: finalActs,
-        sequences: allSequences,
-        scenes: allScenes,
-        shots: allShots,
+        sequences: finalSequences,
+        scenes: finalScenes,
+        shots: loadedShots,
       };
       cacheManager.set(cacheKey, timelineData, {
         ttl: 10 * 60 * 1000,     // 10 minutes (increased from 5)
@@ -638,9 +660,9 @@ export function FilmDropdown({
       if (finalActs.length > 0 || loadedActs.length > 0) {
         perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (API): ${projectId}`, {
           acts: finalActs.length,
-          sequences: allSequences.length,
-          scenes: allScenes.length,
-          shots: allShots.length,
+          sequences: finalSequences.length,
+          scenes: finalScenes.length,
+          shots: loadedShots.length,
         });
       }
 
@@ -2309,9 +2331,7 @@ export function FilmDropdown({
   if (loading) {
     return (
       <>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Dropdown wird geladen...</div>
-        </div>
+        <LoadingSkeleton count={3} />
         {gifUploadDialog}
       </>
     );
@@ -2321,30 +2341,32 @@ export function FilmDropdown({
   if (isMobile) {
     return (
       <>
-      <div ref={containerRef} data-beat-container className="p-2">
-        <FilmDropdownMobile
-          acts={acts}
-          sequences={sequences}
-          scenes={scenes}
-          shots={shots}
-          characters={characters}
-          onAddAct={handleAddAct}
-          onAddSequence={handleAddSequence}
-          onAddScene={handleAddScene}
-          onAddShot={handleAddShot}
-          onUpdateAct={handleUpdateAct}
-          onUpdateSequence={handleUpdateSequence}
-          onUpdateScene={handleUpdateScene}
-          onUpdateShot={handleUpdateShot}
-          onDeleteAct={handleDeleteAct}
-          onDeleteSequence={handleDeleteSequence}
-          onDeleteScene={handleDeleteScene}
-          onDeleteShot={handleDeleteShot}
-          onDuplicateShot={handleDuplicateShot}
-          projectId={projectId}
-          projectType={projectType}
-        />
-      </div>
+      <DndProvider backend={HTML5Backend}>
+        <div ref={containerRef} data-beat-container className="p-2">
+          <FilmDropdownMobile
+            acts={acts}
+            sequences={sequences}
+            scenes={scenes}
+            shots={shots}
+            characters={characters}
+            onAddAct={handleAddAct}
+            onAddSequence={handleAddSequence}
+            onAddScene={handleAddScene}
+            onAddShot={handleAddShot}
+            onUpdateAct={handleUpdateAct}
+            onUpdateSequence={handleUpdateSequence}
+            onUpdateScene={handleUpdateScene}
+            onUpdateShot={handleUpdateShot}
+            onDeleteAct={handleDeleteAct}
+            onDeleteSequence={handleDeleteSequence}
+            onDeleteScene={handleDeleteScene}
+            onDeleteShot={handleDeleteShot}
+            onDuplicateShot={handleDuplicateShot}
+            projectId={projectId}
+            projectType={projectType}
+          />
+        </div>
+      </DndProvider>
       {gifUploadDialog}
       </>
     );
@@ -2775,6 +2797,7 @@ export function FilmDropdown({
                                             const next = new Set(expandedScenes);
                                             if (open) {
                                               next.add(scene.id);
+                                              void ensureSceneShotsLoaded(scene.id);
                                             } else {
                                               next.delete(scene.id);
                                             }
@@ -2832,6 +2855,7 @@ export function FilmDropdown({
                                                     next.delete(scene.id);
                                                   } else {
                                                     next.add(scene.id);
+                                                    void ensureSceneShotsLoaded(scene.id);
                                                   }
                                                   setExpandedScenes(next);
                                                 }}
@@ -2930,6 +2954,12 @@ export function FilmDropdown({
                                               <Plus className="size-3 mr-1" />
                                               {pendingIds.has(scene.id) ? 'Wird gespeichert...' : 'Shot hinzufügen'}
                                             </Button>
+
+                                            {loadingSceneShots.has(scene.id) ? (
+                                              <div className="text-[11px] text-muted-foreground px-1 py-1">
+                                                Shots werden geladen…
+                                              </div>
+                                            ) : null}
 
                                             {sceneShots.map((shot, shotIndex) => {
                                               const isShotPending = pendingIds.has(shot.id);

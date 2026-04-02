@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
-import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock, Share2 } from "lucide-react";
+import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock, Share2, Download } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../ui/button";
@@ -27,8 +27,9 @@ import { FilmDropdown } from "../FilmDropdown";
 import { StructureBeatsSection } from "../StructureBeatsSection";
 import { ProjectStatsLogsDialog } from "../ProjectStatsLogsDialogEnhanced";
 import { ProjectExportDialog } from "../ProjectExportDialog";
-import { InspirationCard, ProjectInspiration } from "../InspirationCard";
-import { AddInspirationDialog, InspirationData } from "../AddInspirationDialog";
+import { StyleGuideSection } from "../style-guide/StyleGuideSection";
+import type { StyleGuideData } from "../../lib/api/style-guide-api";
+import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { ProjectCarousel } from "../ProjectCarousel";
 import { ProjectDebugger } from "../ProjectDebugger";
 import { ProjectSectionFrame } from "../ProjectSectionFrame";
@@ -56,7 +57,6 @@ import * as TimelineAPI from "../../lib/api/timeline-api";
 import * as ShotsAPI from "../../lib/api/shots-api";
 import { queryClient } from "../../lib/react-query";
 import { prefetchProjectTimeline, setProjectTimelineCache } from "../../hooks/useProjectTimeline";
-import * as InspirationsAPI from "../../lib/api/inspirations-api";
 import * as BeatsAPI from "../../lib/api/beats-api";
 import { BEAT_TEMPLATES } from "../../lib/beat-templates";
 import type { TimelineData } from "../FilmDropdown";
@@ -291,6 +291,15 @@ const getProjectTypeInfo = (rawType: string) => {
   return typeMap[key] || { label: rawType?.charAt(0).toUpperCase() + rawType?.slice(1), Icon: Film };
 };
 
+/** API uses `world_id`; UI expects `linkedWorldId` (ProjectDetail, WB). */
+function normalizeProjectClient(p: any) {
+  if (!p) return p;
+  return {
+    ...p,
+    linkedWorldId: p.linkedWorldId ?? p.world_id ?? p.linked_world_id ?? null,
+  };
+}
+
 /** Card title for project info blocks: Lucide icon matches project type (film / series / book / audio). */
 function ProjectInfoSectionTitle({ projectType }: { projectType: string }) {
   const { Icon } = getProjectTypeInfo(projectType);
@@ -386,13 +395,13 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   // 🎨 Collapsible Sections State
   const [structureOpen, setStructureOpen] = useState(true); // Default: OPEN
   const [charactersOpen, setCharactersOpen] = useState(true); // Default: OPEN
-  const [inspirationOpen, setInspirationOpen] = useState(false); // Default: CLOSED
+  const [styleGuideOpen, setStyleGuideOpen] = useState(false);
 
-  // 🎨 Inspiration State
-  const [inspirations, setInspirations] = useState<any[]>([]);
-  const [inspirationsLoading, setInspirationsLoading] = useState(false);
-  const [showAddInspirationDialog, setShowAddInspirationDialog] = useState(false);
-  const [editingInspiration, setEditingInspiration] = useState<any | null>(null);
+  const [styleGuide, setStyleGuide] = useState<StyleGuideData | null>(null);
+  const [styleGuideLoading, setStyleGuideLoading] = useState(false);
+  /** Set when load fails (token, API error) so UI can show reason, not only generic copy */
+  const [styleGuideError, setStyleGuideError] = useState<string | null>(null);
+  const [useStyleGuideForCover, setUseStyleGuideForCover] = useState(false);
 
   // Simple cache to avoid reloading on every mount
   const dataLoadedRef = useRef(false);
@@ -420,12 +429,14 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       console.time(`⏱️ [PERF] Total Project Load: ${selectedProjectId}`);
       console.time(`⏱️ [PERF] Worldbuilding Load: ${selectedProjectId}`);
 
-      const project = projects.find(p => p.id === selectedProjectId);
+      const project = projects.find(
+        (p) => String(p.id).trim() === String(selectedProjectId).trim()
+      );
       if (project && project.linkedWorldId) {
         loadWorldbuildingItems(project.linkedWorldId);
       }
 
-      loadInspirations(selectedProjectId);
+      void loadStyleGuide(selectedProjectId);
     }
   }, [selectedProjectId, projects]);
 
@@ -436,7 +447,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         projectsApi.getAll(),
         worldsApi.getAll(),
       ]);
-      setProjects(projectsData);
+      setProjects(
+        projectsData.map((p: any) => normalizeProjectClient(p))
+      );
       setWorlds(worldsData);
       
       // 📸 Load cover images from DB into state
@@ -471,124 +484,46 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     setProjectTimelineCache(queryClient, projectId, data);
   };
 
-  // 🎨 INSPIRATION: Load inspirations for project
-  const loadInspirations = async (projectId: string) => {
+  const loadStyleGuide = async (projectId: string) => {
     try {
-      setInspirationsLoading(true);
-      const token = await getAuthToken();
+      setStyleGuideLoading(true);
+      setStyleGuideError(null);
+      let token = await getAuthToken();
       if (!token) {
-        console.error('[Inspirations] No auth token');
-        setInspirations([]); // Set empty array on error
+        await new Promise((r) => setTimeout(r, 400));
+        token = await getAuthToken();
+      }
+      if (!token) {
+        setStyleGuide(null);
+        const msg =
+          "Nicht angemeldet oder JWT noch nicht bereit — bitte Seite aktualisieren oder neu anmelden.";
+        setStyleGuideError(msg);
+        toast.error(`Style Guide: ${msg}`);
         return;
       }
-
-      console.log('[Inspirations] Loading for project:', projectId);
-      const loadedInspirations = await InspirationsAPI.getInspirationsByProject(projectId, token);
-      setInspirations(loadedInspirations);
-      console.log(`[Inspirations] Loaded ${loadedInspirations.length} inspirations`);
-    } catch (error: any) {
-      console.error('[Inspirations] Error loading:', error);
-      
-      // Graceful fallback: Set empty array instead of crashing
-      setInspirations([]);
-      
-      // Check if it's a "Failed to fetch" error (backend route not reachable)
-      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] Backend route "scriptony-inspiration" might not be reachable yet');
+      const sg = await StyleGuideApi.getStyleGuide(projectId);
+      setStyleGuide(sg);
+      setStyleGuideError(null);
+    } catch (error: unknown) {
+      console.error("[StyleGuide] Error loading:", error);
+      setStyleGuide(null);
+      const message =
+        error instanceof Error ? error.message || "Style Guide konnte nicht geladen werden" : "Style Guide konnte nicht geladen werden";
+      setStyleGuideError(message);
+      if (
+        error instanceof Error &&
+        (error.message.includes("Failed to fetch") || error.message.includes("fetch"))
+      ) {
         console.warn(
-          '[Inspirations] Deploy the scriptony-inspiration function (Appwrite or your gateway) and check VITE_BACKEND_API_BASE_URL / VITE_APPWRITE_FUNCTIONS_BASE_URL'
+          '[StyleGuide] Deploy scriptony-style-guide and add it to VITE_BACKEND_FUNCTION_DOMAIN_MAP; run npm run appwrite:provision:schema for collections.'
         );
-        toast.error('Inspirations: Backend nicht erreichbar. Siehe Konsole (Deployment / Env).');
-      } else {
-        toast.error('Fehler beim Laden der Inspirationen');
+        toast.error("Style Guide: Backend nicht erreichbar. Prüfe Deployment / .env.");
+      } else if (error instanceof Error) {
+        toast.error(message);
       }
     } finally {
-      setInspirationsLoading(false);
+      setStyleGuideLoading(false);
     }
-  };
-
-  // 🎨 INSPIRATION: Save (create or update)
-  const handleSaveInspiration = async (data: InspirationData) => {
-    if (!selectedProject) return;
-
-    try {
-      const token = await getAuthToken();
-      if (!token) {
-        console.error('[Inspirations] No auth token');
-        toast.error('Nicht authentifiziert');
-        return;
-      }
-
-      if (editingInspiration) {
-        // Update existing
-        console.log('[Inspirations] Updating:', editingInspiration.id);
-        await InspirationsAPI.updateInspiration(editingInspiration.id, data, token);
-        toast.success('Inspiration aktualisiert');
-      } else {
-        // Create new
-        console.log('[Inspirations] Creating new');
-        await InspirationsAPI.createInspiration(
-          {
-            projectId: selectedProject,
-            ...data,
-          },
-          token
-        );
-        toast.success('Inspiration hinzugefügt');
-      }
-
-      // Reload
-      await loadInspirations(selectedProject);
-      setEditingInspiration(null);
-      setShowAddInspirationDialog(false);
-    } catch (error: any) {
-      console.error('[Inspirations] Error saving:', error);
-      
-      // Check if it's a deployment error
-      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] ⚠️ Backend route "scriptony-inspiration" might not be reachable yet');
-        toast.error('Inspirations Feature ist aktuell nicht erreichbar. Bitte Backend-Funktion pruefen.');
-      } else {
-        toast.error('Fehler beim Speichern');
-      }
-    }
-  };
-
-  // 🎨 INSPIRATION: Delete
-  const handleDeleteInspiration = async (id: string) => {
-    if (!selectedProject) return;
-    if (!confirm('Inspiration wirklich löschen?')) return;
-
-    try {
-      const token = await getAuthToken();
-      if (!token) {
-        toast.error('Nicht authentifiziert');
-        return;
-      }
-
-      console.log('[Inspirations] Deleting:', id);
-      await InspirationsAPI.deleteInspiration(id, token);
-      toast.success('Inspiration gelöscht');
-
-      // Reload
-      await loadInspirations(selectedProject);
-    } catch (error: any) {
-      console.error('[Inspirations] Error deleting:', error);
-      
-      // Check if it's a deployment error
-      if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
-        console.warn('[Inspirations] ⚠️ Backend route "scriptony-inspiration" might not be reachable yet');
-        toast.error('Inspirations Feature ist aktuell nicht erreichbar. Bitte Backend-Funktion pruefen.');
-      } else {
-        toast.error('Fehler beim Löschen');
-      }
-    }
-  };
-
-  // 🎨 INSPIRATION: Edit
-  const handleEditInspiration = (inspiration: ProjectInspiration) => {
-    setEditingInspiration(inspiration);
-    setShowAddInspirationDialog(true);
   };
 
   const handleCreateProject = async () => {
@@ -664,7 +599,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         });
       }
 
-      setProjects([...projects, project]);
+      setProjects([...projects, normalizeProjectClient(project)]);
 
       const scriptFileToImport = newProjectScriptImportFile;
       if (scriptFileToImport) {
@@ -697,7 +632,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       newProjectCoverGifModeRef.current = undefined;
       setSelectedGenres([]);
       setNewProjectCustomGenres([]);
-      setInspirations([""]);
+      setProjectInspirationNotes([""]);
       setNewProjectNarrativeStructure("");
       setNewProjectBeatTemplate("");
       setCustomNarrativeStructure("");
@@ -798,7 +733,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         coverImage: projectCoverImages[projectId],
       });
 
-      setProjects([...projects, duplicated]);
+      setProjects([...projects, normalizeProjectClient(duplicated)]);
       
       if (projectCoverImages[projectId]) {
         setProjectCoverImages(prev => ({
@@ -820,12 +755,67 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     setShowStatsDialog(true);
   };
 
-  const currentProject = projects.find(p => p.id === selectedProjectId);
+  const [resolvedProject, setResolvedProject] = useState<any | null>(null);
+  const [resolveState, setResolveState] = useState<"idle" | "loading" | "ok" | "fail">("idle");
+
+  const selectedIdTrim = selectedProjectId?.trim() ?? "";
+
+  useEffect(() => {
+    if (!selectedIdTrim || loading) {
+      setResolvedProject(null);
+      setResolveState("idle");
+      return;
+    }
+    const inList = projects.some((p) => String(p.id).trim() === selectedIdTrim);
+    if (inList) {
+      setResolvedProject(null);
+      setResolveState("idle");
+      return;
+    }
+    setResolveState("loading");
+    let cancelled = false;
+    projectsApi
+      .getOne(selectedIdTrim)
+      .then((p) => {
+        if (cancelled) return;
+        setResolvedProject(normalizeProjectClient(p));
+        setResolveState("ok");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setResolvedProject(null);
+        setResolveState("fail");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIdTrim, projects, loading]);
+
+  const currentProject = normalizeProjectClient(
+    projects.find((p) => String(p.id).trim() === selectedIdTrim) ?? resolvedProject ?? null
+  );
 
   if (loading) {
     return (
       <div className="min-h-screen pb-24 flex items-center justify-center">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (selectedProjectId && !currentProject && resolveState === "loading") {
+    return (
+      <div className="min-h-screen pb-24 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (selectedProjectId && !currentProject && resolveState === "fail") {
+    return (
+      <div className="min-h-screen pb-24 flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-muted-foreground text-center">Projekt nicht gefunden oder kein Zugriff.</p>
+        <Button onClick={() => onNavigate("projekte")}>Zurück zur Übersicht</Button>
       </div>
     );
   }
@@ -876,17 +866,14 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         setStructureOpen={setStructureOpen}
         charactersOpen={charactersOpen}
         setCharactersOpen={setCharactersOpen}
-        inspirationOpen={inspirationOpen}
-        setInspirationOpen={setInspirationOpen}
-        inspirations={inspirations}
-        inspirationsLoading={inspirationsLoading}
-        showAddInspirationDialog={showAddInspirationDialog}
-        setShowAddInspirationDialog={setShowAddInspirationDialog}
-        editingInspiration={editingInspiration}
-        setEditingInspiration={setEditingInspiration}
-        onSaveInspiration={handleSaveInspiration}
-        onDeleteInspiration={handleDeleteInspiration}
-        onEditInspiration={handleEditInspiration}
+        styleGuideOpen={styleGuideOpen}
+        setStyleGuideOpen={setStyleGuideOpen}
+        styleGuide={styleGuide}
+        styleGuideLoading={styleGuideLoading}
+        styleGuideError={styleGuideError}
+        onStyleGuideChange={setStyleGuide}
+        useStyleGuideForCover={useStyleGuideForCover}
+        setUseStyleGuideForCover={setUseStyleGuideForCover}
         onRequestProjectExport={(snapshot, worldLabel) => {
           setProjectExportSnapshot(snapshot);
           setProjectExportWorldLabel(worldLabel);
@@ -1156,157 +1143,151 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {/* LIST VIEW */}
-                      <Card
-                        className="active:scale-[0.99] transition-transform cursor-pointer overflow-hidden hover:border-primary/30 relative"
-                        onClick={() => onNavigate("projekte", project.id)}
-                        onMouseEnter={() => {
-                          void prefetchProjectTimeline(queryClient, project.id, project.type, getAuthToken);
-                        }}
-                      >
-                        <div className="flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-primary/20 border-2 border-transparent hover:border-primary/30">
-                          {/* Thumbnail Left - Portrait 2:3 Ratio */}
-                          <div 
-                            className="w-[56px] h-[84px] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shrink-0"
-                            style={projectCoverImages[project.id] ? { 
-                              backgroundImage: `url(${projectCoverImages[project.id]})`, 
-                              backgroundSize: 'cover', 
-                              backgroundPosition: 'center',
-                              backgroundBlendMode: 'overlay'
-                            } : {}}
+                    {/* LIST VIEW — primary click on left block only; ⋮ stays out of overlay (fixes dead Radix / hash) */}
+                      <Card className="active:scale-[0.99] transition-transform overflow-hidden hover:border-primary/30 group/card">
+                        <div className="flex w-full items-start justify-between gap-2 p-3 rounded-lg transition-all group-hover:bg-primary/10 border-2 border-transparent group-hover:border-primary/30">
+                          <button
+                            type="button"
+                            disabled={!project.id}
+                            className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left border-0 bg-transparent p-0 hover:bg-transparent disabled:opacity-60"
+                            aria-label={`Projekt „${project.title}“ öffnen`}
+                            onMouseEnter={() => {
+                              if (!project.id) return;
+                              void prefetchProjectTimeline(
+                                queryClient,
+                                project.id,
+                                project.type,
+                                getAuthToken
+                              );
+                            }}
+                            onClick={() => project.id && onNavigate("projekte", project.id)}
                           >
-                            {!projectCoverImages[project.id] && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <Film className="size-6 text-primary/40" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content Right */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <h3 className="font-semibold text-sm leading-snug line-clamp-1">
+                            <div
+                              className="w-[56px] h-[84px] shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden"
+                              style={projectCoverImages[project.id] ? { 
+                                backgroundImage: `url(${projectCoverImages[project.id]})`, 
+                                backgroundSize: 'cover', 
+                                backgroundPosition: 'center',
+                                backgroundBlendMode: 'overlay'
+                              } : {}}
+                            >
+                              {!projectCoverImages[project.id] && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Film className="size-6 text-primary/40" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold text-sm leading-snug line-clamp-1 mb-1.5">
                                 {project.title}
                               </h3>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {index === 0 && (
-                                  <Badge variant="default" className="text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
-                                    <Clock className="size-2" />
-                                    Zuletzt
+                              <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                                {project.logline?.trim() || "Keine Logline"}
+                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5 flex items-center gap-1">
+                                  {(() => {
+                                    const { label, Icon } = getProjectTypeInfo(project.type);
+                                    return (
+                                      <>
+                                        <Icon className="size-2.5" />
+                                        {label}
+                                      </>
+                                    );
+                                  })()}
+                                </Badge>
+                                {parseProjectGenreField(project.genre).length > 0 ? (
+                                  parseProjectGenreField(project.genre).slice(0, 2).map((genre) => (
+                                    <Badge key={`${project.id}-${genre}`} variant="outline" className="text-[10px] h-5 px-1.5">
+                                      {genre}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground">
+                                    Kein Genre
                                   </Badge>
                                 )}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 shrink-0"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <MoreVertical className="size-3.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigate("projekte", project.id);
-                                  }}>
-                                    <Edit2 className="size-3.5 mr-2" />
-                                    Edit Project
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDuplicateProject(project.id);
-                                  }}>
-                                    <Copy className="size-3.5 mr-2" />
-                                    Duplicate Project
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => handleOpenStatsDialog(project, e)}>
-                                    <BarChart3 className="size-3.5 mr-2" />
-                                    Project Stats & Logs
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openProjectExportFromList(project);
-                                    }}
-                                  >
-                                    <Share2 className="size-3.5 mr-2" />
-                                    Teilen / Export
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedProject(project.id);
-                                      setShowDeleteDialog(true);
-                                    }}
-                                    className="text-red-600 focus:text-red-600"
-                                  >
-                                    <Trash2 className="size-3.5 mr-2" />
-                                    Delete Project
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              </div>
-                            </div>
-                            
-                            <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                              {project.logline?.trim() || "Keine Logline"}
-                            </p>
-
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5 flex items-center gap-1">
-                                {(() => {
-                                  const { label, Icon } = getProjectTypeInfo(project.type);
-                                  return (
-                                    <>
-                                      <Icon className="size-2.5" />
-                                      {label}
-                                    </>
-                                  );
-                                })()}
-                              </Badge>
-                              {parseProjectGenreField(project.genre).length > 0 ? (
-                                parseProjectGenreField(project.genre).slice(0, 2).map((genre) => (
-                                  <Badge key={`${project.id}-${genre}`} variant="outline" className="text-[10px] h-5 px-1.5">
-                                    {genre}
+                                {parseProjectGenreField(project.genre).length > 2 && (
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                    +{parseProjectGenreField(project.genre).length - 2}
                                   </Badge>
-                                ))
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground">
-                                  Kein Genre
-                                </Badge>
-                              )}
-                              {parseProjectGenreField(project.genre).length > 2 && (
-                                <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                  +{parseProjectGenreField(project.genre).length - 2}
-                                </Badge>
-                              )}
-
+                                )}
+                              </div>
+                              {(() => {
+                                const lastEditedAt = getProjectLastEditedAt(project);
+                                if (!lastEditedAt) return null;
+                                const d = new Date(lastEditedAt);
+                                if (Number.isNaN(d.getTime())) return null;
+                                return (
+                                  <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <CalendarIcon className="size-3 shrink-0" />
+                                    <span>
+                                      {d.toLocaleDateString("de-DE", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      })} - {d.toLocaleTimeString("de-DE", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        second: "2-digit",
+                                        hour12: false,
+                                      })}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
-                            {(() => {
-                              const lastEditedAt = getProjectLastEditedAt(project);
-                              if (!lastEditedAt) return null;
-                              const d = new Date(lastEditedAt);
-                              if (Number.isNaN(d.getTime())) return null;
-                              return (
-                                <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
-                                  <CalendarIcon className="size-3" />
-                                  <span>
-                                    {d.toLocaleDateString("de-DE", {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      year: "numeric",
-                                    })} - {d.toLocaleTimeString("de-DE", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      second: "2-digit",
-                                      hour12: false,
-                                    })}
-                                  </span>
-                                </div>
-                              );
-                            })()}
+                          </button>
+                          <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+                            {index === 0 && (
+                              <Badge variant="default" className="text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
+                                <Clock className="size-2" />
+                                Zuletzt
+                              </Badge>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 shrink-0"
+                                  aria-label="Projekt-Menü"
+                                >
+                                  <MoreVertical className="size-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => project.id && onNavigate("projekte", project.id)}
+                                >
+                                  <Edit2 className="size-3.5 mr-2" />
+                                  Edit Project
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
+                                  <Copy className="size-3.5 mr-2" />
+                                  Duplicate Project
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => handleOpenStatsDialog(project, e)}>
+                                  <BarChart3 className="size-3.5 mr-2" />
+                                  Project Stats & Logs
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openProjectExportFromList(project)}>
+                                  <Share2 className="size-3.5 mr-2" />
+                                  Teilen / Export
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedProject(project.id);
+                                    setShowDeleteDialog(true);
+                                  }}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="size-3.5 mr-2" />
+                                  Delete Project
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </Card>
@@ -1694,27 +1675,27 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               </div>
             )}
 
-            {/* Inspirations */}
+            {/* Kurz-Inspirationen (Freitext beim Anlegen) */}
             <div className="space-y-2">
-              <Label>Inspirations</Label>
-              {inspirations.map((inspiration, index) => (
+              <Label>Inspirations (Freitext)</Label>
+              {projectInspirationNotes.map((note, index) => (
                 <div key={index} className="flex gap-2">
                   <Input
-                    value={inspiration}
+                    value={note}
                     onChange={(e) => {
-                      const newInspirations = [...inspirations];
-                      newInspirations[index] = e.target.value;
-                      setInspirations(newInspirations);
+                      const next = [...projectInspirationNotes];
+                      next[index] = e.target.value;
+                      setProjectInspirationNotes(next);
                     }}
                     placeholder={`Inspiration ${index + 1}`}
                     className="h-11"
                   />
-                  {inspirations.length > 1 && (
+                  {projectInspirationNotes.length > 1 && (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        setInspirations(inspirations.filter((_, i) => i !== index));
+                        setProjectInspirationNotes(projectInspirationNotes.filter((_, i) => i !== index));
                       }}
                       className="h-11 w-11 shrink-0"
                     >
@@ -1725,11 +1706,11 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               ))}
               <Button
                 variant="outline"
-                onClick={() => setInspirations([...inspirations, ""])}
+                onClick={() => setProjectInspirationNotes([...projectInspirationNotes, ""])}
                 className="h-9"
               >
                 <Plus className="size-4 mr-2" />
-                Add Inspiration
+                Zeile hinzufügen
               </Button>
             </div>
 
@@ -3003,22 +2984,18 @@ interface ProjectDetailProps {
   setStructureOpen: (open: boolean) => void;
   charactersOpen: boolean;
   setCharactersOpen: (open: boolean) => void;
-  inspirationOpen: boolean;
-  setInspirationOpen: (open: boolean) => void;
-  // Inspirations
-  inspirations: ProjectInspiration[];
-  inspirationsLoading: boolean;
-  showAddInspirationDialog: boolean;
-  setShowAddInspirationDialog: (show: boolean) => void;
-  editingInspiration: ProjectInspiration | null;
-  setEditingInspiration: (inspiration: ProjectInspiration | null) => void;
-  onSaveInspiration: (data: InspirationData) => Promise<void>;
-  onDeleteInspiration: (id: string) => Promise<void>;
-  onEditInspiration: (inspiration: ProjectInspiration) => void;
+  styleGuideOpen: boolean;
+  setStyleGuideOpen: (open: boolean) => void;
+  styleGuide: StyleGuideData | null;
+  styleGuideLoading: boolean;
+  styleGuideError: string | null;
+  onStyleGuideChange: (data: StyleGuideData) => void;
+  useStyleGuideForCover: boolean;
+  setUseStyleGuideForCover: (v: boolean) => void;
   onRequestProjectExport?: (snapshot: Record<string, unknown>, linkedWorldLabel: string | null) => void;
 }
 
-function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, inspirationOpen, setInspirationOpen, inspirations, inspirationsLoading, showAddInspirationDialog, setShowAddInspirationDialog, editingInspiration, setEditingInspiration, onSaveInspiration, onDeleteInspiration, onEditInspiration, onRequestProjectExport }: ProjectDetailProps) {
+function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, styleGuideOpen, setStyleGuideOpen, styleGuide, styleGuideLoading, styleGuideError, onStyleGuideChange, useStyleGuideForCover, setUseStyleGuideForCover, onRequestProjectExport }: ProjectDetailProps) {
   const [structureView, setStructureView] = useState<"dropdown" | "timeline">("dropdown");
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
@@ -3275,11 +3252,65 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setIsCoverActionModalOpen(true);
   };
 
+  const handleDownloadCoverAs = async (format: "jpeg" | "webp") => {
+    const url = coverImage?.trim();
+    if (!url) return;
+    const safeBase =
+      ((project.title || "cover").replace(/[\\/:*?"<>|]+/g, "-").trim() || "cover").slice(0, 120);
+    try {
+      const res = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        bitmap.close();
+        throw new Error("no context");
+      }
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+
+      const mime = format === "webp" ? "image/webp" : "image/jpeg";
+      const ext = format === "webp" ? "webp" : "jpg";
+
+      const outBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), mime, 0.92);
+      });
+      if (!outBlob) {
+        if (format === "webp") {
+          toast.error("WebP wird in diesem Browser nicht unterstützt — bitte JPEG wählen.");
+          return;
+        }
+        throw new Error("toBlob");
+      }
+
+      const objectUrl = URL.createObjectURL(outBlob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `${safeBase}-cover.${ext}`;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error("Download nicht möglich — Bild wird geöffnet.");
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const handleCoverUploadChoice = () => {
     fileInputRef.current?.click();
   };
 
   const handleCoverGenerateChoice = () => {
+    const sg =
+      useStyleGuideForCover && styleGuide?.compactPrompt?.trim()
+        ? String(styleGuide.compactPrompt).trim()
+        : undefined;
     setCoverPromptDraft(
       buildProjectCoverPrompt({
         project,
@@ -3292,6 +3323,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           theme: getConceptContent("theme"),
         },
         visualStyle: coverVisualStyle,
+        styleGuideCompactPrompt: sg,
       })
     );
     setIsCoverGenerateModalOpen(true);
@@ -3492,6 +3524,10 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
   const handleCoverVisualStyleChange = (style: CoverVisualStyle) => {
     setCoverVisualStyle(style);
+    const sg =
+      useStyleGuideForCover && styleGuide?.compactPrompt?.trim()
+        ? String(styleGuide.compactPrompt).trim()
+        : undefined;
     setCoverPromptDraft(
       buildProjectCoverPrompt({
         project,
@@ -3504,12 +3540,17 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           theme: getConceptContent("theme"),
         },
         visualStyle: style,
+        styleGuideCompactPrompt: sg,
       })
     );
   };
 
   useEffect(() => {
     if (!isCoverGenerateModalOpen) return;
+    const sg =
+      useStyleGuideForCover && styleGuide?.compactPrompt?.trim()
+        ? String(styleGuide.compactPrompt).trim()
+        : undefined;
     setCoverPromptDraft((prev) =>
       prev.trim()
         ? prev
@@ -3524,6 +3565,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               theme: getConceptContent("theme"),
             },
             visualStyle: coverVisualStyle,
+            styleGuideCompactPrompt: sg,
           })
     );
   }, [
@@ -3534,6 +3576,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     editedType,
     editedConceptBlocks,
     coverVisualStyle,
+    useStyleGuideForCover,
+    styleGuide?.compactPrompt,
   ]);
 
   // Load characters from backend on mount
@@ -3612,9 +3656,12 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const [newCharacterWeaknesses, setNewCharacterWeaknesses] = useState("");
   const [newCharacterTraits, setNewCharacterTraits] = useState("");
   const [newCharacterImage, setNewCharacterImage] = useState<string | undefined>(undefined);
+  /** Zusätzliche Referenzbilder — gespeichert in `reference_images_json` */
+  const [newCharacterGalleryImages, setNewCharacterGalleryImages] = useState<string[]>([]);
   const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(undefined);
   const [showImageCropDialog, setShowImageCropDialog] = useState(false);
   const newCharacterImageInputRef = useRef<HTMLInputElement>(null);
+  const newCharacterGalleryInputRef = useRef<HTMLInputElement>(null);
 
   const updateCharacterImage = async (characterId: string, imageUrl: string) => {
     // Optimistic update
@@ -3711,23 +3758,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
   const handleCreateCharacter = async () => {
     try {
-      // Validation
-      if (!newCharacterName.trim()) {
+      const name = newCharacterName.trim();
+      if (!name) {
         toast.error("Bitte gib einen Namen ein");
         return;
       }
 
-      // Get auth token
       const token = await getAuthToken();
       if (!token) {
         throw new Error("Nicht authentifiziert");
       }
 
-      // Optimistic update: Sofort hinzufügen mit temporärer ID
-      const tempId = `temp-${Date.now()}`;
-      const tempCharacter = {
-        id: tempId,
-        name: newCharacterName,
+      const snap = {
+        name,
         role: newCharacterRole,
         description: newCharacterDescription,
         age: newCharacterAge,
@@ -3737,40 +3780,58 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         skills: newCharacterSkills,
         strengths: newCharacterStrengths,
         weaknesses: newCharacterWeaknesses,
-        characterTraits: newCharacterTraits,
+        traits: newCharacterTraits,
         image: newCharacterImage,
-        lastEdited: new Date()
+        gallery: newCharacterGalleryImages.slice(0, 12),
       };
 
-      setCharactersState(prev => [...prev, tempCharacter]);
+      const tempId = `temp-${Date.now()}`;
+      const tempCharacter = {
+        id: tempId,
+        name: snap.name,
+        role: snap.role,
+        description: snap.description,
+        age: snap.age,
+        gender: snap.gender,
+        species: snap.species,
+        backgroundStory: snap.backgroundStory,
+        skills: snap.skills,
+        strengths: snap.strengths,
+        weaknesses: snap.weaknesses,
+        characterTraits: snap.traits,
+        image: snap.image,
+        referenceImages: snap.gallery,
+        lastEdited: new Date(),
+      };
+
+      setCharactersState((prev) => [...prev, tempCharacter]);
       resetNewCharacterForm();
 
-      // API Call zum Backend
       const createdCharacter = await createCharacterApi(
         project.id,
         {
-          name: newCharacterName,
-          role: newCharacterRole || "Character",
-          description: newCharacterDescription,
-          age: newCharacterAge,
-          gender: newCharacterGender,
-          species: newCharacterSpecies,
-          backstory: newCharacterBackgroundStory,
-          skills: newCharacterSkills,
-          strengths: newCharacterStrengths,
-          weaknesses: newCharacterWeaknesses,
-          personality: newCharacterTraits,
-          imageUrl: newCharacterImage,
+          name: snap.name,
+          role: snap.role || "Character",
+          description: snap.description,
+          age: snap.age,
+          gender: snap.gender,
+          species: snap.species,
+          backstory: snap.backgroundStory,
+          skills: snap.skills,
+          strengths: snap.strengths,
+          weaknesses: snap.weaknesses,
+          personality: snap.traits,
+          imageUrl: snap.image,
+          referenceImageUrls: snap.gallery,
         },
         token
       );
 
       console.log("[ProjectDetail] Character created:", createdCharacter);
 
-      // Replace temp character with real one from backend
-      setCharactersState(prev => 
-        prev.map(char => 
-          char.id === tempId 
+      setCharactersState((prev) =>
+        prev.map((char) =>
+          char.id === tempId
             ? {
                 id: createdCharacter.id,
                 name: createdCharacter.name,
@@ -3785,7 +3846,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 weaknesses: createdCharacter.weaknesses || "",
                 characterTraits: createdCharacter.personality || "",
                 image: createdCharacter.imageUrl || createdCharacter.image_url,
-                lastEdited: new Date(createdCharacter.updatedAt || createdCharacter.updated_at)
+                referenceImages:
+                  createdCharacter.referenceImageUrls ||
+                  (createdCharacter as { reference_image_urls?: string[] }).reference_image_urls ||
+                  [],
+                lastEdited: new Date(createdCharacter.updatedAt || createdCharacter.updated_at),
               }
             : char
         )
@@ -3795,9 +3860,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     } catch (error: any) {
       console.error("[ProjectDetail] Error creating character:", error);
       toast.error(error.message || "Fehler beim Erstellen des Characters");
-      
-      // Remove temp character on error
-      setCharactersState(prev => prev.filter(char => !char.id.startsWith('temp-')));
+
+      setCharactersState((prev) => prev.filter((char) => !char.id.startsWith("temp-")));
     }
   };
 
@@ -3815,6 +3879,22 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setNewCharacterWeaknesses("");
     setNewCharacterTraits("");
     setNewCharacterImage(undefined);
+    setNewCharacterGalleryImages([]);
+  };
+
+  const handleNewCharacterGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      setNewCharacterGalleryImages((prev) => {
+        if (prev.length >= 12) return prev;
+        return [...prev, dataUrl];
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleNewCharacterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3916,6 +3996,44 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       toast.error(error.message || "Fehler beim Speichern");
     }
   };
+
+  const renderCoverDownloadMenu = () =>
+    coverImage ? (
+      <div
+        className="absolute bottom-2 left-2 z-30 flex items-end justify-start"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            {/* Native <button>: shadcn <Button> defaults (h-9, px-4, gap-2) ignore small className overrides. */}
+            <button
+              type="button"
+              className={cn(
+                "inline-flex size-3.5 min-h-3.5 min-w-3.5 shrink-0 items-center justify-center p-0",
+                "rounded-[3px] border border-border/50 bg-background/90 shadow-sm backdrop-blur-sm",
+                "text-muted-foreground transition-[transform,box-shadow,background-color,border-color,color] duration-200 ease-out",
+                "hover:scale-125 hover:border-primary/45 hover:bg-primary/12 hover:text-primary hover:shadow-md",
+                "active:scale-95",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
+              )}
+              aria-label="Cover herunterladen — Format wählen"
+              title="Cover herunterladen"
+            >
+              <Download className="size-[7px]" strokeWidth={2.5} aria-hidden />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="top" className="min-w-[12rem]">
+            <DropdownMenuItem onSelect={() => void handleDownloadCoverAs("jpeg")}>
+              Als JPEG herunterladen
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleDownloadCoverAs("webp")}>
+              Als WebP herunterladen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ) : null;
 
   return (
     <div className="min-h-screen pb-24">
@@ -4023,6 +4141,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   <Camera className="size-6 text-primary" />
                 </div>
               </div>
+              {renderCoverDownloadMenu()}
             </div>
           </div>
         </div>
@@ -5581,6 +5700,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <Camera className="size-6 text-primary" />
                   </div>
                 </div>
+                {renderCoverDownloadMenu()}
               </div>
             </div>
           </div>
@@ -5665,79 +5785,34 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       {/* Concept Section */}
       {/* Concept Section removed (moved into Projekt-Informationen) */}
 
-      {/* Inspiration Section */}
+      {/* Style Guide */}
       <section className="px-6 mb-8">
-        <Collapsible open={inspirationOpen} onOpenChange={setInspirationOpen}>
+        <Collapsible open={styleGuideOpen} onOpenChange={setStyleGuideOpen}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Badge className="bg-[#6E59A5] text-white h-8 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
-                Inspiration ({inspirations.length})
+                Style Guide
               </Badge>
               <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  {inspirationOpen ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {styleGuideOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
             </div>
-            <Button 
-              size="sm" 
-              variant="secondary" 
-              onClick={() => {
-                setEditingInspiration(null);
-                setShowAddInspirationDialog(true);
-              }}
-              className="h-8 bg-[rgba(110,89,165,1)] text-[rgba(255,255,255,1)]"
-            >
-              <Plus className="size-3.5 mr-1.5" />
-              Neu
-            </Button>
           </div>
 
           <CollapsibleContent>
             <ProjectSectionFrame>
-              {inspirationsLoading ? (
-                <div className="flex items-center justify-center p-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#6E59A5]" />
-                </div>
-              ) : inspirations.length === 0 ? (
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-12 text-center">
-                  <ImageIcon className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                  <p className="text-slate-600 mb-2">Noch keine Inspirationen</p>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Füge visuelle Referenzen hinzu für Inspiration
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEditingInspiration(null);
-                      setShowAddInspirationDialog(true);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Erste Inspiration hinzufügen
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 gap-4">
-                  {inspirations.map((inspiration) => (
-                    <InspirationCard
-                      key={inspiration.id}
-                      inspiration={inspiration}
-                      onEdit={onEditInspiration}
-                      onDelete={(id) => onDeleteInspiration(id)}
-                    />
-                  ))}
-                </div>
-              )}
+              <StyleGuideSection
+                projectId={project.id}
+                data={styleGuide}
+                loading={styleGuideLoading}
+                loadError={styleGuideError}
+                onDataChange={onStyleGuideChange}
+                useForCover={useStyleGuideForCover}
+                onUseForCoverChange={setUseStyleGuideForCover}
+              />
             </ProjectSectionFrame>
           </CollapsibleContent>
         </Collapsible>
@@ -5912,6 +5987,52 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 type="file"
                 accept="image/*"
                 onChange={handleNewCharacterImageChange}
+                className="hidden"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Weitere Referenzbilder (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Bis zu 12 Bilder — z. B. Outfits, Poses, Moodboard (getrennt vom Profilbild).
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {newCharacterGalleryImages.map((url, i) => (
+                  <div
+                    key={`g-${i}-${url.length}`}
+                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/20"
+                  >
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute right-0.5 top-0.5 h-6 w-6 rounded-full p-0"
+                      onClick={() =>
+                        setNewCharacterGalleryImages((p) => p.filter((_, j) => j !== i))
+                      }
+                      aria-label="Referenzbild entfernen"
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  </div>
+                ))}
+                {newCharacterGalleryImages.length < 12 ? (
+                  <button
+                    type="button"
+                    onClick={() => newCharacterGalleryInputRef.current?.click()}
+                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/10 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                  >
+                    <Plus className="size-6 mb-0.5" />
+                    <span className="text-[10px] px-1 text-center leading-tight">Hinzufügen</span>
+                  </button>
+                ) : null}
+              </div>
+              <input
+                ref={newCharacterGalleryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleNewCharacterGalleryChange}
                 className="hidden"
               />
             </div>
@@ -6136,20 +6257,6 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         open={showStatsDialog}
         onOpenChange={setShowStatsDialog}
         project={project}
-      />
-
-      {/* Add/Edit Inspiration Dialog */}
-      <AddInspirationDialog
-        projectId={project.id}
-        open={showAddInspirationDialog}
-        onOpenChange={(open) => {
-          setShowAddInspirationDialog(open);
-          if (!open) {
-            setEditingInspiration(null);
-          }
-        }}
-        onSave={onSaveInspiration}
-        editInspiration={editingInspiration}
       />
 
     </div>

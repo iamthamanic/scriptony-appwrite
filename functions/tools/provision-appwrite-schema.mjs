@@ -186,6 +186,8 @@ const SCHEMA = {
     color: S(64),
     avatar_url: U(),
     traits_json: XL(32000),
+    /** JSON array of image URLs or data URLs (gallery / reference poses) */
+    reference_images_json: XL(50000),
   },
   scenes: {
     project_id: S(64),
@@ -285,6 +287,47 @@ const SCHEMA = {
     order_index: I(),
     kind: S(64),
   },
+  project_visual_style: {
+    project_id: S(64),
+    user_id: S(64),
+    title: S(512),
+    style_summary: L(16000),
+    tone_summary: L(8000),
+    keywords_json: L(16000),
+    negative_keywords_json: L(16000),
+    must_have_json: L(16000),
+    avoid_json: L(16000),
+    palette_primary_json: L(8000),
+    palette_secondary_json: L(8000),
+    palette_accent_json: L(8000),
+    palette_background_json: L(8000),
+    typography_notes: L(8000),
+    compact_prompt: XL(32000),
+    export_payload_json: XL(50000),
+    status: S(32),
+  },
+  project_visual_style_items: {
+    visual_style_id: S(64),
+    project_id: S(64),
+    user_id: S(64),
+    kind: S(32),
+    title: S(1024),
+    caption: L(8000),
+    image_url: U(),
+    storage_file_id: S(128),
+    source_url: U(),
+    source_name: S(512),
+    tags_json: L(8000),
+    influence: I(),
+    pinned: B(),
+    order_index: I(),
+    extracted_palette_json: L(8000),
+    width: I(),
+    height: I(),
+    mime_type: S(128),
+    file_size: I(),
+    license_note: L(4000),
+  },
 };
 
 /** Single-field key indexes for common Query.equal / order fields */
@@ -308,6 +351,8 @@ const INDEXES = {
   rag_sync_queue: ["project_id", "user_id", "status"],
   user_integration_tokens: ["user_id", "token_hash"],
   project_inspirations: ["project_id"],
+  project_visual_style: ["project_id", "user_id"],
+  project_visual_style_items: ["visual_style_id", "project_id", "order_index"],
 };
 
 async function waitAttribute(db, collectionId, key) {

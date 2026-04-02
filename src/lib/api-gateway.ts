@@ -24,7 +24,8 @@ export const BACKEND_FUNCTIONS = {
   TIMELINE_V2: 'scriptony-timeline-v2', // deprecated: prefer PROJECT_NODES
   SHOTS: 'scriptony-shots',
   CHARACTERS: 'scriptony-characters',
-  INSPIRATION: 'scriptony-inspiration',
+  /** Style Guide (project_visual_style + items). Deploy `scriptony-style-guide`. */
+  STYLE_GUIDE: 'scriptony-style-guide',
   AUDIO: 'scriptony-audio', // selected in getBackendFunctionForRoute for paths under /shots/... (audio)
   BEATS: 'scriptony-beats',
   WORLDBUILDING: 'scriptony-worldbuilding',
@@ -99,6 +100,9 @@ const ROUTE_MAP: Record<string, string> = {
   // scriptony-projects
   '/projects': BACKEND_FUNCTIONS.PROJECTS,
 
+  // scriptony-style-guide (prefix before shorter routes)
+  '/style-guide': BACKEND_FUNCTIONS.STYLE_GUIDE,
+
   // scriptony-project-nodes
   '/nodes': BACKEND_FUNCTIONS.PROJECT_NODES,
   '/initialize-project': BACKEND_FUNCTIONS.PROJECT_NODES,
@@ -109,9 +113,6 @@ const ROUTE_MAP: Record<string, string> = {
   // scriptony-characters
   '/characters': BACKEND_FUNCTIONS.CHARACTERS,
   '/timeline-characters': BACKEND_FUNCTIONS.CHARACTERS,
-
-  // scriptony-inspiration
-  '/inspirations': BACKEND_FUNCTIONS.INSPIRATION,
 
   // scriptony-stats, scriptony-logs
   '/stats': BACKEND_FUNCTIONS.STATS,

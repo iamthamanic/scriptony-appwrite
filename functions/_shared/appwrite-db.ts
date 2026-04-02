@@ -97,6 +97,8 @@ export const C = {
   rag_sync_queue: "rag_sync_queue",
   user_integration_tokens: "user_integration_tokens",
   project_inspirations: "project_inspirations",
+  project_visual_style: "project_visual_style",
+  project_visual_style_items: "project_visual_style_items",
 } as const;
 
 export type AppwriteDoc = Record<string, unknown>;
@@ -107,7 +109,9 @@ export function docToRow(doc: AppwriteDoc): Record<string, any> {
   const updated_at = doc.$updatedAt;
   const { $id, $createdAt, $updatedAt, $permissions, $databaseId, $collectionId, ...rest } =
     doc as Record<string, unknown>;
-  return { id, created_at, updated_at, ...rest };
+  // Spread rest first: some collections define an attribute `id` that can be null and would
+  // otherwise overwrite the real document id derived from $id.
+  return { ...rest, id, created_at, updated_at };
 }
 
 export async function getDocument(

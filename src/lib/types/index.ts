@@ -91,6 +91,8 @@ export interface Character {
   description?: string;
   age?: number;
   imageUrl?: string;
+  /** Zusätzliche Referenzbilder (URLs oder data URLs), aus `reference_images_json` */
+  referenceImageUrls?: string[];
   traits?: string[];
   backstory?: string;
   createdAt: string;

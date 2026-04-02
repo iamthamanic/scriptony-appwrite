@@ -326,7 +326,8 @@ export const allHandlers: Record<string, Op> = {
 
   GetWorld: async (v) => ({
     worlds: await listDocumentsFull(C.worlds, [
-      Query.equal("id", v.worldId as string),
+      // Document id is Appwrite `$id`; collection may also define attribute `id` (often null) — do not query on `id`.
+      Query.equal("$id", v.worldId as string),
       Query.equal("organization_id", v.organizationId as string),
       Query.limit(1),
     ]),
@@ -335,7 +336,7 @@ export const allHandlers: Record<string, Op> = {
   /** Alias for RAG context loader query name. */
   RagWorld: async (v) => ({
     worlds: await listDocumentsFull(C.worlds, [
-      Query.equal("id", v.worldId as string),
+      Query.equal("$id", v.worldId as string),
       Query.equal("organization_id", v.organizationId as string),
       Query.limit(1),
     ]),
