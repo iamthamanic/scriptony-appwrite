@@ -162,6 +162,18 @@ const SCHEMA = {
     dialog: XL(32000),
     notes: XL(32000),
   },
+  /** Editorial clips on the project timeline (global start_sec/end_sec). */
+  clips: {
+    project_id: S(64),
+    shot_id: S(64),
+    scene_id: S(64),
+    start_sec: F(),
+    end_sec: F(),
+    lane_index: I(),
+    order_index: I(),
+    source_in_sec: F(),
+    source_out_sec: F(),
+  },
   shot_audio: {
     shot_id: S(64),
     file_name: S(1024),
@@ -339,6 +351,7 @@ const INDEXES = {
   world_items: ["world_id"],
   timeline_nodes: ["project_id", "parent_id", "scene_id"],
   shots: ["project_id", "scene_id", "user_id"],
+  clips: ["project_id", "shot_id", "scene_id"],
   shot_audio: ["shot_id"],
   shot_characters: ["shot_id", "character_id"],
   characters: ["project_id", "world_id", "organization_id"],

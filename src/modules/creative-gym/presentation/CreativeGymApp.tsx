@@ -391,20 +391,23 @@ function ProgressScreen({ navigate }: { navigate: NavigateFn }) {
                 ["Struktur", p.structure],
                 ["Abschluss", p.finishing],
                 ["Transfer", p.mediaTranslation],
-              ].map(([name, val]) => (
+              ].map(([name, val]) => {
+                const n = Number(val);
+                return (
                 <div key={String(name)} className="rounded-lg border border-border p-3">
                   <div className="flex justify-between text-xs mb-1">
                     <span>{name}</span>
-                    <span className="text-primary">{val.toFixed(0)}</span>
+                    <span className="text-primary">{n.toFixed(0)}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.min(100, val)}%` }}
+                      style={{ width: `${Math.min(100, n)}%` }}
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           <div>

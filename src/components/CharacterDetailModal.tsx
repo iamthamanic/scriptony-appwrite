@@ -441,16 +441,18 @@ export function CharacterDetailModal({
       </Dialog>
 
       {/* Image Crop Dialog */}
-      {tempImageForCrop && (
+      {tempImageForCrop && showImageCropDialog && (
         <ImageCropDialog
           image={tempImageForCrop}
-          isOpen={showImageCropDialog}
-          onClose={() => {
+          onComplete={(cropped) => {
+            handleCroppedImage(cropped);
             setShowImageCropDialog(false);
             setTempImageForCrop(undefined);
           }}
-          onCropComplete={handleCroppedImage}
-          aspectRatio={1}
+          onCancel={() => {
+            setShowImageCropDialog(false);
+            setTempImageForCrop(undefined);
+          }}
         />
       )}
     </>

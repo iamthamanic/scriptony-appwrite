@@ -7548,6 +7548,8 @@
   --destructive-foreground: #fff;
   --border: #2e2a3a;
   --input: #2e2a3a;
+  /** Muss gesetzt sein, sonst erbt .dark --input-background aus :root (#fff) → weiße Inputs im Dark Mode */
+  --input-background: #2e2a3a;
   --ring: #8e75d1;
   --font-weight-medium: 500;
   --font-weight-normal: 400;

@@ -67,7 +67,11 @@ export function BookDropdownMobile({
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(new Set());
   const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<{ id: string; type: 'act' | 'sequence' | 'scene' } | null>(null);
-  const [statsNode, setStatsNode] = useState<{ id: string; type: string; title: string } | null>(null);
+  const [statsNode, setStatsNode] = useState<{
+    id: string;
+    type: 'act' | 'sequence' | 'scene';
+    title: string;
+  } | null>(null);
 
   const toggleAct = useCallback((actId: string) => {
     setExpandedActs(prev => {
@@ -214,7 +218,15 @@ export function BookDropdownMobile({
                       <Edit className="mr-2 h-4 w-4" />
                       Bearbeiten
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setStatsNode({ id: act.id, type: 'act', title: act.title })}>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        setStatsNode({
+                          id: act.id,
+                          type: 'act',
+                          title: act.title ?? '',
+                        })
+                      }
+                    >
                       <Info className="mr-2 h-4 w-4" />
                       Details
                     </DropdownMenuItem>
@@ -326,7 +338,15 @@ export function BookDropdownMobile({
                                   <Edit className="mr-2 h-4 w-4" />
                                   Bearbeiten
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setStatsNode({ id: sequence.id, type: 'sequence', title: sequence.title })}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setStatsNode({
+                                      id: sequence.id,
+                                      type: 'sequence',
+                                      title: sequence.title ?? '',
+                                    })
+                                  }
+                                >
                                   <Info className="mr-2 h-4 w-4" />
                                   Details
                                 </DropdownMenuItem>
@@ -434,7 +454,15 @@ export function BookDropdownMobile({
                                               <Edit className="mr-2 h-4 w-4" />
                                               Text bearbeiten
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setStatsNode({ id: scene.id, type: 'scene', title: scene.title })}>
+                                            <DropdownMenuItem
+                                              onClick={() =>
+                                                setStatsNode({
+                                                  id: scene.id,
+                                                  type: 'scene',
+                                                  title: scene.title ?? '',
+                                                })
+                                              }
+                                            >
                                               <Info className="mr-2 h-4 w-4" />
                                               Details
                                             </DropdownMenuItem>
@@ -495,15 +523,28 @@ export function BookDropdownMobile({
       })}
 
       {/* Stats Dialog */}
-      {statsNode && (
-        <TimelineNodeStatsDialog
-          nodeId={statsNode.id}
-          nodeType={statsNode.type}
-          nodeTitle={statsNode.title}
-          isOpen={true}
-          onClose={() => setStatsNode(null)}
-        />
-      )}
+      {statsNode &&
+        (() => {
+          const node =
+            statsNode.type === 'act'
+              ? acts.find((a) => a.id === statsNode.id)
+              : statsNode.type === 'sequence'
+                ? sequences.find((s) => s.id === statsNode.id)
+                : scenes.find((sc) => sc.id === statsNode.id);
+          if (!node) return null;
+          return (
+            <TimelineNodeStatsDialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setStatsNode(null);
+              }}
+              nodeType={statsNode.type}
+              node={node}
+              projectId={projectId}
+              projectType={projectType}
+            />
+          );
+        })()}
     </div>
   );
 }

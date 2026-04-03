@@ -85,6 +85,8 @@ export const C = {
   world_items: "world_items",
   timeline_nodes: "timeline_nodes",
   shots: "shots",
+  /** Editorial timeline segments (NLE); one or more per shot; see Phase 1 Clip domain. */
+  clips: "clips",
   shot_audio: "shot_audio",
   shot_characters: "shot_characters",
   characters: "characters",

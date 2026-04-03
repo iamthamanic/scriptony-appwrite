@@ -63,7 +63,10 @@ export function useContainerWordCount(
 ): number {
   return useMemo(() => {
     return scenes
-      .filter((scene) => sequenceIds.includes(scene.sequenceId))
+      .filter(
+        (scene) =>
+          scene.sequenceId != null && sequenceIds.includes(scene.sequenceId)
+      )
       .reduce((sum, scene) => sum + (scene.wordCount || 0), 0);
   }, [scenes, sequenceIds]);
 }
@@ -150,15 +153,19 @@ export function useVisibleItems(
     const visibleSequenceIds = new Set(visibleSequences.map((s) => s.id));
     const visibleScenes = data.scenes.filter(
       (scene) =>
+        scene.sequenceId != null &&
         visibleSequenceIds.has(scene.sequenceId) &&
         expandedSequences.has(scene.sequenceId)
     );
 
     const visibleSceneIds = new Set(visibleScenes.map((s) => s.id));
-    const visibleShots = data.shots?.filter(
-      (shot) =>
-        visibleSceneIds.has(shot.sceneId) && expandedScenes.has(shot.sceneId)
-    ) || [];
+    const visibleShots =
+      data.shots?.filter(
+        (shot) =>
+          shot.sceneId != null &&
+          visibleSceneIds.has(shot.sceneId) &&
+          expandedScenes.has(shot.sceneId)
+      ) || [];
 
     return {
       sequences: visibleSequences,

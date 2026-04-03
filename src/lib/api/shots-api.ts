@@ -13,6 +13,7 @@ import type { Shot, ShotAudio } from '../types';
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
 import { prepareImageFileForUpload, type ImageUploadGifMode } from '../image-upload-prep';
 import { assertPreparedImageWithinUploadLimit, fileToBase64 } from './image-upload-api';
+import { narrativeStructureToInitializeProjectPayload } from '../narrative-structure-init';
 
 // API Base URLs for direct file uploads
 const TIMELINE_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.TIMELINE_V2);
@@ -400,23 +401,26 @@ export async function getAllShotsByProject(
 // =============================================================================
 
 /**
- * One in-flight init chain per project. ProjectsPage, FilmDropdown and
- * useTimelineCache all call initializeThreeActStructure when acts.length === 0;
- * without serialization they run in parallel and each POST creates 3 acts → 6 acts.
+ * One in-flight init chain per project. Call only from explicit flows (e.g. user
+ * button in FilmDropdown, script import / persist, optional new-project script path).
+ * Loaders and prefetch must not call this — avoids duplicate parallel inits.
  */
 const threeActInitTailByProject = new Map<string, Promise<unknown>>();
 
 /**
- * Initialize 3-Act Film Structure using V2 Nodes API
- *
- * Creates:
- * - 3 Acts (Setup, Confrontation, Resolution)
- * - No sequences/scenes initially (user creates them)
+ * Initialize top-level timeline nodes from project `narrative_structure` (V2 initialize-project).
+ * Throws if the structure is not mapped — callers must check mapping first for UX.
  */
-export async function initializeThreeActStructure(
+export async function initializeTimelineStructureFromNarrative(
   projectId: string,
-  accessToken: string
+  accessToken: string,
+  narrativeStructure: string | null | undefined
 ): Promise<any> {
+  const body = narrativeStructureToInitializeProjectPayload(narrativeStructure);
+  if (!body) {
+    throw new Error('NARRATIVE_INIT_UNSUPPORTED');
+  }
+
   const queuedAfter = threeActInitTailByProject.get(projectId) ?? Promise.resolve();
 
   const run = queuedAfter.then(async () => {
@@ -430,17 +434,7 @@ export async function initializeThreeActStructure(
 
     const nodes = await initializeProject({
       projectId,
-      templateId: 'film-3-act',
-      structure: {
-        level_1_count: 3,
-      },
-      predefinedNodes: {
-        level_1: [
-          { number: 1, title: 'Akt I - Einführung', description: 'Setup: Protagonist, Welt, Konflikt werden eingeführt' },
-          { number: 2, title: 'Akt II - Konfrontation', description: 'Konfrontation: Protagonist kämpft gegen Hindernisse' },
-          { number: 3, title: 'Akt III - Auflösung', description: 'Resolution: Konflikt wird gelöst, Ende der Geschichte' },
-        ],
-      },
+      ...body,
     });
 
     return { nodes };
@@ -449,4 +443,14 @@ export async function initializeThreeActStructure(
   threeActInitTailByProject.set(projectId, run.catch(() => undefined));
 
   return run;
+}
+
+/**
+ * Backwards-compatible alias: classic 3-act film acts (same as `narrative_structure` `3-act`).
+ */
+export async function initializeThreeActStructure(
+  projectId: string,
+  accessToken: string
+): Promise<any> {
+  return initializeTimelineStructureFromNarrative(projectId, accessToken, '3-act');
 }

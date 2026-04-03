@@ -52,6 +52,8 @@ export interface UpdateNodeRequest {
   description?: string;
   color?: string;
   orderIndex?: number;
+  /** Move node under another parent (timeline engine). */
+  parentId?: string | null;
   metadata?: Record<string, any>;
   wordCount?: number; // 📊 For books: calculated word count from content
 }
@@ -252,7 +254,7 @@ export async function batchLoadTimeline(
   if (options?.excludeContent) {
     params.set('exclude_content', 'true');
   }
-  const result = await apiGet(`/nodes/batch-load?${params.toString()}`, token);
+  const result = await apiGet(`/nodes/batch-load?${params.toString()}`);
   const data = unwrapApiResult(result);
   
   console.timeEnd(timerLabel);
@@ -285,6 +287,8 @@ export async function ultraBatchLoadProject(
   };
   characters: any[];
   shots: any[];
+  /** Editorial timeline clips (Phase 1); same shape as `Clip` in `src/lib/types`. */
+  clips: any[];
   stats: {
     totalNodes: number;
     acts: number;
@@ -292,6 +296,7 @@ export async function ultraBatchLoadProject(
     scenes: number;
     characters: number;
     shots: number;
+    clips: number;
   };
 }> {
   console.log('[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project:', projectId);
@@ -306,7 +311,7 @@ export async function ultraBatchLoadProject(
     params.set('exclude_content', 'true');
   }
 
-  const result = await apiGet(`/nodes/ultra-batch-load?${params.toString()}`, token);
+  const result = await apiGet(`/nodes/ultra-batch-load?${params.toString()}`);
   const data = unwrapApiResult(result);
   
   console.timeEnd(timerLabel);
@@ -320,6 +325,7 @@ export async function ultraBatchLoadProject(
     },
     characters: data?.characters || [],
     shots: data?.shots || [],
+    clips: data?.clips || [],
     stats: data?.stats || { 
       totalNodes: 0, 
       acts: 0, 
@@ -327,6 +333,7 @@ export async function ultraBatchLoadProject(
       scenes: 0,
       characters: 0,
       shots: 0,
+      clips: 0,
     },
   };
 }

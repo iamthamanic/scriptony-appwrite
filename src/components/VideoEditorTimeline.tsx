@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, type RefObject } from 'react';
 import {
   Play,
   Pause,
@@ -10,6 +10,7 @@ import {
   Camera,
   ListTree,
   Magnet,
+  Clapperboard,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -30,7 +31,21 @@ import * as ShotsAPI from '../lib/api/shots-api';
 import { useAuth } from '../hooks/useAuth';
 import type { TimelineData } from './FilmDropdown';
 import type { BookTimelineData } from './BookDropdown';
-import type { ShotAudio } from '../lib/types';
+import type { Character, Clip, ShotAudio } from '../lib/types';
+import * as ClipsAPI from '../lib/api/clips-api';
+import { computeFilmShotSpans, buildEffectiveFilmTimelineData, type FilmManualTimings } from '../lib/timeline-film-geometry';
+import { expandStructurePctToFitClip } from '../lib/timeline-container-expand';
+import {
+  maxDescendantEndInAct,
+  minDescendantStartInAct,
+  maxDescendantEndInSequence,
+  minDescendantStartInSequence,
+  maxDescendantEndInScene,
+  minDescendantStartInScene,
+  maxClipEndForShot,
+  minClipStartForShot,
+  clampBoundaryToChildren,
+} from '../lib/timeline-structure-trim-clamp';
 import { RichTextEditorModal } from './RichTextEditorModal';
 import { ReadonlyTiptapView } from './ReadonlyTiptapView';
 import { TimelineTextPreview } from './TimelineTextPreview';
@@ -40,7 +55,13 @@ import { toast } from 'sonner';
 import { ShotCardModal } from './ShotCardModal';
 import { useOptionalTimelineState } from '../contexts/TimelineStateContext';
 import { useTrimDragEngine, applyBeatPreviewToDOM } from '../lib/trim-drag-engine';
+import { getTrimGrabHandleStyles, TRIM_END_CAP_WIDTH } from '../hooks/useTrimGrabHandles';
+import { TRIM_GRAB_PRESET_BASE_HEX } from '../lib/trim-handle-colors';
 import { enrichBookTimelineData, loadProjectTimelineBundle } from '../lib/timeline-map';
+import {
+  getTimelineTrackClipClasses,
+  TIMELINE_TRACK_REGISTRY,
+} from '../lib/timeline-track-tokens';
 
 /**
  * 🎬 VIDEO EDITOR TIMELINE (CapCut Style)
@@ -278,6 +299,27 @@ function redistributeShotLensProportional(
   return out;
 }
 
+/**
+ * Einmal pro Track-Preset — `baseColorHex` erzwingt berechnete Inline-Farben (wie bei Shots/Beats mit Farbe).
+ * Nur Tailwind-`bg-*` würde bei zusammengesetzten Klassennamen im Build oft fehlen → Griffe unsichtbar.
+ */
+const ACT_TRIM_GRAB_STYLES = getTrimGrabHandleStyles({
+  preset: 'act',
+  baseColorHex: TRIM_GRAB_PRESET_BASE_HEX.act,
+});
+const SEQUENCE_TRIM_GRAB_STYLES = getTrimGrabHandleStyles({
+  preset: 'sequence',
+  baseColorHex: TRIM_GRAB_PRESET_BASE_HEX.sequence,
+});
+const SCENE_TRIM_GRAB_STYLES = getTrimGrabHandleStyles({
+  preset: 'scene',
+  baseColorHex: TRIM_GRAB_PRESET_BASE_HEX.scene,
+});
+const SHOT_TRIM_GRAB_STYLES = getTrimGrabHandleStyles({
+  preset: 'shot',
+  baseColorHex: TRIM_GRAB_PRESET_BASE_HEX.shot,
+});
+
 export function VideoEditorTimeline({ 
   projectId, 
   projectType = 'film',
@@ -306,25 +348,6 @@ export function VideoEditorTimeline({
       onOpenShotInStructureTree(shotId);
     }
   }, [timelineCtx, onOpenShotInStructureTree]);
-  
-  // 🎨 DESIGN SYSTEM: Beat Styling
-  const BEAT_STYLES = {
-    container: 'border-2',
-    text: 'font-medium',
-  };
-
-  const getBeatColorClasses = (hex?: string | null) => {
-    if (!hex) {
-      return {
-        container: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-700',
-    text: 'text-purple-900 dark:text-purple-100',
-      };
-    }
-    return {
-      container: 'border-purple-300/70 dark:border-purple-600/70',
-      text: 'text-purple-950 dark:text-purple-100',
-    };
-  };
   
   // 🎯 ZOOM & VIEWPORT STATE (MUST BE DECLARED FIRST!)
   const [zoom, setZoom] = useState(0); // Start at zoom = 0 (entire timeline visible)
@@ -437,12 +460,31 @@ export function VideoEditorTimeline({
   const trimingClipRef = useRef<typeof trimingClip>(null);
   trimingClipRef.current = trimingClip;
 
+  /** Set synchronously on beat trim pointerdown; window listeners use this (not React state). */
+  const beatTrimActiveRef = useRef<{ id: string; handle: 'left' | 'right' } | null>(null);
+  /** Set synchronously on clip trim pointerdown before setTrimingClip. */
+  const clipTrimActiveRef = useRef<typeof trimingClip>(null);
+  const beatTrimWindowCleanupRef = useRef<(() => void) | null>(null);
+  const clipTrimWindowCleanupRef = useRef<(() => void) | null>(null);
+  const beatTrimEndGuardRef = useRef(false);
+  const clipTrimEndGuardRef = useRef(false);
+  const handleTrimMoveRef = useRef<(e: PointerEvent) => void>(() => {});
+  const handleTrimEndRef = useRef<(e?: PointerEvent) => void | Promise<void>>(() => {});
+  const handleTrimClipMoveRef = useRef<(e: PointerEvent) => void>(() => {});
+  const handleTrimClipEndRef = useRef<() => void | Promise<void>>(() => {});
+  const registerBeatTrimWindowListenersRef = useRef<() => void>(() => {});
+  const registerClipTrimWindowListenersRef = useRef<() => void>(() => {});
+  const handleNleClipMoveRef = useRef<(e: PointerEvent) => void>(() => {});
+  const handleNleClipEndRef = useRef<() => void | Promise<void>>(() => {});
+  const registerNleClipTrimWindowListenersRef = useRef<() => void>(() => {});
+
   // 🚀 EPHEMERAL DRAG ENGINE — ref-based state during drag, single commit on pointerup
   const trimEngine = useTrimDragEngine();
   const beatTrackContainerRef = useRef<HTMLElement | null>(null);
   const actTrackContainerRef = useRef<HTMLElement | null>(null);
   const sequenceTrackContainerRef = useRef<HTMLElement | null>(null);
   const sceneTrackContainerRef = useRef<HTMLElement | null>(null);
+  const shotTrackContainerRef = useRef<HTMLElement | null>(null);
   const beatTrimPointerIdRef = useRef<number | null>(null);
 
   // Local overrides so UI can update while dragging (we commit only on mouse up).
@@ -468,122 +510,72 @@ export function VideoEditorTimeline({
   const manualShotDurationsRef = useRef(manualShotDurations);
   manualShotDurationsRef.current = manualShotDurations;
 
-  // 🚀 Clip trim smoothing: batch timing state updates to one React render per frame
   type TimingUpdater<T> = (prev: T) => T;
-  const queuedActUpdatesRef = useRef<TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>[]>([]);
-  const queuedSequenceUpdatesRef = useRef<TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>[]>([]);
-  const queuedSceneUpdatesRef = useRef<TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>[]>([]);
-  const queuedShotUpdatesRef = useRef<TimingUpdater<Record<string, number>>[]>([]);
-  const queuedTimingRafRef = useRef<number | null>(null);
 
-  const applyQueuedUpdates = <T,>(base: T, updates: TimingUpdater<T>[]): T => {
-    let next = base;
-    for (const update of updates) {
-      next = update(next);
-    }
-    return next;
-  };
-
-  const flushQueuedTimingUpdatesNow = useCallback(() => {
-    if (queuedTimingRafRef.current !== null) {
-      cancelAnimationFrame(queuedTimingRafRef.current);
-      queuedTimingRafRef.current = null;
-    }
-
-    if (queuedActUpdatesRef.current.length > 0) {
-      const updates = queuedActUpdatesRef.current.splice(0);
-      const next = applyQueuedUpdates(manualActTimingsRef.current, updates);
-      manualActTimingsRef.current = next;
-      setManualActTimings(next);
-    }
-    if (queuedSequenceUpdatesRef.current.length > 0) {
-      const updates = queuedSequenceUpdatesRef.current.splice(0);
-      const next = applyQueuedUpdates(manualSequenceTimingsRef.current, updates);
-      manualSequenceTimingsRef.current = next;
-      setManualSequenceTimings(next);
-    }
-    if (queuedSceneUpdatesRef.current.length > 0) {
-      const updates = queuedSceneUpdatesRef.current.splice(0);
-      const next = applyQueuedUpdates(manualSceneTimingsRef.current, updates);
-      manualSceneTimingsRef.current = next;
-      setManualSceneTimings(next);
-    }
-    if (queuedShotUpdatesRef.current.length > 0) {
-      const updates = queuedShotUpdatesRef.current.splice(0);
-      const next = applyQueuedUpdates(manualShotDurationsRef.current, updates);
-      manualShotDurationsRef.current = next;
-      setManualShotDurations(next);
-    }
-  }, []);
-
-  const scheduleQueuedTimingFlush = useCallback(() => {
-    if (queuedTimingRafRef.current !== null) return;
-    queuedTimingRafRef.current = requestAnimationFrame(() => {
-      queuedTimingRafRef.current = null;
-      flushQueuedTimingUpdatesNow();
-    });
-  }, [flushQueuedTimingUpdatesNow]);
+  /** Legacy hook: früher Queue-Flush vor Pointerup; Clip-Trim nutzt nur noch Refs + DOM-Preview. */
+  const flushQueuedTimingUpdatesNow = useCallback(() => {}, []);
 
   const queueManualActTimings = useCallback(
     (action: React.SetStateAction<Record<string, { pct_from: number; pct_to: number }>>) => {
       const updater: TimingUpdater<Record<string, { pct_from: number; pct_to: number }>> =
         typeof action === 'function' ? (action as TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>) : () => action;
-      if (!trimingClipRef.current) {
+      if (!clipTrimActiveRef.current) {
         setManualActTimings(action);
         return;
       }
-      queuedActUpdatesRef.current.push(updater);
-      scheduleQueuedTimingFlush();
+      // Clip-Trim: nur Ref (kein React setState) — Vorschau via applyClipTimingPreviewToDOM, 60fps ohne teure actBlocks-Neuberechnung
+      manualActTimingsRef.current = updater(manualActTimingsRef.current);
     },
-    [scheduleQueuedTimingFlush]
+    []
   );
 
   const queueManualSequenceTimings = useCallback(
     (action: React.SetStateAction<Record<string, { pct_from: number; pct_to: number }>>) => {
       const updater: TimingUpdater<Record<string, { pct_from: number; pct_to: number }>> =
         typeof action === 'function' ? (action as TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>) : () => action;
-      if (!trimingClipRef.current) {
+      if (!clipTrimActiveRef.current) {
         setManualSequenceTimings(action);
         return;
       }
-      queuedSequenceUpdatesRef.current.push(updater);
-      scheduleQueuedTimingFlush();
+      manualSequenceTimingsRef.current = updater(manualSequenceTimingsRef.current);
     },
-    [scheduleQueuedTimingFlush]
+    []
   );
 
   const queueManualSceneTimings = useCallback(
     (action: React.SetStateAction<Record<string, { pct_from: number; pct_to: number }>>) => {
       const updater: TimingUpdater<Record<string, { pct_from: number; pct_to: number }>> =
         typeof action === 'function' ? (action as TimingUpdater<Record<string, { pct_from: number; pct_to: number }>>) : () => action;
-      if (!trimingClipRef.current) {
+      if (!clipTrimActiveRef.current) {
         setManualSceneTimings(action);
         return;
       }
-      queuedSceneUpdatesRef.current.push(updater);
-      scheduleQueuedTimingFlush();
+      manualSceneTimingsRef.current = updater(manualSceneTimingsRef.current);
     },
-    [scheduleQueuedTimingFlush]
+    []
   );
 
   const queueManualShotDurations = useCallback(
     (action: React.SetStateAction<Record<string, number>>) => {
       const updater: TimingUpdater<Record<string, number>> =
         typeof action === 'function' ? (action as TimingUpdater<Record<string, number>>) : () => action;
-      if (!trimingClipRef.current) {
+      if (!clipTrimActiveRef.current) {
         setManualShotDurations(action);
         return;
       }
-      queuedShotUpdatesRef.current.push(updater);
-      scheduleQueuedTimingFlush();
+      manualShotDurationsRef.current = updater(manualShotDurationsRef.current);
     },
-    [scheduleQueuedTimingFlush]
+    []
   );
 
   const actBlocksRef = useRef<any[]>([]);
   const sequenceBlocksRef = useRef<any[]>([]);
   const sceneBlocksRef = useRef<any[]>([]);
   const shotBlocksRef = useRef<any[]>([]);
+  /** Editorial clip blocks (film); used for structure-trim child clamp + NLE track. */
+  const clipBlocksRef = useRef<
+    Array<{ id: string; sceneId: string; shotId?: string; startSec: number; endSec: number }>
+  >([]);
   const timelineDataRef = useRef(timelineData);
   timelineDataRef.current = timelineData;
   const durationRef = useRef(duration);
@@ -598,6 +590,23 @@ export function VideoEditorTimeline({
   beatsRef.current = beats;
 
   const MIN_CLIP_DURATION_SEC = 1; // Consistent with Beat min duration
+
+  /** Live editorial clip bounds during NLE trim drag (pointer session). */
+  const [nleClipPreview, setNleClipPreview] = useState<Record<string, { startSec: number; endSec: number }> | null>(
+    null
+  );
+  const nleClipDragRef = useRef<{
+    clipId: string;
+    handle: 'left' | 'right';
+    startClientX: number;
+    anchorSec: number;
+    origStart: number;
+    origEnd: number;
+    sceneId: string;
+  } | null>(null);
+  const nleClipTrimCleanupRef = useRef<(() => void) | null>(null);
+  const nleClipFinalBoundsRef = useRef<{ clipId: string; startSec: number; endSec: number } | null>(null);
+  const clipMigrationAttemptedRef = useRef(false);
   
   // 🎯 MODAL STATE: Scene Content Editor
   const [editingSceneForModal, setEditingSceneForModal] = useState<any | null>(null);
@@ -627,6 +636,8 @@ export function VideoEditorTimeline({
   const isBookProject = (projectType ?? '').toLowerCase() === 'book';
   /** Magnete für Act/Seq/Scene/Shot: alles außer reinem Buch-Projekt (Film, Serie, …). */
   const showFilmClipMagnets = !isBookProject;
+  /** Graue NLE-Spur (persistierte `clips`) — nur Film; linke Spur „Clip“ + Inhalt gemeinsam schalten. */
+  const showEditorialClipTrack = !isBookProject;
   const labelByKind: Record<AddNodeKind, string> = isBookProject
     ? { act: 'Kapitel', sequence: 'Abschnitt', scene: 'Szene', shot: 'Shot' }
     : { act: 'Akt', sequence: 'Sequence', scene: 'Scene', shot: 'Shot' };
@@ -672,10 +683,12 @@ export function VideoEditorTimeline({
     beat: { min: 40, max: 120, default: 64 },
     act: { min: 40, max: 100, default: 48 },
     sequence: { min: 40, max: 80, default: 40 },
-    scene: { min: 80, max: 400, default: 120 },
+    /** min wie Act/Seq — schmale Zeile möglich; volle Scene-Vorschau braucht eher default 120 */
+    scene: { min: 40, max: 400, default: 120 },
     shot: { min: 32, max: 90, default: 40 },
     music: { min: 22, max: 72, default: 28 },
     sfx: { min: 22, max: 72, default: 28 },
+    editorialClip: { min: 22, max: 72, default: 28 },
   };
   
   const STORAGE_KEY = `scriptony-timeline-heights-${projectId}`;
@@ -695,6 +708,7 @@ export function VideoEditorTimeline({
             shot: parsed.shot ?? TRACK_CONSTRAINTS.shot.default,
             music: parsed.music ?? TRACK_CONSTRAINTS.music.default,
             sfx: parsed.sfx ?? TRACK_CONSTRAINTS.sfx.default,
+            editorialClip: parsed.editorialClip ?? TRACK_CONSTRAINTS.editorialClip.default,
           };
         } catch (e) {
           console.error('[VideoEditorTimeline] Failed to parse stored heights:', e);
@@ -709,6 +723,7 @@ export function VideoEditorTimeline({
       shot: TRACK_CONSTRAINTS.shot.default,
       music: TRACK_CONSTRAINTS.music.default,
       sfx: TRACK_CONSTRAINTS.sfx.default,
+      editorialClip: TRACK_CONSTRAINTS.editorialClip.default,
     };
   });
   
@@ -757,17 +772,18 @@ export function VideoEditorTimeline({
   
   // 🎯 BEAT TRIM HANDLERS (Pointer Events + Ephemeral Engine)
   const handleTrimStart = (beatId: string, handle: 'left' | 'right', e: React.PointerEvent) => {
-    if (trimingClip) return;
+    if (clipTrimActiveRef.current) return;
     e.preventDefault();
     e.stopPropagation();
+
+    beatTrimActiveRef.current = { id: beatId, handle };
+    setTrimingBeat({ id: beatId, handle });
+    trimStartXRef.current = e.clientX;
 
     // Pointer capture for touch/pen support — events stay on this element even outside
     const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);
     beatTrimPointerIdRef.current = e.pointerId;
-
-    setTrimingBeat({ id: beatId, handle });
-    trimStartXRef.current = e.clientX;
     
     const beat = beats.find(b => b.id === beatId);
     if (beat) {
@@ -781,6 +797,8 @@ export function VideoEditorTimeline({
     
     // Start the ephemeral drag engine (stores snapshot in ref, zero re-renders during drag)
     trimEngine.startBeatTrim(beatId, handle, e.clientX, trimStartSecRef.current, beats as any[]);
+
+    registerBeatTrimWindowListenersRef.current();
 
     console.log(`[Beat Trim] 🎯 Start trimming ${handle} handle of ${beatId} (pointer capture)`);
   };
@@ -1003,11 +1021,32 @@ export function VideoEditorTimeline({
     }
   }
 
+  /** Shot-Trim: DOM-Preview wie Act/Seq/Scene (Refs während Drag, kein useMemo pro Frame). */
+  function applyShotTrimPreviewToDOM(sceneStartSec: number, shotIds: string[], durs: number[]) {
+    const container = shotTrackContainerRef.current;
+    if (!container || !shotIds.length || durs.length !== shotIds.length) return;
+    const pxs = pxPerSecRef.current;
+    const viewStart = viewStartSecRef.current;
+    let cursor = sceneStartSec;
+    for (let i = 0; i < shotIds.length; i++) {
+      const dur = durs[i];
+      const startSec = cursor;
+      const endSec = startSec + dur;
+      cursor = endSec;
+      const el = container.querySelector(`[data-shot-id="${shotIds[i]}"]`) as HTMLElement | null;
+      if (!el) continue;
+      el.style.transform = `translateX(${(startSec - viewStart) * pxs}px)`;
+      el.style.width = `${Math.max(2, (endSec - startSec) * pxs)}px`;
+      el.style.left = '0';
+    }
+  }
+
   function resetClipPreviewStyles() {
     const selectors: Array<[HTMLElement | null, string]> = [
       [actTrackContainerRef.current, '[data-act-id]'],
       [sequenceTrackContainerRef.current, '[data-sequence-id]'],
       [sceneTrackContainerRef.current, '[data-scene-id]'],
+      [shotTrackContainerRef.current, '[data-shot-id]'],
     ];
     for (const [container, selector] of selectors) {
       if (!container) continue;
@@ -1027,16 +1066,16 @@ export function VideoEditorTimeline({
     handle: 'left' | 'right',
     e: React.PointerEvent
   ) => {
-    if (isBookProject || trimingBeat) return;
+    if (beatTrimActiveRef.current) return;
     e.preventDefault();
     e.stopPropagation();
 
-    // Pointer capture for touch/pen support
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
-
     const td = timelineDataRef.current;
     if (!td || !('acts' in td) || !td.acts?.length) return;
+
+    // Pointer capture for touch/pen support (after validation so we do not leave capture dangling)
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
 
     trimClipSnapshotRef.current = {
       manualActTimings: { ...manualActTimingsRef.current },
@@ -1071,6 +1110,8 @@ export function VideoEditorTimeline({
           actDurations,
           trimLastRight: true,
         };
+        clipTrimActiveRef.current = { kind: 'act', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'act', id, handle });
         return;
       }
@@ -1083,6 +1124,8 @@ export function VideoEditorTimeline({
           trimFirstLeft: true,
           anchorEndFirstSec: cur.endSec,
         };
+        clipTrimActiveRef.current = { kind: 'act', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'act', id, handle });
         return;
       }
@@ -1092,6 +1135,8 @@ export function VideoEditorTimeline({
         actIndex: idx,
         actDurations,
       };
+      clipTrimActiveRef.current = { kind: 'act', id, handle };
+      registerClipTrimWindowListenersRef.current();
       setTrimingClip({ kind: 'act', id, handle });
       return;
     }
@@ -1126,6 +1171,8 @@ export function VideoEditorTimeline({
           sequenceDurations,
           trimLastRight: true,
         };
+        clipTrimActiveRef.current = { kind: 'sequence', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'sequence', id, handle });
         return;
       }
@@ -1140,6 +1187,8 @@ export function VideoEditorTimeline({
           trimFirstLeft: true,
           anchorEndFirstSec: sb.endSec,
         };
+        clipTrimActiveRef.current = { kind: 'sequence', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'sequence', id, handle });
         return;
       }
@@ -1151,6 +1200,8 @@ export function VideoEditorTimeline({
         actDurSec: Math.max(0, actBlock.endSec - actBlock.startSec),
         sequenceDurations,
       };
+      clipTrimActiveRef.current = { kind: 'sequence', id, handle };
+      registerClipTrimWindowListenersRef.current();
       setTrimingClip({ kind: 'sequence', id, handle });
       return;
     }
@@ -1185,6 +1236,8 @@ export function VideoEditorTimeline({
           sceneDurations,
           trimLastRight: true,
         };
+        clipTrimActiveRef.current = { kind: 'scene', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'scene', id, handle });
         return;
       }
@@ -1199,6 +1252,8 @@ export function VideoEditorTimeline({
           trimFirstLeft: true,
           anchorEndFirstSec: scb.endSec,
         };
+        clipTrimActiveRef.current = { kind: 'scene', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'scene', id, handle });
         return;
       }
@@ -1210,12 +1265,16 @@ export function VideoEditorTimeline({
         seqDurSec: Math.max(0, seqBlock.endSec - seqBlock.startSec),
         sceneDurations,
       };
+      clipTrimActiveRef.current = { kind: 'scene', id, handle };
+      registerClipTrimWindowListenersRef.current();
       setTrimingClip({ kind: 'scene', id, handle });
       return;
     }
 
     if (kind === 'shot') {
-      const shRow = (td.shots || []).find((sh: any) => sh.id === id);
+      const shotsList =
+        "shots" in td && Array.isArray(td.shots) ? td.shots : [];
+      const shRow = shotsList.find((sh: any) => sh.id === id);
       const sceneId = shRow?.sceneId || shRow?.scene_id;
       if (!sceneId) return;
       const sceneBlock = sceneBlocksRef.current.find((b: any) => b.id === sceneId);
@@ -1246,6 +1305,8 @@ export function VideoEditorTimeline({
           shotDurations: durs,
           trimLastRight: true,
         };
+        clipTrimActiveRef.current = { kind: 'shot', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'shot', id, handle });
         return;
       }
@@ -1262,6 +1323,8 @@ export function VideoEditorTimeline({
           trimFirstLeft: true,
           anchorEndFirstSec: shb.endSec,
         };
+        clipTrimActiveRef.current = { kind: 'shot', id, handle };
+        registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'shot', id, handle });
         return;
       }
@@ -1275,12 +1338,14 @@ export function VideoEditorTimeline({
         sceneDurSec,
         shotDurations: durs,
       };
+      clipTrimActiveRef.current = { kind: 'shot', id, handle };
+      registerClipTrimWindowListenersRef.current();
       setTrimingClip({ kind: 'shot', id, handle });
     }
   };
 
   const handleTrimClipMove = (e: PointerEvent) => {
-    const clip = trimingClipRef.current;
+    const clip = clipTrimActiveRef.current ?? trimingClipRef.current;
     const ctx = trimClipCtxRef.current;
     if (!clip || !ctx || ctx.kind !== clip.kind) return;
 
@@ -1372,6 +1437,28 @@ export function VideoEditorTimeline({
           newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
+        {
+          const tdF = td as TimelineData;
+          const maxL = maxDescendantEndInAct(
+            prevId,
+            tdF,
+            actBlocksRef.current,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          const minR = minDescendantStartInAct(
+            curId,
+            tdF,
+            actBlocksRef.current,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          newBoundarySec = clampBoundaryToChildren(newBoundarySec, minB, maxB, maxL, minR);
+        }
         const newPct = (newBoundarySec / dTotal) * 100;
         queueManualActTimings((prev) => {
           const prevP = resolveActPct(prevId, prev, actsOrdered);
@@ -1397,6 +1484,28 @@ export function VideoEditorTimeline({
         if (magnet) {
           newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        {
+          const tdF = td as TimelineData;
+          const maxL = maxDescendantEndInAct(
+            curId,
+            tdF,
+            actBlocksRef.current,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          const minR = minDescendantStartInAct(
+            nextId,
+            tdF,
+            actBlocksRef.current,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          newBoundarySec = clampBoundaryToChildren(newBoundarySec, minB, maxB, maxL, minR);
         }
         const newPct = (newBoundarySec / dTotal) * 100;
         queueManualActTimings((prev) => {
@@ -1495,6 +1604,26 @@ export function VideoEditorTimeline({
           newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
+        {
+          const tdF = td as TimelineData;
+          const maxL = maxDescendantEndInSequence(
+            prevId,
+            tdF,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          const minR = minDescendantStartInSequence(
+            curId,
+            tdF,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          newBoundarySec = clampBoundaryToChildren(newBoundarySec, minB, maxB, maxL, minR);
+        }
         const newPct = ((newBoundarySec - actStart) / actDur) * 100;
         queueManualSequenceTimings((prev) => {
           const prevP = resolveSeqPct(prevId, prev, seqsOrdered);
@@ -1522,6 +1651,26 @@ export function VideoEditorTimeline({
         if (magnet) {
           newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        {
+          const tdF = td as TimelineData;
+          const maxL = maxDescendantEndInSequence(
+            curId,
+            tdF,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          const minR = minDescendantStartInSequence(
+            nextId,
+            tdF,
+            sequenceBlocksRef.current,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          newBoundarySec = clampBoundaryToChildren(newBoundarySec, minB, maxB, maxL, minR);
         }
         const newPct = ((newBoundarySec - actStart) / actDur) * 100;
         queueManualSequenceTimings((prev) => {
@@ -1620,6 +1769,21 @@ export function VideoEditorTimeline({
           newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
         }
+        {
+          const maxL = maxDescendantEndInScene(
+            prevId,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          const minR = minDescendantStartInScene(
+            curId,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          newBoundarySec = clampBoundaryToChildren(newBoundarySec, minB, maxB, maxL, minR);
+        }
         const newPct = ((newBoundarySec - seqStart) / seqDur) * 100;
         queueManualSceneTimings((prev) => {
           const prevP = resolveScenePct(prevId, prev, scenesOrdered);
@@ -1647,6 +1811,21 @@ export function VideoEditorTimeline({
         if (magnet) {
           newBoundarySec = snapClipBoundary(newBoundarySec, snapEdges, dTotal, pxs, true);
           newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
+        }
+        {
+          const maxL = maxDescendantEndInScene(
+            curId,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          const minR = minDescendantStartInScene(
+            nextId,
+            sceneBlocksRef.current,
+            shotBlocksRef.current,
+            clipBlocksRef.current
+          );
+          newBoundarySec = clampBoundaryToChildren(newBoundarySec, minB, maxB, maxL, minR);
         }
         const newPct = ((newBoundarySec - seqStart) / seqDur) * 100;
         queueManualSceneTimings((prev) => {
@@ -1688,6 +1867,19 @@ export function VideoEditorTimeline({
             next[sid] = durs[idx];
           });
           return next;
+        });
+        trimEngine.scheduleRAF(() => {
+          const c = trimClipCtxRef.current;
+          if (
+            !c ||
+            c.kind !== 'shot' ||
+            !c.shotIds ||
+            !c.shotDurations ||
+            c.sceneStartSec === undefined
+          ) {
+            return;
+          }
+          applyShotTrimPreviewToDOM(c.sceneStartSec, c.shotIds, c.shotDurations);
         });
       };
 
@@ -1767,6 +1959,19 @@ export function VideoEditorTimeline({
         newPairLeft = snapped - sceneStart - P;
         newPairLeft = Math.max(minPairLeft, Math.min(maxPairLeft, newPairLeft));
       }
+      {
+        const leftId = ids[pairLeft];
+        const rightId = ids[j];
+        const cmax = maxClipEndForShot(leftId, clipBlocksRef.current);
+        const cmin = minClipStartForShot(rightId, clipBlocksRef.current);
+        let minPL = minPairLeft;
+        let maxPL = maxPairLeft;
+        if (cmax != null) minPL = Math.max(minPL, cmax - sceneStart - P);
+        if (cmin != null) maxPL = Math.min(maxPL, cmin - sceneStart - P);
+        if (minPL <= maxPL + 1e-4) {
+          newPairLeft = Math.max(minPL, Math.min(maxPL, newPairLeft));
+        }
+      }
       const d1 = newPairLeft;
       const d2 = pairSum - d1;
       durs[pairLeft] = d1;
@@ -1782,9 +1987,20 @@ export function VideoEditorTimeline({
   };
 
   const handleTrimClipEnd = async () => {
-    const clip = trimingClipRef.current;
+    const clip = clipTrimActiveRef.current ?? trimingClipRef.current;
     if (!clip) return;
+    if (clipTrimEndGuardRef.current) return;
+    clipTrimEndGuardRef.current = true;
+
+    clipTrimWindowCleanupRef.current?.();
+    clipTrimWindowCleanupRef.current = null;
+
     flushQueuedTimingUpdatesNow();
+    // Nach Clip-Drag lebten Timing-Werte nur in Refs (kein setState während Ziehen) — React-State angleichen
+    setManualActTimings({ ...manualActTimingsRef.current });
+    setManualSequenceTimings({ ...manualSequenceTimingsRef.current });
+    setManualSceneTimings({ ...manualSceneTimingsRef.current });
+    setManualShotDurations({ ...manualShotDurationsRef.current });
     resetClipPreviewStyles();
 
     const snap = trimClipSnapshotRef.current;
@@ -1804,8 +2020,10 @@ export function VideoEditorTimeline({
       if (!token) {
         toast.error('Nicht authentifiziert');
         revert();
+        clipTrimActiveRef.current = null;
         setTrimingClip(null);
         trimClipCtxRef.current = null;
+        clipTrimEndGuardRef.current = false;
         return;
       }
 
@@ -1983,7 +2201,7 @@ export function VideoEditorTimeline({
               if (!prev || !('shots' in prev)) return prev;
               return {
                 ...prev,
-                shots: prev.shots.map((sh: any) => {
+                shots: (prev.shots ?? []).map((sh: any) => {
                   const ix = ids.indexOf(sh.id);
                   if (ix < 0) return sh;
                   const total = Math.max(MIN_CLIP_DURATION_SEC, Math.round(Number(durs[ix])));
@@ -2037,9 +2255,186 @@ export function VideoEditorTimeline({
       revert();
     }
 
+    clipTrimActiveRef.current = null;
     setTrimingClip(null);
     trimClipCtxRef.current = null;
     trimClipSnapshotRef.current = null;
+    clipTrimEndGuardRef.current = false;
+  };
+
+  const handleNleClipPointerDown = (
+    row: { id: string; sceneId: string; startSec: number; endSec: number },
+    handle: 'left' | 'right',
+    e: React.PointerEvent
+  ) => {
+    if (clipTrimActiveRef.current || beatTrimActiveRef.current || trimingClipRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    nleClipDragRef.current = {
+      clipId: row.id,
+      handle,
+      startClientX: e.clientX,
+      anchorSec: handle === 'left' ? row.startSec : row.endSec,
+      origStart: row.startSec,
+      origEnd: row.endSec,
+      sceneId: row.sceneId,
+    };
+    nleClipFinalBoundsRef.current = { clipId: row.id, startSec: row.startSec, endSec: row.endSec };
+    setNleClipPreview({ [row.id]: { startSec: row.startSec, endSec: row.endSec } });
+    registerNleClipTrimWindowListenersRef.current();
+  };
+
+  const handleNleClipMove = (e: PointerEvent) => {
+    const drag = nleClipDragRef.current;
+    if (!drag) return;
+    const pxs = pxPerSecRef.current;
+    const dTotal = durationRef.current;
+    const deltaSec = (e.clientX - drag.startClientX) / pxs;
+    let start = drag.origStart;
+    let end = drag.origEnd;
+    if (drag.handle === 'left') {
+      start = drag.anchorSec + deltaSec;
+    } else {
+      end = drag.anchorSec + deltaSec;
+    }
+    if (end - start < MIN_CLIP_DURATION_SEC) {
+      if (drag.handle === 'left') start = end - MIN_CLIP_DURATION_SEC;
+      else end = start + MIN_CLIP_DURATION_SEC;
+    }
+    start = Math.max(0, Math.min(dTotal, start));
+    end = Math.max(0, Math.min(dTotal, end));
+    const sc = sceneBlocksRef.current.find((b: any) => b.id === drag.sceneId);
+    if (sc) {
+      start = Math.max(sc.startSec, Math.min(sc.endSec, start));
+      end = Math.max(sc.startSec, Math.min(sc.endSec, end));
+      if (end - start < MIN_CLIP_DURATION_SEC) return;
+    }
+    nleClipFinalBoundsRef.current = { clipId: drag.clipId, startSec: start, endSec: end };
+    setNleClipPreview({ [drag.clipId]: { startSec: start, endSec: end } });
+  };
+
+  const handleNleClipEnd = async () => {
+    nleClipTrimCleanupRef.current?.();
+    nleClipTrimCleanupRef.current = null;
+    nleClipDragRef.current = null;
+    setNleClipPreview(null);
+    const bounds = nleClipFinalBoundsRef.current;
+    nleClipFinalBoundsRef.current = null;
+    if (!bounds) return;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Nicht authentifiziert');
+        return;
+      }
+      const td = timelineDataRef.current as TimelineData | null;
+      if (!td?.clips?.length) return;
+      const clipEnt = td.clips.find((c) => c.id === bounds.clipId);
+      if (!clipEnt) return;
+
+      const { startSec, endSec } = bounds;
+      const updated = await ClipsAPI.updateClip(bounds.clipId, { startSec, endSec }, token);
+
+      const scene = td.scenes?.find((s) => s.id === clipEnt.sceneId);
+      const seq = scene ? td.sequences?.find((s) => s.id === scene.sequenceId) : undefined;
+      const act = seq ? td.acts?.find((a) => a.id === seq.actId) : undefined;
+      const sceneBlock = sceneBlocksRef.current.find((b: any) => b.id === clipEnt.sceneId);
+      const sequenceBlock = seq ? sequenceBlocksRef.current.find((b: any) => b.id === seq.id) : undefined;
+      const actBlock = act ? actBlocksRef.current.find((b: any) => b.id === act.id) : undefined;
+      const totalDur = durationRef.current;
+
+      let exp: ReturnType<typeof expandStructurePctToFitClip> | null = null;
+      if (sceneBlock && sequenceBlock && actBlock) {
+        exp = expandStructurePctToFitClip({
+          clip: { startSec, endSec, sceneId: clipEnt.sceneId },
+          actBlock,
+          sequenceBlock,
+          sceneBlock,
+          totalDur,
+        });
+        if (exp.act && act) {
+          await TimelineAPI.updateAct(
+            act.id,
+            {
+              metadata: {
+                ...(act.metadata || {}),
+                pct_from: exp.act.pct_from,
+                pct_to: exp.act.pct_to,
+              },
+            },
+            token
+          );
+        }
+        if (exp.sequence && seq) {
+          await TimelineAPI.updateSequence(
+            seq.id,
+            {
+              metadata: {
+                ...(seq.metadata || {}),
+                pct_from: exp.sequence.pct_from,
+                pct_to: exp.sequence.pct_to,
+              },
+            },
+            token
+          );
+        }
+        if (exp.scene && scene) {
+          await TimelineAPI.updateScene(
+            scene.id,
+            {
+              metadata: {
+                ...(scene.metadata || {}),
+                pct_from: exp.scene.pct_from,
+                pct_to: exp.scene.pct_to,
+              },
+            },
+            token
+          );
+        }
+      }
+
+      const nextData: TimelineData = {
+        ...td,
+        clips: td.clips.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
+        acts: td.acts.map((a) => {
+          if (!exp?.act || !act || a.id !== act.id) return a;
+          return {
+            ...a,
+            metadata: { ...(a.metadata || {}), pct_from: exp.act.pct_from, pct_to: exp.act.pct_to },
+          };
+        }),
+        sequences: td.sequences.map((s) => {
+          if (!exp?.sequence || !seq || s.id !== seq.id) return s;
+          return {
+            ...s,
+            metadata: {
+              ...(s.metadata || {}),
+              pct_from: exp.sequence.pct_from,
+              pct_to: exp.sequence.pct_to,
+            },
+          };
+        }),
+        scenes: td.scenes.map((s) => {
+          if (!exp?.scene || !scene || s.id !== scene.id) return s;
+          return {
+            ...s,
+            metadata: {
+              ...(s.metadata || {}),
+              pct_from: exp.scene.pct_from,
+              pct_to: exp.scene.pct_to,
+            },
+          };
+        }),
+      };
+
+      setTimelineData(nextData);
+      onDataChange?.(nextData);
+    } catch (e) {
+      console.error('[NLE clip trim]', e);
+      toast.error('Clip-Update fehlgeschlagen');
+    }
   };
   
   /* OLD - REPLACED BY handleTrimMoveSimplified
@@ -2161,11 +2556,14 @@ export function VideoEditorTimeline({
   
   // 🆕 EPHEMERAL handleTrimMove — engine calculates in refs, rAF applies to DOM (zero React re-renders)
   const handleTrimMove = (e: PointerEvent) => {
-    if (!trimingBeat) return;
-    
+    if (!beatTrimActiveRef.current && !trimEngine.isBeatTrimActive()) return;
+
     // Use SNAPSHOT beats (from drag start) so we don't depend on React state during drag
     const snapshotBeats = beatTrimSnapshotRef.current;
     if (!snapshotBeats) return;
+
+    const active = beatTrimActiveRef.current;
+    if (!active) return;
 
     const result = trimEngine.updateBeatTrim(
       e.clientX,
@@ -2184,7 +2582,7 @@ export function VideoEditorTimeline({
       applyBeatPreviewToDOM(
         beatTrackContainerRef.current,
         snapshotBeats as any[],
-        trimingBeat.id,
+        active.id,
         result.trimmedBeat,
         result.rippleBeats,
         durationRef.current,
@@ -2195,10 +2593,16 @@ export function VideoEditorTimeline({
   };
   
   const handleTrimEnd = async (e?: PointerEvent) => {
-    if (!trimingBeat) return;
-    
-    console.log(`[Beat Trim] ✅ Finished trimming ${trimingBeat.handle} handle`);
-    
+    if (!beatTrimActiveRef.current) return;
+    if (beatTrimEndGuardRef.current) return;
+    beatTrimEndGuardRef.current = true;
+
+    beatTrimWindowCleanupRef.current?.();
+    beatTrimWindowCleanupRef.current = null;
+
+    const activeHandle = beatTrimActiveRef.current.handle;
+    console.log(`[Beat Trim] ✅ Finished trimming ${activeHandle} handle`);
+
     // Release pointer capture
     if (e && beatTrimPointerIdRef.current !== null) {
       try { (e.target as HTMLElement).releasePointerCapture(beatTrimPointerIdRef.current); } catch (_) {}
@@ -2208,14 +2612,40 @@ export function VideoEditorTimeline({
     const beatsAtTrimStart = beatTrimSnapshotRef.current;
     beatTrimSnapshotRef.current = null;
 
-    // 🚀 Commit from engine — single source of truth for final positions
+    // 🚀 Commit from engine — single source of truth for final positions (identity if no move)
     const commitResult = trimEngine.commitBeatTrim();
 
+    beatTrimActiveRef.current = null;
+    setTrimingBeat(null);
+
     if (!commitResult) {
-      setTrimingBeat(null);
+      beatTrimEndGuardRef.current = false;
+      trimEngine.cleanup();
       return;
     }
-    
+
+    const origBeat = beatsAtTrimStart?.find((b) => b.id === commitResult.beatId);
+    const unchanged =
+      origBeat &&
+      commitResult.rippleBeats.length === 0 &&
+      (commitResult.handle === 'left'
+        ? commitResult.trimmedBeat.pct_from === origBeat.pct_from
+        : commitResult.trimmedBeat.pct_to === origBeat.pct_to);
+
+    if (unchanged) {
+      if (beatTrackContainerRef.current) {
+        const els = beatTrackContainerRef.current.querySelectorAll('[data-beat-id]');
+        els.forEach((el) => {
+          (el as HTMLElement).style.transform = '';
+          (el as HTMLElement).style.width = '';
+          (el as HTMLElement).style.left = '';
+        });
+      }
+      beatTrimEndGuardRef.current = false;
+      trimEngine.cleanup();
+      return;
+    }
+
     // Reset inline DOM styles set by applyBeatPreviewToDOM (React will re-render with correct positions)
     if (beatTrackContainerRef.current) {
       const els = beatTrackContainerRef.current.querySelectorAll('[data-beat-id]');
@@ -2227,15 +2657,20 @@ export function VideoEditorTimeline({
     }
 
     // 🚀 Single React state update — applies committed positions
-    setBeats(prev => prev.map(b => {
-      if (b.id === commitResult.beatId) {
-        return commitResult.handle === 'left'
-          ? { ...b, pct_from: commitResult.trimmedBeat.pct_from }
-          : { ...b, pct_to: commitResult.trimmedBeat.pct_to };
-      }
-      const rippled = commitResult.rippleBeats.find(rb => rb.id === b.id);
-      return rippled || b;
-    }));
+    setBeats((prev) =>
+      prev.map((b) => {
+        if (b.id === commitResult.beatId) {
+          return commitResult.handle === "left"
+            ? { ...b, pct_from: commitResult.trimmedBeat.pct_from }
+            : { ...b, pct_to: commitResult.trimmedBeat.pct_to };
+        }
+        const rippled = commitResult.rippleBeats.find((rb) => rb.id === b.id);
+        if (rippled) {
+          return { ...b, pct_from: rippled.pct_from, pct_to: rippled.pct_to };
+        }
+        return b;
+      })
+    );
 
     // DB persist — use committed positions (not React state which may be stale)
     try {
@@ -2260,7 +2695,6 @@ export function VideoEditorTimeline({
                 return next;
               });
             abortTrimSave = true;
-              setTrimingBeat(null);
               return;
             }
             throw error;
@@ -2268,7 +2702,11 @@ export function VideoEditorTimeline({
       };
 
       await updateTrimmedBeat();
-      if (abortTrimSave) return;
+      if (abortTrimSave) {
+        beatTrimEndGuardRef.current = false;
+        trimEngine.cleanup();
+        return;
+      }
 
       // Diff committed ripple beats against snapshot to find DB-worthy changes
       const dbUpdates = commitResult.rippleBeats.filter((rb) => {
@@ -2305,9 +2743,71 @@ export function VideoEditorTimeline({
         setBeats(beatsAtTrimStart.map((b) => ({ ...b })));
       }
     }
-    
-    setTrimingBeat(null);
+
+    beatTrimEndGuardRef.current = false;
+    trimEngine.cleanup();
   };
+
+  registerBeatTrimWindowListenersRef.current = () => {
+    beatTrimWindowCleanupRef.current?.();
+    const onMove = (ev: PointerEvent) => {
+      handleTrimMoveRef.current(ev);
+    };
+    const onEnd = (ev: PointerEvent) => {
+      void handleTrimEndRef.current(ev);
+    };
+    window.addEventListener('pointermove', onMove, { capture: true });
+    window.addEventListener('pointerup', onEnd, { capture: true });
+    window.addEventListener('pointercancel', onEnd, { capture: true });
+    beatTrimWindowCleanupRef.current = () => {
+      window.removeEventListener('pointermove', onMove, { capture: true });
+      window.removeEventListener('pointerup', onEnd, { capture: true });
+      window.removeEventListener('pointercancel', onEnd, { capture: true });
+    };
+  };
+
+  registerClipTrimWindowListenersRef.current = () => {
+    clipTrimWindowCleanupRef.current?.();
+    const onMove = (ev: PointerEvent) => {
+      handleTrimClipMoveRef.current(ev);
+    };
+    const onEnd = () => {
+      void handleTrimClipEndRef.current();
+    };
+    window.addEventListener('pointermove', onMove, { capture: true });
+    window.addEventListener('pointerup', onEnd, { capture: true });
+    window.addEventListener('pointercancel', onEnd, { capture: true });
+    clipTrimWindowCleanupRef.current = () => {
+      window.removeEventListener('pointermove', onMove, { capture: true });
+      window.removeEventListener('pointerup', onEnd, { capture: true });
+      window.removeEventListener('pointercancel', onEnd, { capture: true });
+    };
+  };
+
+  handleTrimMoveRef.current = handleTrimMove;
+  handleTrimEndRef.current = handleTrimEnd;
+  handleTrimClipMoveRef.current = handleTrimClipMove;
+  handleTrimClipEndRef.current = handleTrimClipEnd;
+
+  registerNleClipTrimWindowListenersRef.current = () => {
+    nleClipTrimCleanupRef.current?.();
+    const onMove = (ev: PointerEvent) => {
+      handleNleClipMoveRef.current(ev);
+    };
+    const onEnd = () => {
+      void handleNleClipEndRef.current();
+    };
+    window.addEventListener('pointermove', onMove, { capture: true });
+    window.addEventListener('pointerup', onEnd, { capture: true });
+    window.addEventListener('pointercancel', onEnd, { capture: true });
+    nleClipTrimCleanupRef.current = () => {
+      window.removeEventListener('pointermove', onMove, { capture: true });
+      window.removeEventListener('pointerup', onEnd, { capture: true });
+      window.removeEventListener('pointercancel', onEnd, { capture: true });
+    };
+  };
+  handleNleClipMoveRef.current = handleNleClipMove;
+  handleNleClipEndRef.current = handleNleClipEnd;
   
   // 🎯 GLOBAL RESIZE + TRIM LISTENERS
   useEffect(() => {
@@ -2320,33 +2820,7 @@ export function VideoEditorTimeline({
       };
     }
   }, [resizingTrack, trackHeights]);
-  
-  useEffect(() => {
-    if (trimingBeat) {
-      // Pointer events — engine uses refs for all values (no dependency on beats/pxPerSec/duration)
-      window.addEventListener('pointermove', handleTrimMove);
-      window.addEventListener('pointerup', handleTrimEnd);
-      return () => {
-        window.removeEventListener('pointermove', handleTrimMove);
-        window.removeEventListener('pointerup', handleTrimEnd);
-        trimEngine.cleanup();
-      };
-    }
-  }, [trimingBeat]); // Only depends on trimingBeat — engine reads from refs during drag
 
-  useEffect(() => {
-    if (trimingClip) {
-      window.addEventListener('pointermove', handleTrimClipMove);
-      window.addEventListener('pointerup', handleTrimClipEnd);
-      return () => {
-        window.removeEventListener('pointermove', handleTrimClipMove);
-        window.removeEventListener('pointerup', handleTrimClipEnd);
-        flushQueuedTimingUpdatesNow();
-        resetClipPreviewStyles();
-      };
-    }
-  }, [trimingClip, flushQueuedTimingUpdatesNow]);
-  
   console.log('[VideoEditorTimeline] 📖 Book Timeline:', {
     isBookProject,
     totalWords,
@@ -2818,6 +3292,64 @@ export function VideoEditorTimeline({
     timelineCtx?.sequences.length,
     timelineCtx?.scenes.length,
   ]);
+
+  // PHASE1: One-time migration — create one editorial clip per shot from film geometry when none exist.
+  useEffect(() => {
+    if (isBookProject) return;
+    if (!timelineData || !('shots' in timelineData)) return;
+    const td = timelineData as TimelineData;
+    const shots = td.shots || [];
+    const existing = td.clips || [];
+    if (existing.length > 0) {
+      clipMigrationAttemptedRef.current = true;
+      return;
+    }
+    if (shots.length === 0) return;
+    if (clipMigrationAttemptedRef.current) return;
+    clipMigrationAttemptedRef.current = true;
+
+    void (async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        const timings: FilmManualTimings = {
+          manualActTimings: manualActTimingsRef.current,
+          manualSequenceTimings: manualSequenceTimingsRef.current,
+          manualSceneTimings: manualSceneTimingsRef.current,
+          manualShotDurations: manualShotDurationsRef.current,
+        };
+        const effective = buildEffectiveFilmTimelineData(td, timings);
+        if (!effective) return;
+        const spans = computeFilmShotSpans(effective, duration, timings);
+        for (const s of spans) {
+          try {
+            await ClipsAPI.createClip(
+              {
+                projectId,
+                shotId: s.shotId,
+                sceneId: s.sceneId,
+                startSec: s.startSec,
+                endSec: s.endSec,
+                laneIndex: 0,
+                orderIndex: s.orderIndex,
+              },
+              token
+            );
+          } catch (e) {
+            console.warn('[VideoEditorTimeline] clip migration skipped for shot', s.shotId, e);
+          }
+        }
+        const list = await ClipsAPI.listClipsByProject(projectId, token);
+        setTimelineData((prev) => {
+          if (!prev || !('shots' in prev)) return prev;
+          return { ...(prev as TimelineData), clips: list };
+        });
+        onDataChange?.({ ...(td as TimelineData), clips: list });
+      } catch (e) {
+        console.error('[VideoEditorTimeline] clip migration failed', e);
+      }
+    })();
+  }, [isBookProject, timelineData, duration, projectId, getAccessToken, onDataChange]);
   
   // 🛠️ AUTO-FIX OVERLAPS: Repair all overlapping beats
   const fixOverlappingBeats = (beatsToFix: BeatsAPI.StoryBeat[]): BeatsAPI.StoryBeat[] => {
@@ -2953,7 +3485,9 @@ export function VideoEditorTimeline({
         endSec,
         x,
         width,
-        visible: endSec >= viewStartSec && startSec <= viewEndSec,
+        visible:
+          !isBookProject ||
+          (endSec >= viewStartSec && startSec <= viewEndSec),
       };
     });
     const elapsed = performance.now() - start;
@@ -2961,7 +3495,7 @@ export function VideoEditorTimeline({
       console.warn(`[VideoEditorTimeline] ⚠️ beatBlocks calculation took ${elapsed.toFixed(2)}ms (SLA: 5ms)`);
     }
     return result;
-  }, [beats, duration, viewStartSec, viewEndSec, pxPerSec]);
+  }, [beats, duration, viewStartSec, viewEndSec, pxPerSec, isBookProject]);
   
   /**
    * Delete a beat and apply ripple effect
@@ -3534,7 +4068,7 @@ export function VideoEditorTimeline({
           endSec,
           x,
           width,
-          visible: endSec >= viewStartSec && startSec <= viewEndSec,
+          visible: true,
           label:
             (shot as any).shotNumber ||
             (shot as any).shot_number ||
@@ -3551,23 +4085,53 @@ export function VideoEditorTimeline({
     sceneBlocks,
     viewStartSec,
     pxPerSec,
-    viewEndSec,
     manualShotDurations,
   ]);
+
+  const clipBlocks = useMemo(() => {
+    if (isBookProject || !effectiveTimelineData || !('clips' in effectiveTimelineData)) return [];
+    const raw = ((effectiveTimelineData as TimelineData).clips || []) as Clip[];
+    if (raw.length === 0) return [];
+    return raw.map((c) => {
+      const pv = nleClipPreview?.[c.id];
+      const startSec = pv?.startSec ?? c.startSec;
+      const endSec = pv?.endSec ?? c.endSec;
+      return {
+        ...c,
+        startSec,
+        endSec,
+        x: (startSec - viewStartSec) * pxPerSec,
+        width: Math.max(2, (endSec - startSec) * pxPerSec),
+      };
+    });
+  }, [isBookProject, effectiveTimelineData, viewStartSec, pxPerSec, nleClipPreview]);
 
   actBlocksRef.current = actBlocks;
   sequenceBlocksRef.current = sequenceBlocks;
   sceneBlocksRef.current = sceneBlocks;
   shotBlocksRef.current = shotBlocks;
+  clipBlocksRef.current = clipBlocks;
 
   const activePreviewShot = useMemo(() => {
     if (isBookProject || shotBlocks.length === 0) return null;
+    const td = effectiveTimelineData as TimelineData | null;
+    const clips = (td?.clips || []) as Clip[];
+    if (clips.length > 0 && clipBlocks.length > 0) {
+      const hit = clipBlocks.find(
+        (c: any) => currentTime >= c.startSec && currentTime <= c.endSec
+      );
+      if (hit) {
+        const shotId = (hit as any).shotId || (hit as any).shot_id;
+        const fromShot = shotBlocks.find((s: any) => s.id === shotId);
+        if (fromShot) return fromShot as any;
+      }
+    }
     const exact = shotBlocks.find((shot: any) => currentTime >= shot.startSec && currentTime <= shot.endSec);
     if (exact) return exact as any;
     const next = shotBlocks.find((shot: any) => shot.startSec >= currentTime);
     if (next) return next as any;
     return shotBlocks[shotBlocks.length - 1] as any;
-  }, [currentTime, isBookProject, shotBlocks]);
+  }, [currentTime, isBookProject, shotBlocks, effectiveTimelineData, clipBlocks]);
 
   const activePreviewImageUrl = useMemo(() => {
     const shot = activePreviewShot as any;
@@ -4098,7 +4662,7 @@ export function VideoEditorTimeline({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setZoomAroundCursor(Math.max(0, zoom - 0.1))}
+            onClick={() => setZoomAroundCursor(Math.max(0, zoom - 0.25))}
             className="p-1.5 rounded-full hover:bg-muted/50 transition-colors"
             title="Zoom out"
           >
@@ -4115,7 +4679,7 @@ export function VideoEditorTimeline({
             title={`${fitPxPerSec.toFixed(2)} - ${MAX_PX_PER_SEC} px/s`}
           />
           <button
-            onClick={() => setZoomAroundCursor(Math.min(1, zoom + 0.1))}
+            onClick={() => setZoomAroundCursor(Math.min(1, zoom + 0.25))}
             className="p-1.5 rounded-full hover:bg-muted/50 transition-colors"
             title="Zoom in"
           >
@@ -4295,6 +4859,25 @@ export function VideoEditorTimeline({
                   onMouseDown={(e) => handleResizeStart('shot', e)}
                 />
               </div>
+              {showEditorialClipTrack && (
+                <div
+                  className="border-b border-border px-1.5 flex items-center gap-1 bg-muted/20 relative"
+                  style={{ height: `${trackHeights.editorialClip}px` }}
+                  title="Editorial-Clips (NLE): gleiche Spur wie Shot/Musik — nur im Tab „Timeline“"
+                >
+                  <Clapperboard className="size-3 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
+                  <span className="text-[9px] text-foreground font-semibold leading-tight">Clip</span>
+                  <div
+                    className={cn(
+                      "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                      resizingTrack === 'editorialClip'
+                        ? 'border-b-4 border-primary'
+                        : 'hover:border-b-4 hover:border-primary'
+                    )}
+                    onMouseDown={(e) => handleResizeStart('editorialClip', e)}
+                  />
+                </div>
+              )}
               <div
                 className="border-b border-border px-2 flex items-center bg-card relative"
                 style={{ height: `${trackHeights.music}px` }}
@@ -4398,20 +4981,27 @@ export function VideoEditorTimeline({
                 .filter(beat => beat.visible)
                 .map((beat, index) => {
                   const displayText = getBlockText(beat.label || '', beat.width, 'beat', index);
-                  const beatColor = getBeatColorClasses(beat.color);
+                  const hasBeatColor = Boolean(beat.color);
+                  const trimGrab = getTrimGrabHandleStyles({
+                    preset: 'beat',
+                    baseColorHex: hasBeatColor ? beat.color : undefined,
+                  });
+                  const beatVisual = TIMELINE_TRACK_REGISTRY.beat;
                   return (
                     <div
                       key={beat.id}
                       data-beat-id={beat.id}
-                      className={cn(
-                        'absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity group',
-                        BEAT_STYLES.container,
-                        beatColor.container
-                      )}
+                      className={getTimelineTrackClipClasses('beat', {
+                        beatSkipFill: hasBeatColor,
+                      })}
                       style={{
                         left: `${beat.x}px`,
                         width: `${beat.width}px`,
-                        backgroundColor: beat.color || undefined,
+                        backgroundColor: hasBeatColor ? beat.color : undefined,
+                        ['--trim-cap' as string]: TRIM_END_CAP_WIDTH,
+                        ...(trimGrab.clipBorderColor
+                          ? { borderColor: trimGrab.clipBorderColor }
+                          : {}),
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -4419,24 +5009,26 @@ export function VideoEditorTimeline({
                       }}
                       title="Klicken zum Umbenennen"
                     >
-                      {/* Left Handle */}
                       <div
-                        className="absolute left-0 top-0 bottom-0 w-1.5 bg-purple-900/80 dark:bg-purple-600/80 cursor-ew-resize hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors rounded-l z-10"
+                        className={trimGrab.handleLeftClassName}
+                        style={trimGrab.leftStyle}
                         onPointerDown={(e) => handleTrimStart(beat.id, 'left', e)}
                         onClick={(e) => e.stopPropagation()}
                         title="Linken Rand ziehen"
                       />
                       
-                      {/* Center Content */}
-                      <div className="h-full flex items-center justify-center px-1 overflow-hidden gap-0.5">
+                      {/* pointer-events: z-10 unter Endkappen (z-45); horizontale Einrückung = Kappenbreite */}
+                      <div className="pointer-events-none h-full flex items-center justify-center px-[var(--trim-cap)] overflow-hidden gap-0.5 relative z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                'h-4 w-4 p-0 shrink-0',
-                                beatColor.text,
+                                'h-4 w-4 p-0 shrink-0 pointer-events-auto',
+                                hasBeatColor
+                                  ? beatVisual.textWithCustomColor
+                                  : beatVisual.textDefault,
                                 'hover:opacity-80'
                               )}
                               onClick={(e) => e.stopPropagation()}
@@ -4458,14 +5050,21 @@ export function VideoEditorTimeline({
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <span className={cn('text-[10px] truncate', BEAT_STYLES.text, beatColor.text)}>
+                        <span
+                          className={cn(
+                            'text-[10px] truncate pointer-events-auto',
+                            hasBeatColor
+                              ? beatVisual.textWithCustomColor
+                              : beatVisual.textDefault
+                          )}
+                        >
                           {displayText}
                         </span>
                       </div>
                       
-                      {/* Right Handle */}
                       <div
-                        className="absolute right-0 top-0 bottom-0 w-1.5 bg-purple-900/80 dark:bg-purple-600/80 cursor-ew-resize hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors rounded-r z-10"
+                        className={trimGrab.handleRightClassName}
+                        style={trimGrab.rightStyle}
                         onPointerDown={(e) => handleTrimStart(beat.id, 'right', e)}
                         onClick={(e) => e.stopPropagation()}
                         title="Rechten Rand ziehen"
@@ -4491,49 +5090,38 @@ export function VideoEditorTimeline({
                 .filter(act => act.visible)
                 .map((act, index) => {
                   const displayText = getBlockText(act.title || '', act.width, 'act', index);
-                  const actsOrdered = [...(timelineData?.acts || [])].sort(
-                    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
-                  );
-                  const actIdx = actsOrdered.findIndex((a: any) => a.id === act.id);
-                  const actFirst = actIdx <= 0;
-                  const actLast = actIdx < 0 || actIdx >= actsOrdered.length - 1;
                   return (
                     <div
                       key={act.id}
                       data-act-id={act.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-200 dark:border-blue-700 group"
+                      className={getTimelineTrackClipClasses('act')}
                       style={{
                         left: `${act.x}px`,
                         width: `${act.width}px`,
+                        ['--trim-cap' as string]: TRIM_END_CAP_WIDTH,
+                        ...(ACT_TRIM_GRAB_STYLES.clipBorderColor
+                          ? { borderColor: ACT_TRIM_GRAB_STYLES.clipBorderColor }
+                          : {}),
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                         startInlineTitleEdit('act', act.id, act.title);
                       }}
-                    >
-                      {!isBookProject && !actFirst && (
-                        <div
-                          className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-900/75 dark:bg-blue-500/80 cursor-ew-resize hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors rounded-l z-10"
-                          onPointerDown={(e) => handleTrimClipMouseDown('act', act.id, 'left', e)}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Linken Rand ziehen (Ripple)"
-                        />
-                      )}
-                      {!isBookProject && !actLast && (
-                        <div
-                          className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-900/75 dark:bg-blue-500/80 cursor-ew-resize hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors rounded-r z-10"
-                          onPointerDown={(e) => handleTrimClipMouseDown('act', act.id, 'right', e)}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Rechten Rand ziehen (Ripple)"
-                        />
-                      )}
-                      <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                      >
+                      <div
+                        className={ACT_TRIM_GRAB_STYLES.handleLeftClassName}
+                        style={ACT_TRIM_GRAB_STYLES.leftStyle}
+                        onPointerDown={(e) => handleTrimClipMouseDown('act', act.id, 'left', e)}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Linken Rand ziehen (Ripple)"
+                      />
+                      <div className="pointer-events-none h-full flex items-center justify-center px-[var(--trim-cap)] overflow-hidden relative z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-4 w-4 p-0 mr-1 shrink-0 text-blue-700 hover:text-blue-900"
+                              className="h-4 w-4 p-0 mr-1 shrink-0 text-blue-700 hover:text-blue-900 pointer-events-auto"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="size-3" />
@@ -4550,10 +5138,22 @@ export function VideoEditorTimeline({
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <span className="text-[10px] text-blue-900 dark:text-blue-100 font-medium truncate">
+                        <span
+                          className={cn(
+                            TIMELINE_TRACK_REGISTRY.act.textDefault,
+                            'truncate pointer-events-auto'
+                          )}
+                        >
                           {displayText}
                         </span>
                       </div>
+                      <div
+                        className={ACT_TRIM_GRAB_STYLES.handleRightClassName}
+                        style={ACT_TRIM_GRAB_STYLES.rightStyle}
+                        onPointerDown={(e) => handleTrimClipMouseDown('act', act.id, 'right', e)}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Rechten Rand ziehen (Ripple)"
+                      />
                     </div>
                   );
                 })}
@@ -4575,49 +5175,38 @@ export function VideoEditorTimeline({
                 .filter(seq => seq.visible)
                 .map((seq, index) => {
                   const displayText = getBlockText(seq.title || '', seq.width, 'chapter', index);
-                  const seqsOrdered = [...(timelineData?.sequences || [])]
-                    .filter((s: any) => s.actId === (seq as any).actId)
-                    .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-                  const seqIdx = seqsOrdered.findIndex((s: any) => s.id === seq.id);
-                  const seqFirst = seqIdx <= 0;
-                  const seqLast = seqIdx < 0 || seqIdx >= seqsOrdered.length - 1;
                   return (
                     <div
                       key={seq.id}
                       data-sequence-id={seq.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-80 transition-opacity bg-green-50 dark:bg-green-950/40 border-2 border-green-200 dark:border-green-700 group"
+                      className={getTimelineTrackClipClasses('sequence')}
                       style={{
                         left: `${seq.x}px`,
                         width: `${seq.width}px`,
+                        ['--trim-cap' as string]: TRIM_END_CAP_WIDTH,
+                        ...(SEQUENCE_TRIM_GRAB_STYLES.clipBorderColor
+                          ? { borderColor: SEQUENCE_TRIM_GRAB_STYLES.clipBorderColor }
+                          : {}),
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                         startInlineTitleEdit('sequence', seq.id, seq.title);
                       }}
                     >
-                      {!isBookProject && !seqFirst && (
-                        <div
-                          className="absolute left-0 top-0 bottom-0 w-1.5 bg-green-900/75 dark:bg-green-500/80 cursor-ew-resize hover:bg-green-700 dark:hover:bg-green-400 transition-colors rounded-l z-10"
-                          onPointerDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'left', e)}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Linken Rand ziehen (Ripple)"
-                        />
-                      )}
-                      {!isBookProject && !seqLast && (
-                        <div
-                          className="absolute right-0 top-0 bottom-0 w-1.5 bg-green-900/75 dark:bg-green-500/80 cursor-ew-resize hover:bg-green-700 dark:hover:bg-green-400 transition-colors rounded-r z-10"
-                          onPointerDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'right', e)}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Rechten Rand ziehen (Ripple)"
-                        />
-                      )}
-                      <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                      <div
+                        className={SEQUENCE_TRIM_GRAB_STYLES.handleLeftClassName}
+                        style={SEQUENCE_TRIM_GRAB_STYLES.leftStyle}
+                        onPointerDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'left', e)}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Linken Rand ziehen (Ripple)"
+                      />
+                      <div className="pointer-events-none h-full flex items-center justify-center px-[var(--trim-cap)] overflow-hidden relative z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-4 w-4 p-0 mr-1 shrink-0 text-green-700 hover:text-green-900"
+                              className="h-4 w-4 p-0 mr-1 shrink-0 text-green-700 hover:text-green-900 pointer-events-auto"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreVertical className="size-3" />
@@ -4634,10 +5223,22 @@ export function VideoEditorTimeline({
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <span className="text-[10px] text-green-900 dark:text-green-100 font-medium truncate">
+                        <span
+                          className={cn(
+                            TIMELINE_TRACK_REGISTRY.sequence.textDefault,
+                            'truncate pointer-events-auto'
+                          )}
+                        >
                           {displayText}
                         </span>
                       </div>
+                      <div
+                        className={SEQUENCE_TRIM_GRAB_STYLES.handleRightClassName}
+                        style={SEQUENCE_TRIM_GRAB_STYLES.rightStyle}
+                        onPointerDown={(e) => handleTrimClipMouseDown('sequence', seq.id, 'right', e)}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Rechten Rand ziehen (Ripple)"
+                      />
                     </div>
                   );
                 })}
@@ -4662,21 +5263,18 @@ export function VideoEditorTimeline({
                   const showFullContent = scene.width >= 120;
                   const showAbbreviatedTitle = scene.width >= 60 && scene.width < 120;
                   const showMinimal = scene.width < 60;
-                  const scenesOrdered = [...(timelineData?.scenes || [])]
-                    .filter((s: any) => s.sequenceId === (scene as any).sequenceId)
-                    .sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-                  const scIdx = scenesOrdered.findIndex((s: any) => s.id === scene.id);
-                  const scFirst = scIdx <= 0;
-                  const scLast = scIdx < 0 || scIdx >= scenesOrdered.length - 1;
-                  
                   return (
                     <div
                       key={scene.id}
                       data-scene-id={scene.id}
-                      className="absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity bg-pink-50 border-2 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden group"
+                      className={getTimelineTrackClipClasses('scene')}
                       style={{
                         left: `${scene.x}px`,
                         width: `${scene.width}px`,
+                        ['--trim-cap' as string]: TRIM_END_CAP_WIDTH,
+                        ...(SCENE_TRIM_GRAB_STYLES.clipBorderColor
+                          ? { borderColor: SCENE_TRIM_GRAB_STYLES.clipBorderColor }
+                          : {}),
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -4697,25 +5295,15 @@ export function VideoEditorTimeline({
                         setShowContentModal(true);
                       }}
                     >
-                      {!isBookProject && !scFirst && (
-                        <div
-                          className="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-900/75 dark:bg-pink-500/80 cursor-ew-resize hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors rounded-l z-10"
-                          onPointerDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'left', e)}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Linken Rand ziehen (Ripple)"
-                        />
-                      )}
-                      {!isBookProject && !scLast && (
-                        <div
-                          className="absolute right-0 top-0 bottom-0 w-1.5 bg-pink-900/75 dark:bg-pink-500/80 cursor-ew-resize hover:bg-pink-700 dark:hover:bg-pink-400 transition-colors rounded-r z-10"
-                          onPointerDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'right', e)}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Rechten Rand ziehen (Ripple)"
-                        />
-                      )}
                       {showFullContent && (
-                        <div className="h-full flex flex-col px-2 py-1 overflow-hidden">
-                          <div className="flex items-center gap-1 mb-0.5">
+                        <div
+                          className="pointer-events-none h-full flex flex-col py-1 min-h-0 overflow-hidden rounded-[inherit] relative z-0"
+                          style={{
+                            paddingLeft: 'max(0.5rem, var(--trim-cap))',
+                            paddingRight: 'max(0.5rem, var(--trim-cap))',
+                          }}
+                        >
+                          <div className="flex items-center gap-1 mb-0.5 pointer-events-auto">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -4738,11 +5326,11 @@ export function VideoEditorTimeline({
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300">
+                            <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300 pointer-events-auto">
                             {scene.title}
                           </span>
                           </div>
-                          <div className="flex-1 overflow-hidden text-[8px] text-pink-800 dark:text-pink-200/90">
+                          <div className="flex-1 overflow-hidden text-[8px] text-pink-800 dark:text-pink-200/90 pointer-events-auto">
                             {scene.content && typeof scene.content === 'object' ? (
                               <ReadonlyTiptapView content={scene.content} />
                             ) : (
@@ -4752,13 +5340,13 @@ export function VideoEditorTimeline({
                         </div>
                       )}
                       {showAbbreviatedTitle && (
-                        <div className="h-full flex items-center justify-center px-1 overflow-hidden">
+                        <div className="pointer-events-none h-full flex items-center justify-center px-[max(0.25rem,var(--trim-cap))] overflow-hidden relative z-0">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-4 w-4 p-0 mr-1 shrink-0 text-pink-700 hover:text-pink-900"
+                                className="h-4 w-4 p-0 mr-1 shrink-0 text-pink-700 hover:text-pink-900 pointer-events-auto"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreVertical className="size-3" />
@@ -4775,19 +5363,19 @@ export function VideoEditorTimeline({
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300">
+                          <span className="text-[9px] font-medium truncate text-[rgb(230,0,118)] dark:text-pink-300 pointer-events-auto">
                             {displayText}
                           </span>
                         </div>
                       )}
                       {showMinimal && (
-                        <div className="h-full flex items-center justify-center overflow-hidden">
+                        <div className="pointer-events-none h-full flex items-center justify-center px-[max(0.15rem,var(--trim-cap))] overflow-hidden relative z-0">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-4 w-4 p-0 mr-1 shrink-0 text-pink-700 hover:text-pink-900"
+                                className="h-4 w-4 p-0 mr-1 shrink-0 text-pink-700 hover:text-pink-900 pointer-events-auto"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreVertical className="size-3" />
@@ -4804,11 +5392,26 @@ export function VideoEditorTimeline({
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <span className="text-[9px] font-bold text-[rgb(230,0,118)] dark:text-pink-300">
+                          <span className="text-[9px] font-bold text-[rgb(230,0,118)] dark:text-pink-300 pointer-events-auto">
                             {displayText}
                           </span>
                         </div>
                       )}
+                      {/* Nach dem Inhalt: Griffe liegen garantiert oben (TipTap/Preview hat z-eigene Layer). */}
+                      <div
+                        className={SCENE_TRIM_GRAB_STYLES.handleLeftClassName}
+                        style={SCENE_TRIM_GRAB_STYLES.leftStyle}
+                        onPointerDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'left', e)}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Linken Rand ziehen (Ripple)"
+                      />
+                      <div
+                        className={SCENE_TRIM_GRAB_STYLES.handleRightClassName}
+                        style={SCENE_TRIM_GRAB_STYLES.rightStyle}
+                        onPointerDown={(e) => handleTrimClipMouseDown('scene', scene.id, 'right', e)}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Rechten Rand ziehen (Ripple)"
+                      />
                     </div>
                   );
                 })}
@@ -4824,40 +5427,31 @@ export function VideoEditorTimeline({
             {!isBookProject && (
               <>
               <div
+                ref={shotTrackContainerRef as RefObject<HTMLDivElement>}
                 className="relative border-b border-border bg-muted/20"
                 style={{ height: `${trackHeights.shot}px` }}
               >
-                {shotBlocks
-                  .filter(shot => shot.visible)
-                  .map((shot, index) => {
+                {shotBlocks.map((shot, index) => {
                     const displayText = getBlockText(shot.label || '', shot.width, 'shot', index);
                     const imgUrl = shotBlockPreviewUrl(shot as any);
                     const narrow = shot.width < 44;
                     const fullBleedImage = Boolean(imgUrl && narrow);
                     const showSideThumb = Boolean(imgUrl && !narrow);
                     const thumbW = Math.min(48, Math.max(26, Math.round(shot.width * 0.28)));
-                    const sid = (shot as any).sceneId || (shot as any).scene_id;
-                    const sceneShots = (timelineData as TimelineData)?.shots?.filter(
-                      (sh: any) => (sh.sceneId || sh.scene_id) === sid
-                    ) ?? [];
-                    const shotsOrdered = [...sceneShots].sort(
-                      (a: any, b: any) => (a.orderIndex ?? a.order_index ?? 0) - (b.orderIndex ?? b.order_index ?? 0)
-                    );
-                    const shIdx = shotsOrdered.findIndex((s: any) => s.id === shot.id);
-                    const shFirst = shIdx <= 0;
-                    const shLast = shIdx < 0 || shIdx >= shotsOrdered.length - 1;
-
                     return (
                       <div
                         key={shot.id}
-                        className={cn(
-                          'absolute top-1 bottom-1 rounded cursor-pointer hover:opacity-90 transition-opacity border-2 border-yellow-400 dark:border-yellow-600 overflow-hidden group',
-                          fullBleedImage && 'bg-cover bg-center',
-                          !fullBleedImage && 'bg-yellow-50 dark:bg-yellow-900/20'
-                        )}
+                        data-shot-id={shot.id}
+                        className={getTimelineTrackClipClasses('shot', {
+                          shotFullBleedImage: fullBleedImage,
+                        })}
                         style={{
                           left: `${shot.x}px`,
                           width: `${shot.width}px`,
+                          ['--trim-cap' as string]: TRIM_END_CAP_WIDTH,
+                          ...(SHOT_TRIM_GRAB_STYLES.clipBorderColor
+                            ? { borderColor: SHOT_TRIM_GRAB_STYLES.clipBorderColor }
+                            : {}),
                           ...(fullBleedImage ? { backgroundImage: `url(${imgUrl})` } : {}),
                         }}
                         onClick={(e) => {
@@ -4865,31 +5459,29 @@ export function VideoEditorTimeline({
                           startInlineTitleEdit('shot', shot.id, shot.label);
                         }}
                       >
-                        {!shFirst && (
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-900/80 dark:bg-yellow-500/80 cursor-ew-resize hover:bg-yellow-700 dark:hover:bg-yellow-400 transition-colors rounded-l z-10"
-                            onPointerDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'left', e)}
-                            onClick={(e) => e.stopPropagation()}
-                            title="Shot-Timing links (Ripple)"
-                          />
-                        )}
-                        {!shLast && (
-                          <div
-                            className="absolute right-0 top-0 bottom-0 w-1.5 bg-yellow-900/80 dark:bg-yellow-500/80 cursor-ew-resize hover:bg-yellow-700 dark:hover:bg-yellow-400 transition-colors rounded-r z-10"
-                            onPointerDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'right', e)}
-                            onClick={(e) => e.stopPropagation()}
-                            title="Shot-Timing rechts (Ripple)"
-                          />
-                        )}
+                        <div
+                          className={SHOT_TRIM_GRAB_STYLES.handleLeftClassName}
+                          style={SHOT_TRIM_GRAB_STYLES.leftStyle}
+                          onPointerDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'left', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Shot-Timing links (Ripple)"
+                        />
+                        <div
+                          className={SHOT_TRIM_GRAB_STYLES.handleRightClassName}
+                          style={SHOT_TRIM_GRAB_STYLES.rightStyle}
+                          onPointerDown={(e) => handleTrimClipMouseDown('shot', shot.id, 'right', e)}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Shot-Timing rechts (Ripple)"
+                        />
                         <div
                           className={cn(
-                            'h-full flex items-center justify-center gap-0.5 px-1 min-w-0 overflow-hidden',
+                            'pointer-events-none h-full flex items-center justify-center gap-0.5 px-[var(--trim-cap)] min-w-0 overflow-hidden relative z-10',
                             fullBleedImage && 'bg-black/40'
                           )}
                         >
                           {showSideThumb && (
                             <div
-                              className="shrink-0 rounded-sm overflow-hidden border border-yellow-700/40 bg-muted my-0.5"
+                              className="shrink-0 rounded-sm overflow-hidden border border-yellow-700/40 bg-muted my-0.5 pointer-events-auto"
                               style={{
                                 width: thumbW,
                                 height: 'calc(100% - 6px)',
@@ -4902,7 +5494,7 @@ export function VideoEditorTimeline({
                           )}
                           {!imgUrl && shot.width >= 26 && (
                             <div
-                              className="shrink-0 flex items-center justify-center rounded-sm border border-dashed border-yellow-600/45 bg-yellow-100/40 dark:bg-yellow-950/40 my-0.5"
+                              className="shrink-0 flex items-center justify-center rounded-sm border border-dashed border-yellow-600/45 bg-yellow-100/40 dark:bg-yellow-950/40 my-0.5 pointer-events-auto"
                               style={{ width: Math.min(28, shot.width - 8), height: 'calc(100% - 6px)' }}
                               aria-hidden
                             >
@@ -4915,7 +5507,7 @@ export function VideoEditorTimeline({
                                 variant="ghost"
                                 size="icon"
                                 className={cn(
-                                  'h-4 w-4 p-0 shrink-0',
+                                  'h-4 w-4 p-0 shrink-0 pointer-events-auto',
                                   fullBleedImage
                                     ? 'text-yellow-50 hover:text-white hover:bg-white/10'
                                     : 'mr-0.5 text-yellow-700 hover:text-yellow-900'
@@ -4949,7 +5541,7 @@ export function VideoEditorTimeline({
                           </DropdownMenu>
                           <span
                             className={cn(
-                              'text-[10px] font-medium truncate min-w-0',
+                              'text-[10px] font-medium truncate min-w-0 pointer-events-auto',
                               fullBleedImage
                                 ? 'text-yellow-50 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]'
                                 : 'text-yellow-900 dark:text-yellow-100'
@@ -4968,14 +5560,78 @@ export function VideoEditorTimeline({
                 />
               </div>
 
+              {/* Editorial timeline clips (NLE) — persisted `clips`; gray track under shots */}
+              {showEditorialClipTrack && (
+                <div
+                  className="relative border-b border-border bg-muted/20 ring-1 ring-inset ring-zinc-500/15 dark:ring-zinc-400/20"
+                  style={{ height: `${trackHeights.editorialClip}px` }}
+                >
+                  {clipBlocks.map((c: any, idx: number) => (
+                    <div
+                      key={c.id}
+                      className="absolute top-0.5 bottom-0.5 rounded border-2 border-zinc-400/80 dark:border-zinc-500 bg-zinc-200/90 dark:bg-zinc-800/85 overflow-hidden flex items-stretch"
+                      style={{ left: `${c.x}px`, width: `${Math.max(2, c.width)}px` }}
+                      title="Editorial Clip (Trim)"
+                    >
+                      <div
+                        className="w-1 shrink-0 bg-zinc-500 hover:bg-zinc-400 cursor-ew-resize z-10"
+                        onPointerDown={(e) =>
+                          handleNleClipPointerDown(
+                            {
+                              id: c.id,
+                              sceneId: c.sceneId,
+                              startSec: c.startSec,
+                              endSec: c.endSec,
+                            },
+                            'left',
+                            e
+                          )
+                        }
+                      />
+                      <div className="flex-1 min-w-0 flex items-center justify-center px-1 pointer-events-none">
+                        <span className="text-[9px] text-zinc-800 dark:text-zinc-100 truncate font-medium">
+                          {getBlockText('Clip', c.width, 'shot', idx)}
+                        </span>
+                      </div>
+                      <div
+                        className="w-1 shrink-0 bg-zinc-500 hover:bg-zinc-400 cursor-ew-resize z-10"
+                        onPointerDown={(e) =>
+                          handleNleClipPointerDown(
+                            {
+                              id: c.id,
+                              sceneId: c.sceneId,
+                              startSec: c.startSec,
+                              endSec: c.endSec,
+                            },
+                            'right',
+                            e
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                  {clipBlocks.length === 0 && (
+                    <div className="absolute inset-0 flex items-center px-2 pointer-events-none">
+                      <span className="text-[9px] text-muted-foreground">
+                        {((timelineData as TimelineData)?.shots?.length ?? 0) === 0
+                          ? 'Zuerst Shots anlegen (Struktur oder + Add Item); Clips folgen automatisch.'
+                          : 'Editorial Clips (erscheinen nach Migration oder Sync mit scriptony-clips)'}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-20"
+                    style={{ transform: `translateX(${(currentTime - viewStartSec) * pxPerSec}px)` }}
+                  />
+                </div>
+              )}
+
               {/* Musik: eine Zelle pro Shot — gleiche x/Breite wie Shot (mit Trim mitbewegt) */}
               <div
                 className="relative border-b border-border bg-muted/15"
                 style={{ height: `${trackHeights.music}px` }}
               >
-                {shotBlocks
-                  .filter((s) => s.visible)
-                  .map((shot) => {
+                {shotBlocks.map((shot) => {
                     const full = (timelineData as TimelineData)?.shots?.find((sh: any) => sh.id === shot.id);
                     const files = (full?.audioFiles || []).filter((a) => a.type === 'music');
                     const segments = layoutShotAudioSegments(files);
@@ -5035,9 +5691,7 @@ export function VideoEditorTimeline({
                 className="relative border-b border-border bg-muted/15"
                 style={{ height: `${trackHeights.sfx}px` }}
               >
-                {shotBlocks
-                  .filter((s) => s.visible)
-                  .map((shot) => {
+                {shotBlocks.map((shot) => {
                     const full = (timelineData as TimelineData)?.shots?.find((sh: any) => sh.id === shot.id);
                     const files = (full?.audioFiles || []).filter((a) => a.type === 'sfx');
                     const segments = layoutShotAudioSegments(files);
@@ -5322,7 +5976,8 @@ export function VideoEditorTimeline({
               console.error('[VideoEditorTimeline] ❌ Error saving scene content:', error);
             }
           }}
-          title={editingSceneForModal.title}
+          title={editingSceneForModal.title ?? 'Inhalt'}
+          characters={[] as Character[]}
         />
       )}
 

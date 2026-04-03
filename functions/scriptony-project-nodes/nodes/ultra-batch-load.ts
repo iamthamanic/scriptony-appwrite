@@ -13,6 +13,7 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../_shared/http";
+import { Query } from "node-appwrite";
 import {
   getAllProjectNodes,
   getCharactersByProject,
@@ -21,6 +22,8 @@ import {
   mapNode,
   mapShot,
 } from "../../_shared/timeline";
+import { C, listDocumentsFull } from "../../_shared/appwrite-db";
+import { mapClip } from "../../_shared/clips-map";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -44,10 +47,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const includeShots = (getQuery(req, "include_shots") || "true") !== "false";
     const excludeContent = (getQuery(req, "exclude_content") || "false") === "true";
 
-    const [nodes, characters, shots] = await Promise.all([
+    const [nodes, characters, shots, clipRows] = await Promise.all([
       getAllProjectNodes(projectId),
       getCharactersByProject(projectId),
       includeShots ? getShots({ projectId }) : Promise.resolve([]),
+      listDocumentsFull(C.clips, [Query.equal("project_id", projectId)]),
     ]);
 
     const mappedNodes = nodes.map(mapNode).map((node) => {
@@ -71,6 +75,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const scenes = mappedNodes.filter((node) => node.level === 3);
     const mappedCharacters = characters.map(mapCharacter);
     const mappedShots = shots.map(mapShot);
+    const mappedClips = clipRows.map(mapClip);
 
     sendJson(res, 200, {
       timeline: {
@@ -80,6 +85,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       },
       characters: mappedCharacters,
       shots: mappedShots,
+      clips: mappedClips,
       stats: {
         totalNodes: mappedNodes.length,
         acts: acts.length,
@@ -87,6 +93,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         scenes: scenes.length,
         characters: mappedCharacters.length,
         shots: mappedShots.length,
+        clips: mappedClips.length,
       },
     });
   } catch (error) {

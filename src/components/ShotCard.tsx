@@ -170,7 +170,11 @@ export const ShotCard = memo(function ShotCard({
   
   // Unified edit state like Scene
   const [isEditing, setIsEditing] = useState(false);
-  const [editValues, setEditValues] = useState({ shotNumber: String(shot.shotNumber), notes: shot.notes || '' });
+  const [editValues, setEditValues] = useState({
+    shotNumber: String(shot.shotNumber),
+    notes: shot.notes || '',
+    description: shot.description || '',
+  });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const showImageUploadBusy = isUploadingImage || imageUploadWaiting;
 
@@ -210,9 +214,9 @@ export const ShotCard = memo(function ShotCard({
   // Save edited values
   const handleSaveEdit = () => {
     const numValue = parseInt(editValues.shotNumber);
-    onUpdate(shot.id, { 
-      shotNumber: isNaN(numValue) ? editValues.shotNumber : numValue,
-      description: editValues.description 
+    onUpdate(shot.id, {
+      shotNumber: isNaN(numValue) ? editValues.shotNumber : String(numValue),
+      description: editValues.description,
     });
     setIsEditing(false);
   };
@@ -220,7 +224,12 @@ export const ShotCard = memo(function ShotCard({
   // Audio upload state
   const [pendingAudioFile, setPendingAudioFile] = useState<{ file: File; type: 'music' | 'sfx'; url?: string } | null>(null);
   const [showAudioLabelDialog, setShowAudioLabelDialog] = useState(false);
-  const [pendingAudioTrimming, setPendingAudioTrimming] = useState<{ startTime?: number; endTime?: number; fadeIn?: number; fadeOut?: number } | null>(null);
+  const [pendingAudioTrimming, setPendingAudioTrimming] = useState<{
+    startTime?: number;
+    endTime?: number;
+    fadeIn?: number;
+    fadeOut?: number;
+  } | null>(null);
   
   // Audio edit state
   const [editingAudio, setEditingAudio] = useState<ShotAudio | null>(null);
@@ -448,7 +457,10 @@ export const ShotCard = memo(function ShotCard({
     e.target.value = '';
   };
 
-  const handleAudioLabelConfirm = async (label: string, trimming?: { startTime?: number; endTime?: number }) => {
+  const handleAudioLabelConfirm = async (
+    label: string,
+    trimming?: { startTime?: number; endTime?: number; fadeIn?: number; fadeOut?: number }
+  ) => {
     if (pendingAudioFile) {
       // Upload with optional trimming and fade
       const finalTrimming = trimming || pendingAudioTrimming;
@@ -509,7 +521,7 @@ export const ShotCard = memo(function ShotCard({
       type: pendingAudioFile.type,
       startTime: pendingAudioTrimming?.startTime,
       endTime: pendingAudioTrimming?.endTime,
-    } as ShotAudio);
+    } as unknown as ShotAudio);
     setShowAudioEditDialog(true);
   };
 
@@ -668,7 +680,7 @@ export const ShotCard = memo(function ShotCard({
                 type="text"
                 value={editValues.shotNumber}
                 onChange={(e) => setEditValues(prev => ({ ...prev, shotNumber: e.target.value }))}
-                className="h-6 flex-1 bg-white text-xs border-yellow-400 dark:border-yellow-600 focus:border-yellow-500 dark:focus:border-yellow-500 focus-visible:ring-yellow-400/20"
+                className="h-6 flex-1 bg-input-background text-foreground text-xs border-yellow-400 dark:border-yellow-600 focus:border-yellow-500 dark:focus:border-yellow-500 focus-visible:ring-yellow-400/20"
                 placeholder="Shot Number"
               />
               <Button
@@ -749,7 +761,11 @@ export const ShotCard = memo(function ShotCard({
                   <DropdownMenuItem 
                     onClick={() => {
                       setIsEditing(true);
-                      setEditValues({ shotNumber: String(shot.shotNumber), notes: shot.notes || '' });
+                      setEditValues({
+                        shotNumber: String(shot.shotNumber),
+                        notes: shot.notes || '',
+                        description: shot.description || '',
+                      });
                     }}
                   >
                     <Edit className="size-3 mr-2" />
@@ -781,7 +797,7 @@ export const ShotCard = memo(function ShotCard({
               <Textarea
                 value={editValues.description}
                 onChange={(e) => setEditValues(prev => ({ ...prev, description: e.target.value }))}
-                className="bg-white text-xs border-yellow-400 dark:border-yellow-600 focus:border-yellow-500 dark:focus:border-yellow-500 focus-visible:ring-yellow-400/20"
+                className="bg-input-background text-foreground text-xs border-yellow-400 dark:border-yellow-600 focus:border-yellow-500 dark:focus:border-yellow-500 focus-visible:ring-yellow-400/20"
                 placeholder="Beschreibung"
                 rows={2}
               />
@@ -789,7 +805,11 @@ export const ShotCard = memo(function ShotCard({
               <div
                 onClick={() => {
                   setIsEditing(true);
-                  setEditValues({ shotNumber: String(shot.shotNumber), description: shot.description || '' });
+                  setEditValues({
+                    shotNumber: String(shot.shotNumber),
+                    notes: typeof shot.notes === "string" ? shot.notes : "",
+                    description: shot.description || "",
+                  });
                 }}
                 className="text-xs text-[rgb(208,135,0)] cursor-pointer hover:text-foreground transition-colors min-h-[1.5rem] flex items-center"
               >
@@ -925,7 +945,7 @@ export const ShotCard = memo(function ShotCard({
                 onValueChange={(value) => onUpdate(shot.id, { cameraAngle: value })}
               >
                 <SelectTrigger 
-                  className="border border-yellow-400 bg-white/70 dark:bg-slate-800/70 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
+                  className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-800/85 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
                 >
                   <SelectValue placeholder="Front" className="truncate" />
                 </SelectTrigger>
@@ -945,7 +965,7 @@ export const ShotCard = memo(function ShotCard({
                 onValueChange={(value) => onUpdate(shot.id, { framing: value })}
               >
                 <SelectTrigger 
-                  className="border border-yellow-400 bg-white/70 dark:bg-slate-800/70 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
+                  className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-800/85 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
                 >
                   <SelectValue placeholder="MS Halbnah" className="truncate" />
                 </SelectTrigger>
@@ -965,7 +985,7 @@ export const ShotCard = memo(function ShotCard({
                 onValueChange={(value) => onUpdate(shot.id, { cameraMovement: value })}
               >
                 <SelectTrigger 
-                  className="border border-yellow-400 bg-white/70 dark:bg-slate-800/70 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
+                  className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-800/85 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
                 >
                   <SelectValue placeholder="Static" className="truncate" />
                 </SelectTrigger>
@@ -985,7 +1005,7 @@ export const ShotCard = memo(function ShotCard({
                 onValueChange={(value) => onUpdate(shot.id, { lens: value })}
               >
                 <SelectTrigger 
-                  className="border border-yellow-400 bg-white/70 dark:bg-slate-800/70 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
+                  className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-800/85 !h-[20px] text-[9px] rounded-[5px] !px-1.5 !py-0 !min-h-0 min-w-0 w-full"
                 >
                   <SelectValue placeholder="35mm" className="truncate" />
                 </SelectTrigger>
@@ -1009,9 +1029,11 @@ export const ShotCard = memo(function ShotCard({
                     value={shot.shotlengthMinutes || ''}
                     onChange={(e) => {
                       const val = e.target.value;
-                      onUpdate(shot.id, { shotlengthMinutes: val === '' ? null : parseInt(val) });
+                      onUpdate(shot.id, {
+                        shotlengthMinutes: val === "" ? undefined : parseInt(val, 10),
+                      });
                     }}
-                    className="border border-yellow-400 bg-white/70 h-[20px] text-[9px] rounded-[5px] flex-1 px-1.5"
+                    className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-800/90 h-[20px] text-[9px] rounded-[5px] flex-1 px-1.5"
                     placeholder="00"
                   />
                   <span className="text-[9px] text-neutral-400 whitespace-nowrap">Min</span>
@@ -1024,9 +1046,11 @@ export const ShotCard = memo(function ShotCard({
                     value={shot.shotlengthSeconds || ''}
                     onChange={(e) => {
                       const val = e.target.value;
-                      onUpdate(shot.id, { shotlengthSeconds: val === '' ? null : parseInt(val) });
+                      onUpdate(shot.id, {
+                        shotlengthSeconds: val === "" ? undefined : parseInt(val, 10),
+                      });
                     }}
-                    className="border border-yellow-400 bg-white/70 h-[20px] text-[9px] rounded-[5px] flex-1 px-1.5"
+                    className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-800/90 h-[20px] text-[9px] rounded-[5px] flex-1 px-1.5"
                     placeholder="00"
                   />
                   <span className="text-[9px] text-neutral-400 whitespace-nowrap">Sec</span>
@@ -1036,7 +1060,7 @@ export const ShotCard = memo(function ShotCard({
               {/* Audio - Musik */}
               <label className="text-neutral-400 text-[10px] leading-[20px] whitespace-nowrap overflow-hidden text-ellipsis">Musik</label>
               <div className="flex gap-1 items-start">
-                <div className="flex-1 border border-yellow-400 bg-white/70 dark:bg-slate-800/70 rounded-[5px] min-h-[20px] max-h-[80px] overflow-y-auto px-1.5 py-1 text-[9px] text-gray-500">
+                <div className="flex-1 border border-yellow-400 bg-input-background dark:bg-slate-800/85 rounded-[5px] min-h-[20px] max-h-[80px] overflow-y-auto px-1.5 py-1 text-[9px] text-muted-foreground">
                   {shot.audioFiles?.filter(a => a.type === 'music').length === 0 ? (
                     <span className="opacity-50">Keine Datei</span>
                   ) : (
@@ -1057,7 +1081,7 @@ export const ShotCard = memo(function ShotCard({
                   )}
                 </div>
                 <label 
-                  className="border border-yellow-400 bg-white/70 dark:bg-slate-800/70 rounded-[5px] h-[20px] w-[28px] flex items-center justify-center cursor-pointer hover:opacity-70 flex-shrink-0"
+                  className="border border-yellow-400 bg-input-background dark:bg-slate-800/85 rounded-[5px] h-[20px] w-[28px] flex items-center justify-center cursor-pointer hover:opacity-70 flex-shrink-0"
                   title="Upload Music"
                 >
                   <Plus className="w-3.5 h-3.5 text-gray-500" />
@@ -1073,7 +1097,7 @@ export const ShotCard = memo(function ShotCard({
               {/* Audio - SFX */}
               <label className="text-neutral-400 text-[10px] leading-[20px] whitespace-nowrap overflow-hidden text-ellipsis">SFX</label>
               <div className="flex gap-1 items-start">
-                <div className="flex-1 border border-yellow-400 bg-white/70 dark:bg-slate-800/70 rounded-[5px] min-h-[20px] max-h-[80px] overflow-y-auto px-1.5 py-1 text-[9px] text-gray-500">
+                <div className="flex-1 border border-yellow-400 bg-input-background dark:bg-slate-800/85 rounded-[5px] min-h-[20px] max-h-[80px] overflow-y-auto px-1.5 py-1 text-[9px] text-muted-foreground">
                   {shot.audioFiles?.filter(a => a.type === 'sfx').length === 0 ? (
                     <span className="opacity-50">Keine Datei</span>
                   ) : (
@@ -1094,7 +1118,7 @@ export const ShotCard = memo(function ShotCard({
                   )}
                 </div>
                 <label 
-                  className="border border-yellow-400 bg-white/70 dark:bg-slate-800/70 rounded-[5px] h-[20px] w-[28px] flex items-center justify-center cursor-pointer hover:opacity-70 flex-shrink-0"
+                  className="border border-yellow-400 bg-input-background dark:bg-slate-800/85 rounded-[5px] h-[20px] w-[28px] flex items-center justify-center cursor-pointer hover:opacity-70 flex-shrink-0"
                   title="Upload SFX"
                 >
                   <Plus className="w-3.5 h-3.5 text-gray-500" />
@@ -1140,7 +1164,7 @@ export const ShotCard = memo(function ShotCard({
                         </Button>
                       </div>
                       <div 
-                        className="border border-yellow-400 bg-white/70 rounded-[5px] h-[80px] text-[13px] p-2 cursor-pointer overflow-y-auto"
+                        className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-900/85 rounded-[5px] h-[80px] text-[13px] p-2 cursor-pointer overflow-y-auto"
                         onClick={() => setShowDialogModal(true)}
                       >
                         {dialogContent?.content?.[0]?.content?.length > 0 ? (
@@ -1171,7 +1195,7 @@ export const ShotCard = memo(function ShotCard({
                         </Button>
                       </div>
                       <div 
-                        className="border border-yellow-400 bg-white/70 rounded-[5px] h-[80px] text-[13px] p-2 cursor-pointer overflow-y-auto"
+                        className="border border-yellow-400 bg-input-background text-foreground dark:bg-slate-900/85 rounded-[5px] h-[80px] text-[13px] p-2 cursor-pointer overflow-y-auto"
                         onClick={() => setShowNotesModal(true)}
                       >
                         {notesContent?.content?.[0]?.content?.length > 0 ? (

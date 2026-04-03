@@ -35,6 +35,8 @@ export interface BeatCardData {
   toSequence?: string;
   toScene?: string;
   toShot?: string;
+  /** Nested beat line items (templates / structure beats). */
+  items?: unknown[];
 }
 
 // Timeline data structure for dropdowns

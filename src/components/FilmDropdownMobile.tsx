@@ -26,7 +26,6 @@ import {
 import { ShotCard } from './ShotCard';
 import { TimelineNodeStatsDialog } from './TimelineNodeStatsDialog';
 import type { Act, Sequence, Scene, Shot, Character } from '../lib/types';
-import { toast } from 'sonner';
 
 interface FilmDropdownMobileProps {
   acts: Act[];
@@ -47,6 +46,28 @@ interface FilmDropdownMobileProps {
   onDeleteScene: (sceneId: string) => void;
   onDeleteShot: (shotId: string) => void;
   onDuplicateShot: (shotId: string) => void;
+  onShotImageUpload: (shotId: string, file: File) => Promise<void>;
+  onShotAudioUpload: (
+    shotId: string,
+    file: File,
+    type: 'music' | 'sfx',
+    label?: string,
+    startTime?: number,
+    endTime?: number,
+    fadeIn?: number,
+    fadeOut?: number
+  ) => Promise<void>;
+  onShotAudioDelete: (audioId: string) => Promise<void>;
+  onShotAudioUpdate: (audioId: string, updates: {
+    label?: string;
+    startTime?: number;
+    endTime?: number;
+    fadeIn?: number;
+    fadeOut?: number;
+  }) => Promise<void>;
+  onShotCharacterAdd: (shotId: string, characterId: string) => Promise<void>;
+  onShotCharacterRemove: (shotId: string, characterId: string) => Promise<void>;
+  onShotReorder: (draggedId: string, targetId: string) => void;
   projectId: string;
   projectType?: string;
 }
@@ -70,6 +91,13 @@ export function FilmDropdownMobile({
   onDeleteScene,
   onDeleteShot,
   onDuplicateShot,
+  onShotImageUpload,
+  onShotAudioUpload,
+  onShotAudioDelete,
+  onShotAudioUpdate,
+  onShotCharacterAdd,
+  onShotCharacterRemove,
+  onShotReorder,
   projectId,
   projectType = 'film',
 }: FilmDropdownMobileProps) {
@@ -77,7 +105,11 @@ export function FilmDropdownMobile({
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(new Set());
   const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
   const [editingItem, setEditingItem] = useState<{ id: string; type: 'act' | 'sequence' | 'scene' } | null>(null);
-  const [statsNode, setStatsNode] = useState<{ id: string; type: string; title: string } | null>(null);
+  const [statsNode, setStatsNode] = useState<{
+    id: string;
+    type: 'act' | 'sequence' | 'scene';
+    title: string;
+  } | null>(null);
 
   const toggleAct = useCallback((actId: string) => {
     setExpandedActs(prev => {
@@ -239,7 +271,15 @@ export function FilmDropdownMobile({
                       <Edit className="mr-2 h-4 w-4" />
                       Bearbeiten
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setStatsNode({ id: act.id, type: 'act', title: act.title })}>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        setStatsNode({
+                          id: act.id,
+                          type: 'act',
+                          title: act.title ?? '',
+                        })
+                      }
+                    >
                       <Info className="mr-2 h-4 w-4" />
                       Details
                     </DropdownMenuItem>
@@ -351,7 +391,15 @@ export function FilmDropdownMobile({
                                   <Edit className="mr-2 h-4 w-4" />
                                   Bearbeiten
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setStatsNode({ id: sequence.id, type: 'sequence', title: sequence.title })}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setStatsNode({
+                                      id: sequence.id,
+                                      type: 'sequence',
+                                      title: sequence.title ?? '',
+                                    })
+                                  }
+                                >
                                   <Info className="mr-2 h-4 w-4" />
                                   Details
                                 </DropdownMenuItem>
@@ -456,7 +504,15 @@ export function FilmDropdownMobile({
                                               <Edit className="mr-2 h-4 w-4" />
                                               Bearbeiten
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setStatsNode({ id: scene.id, type: 'scene', title: scene.title })}>
+                                            <DropdownMenuItem
+                                              onClick={() =>
+                                                setStatsNode({
+                                                  id: scene.id,
+                                                  type: 'scene',
+                                                  title: scene.title ?? '',
+                                                })
+                                              }
+                                            >
                                               <Info className="mr-2 h-4 w-4" />
                                               Details
                                             </DropdownMenuItem>
@@ -511,15 +567,21 @@ export function FilmDropdownMobile({
                                                 shot={shot}
                                                 sceneId={scene.id}
                                                 projectId={projectId}
-                                                onUpdate={(updates) => onUpdateShot(shot.id, updates)}
-                                                onDelete={() => {
+                                                projectCharacters={characters}
+                                                onUpdate={onUpdateShot}
+                                                onDelete={(shotId) => {
                                                   if (confirm(`${getShotLabel()} wirklich löschen?`)) {
-                                                    onDeleteShot(shot.id);
+                                                    onDeleteShot(shotId);
                                                   }
                                                 }}
-                                                onDuplicate={() => onDuplicateShot(shot.id)}
-                                                characters={characters}
-                                                isMobile={true}
+                                                onDuplicate={onDuplicateShot}
+                                                onReorder={onShotReorder}
+                                                onImageUpload={onShotImageUpload}
+                                                onAudioUpload={onShotAudioUpload}
+                                                onAudioDelete={onShotAudioDelete}
+                                                onAudioUpdate={onShotAudioUpdate}
+                                                onCharacterAdd={onShotCharacterAdd}
+                                                onCharacterRemove={onShotCharacterRemove}
                                               />
                                             </div>
                                           ))}
@@ -540,15 +602,28 @@ export function FilmDropdownMobile({
       })}
 
       {/* Stats Dialog */}
-      {statsNode && (
-        <TimelineNodeStatsDialog
-          nodeId={statsNode.id}
-          nodeType={statsNode.type}
-          nodeTitle={statsNode.title}
-          isOpen={true}
-          onClose={() => setStatsNode(null)}
-        />
-      )}
+      {statsNode &&
+        (() => {
+          const node =
+            statsNode.type === 'act'
+              ? acts.find((a) => a.id === statsNode.id)
+              : statsNode.type === 'sequence'
+                ? sequences.find((s) => s.id === statsNode.id)
+                : scenes.find((sc) => sc.id === statsNode.id);
+          if (!node) return null;
+          return (
+            <TimelineNodeStatsDialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setStatsNode(null);
+              }}
+              nodeType={statsNode.type}
+              node={node}
+              projectId={projectId}
+              projectType={projectType}
+            />
+          );
+        })()}
     </div>
   );
 }

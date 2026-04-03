@@ -1,5 +1,5 @@
 import { useAuth } from "../hooks/useAuth";
-import { useRouter } from "../hooks/useRouter";
+import { useRouter, normalizePage } from "../hooks/useRouter";
 import { useTheme } from "../hooks/useTheme";
 import { useIsMobile } from "../components/ui/use-mobile";
 import { Navigation } from "../components/Navigation";
@@ -25,11 +25,17 @@ import { PerformanceDashboard } from "../components/PerformanceDashboard";
 import { isBackendConfigured } from "../lib/env";
 import { setupUndoKeyboardShortcuts } from "../lib/undo-manager";
 import scriptonyLogo from '../assets/scriptony-logo.png';
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 export function AppContent() {
   const { user, loading: authLoading } = useAuth();
   const { state: router, navigate } = useRouter();
+  const onNavigate = useCallback(
+    (page: string, id?: string, categoryId?: string) => {
+      navigate(normalizePage(page), id, categoryId);
+    },
+    [navigate]
+  );
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   const isStagePage = router.page === "stage" || router.page === "create" || router.page === "present";
@@ -57,7 +63,7 @@ export function AppContent() {
 
   // Show reset password page
   if (router.page === "reset-password") {
-    return <ResetPasswordPage onNavigate={navigate} />;
+    return <ResetPasswordPage onNavigate={onNavigate} />;
   }
 
   // Show auth page if not logged in
@@ -70,12 +76,12 @@ export function AppContent() {
     
     switch (page) {
       case "home":
-        return <HomePage onNavigate={navigate} />;
+        return <HomePage onNavigate={onNavigate} />;
       case "projekte":
         return (
           <ProjectsPage
             selectedProjectId={selectedId}
-            onNavigate={navigate}
+            onNavigate={onNavigate}
           />
         );
       case "welten":
@@ -84,20 +90,20 @@ export function AppContent() {
           <WorldbuildingPage
             selectedWorldId={selectedId}
             selectedCategoryId={selectedCategoryId}
-            onNavigate={navigate}
+            onNavigate={onNavigate}
           />
         );
       case "gym":
         return <CreativeGymPage />;
       case "upload":
-        return <UploadPage onNavigate={navigate} />;
+        return <UploadPage onNavigate={onNavigate} />;
       case "admin":
         return <AdminPage />;
       case "einstellungen":
       case "settings":
         return <SettingsPage />;
       case "superadmin":
-        return <SuperadminPage onNavigate={navigate} />;
+        return <SuperadminPage onNavigate={onNavigate} />;
       case "stage":
       case "create":
       case "present":
@@ -110,9 +116,9 @@ export function AppContent() {
       case "api-test":
         return <ApiTestPage />;
       case "project-recovery":
-        return <ProjectRecoveryPage />;
+        return <ProjectRecoveryPage onBack={() => onNavigate("projekte")} />;
       default:
-        return <HomePage onNavigate={navigate} />;
+        return <HomePage onNavigate={onNavigate} />;
     }
   };
 
@@ -120,7 +126,7 @@ export function AppContent() {
     <div className="min-h-screen bg-background">
       <Navigation
         currentPage={router.page}
-        onNavigate={navigate}
+        onNavigate={onNavigate}
         theme={theme}
         onToggleTheme={toggleTheme}
         userRole={user.role}

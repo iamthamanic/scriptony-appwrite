@@ -95,8 +95,18 @@ export interface Character {
   referenceImageUrls?: string[];
   traits?: string[];
   backstory?: string;
+  /** Extended profile fields (UI / imports). */
+  gender?: string;
+  species?: string;
+  skills?: string[];
+  strengths?: string[];
+  weaknesses?: string[];
+  personality?: string;
   createdAt: string;
   updatedAt: string;
+  /** Legacy snake_case from some API payloads. */
+  image_url?: string;
+  updated_at?: string;
 }
 
 export interface Scene {
@@ -112,8 +122,13 @@ export interface Scene {
   title: string;
   description?: string;
   location?: string;
+  /** Scene heading / slug line (INT/EXT, location) from screenplay views. */
+  setting?: string;
   timeOfDay?: 'day' | 'night' | 'dawn' | 'dusk';
-  content?: string; // Actual script content
+  /** Plain string or TipTap JSON (stringified or parsed in the client). */
+  content?: unknown;
+  /** Optional beat / structure summary (structure beats UI). */
+  summary?: string;
   notes?: string;
   status?: 'outline' | 'draft' | 'revision' | 'final';
   duration?: number; // in minutes
@@ -137,6 +152,8 @@ export interface Act {
   actNumber: number;
   title?: string;
   description?: string;
+  /** Optional beat / structure summary (structure beats UI). */
+  summary?: string;
   color?: string; // Hex color for UI
   orderIndex: number;
   wordCount?: number; // 📖 For books: Total word count in this act
@@ -151,9 +168,13 @@ export interface Act {
 export interface Sequence {
   id: string;
   actId: string;
+  /** Denormalized for client filters / optimistic rows (API may include). */
+  projectId?: string;
   sequenceNumber: number;
   title?: string;
   description?: string;
+  /** Optional beat / structure summary (structure beats UI). */
+  summary?: string;
   color?: string; // Hex color for UI
   orderIndex: number;
   wordCount?: number; // 📖 For books (chapters): Total word count in this chapter
@@ -182,9 +203,31 @@ export interface ShotAudio {
   createdAt: string;
 }
 
+/**
+ * Editorial timeline segment (NLE). Persisted in Appwrite `clips`.
+ * Global times on the project timeline (0 .. project duration).
+ * Phase 1: single lane (`laneIndex` always 0 in UI).
+ */
+export interface Clip {
+  id: string;
+  projectId: string;
+  shotId: string;
+  sceneId: string;
+  startSec: number;
+  endSec: number;
+  laneIndex: number;
+  orderIndex: number;
+  sourceInSec?: number;
+  sourceOutSec?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Shot {
   id: string;
   sceneId: string;
+  /** Denormalized when API / UI needs project scope. */
+  projectId?: string;
   shotNumber: string; // e.g. "1A", "2", "3B"
   description?: string;
   // Camera
@@ -192,10 +235,16 @@ export interface Shot {
   cameraMovement?: string; // 'Static', 'Pan', 'Tilt', 'Dolly In/Out', 'Handheld', etc.
   framing?: string; // 'ECU', 'CU', 'MCU', 'MS', 'WS', 'EWS', etc.
   lens?: string; // '14mm', '24mm', '35mm', '50mm', '85mm', '100mm', etc.
-  // Timing
+  // Timing — planning only (coverage / intent). Editorial duration lives on `Clip` rows.
   duration?: string; // Legacy '3s', '0:05'
-  shotlengthMinutes?: number; // New: Minutes
-  shotlengthSeconds?: number; // New: Seconds
+  /** Planned shot length (minutes) — not the same as sum of clip durations. */
+  shotlengthMinutes?: number;
+  /** Planned shot length (seconds component) — not editorial geometry. */
+  shotlengthSeconds?: number;
+  /** Legacy snake_case from API responses. */
+  shotlength_minutes?: number;
+  shotlength_seconds?: number;
+  scene_id?: string;
   // Visual
   composition?: string;
   lightingNotes?: string;
@@ -221,10 +270,14 @@ export interface Shot {
   orderIndex: number;
   createdAt: string;
   updatedAt: string;
+  /** Legacy snake_case from API. */
+  updated_at?: string;
   updatedBy?: string; // User ID who last updated (TODO: Backend support needed)
   // Relations (populated by server)
   characters?: Character[];
   audioFiles?: ShotAudio[];
+  /** TipTap JSON or extra shot payload from API / screenplay views. */
+  metadata?: Record<string, unknown>;
 }
 
 // =============================================================================

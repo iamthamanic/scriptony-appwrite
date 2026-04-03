@@ -19,7 +19,8 @@ export function useProjectTimeline(projectId: string | undefined, projectType?: 
     queryFn: async () => {
       const token = await getAccessToken();
       if (!token) throw new Error("Not authenticated");
-      return loadProjectTimelineBundle(projectId!, token, isBook) as TimelineData | BookTimelineData;
+      return loadProjectTimelineBundle(projectId!, token, isBook) as unknown as
+        TimelineData | BookTimelineData;
     },
     // Avoid firing before Appwrite session is ready (would error and leave empty UI).
     enabled: !!projectId && !authLoading,

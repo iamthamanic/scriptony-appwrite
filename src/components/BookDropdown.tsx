@@ -18,7 +18,6 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { cn } from './ui/utils';
 import { useIsMobile } from './ui/use-mobile';
-import { undoManager } from '../lib/undo-manager';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,12 +60,27 @@ const DEFAULT_WORD_COUNTS = {
   SECTION: 625,      // ~2.5 pages (typical section/scene)
 };
 
+function extractTextFromTiptap(node: unknown): string {
+  if (!node || typeof node !== 'object') return '';
+  const n = node as { text?: string; content?: unknown[]; type?: string };
+  let text = '';
+  if (n.text) text += n.text;
+  if (n.content && Array.isArray(n.content)) {
+    n.content.forEach((child: unknown) => {
+      text += extractTextFromTiptap(child);
+      const c = child as { type?: string };
+      if (c.type === 'paragraph' || c.type === 'heading') text += ' ';
+    });
+  }
+  return text;
+}
+
 interface BookDropdownProps {
   projectId: string;
   projectType?: string; // 🎯 NEW: Project type for dynamic labels
   initialData?: BookTimelineData;
   onDataChange?: (data: BookTimelineData) => void;
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   // Controlled Collapse States for dynamic beat alignment
   expandedActs?: Set<string>;
   expandedSequences?: Set<string>;
@@ -116,7 +130,9 @@ function DropZone({ type, index, onDrop, label, height = 'act', onAdd }: DropZon
 
   return (
     <div
-      ref={drop}
+      ref={(el) => {
+        drop(el);
+      }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       className={cn(
@@ -170,7 +186,7 @@ function DraggableAct({ act, index, children, onStatsClick }: DraggableActProps)
   });
 
   return (
-    <div ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
+    <div ref={(el) => void drag(el)} style={{ opacity: isDragging ? 0.5 : 1 }}>
       {children}
     </div>
   );
@@ -197,7 +213,7 @@ function DraggableSequence({ sequence, index, children, onStatsClick }: Draggabl
   });
 
   return (
-    <div ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
+    <div ref={(el) => void drag(el)} style={{ opacity: isDragging ? 0.5 : 1 }}>
       {children}
     </div>
   );
@@ -224,7 +240,7 @@ function DraggableScene({ scene, index, children, onStatsClick }: DraggableScene
   });
 
   return (
-    <div ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
+    <div ref={(el) => void drag(el)} style={{ opacity: isDragging ? 0.5 : 1 }}>
       {children}
     </div>
   );
@@ -393,25 +409,7 @@ export function BookDropdown({
     
     // 🔄 FALLBACK: Calculate from TipTap content if DB value is missing
     console.log(`[BookDropdown] ⚠️ No DB wordCount for scene "${scene.title}", calculating from content...`);
-    
-    // Helper to extract text from Tiptap JSON
-    const extractTextFromTiptap = (node: any): string => {
-      if (!node) return '';
-      let text = '';
-      if (node.text) {
-        text += node.text;
-      }
-      if (node.content && Array.isArray(node.content)) {
-        node.content.forEach((child: any) => {
-          text += extractTextFromTiptap(child);
-          if (child.type === 'paragraph' || child.type === 'heading') {
-            text += ' ';
-          }
-        });
-      }
-      return text;
-    };
-    
+
     // Try to get content from scene.content or scene.metadata.content
     const contentSource = scene.content || scene.metadata?.content;
     
@@ -770,14 +768,14 @@ export function BookDropdown({
     }
   };
 
-  const handleUpdateScene = async (sceneId: string, updates: { title?: string; description?: string; content?: string }) => {
+  const handleUpdateScene = async (sceneId: string, updates: Partial<Scene>) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       // 📊 CALCULATE WORD COUNT if content is being updated
       let finalUpdates = { ...updates };
-      if (updates.content) {
+      if (typeof updates.content === "string" && updates.content) {
         try {
           const parsed = JSON.parse(updates.content);
           const textContent = extractTextFromTiptap(parsed);
@@ -842,7 +840,7 @@ export function BookDropdown({
           characters: currentScene.characters || [],
         },
         wordCount, // 📊 SAVE WORD COUNT TO DATABASE
-      }, token);
+      });
     } catch (error) {
       console.error('Error auto-saving scene:', error);
       toast.error('Fehler beim Speichern');
@@ -1005,7 +1003,9 @@ export function BookDropdown({
 
       // 1. Create Scene (at the end)
       const freshScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
-      const sequenceScenes = freshScenes.filter(s => s.sequenceId === sequenceId).sort((a, b) => a.orderIndex - b.orderIndex);
+      const sequenceScenes = freshScenes
+        .filter(s => s.sequenceId === sequenceId)
+        .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
       
       const maxSceneNumber = sequenceScenes.length > 0 ? Math.max(...sequenceScenes.map(s => s.sceneNumber || 0)) : 0;
       const newSceneNumber = maxSceneNumber + 1;
@@ -1382,7 +1382,9 @@ export function BookDropdown({
                         
                         // Get all sections (scenes) for these chapters
                         const chapterIds = actChapters.map(c => c.id);
-                        const actSections = scenes.filter(s => chapterIds.includes(s.sequenceId));
+                        const actSections = scenes.filter(
+                          (s) => s.sequenceId != null && chapterIds.includes(s.sequenceId)
+                        );
                         
                         // DEBUG: Log what we found
                         console.log(`[ACT ${act.title}] 📋 Total sequences available:`, sequences.length);
@@ -1924,7 +1926,12 @@ export function BookDropdown({
                                                           [scene.id]: { 
                                                             title: scene.title, 
                                                             description: scene.description || '',
-                                                            content: scene.content || ''
+                                                            content:
+                                                              typeof scene.content === "string"
+                                                                ? scene.content
+                                                                : scene.content != null
+                                                                  ? JSON.stringify(scene.content)
+                                                                  : "",
                                                           } 
                                                         });
                                                       }}>

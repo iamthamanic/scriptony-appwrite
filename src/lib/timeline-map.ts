@@ -8,6 +8,8 @@ import * as ShotsAPI from "./api/shots-api";
 import { nodeToAct, nodeToSequence, nodeToScene } from "./api/timeline-api";
 import type { TimelineData } from "../components/FilmDropdown";
 import type { BookTimelineData } from "../components/BookDropdown";
+import type { Clip, Shot } from "./types";
+import * as ClipsAPI from "./api/clips-api";
 
 export function ultraBatchToTimelineData(
   ultra: Awaited<ReturnType<typeof TimelineAPIV2.ultraBatchLoadProject>>
@@ -16,19 +18,22 @@ export function ultraBatchToTimelineData(
     acts: (ultra.timeline.acts || []).map(nodeToAct),
     sequences: (ultra.timeline.sequences || []).map(nodeToSequence),
     scenes: (ultra.timeline.scenes || []).map(nodeToScene),
-    shots: ultra.shots || [],
+    shots: (ultra.shots || []) as Shot[],
+    clips: (ultra.clips || []) as Clip[],
   };
 }
 
 export function batchTimelineToTimelineData(
   batch: Awaited<ReturnType<typeof TimelineAPIV2.batchLoadTimeline>>,
-  shots: unknown[]
+  shots: unknown[],
+  clips: Clip[] = []
 ): TimelineData {
   return {
     acts: (batch.acts || []).map(nodeToAct),
     sequences: (batch.sequences || []).map(nodeToSequence),
     scenes: (batch.scenes || []).map(nodeToScene),
-    shots: shots || [],
+    shots: (shots || []) as Shot[],
+    clips: clips || [],
   };
 }
 
@@ -103,7 +108,8 @@ export function enrichBookTimelineData(base: BookTimelineData): BookTimelineData
 }
 
 /**
- * Load full timeline for a project (ultra batch, fallback batch+shots, init 3-act if empty).
+ * Load full timeline for a project (ultra batch, fallback batch+shots).
+ * Read-only: does not create acts/structure when empty (explicit user/script flows only).
  */
 export async function loadProjectTimelineBundle(
   projectId: string,
@@ -113,18 +119,20 @@ export async function loadProjectTimelineBundle(
   let loadedActs: ReturnType<typeof nodeToAct>[] = [];
   let allSequences: ReturnType<typeof nodeToSequence>[] = [];
   let allScenes: ReturnType<typeof nodeToScene>[] = [];
-  let allShots: unknown[] = [];
+  let allShots: Shot[] = [];
+  let allClips: Clip[] = [];
 
   try {
     const ultraData = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
-      includeShots: false,
+      includeShots: true,
       excludeContent: true,
     });
     const film = ultraBatchToTimelineData(ultraData);
     loadedActs = film.acts;
     allSequences = film.sequences;
     allScenes = film.scenes;
-    allShots = film.shots;
+    allShots = film.shots ?? [];
+    allClips = film.clips || [];
   } catch {
     const batchData = await TimelineAPIV2.batchLoadTimeline(projectId, token, {
       excludeContent: true,
@@ -134,34 +142,21 @@ export async function loadProjectTimelineBundle(
       scenes: [],
       stats: { totalNodes: 0, acts: 0, sequences: 0, scenes: 0 },
     }));
-    const film = batchTimelineToTimelineData(batchData, []);
+    let fallbackShots: unknown[] = [];
+    try {
+      fallbackShots = await ShotsAPI.getAllShotsByProject(projectId, token);
+    } catch {
+      fallbackShots = [];
+    }
+    const film = batchTimelineToTimelineData(batchData, fallbackShots);
     loadedActs = film.acts;
     allSequences = film.sequences;
     allScenes = film.scenes;
-    allShots = film.shots;
-  }
-
-  if (!loadedActs || loadedActs.length === 0) {
-    await ShotsAPI.initializeThreeActStructure(projectId, token);
+    allShots = film.shots ?? [];
     try {
-      const reloadedUltra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
-        includeShots: false,
-        excludeContent: true,
-      });
-      const film = ultraBatchToTimelineData(reloadedUltra);
-      loadedActs = film.acts;
-      allSequences = film.sequences;
-      allScenes = film.scenes;
-      allShots = film.shots;
+      allClips = await ClipsAPI.listClipsByProject(projectId, token);
     } catch {
-      const reloadedBatch = await TimelineAPIV2.batchLoadTimeline(projectId, token, {
-        excludeContent: true,
-      });
-      const film = batchTimelineToTimelineData(reloadedBatch, []);
-      loadedActs = film.acts;
-      allSequences = film.sequences;
-      allScenes = film.scenes;
-      allShots = film.shots;
+      allClips = [];
     }
   }
 
@@ -177,6 +172,7 @@ export async function loadProjectTimelineBundle(
     acts: loadedActs,
     sequences: allSequences,
     scenes: allScenes,
-    shots: allShots,
+    shots: allShots as Shot[],
+    clips: allClips,
   };
 }

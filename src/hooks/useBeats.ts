@@ -69,6 +69,8 @@ export function useCreateBeat() {
           id: `temp-${Date.now()}`, // Temp ID
           user_id: 'temp-user',
           order_index: newBeat.order_index ?? previousBeats.length,
+          pct_from: newBeat.pct_from ?? 0,
+          pct_to: newBeat.pct_to ?? 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };

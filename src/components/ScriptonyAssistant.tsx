@@ -23,7 +23,10 @@ import { ChatSettingsDialog } from "./ChatSettingsDialog";
 import { AssistantParticleLoader } from "./ai/AssistantParticleLoader";
 import { resolveModelDisplayName } from "../lib/llm-provider-registry";
 import { normalizeAssistantSystemPrompt } from "../../functions/_shared/default-assistant-system-prompt";
-import { getEffectiveProviderForFeature } from "../lib/ai-feature-routing";
+import {
+  getEffectiveProviderForFeature,
+  type AiFeatureRoutingParsed,
+} from "../lib/ai-feature-routing";
 import { SCRIPTONY_AI_SETTINGS_UPDATED_EVENT } from "../lib/ai-settings-updated";
 
 interface Message {
@@ -461,7 +464,11 @@ export function ScriptonyAssistant() {
         const json = parseAssistantSettingsJson(row);
         const feature = json.feature_profiles?.assistant;
         const provider =
-          getEffectiveProviderForFeature(json, "assistant", active || undefined) || active;
+          getEffectiveProviderForFeature(
+            json as AiFeatureRoutingParsed,
+            "assistant",
+            active || undefined
+          ) || active;
         const profileModel = provider ? json.provider_profiles?.[provider]?.model : undefined;
         const resolvedModel = feature?.model || profileModel || activeModel;
         const om = json.ollama?.mode;
@@ -843,7 +850,7 @@ export function ScriptonyAssistant() {
     const triggerChar = suggestionsType;
     const lastTriggerIndex = textBeforeCursor.lastIndexOf(triggerChar || "");
     
-    if (lastTriggerIndex === -1) return;
+    if (lastTriggerIndex === -1 || triggerChar == null) return;
     
     // Replace from trigger to cursor with the selected name
     const newValue = 
@@ -859,7 +866,7 @@ export function ScriptonyAssistant() {
     // Reset textarea height
     if (inputRef.current) {
       setTimeout(() => {
-        const textarea = inputRef.current as HTMLTextAreaElement;
+        const textarea = inputRef.current as unknown as HTMLTextAreaElement;
         if (textarea) {
           textarea.style.height = 'auto';
           textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
@@ -903,7 +910,7 @@ export function ScriptonyAssistant() {
     
     // Reset textarea height
     if (inputRef.current) {
-      const textarea = inputRef.current as HTMLTextAreaElement;
+      const textarea = inputRef.current as unknown as HTMLTextAreaElement;
       textarea.style.height = 'auto';
     }
 
@@ -1258,7 +1265,7 @@ export function ScriptonyAssistant() {
       ),
       characters: ragCharacters.filter(c => 
         c.name.toLowerCase().includes(searchLower) || 
-        c.project.toLowerCase().includes(searchLower)
+        (c.project?.toLowerCase().includes(searchLower) ?? false)
       ),
       customFiles: ragCustomFiles.filter(f => 
         f.name.toLowerCase().includes(searchLower) || 

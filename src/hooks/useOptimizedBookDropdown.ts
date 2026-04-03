@@ -39,7 +39,11 @@ export function useOptimizedBookDropdown({
     const expandedSequenceIds = new Set(
       visibleSequences.filter((seq) => expandedSequences.has(seq.id)).map((s) => s.id)
     );
-    return scenes.filter((scene) => expandedSequenceIds.has(scene.sequenceId));
+    return scenes.filter(
+      (scene) =>
+        scene.sequenceId != null &&
+        expandedSequenceIds.has(scene.sequenceId)
+    );
   }, [scenes, visibleSequences, expandedSequences]);
 
   // 🚀 OPTIMIZATION 3: Memoized filter functions per container

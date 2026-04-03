@@ -135,7 +135,8 @@ export function calculateActBlocks(
         endSec,
         x,
         width,
-        visible: endSec >= viewStartSec && startSec <= viewEndSec,
+        // Film: immer rendern (Zoom/Trim-Griffe zuverlässig); Book: Viewport-Culling
+        visible: true,
       };
     }
   });
@@ -251,7 +252,7 @@ export function calculateSequenceBlocks(
           endSec,
           x,
           width,
-          visible: endSec >= viewStartSec && startSec <= viewEndSec,
+          visible: true,
         });
       });
     });
@@ -393,7 +394,7 @@ export function calculateSceneBlocks(
             endSec,
             x,
             width,
-            visible: endSec >= viewStartSec && startSec <= viewEndSec,
+            visible: true,
           });
         });
       });

@@ -76,6 +76,7 @@ let imageDomain = null;
 let styleGuideDomain = null;
 let worldbuildingDomain = null;
 let mcpAppwriteDomain = null;
+let clipsDomain = null;
 let domainMap = null;
 const mapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
 if (mapRaw) {
@@ -100,6 +101,9 @@ if (mapRaw) {
       }
       if (typeof m["scriptony-mcp-appwrite"] === "string") {
         mcpAppwriteDomain = m["scriptony-mcp-appwrite"].trim();
+      }
+      if (typeof m["scriptony-clips"] === "string") {
+        clipsDomain = m["scriptony-clips"].trim();
       }
     }
   } catch {
@@ -163,6 +167,12 @@ const worldbuildingHealth = worldbuildingDomain
     ? `${trimSlash(fnBase)}/scriptony-worldbuilding/health`
     : null;
 
+const clipsHealth = clipsDomain
+  ? `${trimSlash(clipsDomain)}/health`
+  : fnBase
+    ? `${trimSlash(fnBase)}/scriptony-clips/health`
+    : null;
+
 let failed = false;
 
 const checks = [
@@ -224,6 +234,19 @@ if (worldbuildingHealth) {
   );
 }
 
+if (clipsHealth) {
+  checks.push({
+    url: clipsHealth,
+    label: "scriptony-clips /health (Timeline-Clips)",
+  });
+} else {
+  console.warn(
+    "Hinweis: Keine URL für scriptony-clips ermittelbar (Timeline-Clips).\n" +
+      "  Ergänze in VITE_BACKEND_FUNCTION_DOMAIN_MAP den Key \"scriptony-clips\" (Function-Domain aus der Console).\n" +
+      "  Deploy: npm run appwrite:deploy:clips\n"
+  );
+}
+
 for (const { url, label } of checks) {
   process.stdout.write(`→ ${label}\n  GET ${url}\n`);
   const r = await fetchJson(url, label);
@@ -241,7 +264,8 @@ for (const { url, label } of checks) {
       label.includes("scriptony-mcp-appwrite") ||
       label.includes("scriptony-image") ||
       label.includes("scriptony-style-guide") ||
-      label.includes("scriptony-worldbuilding")
+      label.includes("scriptony-worldbuilding") ||
+      label.includes("scriptony-clips")
     ) {
       const t = typeof r.text === "string" ? r.text : "";
       const looksHtml = t.includes("<!DOCTYPE") || t.includes("<html");
@@ -254,7 +278,9 @@ for (const { url, label } of checks) {
               ? "scriptony-style-guide"
               : label.includes("scriptony-worldbuilding")
                 ? "scriptony-worldbuilding"
-                : "scriptony-assistant";
+                : label.includes("scriptony-clips")
+                  ? "scriptony-clips"
+                  : "scriptony-assistant";
         console.log(
           `  → Die URL liefert keine Function-JSON-Antwort (HTML/404). Appwrite: Function \`${fnId}\` deployen,\n` +
             "     aktives Deployment wählen und unter Functions → Domains dieselbe Host-URL wie in .env eintragen.\n" +
@@ -269,6 +295,9 @@ for (const { url, label } of checks) {
           console.log(
             "     CLI (im Projekt, Appwrite eingeloggt): npm run appwrite:deploy:worldbuilding\n"
           );
+        }
+        if (fnId === "scriptony-clips") {
+          console.log("     CLI (im Projekt, Appwrite eingeloggt): npm run appwrite:deploy:clips\n");
         }
       }
     }

@@ -152,7 +152,7 @@ export async function apiRequest<T = any>(
         method: method as any,
         route: endpoint,
         body,
-        headers,
+        headers: headers as Record<string, string>,
         accessToken: authToken || undefined,
       });
       
@@ -193,13 +193,17 @@ export async function apiRequest<T = any>(
     }
 
     // Build headers
-    const requestHeaders: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...headers,
+    const extra =
+      headers && typeof headers === "object" && !Array.isArray(headers)
+        ? (headers as Record<string, string>)
+        : {};
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...extra,
     };
 
     if (authToken) {
-      requestHeaders['Authorization'] = `Bearer ${authToken}`;
+      requestHeaders.Authorization = `Bearer ${authToken}`;
     }
 
     // Log request
@@ -378,11 +382,12 @@ export async function apiPatch<T = any>(
  * Useful for async/await code that wants to use try/catch
  */
 export function unwrapApiResult<T>(result: ApiResult<T>): T {
-  if ('error' in result) {
-    const error = new Error(result.error.message);
-    (error as any).status = result.error.status;
-    (error as any).statusText = result.error.statusText;
-    (error as any).details = result.error.details;
+  if ("error" in result && result.error) {
+    const err = result.error;
+    const error = new Error(err.message);
+    (error as any).status = err.status;
+    (error as any).statusText = err.statusText;
+    (error as any).details = err.details;
     throw error;
   }
   

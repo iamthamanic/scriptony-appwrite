@@ -16,6 +16,8 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../../_shared/http";
+import { Query } from "node-appwrite";
+import { C, deleteDocument, listDocumentsFull } from "../../../_shared/appwrite-db";
 import { getShotById, mapShot, normalizeShotInput } from "../../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
@@ -163,6 +165,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "DELETE") {
+      // PHASE1: cascade-delete editorial clips for this shot (Appwrite `clips` collection).
+      const clipRows = await listDocumentsFull(C.clips, [Query.equal("shot_id", shotId)]);
+      for (const c of clipRows) {
+        if (c?.id) await deleteDocument(C.clips, String(c.id));
+      }
+
       await requestGraphql(
         `
           mutation DeleteShot($id: uuid!) {

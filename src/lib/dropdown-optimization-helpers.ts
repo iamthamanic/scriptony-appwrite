@@ -7,7 +7,13 @@
  * - Debouncing functions
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 /**
  * 🎯 Debounced state setter
@@ -126,7 +132,10 @@ export class SmartCache<T> {
  * Groups multiple setState calls into one render
  */
 export function batchUpdates<T>(
-  updates: Array<{ setter: (prev: T) => T; updater: (current: T) => T }>
+  updates: Array<{
+    setter: Dispatch<SetStateAction<T>>;
+    updater: (current: T) => T;
+  }>
 ): void {
   updates.forEach(({ setter, updater }) => {
     setter((prev) => updater(prev));

@@ -215,7 +215,10 @@ class PerformanceMonitor {
     console.group('📊 SCRIPTONY PERFORMANCE REPORT');
     
     const categories = Object.keys(SLA_TARGETS) as SLACategory[];
-    const report: Array<{ category: string; stats: ReturnType<typeof this.getStats> }> = [];
+    const report: Array<{
+      category: string;
+      stats: ReturnType<PerformanceMonitor["getStats"]>;
+    }> = [];
 
     for (const category of categories) {
       const stats = this.getStats(category);

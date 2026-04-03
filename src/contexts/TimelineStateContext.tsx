@@ -15,7 +15,7 @@
  */
 
 import React, { createContext, useContext, useReducer, useCallback, useRef, useMemo, useEffect } from 'react';
-import type { Act, Sequence, Scene, Shot, Character } from '../lib/types';
+import type { Act, Sequence, Scene, Shot, Character, Clip } from '../lib/types';
 
 // ─── Data Types ──────────────────────────────────────────────────────
 
@@ -24,6 +24,8 @@ export interface TimelineStateData {
   sequences: Sequence[];
   scenes: Scene[];
   shots: Shot[];
+  /** Editorial timeline clips (film); empty for book-only flows. */
+  clips: Clip[];
   characters: Character[];
 }
 
@@ -51,6 +53,11 @@ type TimelineAction =
   | { type: 'ADD_SHOT'; payload: Shot }
   | { type: 'UPDATE_SHOT'; id: string; payload: Partial<Shot> }
   | { type: 'DELETE_SHOT'; id: string }
+  // Clips (editorial)
+  | { type: 'SET_CLIPS'; payload: Clip[] }
+  | { type: 'ADD_CLIP'; payload: Clip }
+  | { type: 'UPDATE_CLIP'; id: string; payload: Partial<Clip> }
+  | { type: 'DELETE_CLIP'; id: string }
   // Characters
   | { type: 'SET_CHARACTERS'; payload: Character[] }
   // Batch (for trim operations — single dispatch, single re-render)
@@ -75,6 +82,7 @@ type ComparableTimelineData = {
   scenes: Array<{ id?: string; updatedAt?: string }>;
   /** imageUrl included so server-side preview updates (e.g. Stage upload) reflow into context */
   shots: Array<{ id?: string; updatedAt?: string; imageUrl?: string }>;
+  clips: Array<{ id?: string; updatedAt?: string; startSec?: number; endSec?: number }>;
 };
 
 function toComparableTimelineData(data?: Partial<TimelineStateData>): ComparableTimelineData {
@@ -95,11 +103,22 @@ function toComparableTimelineData(data?: Partial<TimelineStateData>): Comparable
       }))
       .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
 
+  const mapClips = (items: Array<any> | undefined) =>
+    (items || [])
+      .map((item) => ({
+        id: item?.id,
+        updatedAt: item?.updatedAt,
+        startSec: item?.startSec ?? item?.start_sec,
+        endSec: item?.endSec ?? item?.end_sec,
+      }))
+      .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+
   return {
     acts: mapItems(data?.acts),
     sequences: mapItems(data?.sequences),
     scenes: mapItems(data?.scenes),
     shots: mapShots(data?.shots),
+    clips: mapClips(data?.clips),
   };
 }
 
@@ -113,6 +132,7 @@ function createInitialState(initialData?: Partial<TimelineStateData>): TimelineS
     sequences: initialData?.sequences || [],
     scenes: initialData?.scenes || [],
     shots: initialData?.shots || [],
+    clips: initialData?.clips || [],
     characters: initialData?.characters || [],
   };
   return {
@@ -172,20 +192,19 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
       return pushHistory(state, newData);
     }
     case 'DELETE_ACT': {
+      const keptSequences = state.data.sequences.filter(s => s.actId !== action.id);
+      const keptSequenceIds = new Set(keptSequences.map(s => s.id));
+      const keptScenes = state.data.scenes.filter(sc => sc.sequenceId && keptSequenceIds.has(sc.sequenceId));
+      const keptSceneIds = new Set(keptScenes.map(sc => sc.id));
+      const keptShots = state.data.shots.filter(sh => keptSceneIds.has(sh.sceneId));
+      const keptShotIds = new Set(keptShots.map(s => s.id));
       const newData = {
         ...state.data,
         acts: state.data.acts.filter(a => a.id !== action.id),
-        // Cascade: remove sequences/scenes/shots under this act
-        sequences: state.data.sequences.filter(s => s.actId !== action.id),
-        scenes: state.data.scenes.filter(sc => {
-          const actSequenceIds = state.data.sequences.filter(s => s.actId === action.id).map(s => s.id);
-          return !actSequenceIds.includes(sc.sequenceId || '');
-        }),
-        shots: state.data.shots.filter(sh => {
-          const actSequenceIds = state.data.sequences.filter(s => s.actId === action.id).map(s => s.id);
-          const actSceneIds = state.data.scenes.filter(sc => actSequenceIds.includes(sc.sequenceId || '')).map(sc => sc.id);
-          return !actSceneIds.includes(sh.sceneId);
-        }),
+        sequences: keptSequences,
+        scenes: keptScenes,
+        shots: keptShots,
+        clips: state.data.clips.filter(c => keptShotIds.has(c.shotId)),
       };
       return pushHistory(state, newData);
     }
@@ -208,11 +227,16 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
     }
     case 'DELETE_SEQUENCE': {
       const seqSceneIds = state.data.scenes.filter(sc => sc.sequenceId === action.id).map(sc => sc.id);
+      const keptScenes = state.data.scenes.filter(sc => sc.sequenceId !== action.id);
+      const keptSceneIds = new Set(keptScenes.map(sc => sc.id));
+      const keptShots = state.data.shots.filter(sh => keptSceneIds.has(sh.sceneId));
+      const keptShotIds = new Set(keptShots.map(s => s.id));
       const newData = {
         ...state.data,
         sequences: state.data.sequences.filter(s => s.id !== action.id),
-        scenes: state.data.scenes.filter(sc => sc.sequenceId !== action.id),
-        shots: state.data.shots.filter(sh => !seqSceneIds.includes(sh.sceneId)),
+        scenes: keptScenes,
+        shots: keptShots,
+        clips: state.data.clips.filter(c => keptShotIds.has(c.shotId)),
       };
       return pushHistory(state, newData);
     }
@@ -234,10 +258,13 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
       return pushHistory(state, newData);
     }
     case 'DELETE_SCENE': {
+      const keptShots = state.data.shots.filter(sh => sh.sceneId !== action.id);
+      const keptShotIds = new Set(keptShots.map(s => s.id));
       const newData = {
         ...state.data,
         scenes: state.data.scenes.filter(sc => sc.id !== action.id),
-        shots: state.data.shots.filter(sh => sh.sceneId !== action.id),
+        shots: keptShots,
+        clips: state.data.clips.filter(c => keptShotIds.has(c.shotId)),
       };
       return pushHistory(state, newData);
     }
@@ -262,6 +289,31 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
       const newData = {
         ...state.data,
         shots: state.data.shots.filter(sh => sh.id !== action.id),
+        clips: state.data.clips.filter(c => c.shotId !== action.id),
+      };
+      return pushHistory(state, newData);
+    }
+
+    // ── Clips ──
+    case 'SET_CLIPS': {
+      const newData = { ...state.data, clips: action.payload };
+      return pushHistory(state, newData);
+    }
+    case 'ADD_CLIP': {
+      const newData = { ...state.data, clips: [...state.data.clips, action.payload] };
+      return pushHistory(state, newData);
+    }
+    case 'UPDATE_CLIP': {
+      const newData = {
+        ...state.data,
+        clips: state.data.clips.map(c => c.id === action.id ? { ...c, ...action.payload } : c),
+      };
+      return pushHistory(state, newData);
+    }
+    case 'DELETE_CLIP': {
+      const newData = {
+        ...state.data,
+        clips: state.data.clips.filter(c => c.id !== action.id),
       };
       return pushHistory(state, newData);
     }
@@ -338,6 +390,7 @@ interface TimelineContextValue {
   sequences: Sequence[];
   scenes: Scene[];
   shots: Shot[];
+  clips: Clip[];
   characters: Character[];
   // Dispatch (write)
   dispatch: React.Dispatch<TimelineAction>;
@@ -347,7 +400,7 @@ interface TimelineContextValue {
   undo: () => void;
   redo: () => void;
   // Convenience: get the full TimelineData shape for backwards compat
-  getTimelineData: () => { acts: Act[]; sequences: Sequence[]; scenes: Scene[]; shots: Shot[] };
+  getTimelineData: () => { acts: Act[]; sequences: Sequence[]; scenes: Scene[]; shots: Shot[]; clips: Clip[] };
   getBookTimelineData: () => { acts: Act[]; sequences: Sequence[]; scenes: Scene[] };
 }
 
@@ -358,7 +411,13 @@ const TimelineStateContext = createContext<TimelineContextValue | null>(null);
 interface TimelineStateProviderProps {
   initialData?: Partial<TimelineStateData>;
   /** Called whenever timeline data changes (for parent cache sync) */
-  onDataChange?: (data: { acts: Act[]; sequences: Sequence[]; scenes: Scene[]; shots: Shot[] }) => void;
+  onDataChange?: (data: {
+    acts: Act[];
+    sequences: Sequence[];
+    scenes: Scene[];
+    shots: Shot[];
+    clips: Clip[];
+  }) => void;
   children: React.ReactNode;
 }
 
@@ -409,6 +468,7 @@ export function TimelineStateProvider({ initialData, onDataChange, children }: T
         sequences: state.data.sequences,
         scenes: state.data.scenes,
         shots: state.data.shots,
+        clips: state.data.clips,
       });
     }
   }, [state.data]);
@@ -421,7 +481,8 @@ export function TimelineStateProvider({ initialData, onDataChange, children }: T
     sequences: state.data.sequences,
     scenes: state.data.scenes,
     shots: state.data.shots,
-  }), [state.data.acts, state.data.sequences, state.data.scenes, state.data.shots]);
+    clips: state.data.clips,
+  }), [state.data.acts, state.data.sequences, state.data.scenes, state.data.shots, state.data.clips]);
 
   const getBookTimelineData = useCallback(() => ({
     acts: state.data.acts,
@@ -434,6 +495,7 @@ export function TimelineStateProvider({ initialData, onDataChange, children }: T
     sequences: state.data.sequences,
     scenes: state.data.scenes,
     shots: state.data.shots,
+    clips: state.data.clips,
     characters: state.data.characters,
     dispatch,
     canUndo: state.historyIndex > 0,

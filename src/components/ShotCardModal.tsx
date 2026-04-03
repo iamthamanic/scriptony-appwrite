@@ -33,6 +33,7 @@ import {
   needsGifUserConfirmation,
   type ImageUploadGifMode,
 } from '../lib/api/image-upload-api';
+import { STORAGE_CONFIG } from '../lib/config';
 import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
 import { toast } from 'sonner';
 import type { Shot } from '../lib/types';
@@ -372,16 +373,23 @@ export function ShotCardModal({ open, onOpenChange, shotId, projectId }: ShotCar
       {gifPending && (
         <GifAnimationUploadDialog
           open={!!gifPending}
+          fileName={gifPending.file.name}
+          allowKeepGif={gifPending.file.size <= STORAGE_CONFIG.MAX_FILE_SIZE}
           onOpenChange={(open) => {
             if (!open) {
               setGifPending(null);
               setImageUploadingId(null);
             }
           }}
-          onConfirm={async (mode) => {
+          onConvert={async () => {
             const { shotId: gShotId, file } = gifPending;
             setGifPending(null);
-            await runShotImageUpload(gShotId, file, mode);
+            await runShotImageUpload(gShotId, file, "convert-static");
+          }}
+          onKeepGif={async () => {
+            const { shotId: gShotId, file } = gifPending;
+            setGifPending(null);
+            await runShotImageUpload(gShotId, file, "keep-animation");
           }}
         />
       )}

@@ -121,7 +121,7 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
           
           chaptersData.push({
             id: chapter.id,
-            title: chapter.title,
+            title: chapter.title ?? '',
             sections,
           });
         });

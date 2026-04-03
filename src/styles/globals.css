@@ -90,6 +90,8 @@
   --destructive-foreground: #FFFFFF;
   --border: #2E2A3A;
   --input: #2E2A3A;
+  /** Sonst bleibt :root-Weiß — Inputs würden mit bg-input-background falsch oder durchscheinend wirken */
+  --input-background: #2E2A3A;
   --ring: #8E75D1;
   --font-weight-medium: 500;
   --font-weight-normal: 400;

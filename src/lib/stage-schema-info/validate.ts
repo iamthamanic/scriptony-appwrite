@@ -238,7 +238,7 @@ export function validateStageDocument(raw: unknown): StageDocumentParseResult {
 
   if (errors.length > 0) return { ok: false, errors };
 
-  return { ok: true, document: raw as StageDocument };
+  return { ok: true, document: raw as unknown as StageDocument };
 }
 
 /**

@@ -186,7 +186,10 @@ export function StagePage({ projectId = null, shotId = null }: StagePageProps) {
   const stageActive = tab === "2d";
 
   return (
-    <section className="relative h-full overflow-hidden bg-[#181629] px-2 py-1">
+    <section
+      className="relative h-full overflow-hidden bg-[#181629] px-2 py-1"
+      data-app-undo-priority="stage"
+    >
       {sourceBadge ? (
         <div
           className={cn(

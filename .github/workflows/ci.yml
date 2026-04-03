@@ -35,8 +35,7 @@ jobs:
         continue-on-error: true
 
       - name: Run TypeScript check
-        run: bun run typecheck || true
-        continue-on-error: true
+        run: bun run typecheck
 
       - name: Run tests
         run: bun run test -- --passWithNoTests || true

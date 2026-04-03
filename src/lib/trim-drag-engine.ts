@@ -168,9 +168,21 @@ export function useTrimDragEngine() {
     snapshot: Beat[];
   } | null => {
     const drag = beatDragRef.current;
-    if (!drag || !drag.preview) {
-      beatDragRef.current = null;
+    if (!drag) {
       return null;
+    }
+
+    // No pointermove before pointerup: commit identity so callers can always tear down (no null commit).
+    if (!drag.preview) {
+      const b = drag.snapshot.find((x) => x.id === drag.beatId);
+      if (!b) {
+        beatDragRef.current = null;
+        return null;
+      }
+      drag.preview = {
+        trimmedBeat: { pct_from: b.pct_from, pct_to: b.pct_to },
+        rippleBeats: [],
+      };
     }
 
     const result = {

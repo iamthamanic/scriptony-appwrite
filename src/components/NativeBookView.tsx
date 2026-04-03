@@ -142,7 +142,7 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
           
           chaptersData.push({
             id: chapter.id,
-            title: chapter.title,
+            title: chapter.title ?? '',
             sections,
           });
         });

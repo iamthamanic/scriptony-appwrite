@@ -48,14 +48,7 @@ export function useTimelineCache(projectId: string) {
         const token = await getAccessToken();
         if (!token) throw new Error('Not authenticated');
 
-        // Load Acts
-        let acts = await TimelineAPI.getActs(projectId, token);
-        
-        // Initialize if empty
-        if (!acts || acts.length === 0) {
-          await ShotsAPI.initializeThreeActStructure(projectId, token);
-          acts = await TimelineAPI.getActs(projectId, token);
-        }
+        const acts = await TimelineAPI.getActs(projectId, token);
 
         // Load all in parallel
         const [sequences, scenes, shots] = await Promise.all([
@@ -114,7 +107,7 @@ export function useTimelineCache(projectId: string) {
         const token = await getAccessToken();
         if (!token) throw new Error('Not authenticated');
 
-        const beats = await BeatsAPI.getBeats(projectId, token);
+        const beats = await BeatsAPI.getBeats(projectId);
         return { beats: beats || [] };
       },
       {
@@ -144,11 +137,7 @@ export function useTimelineCache(projectId: string) {
         const token = await getAccessToken();
         if (!token) throw new Error('Not authenticated');
 
-        let acts = await TimelineAPI.getActs(projectId, token);
-        if (!acts || acts.length === 0) {
-          await ShotsAPI.initializeThreeActStructure(projectId, token);
-          acts = await TimelineAPI.getActs(projectId, token);
-        }
+        const acts = await TimelineAPI.getActs(projectId, token);
 
         const [sequences, scenes, shots] = await Promise.all([
           TimelineAPI.getAllSequencesByProject(projectId, token).catch(() => []),
@@ -218,7 +207,7 @@ export function useTimelineCache(projectId: string) {
         const token = await getAccessToken();
         if (!token) throw new Error('Not authenticated');
 
-        const beats = await BeatsAPI.getBeats(projectId, token);
+        const beats = await BeatsAPI.getBeats(projectId);
         return { beats: beats || [] };
       },
       {

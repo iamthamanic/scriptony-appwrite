@@ -53,11 +53,11 @@ export function BeatTimeline({
       return {
         id: `beat-${Date.now()}-${index}`,
         label: beat.label,
-        color: beat.color,
+        color: beat.color ?? "#9B87C4",
         startPercent: beat.pctFrom,
         endPercent: endPercent,
-        notes: '',
-        templateAbbr: beat.templateAbbr,
+        notes: "",
+        templateAbbr: beat.templateAbbr ?? "",
       };
     });
 
@@ -112,11 +112,11 @@ export function BeatTimeline({
     const newBeats: BeatBlockData[] = template.beats.map((beat, index) => ({
       id: `beat-${Date.now()}-${index}`,
       label: beat.label,
-      color: beat.color,
+      color: beat.color ?? "#9B87C4",
       startPercent: beat.pctFrom,
       endPercent: beat.pctTo,
-      notes: '',
-      templateAbbr: beat.templateAbbr,
+      notes: "",
+      templateAbbr: beat.templateAbbr ?? "",
     }));
 
     setBeats(newBeats);

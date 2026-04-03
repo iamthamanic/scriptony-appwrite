@@ -36,7 +36,14 @@ export type ProblemType =
   | "too_many_options"
   | "ending_problem"
   | "generic_output"
-  | "finishing_problem";
+  | "finishing_problem"
+  /** Used in seeds alongside canonical tags (overlap with SkillFocus labels). */
+  | "dialogue_tension"
+  | "compression"
+  | "scene_flow"
+  | "originality"
+  | "conflict"
+  | "media_translation";
 
 export type SkillFocus =
   | "originality"

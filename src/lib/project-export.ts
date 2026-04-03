@@ -474,7 +474,9 @@ export async function generateProjectInfoPdfBlob(
     }
   }
 
-  const totalPages = doc.internal.getNumberOfPages();
+  const totalPages = (
+    doc.internal as unknown as { getNumberOfPages: () => number }
+  ).getNumberOfPages();
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]);

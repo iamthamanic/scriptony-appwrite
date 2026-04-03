@@ -6,7 +6,7 @@ const VALID_PAGES = [
   "migration", "reset-password", "api-test", "project-recovery"
 ] as const;
 
-type ValidPage = typeof VALID_PAGES[number];
+export type ValidPage = (typeof VALID_PAGES)[number];
 
 interface RouterState {
   page: ValidPage;
@@ -14,7 +14,7 @@ interface RouterState {
   categoryId?: string;
 }
 
-function normalizePage(page: string | undefined): ValidPage {
+export function normalizePage(page: string | undefined): ValidPage {
   if (page === "present" || page === "create") {
     return "stage";
   }

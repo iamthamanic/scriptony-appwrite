@@ -51,13 +51,19 @@ const CharacterMention = Mention.extend({
 interface ReadonlyTiptapViewProps {
   content: any; // JSON doc or string
   className?: string;
+  /** Optional max height for the preview area (scroll inside if content overflows). */
+  maxHeight?: string;
 }
 
 /**
  * Read-only TipTap Editor for displaying rich text with character mentions
  * Shows beautiful blue character pills (@name) in readonly mode
  */
-export function ReadonlyTiptapView({ content, className = '' }: ReadonlyTiptapViewProps) {
+export function ReadonlyTiptapView({
+  content,
+  className = '',
+  maxHeight,
+}: ReadonlyTiptapViewProps) {
   // Parse content if it's a string
   const doc = useMemo(() => {
     if (!content) return { type: 'doc', content: [{ type: 'paragraph' }] };
@@ -113,5 +119,13 @@ export function ReadonlyTiptapView({ content, className = '' }: ReadonlyTiptapVi
     return <div className={`text-xs text-muted-foreground ${className}`}>Loading...</div>;
   }
 
-  return <EditorContent editor={editor} className={className} />;
+  const inner = <EditorContent editor={editor} className={className} />;
+  if (maxHeight) {
+    return (
+      <div className="overflow-y-auto" style={{ maxHeight }}>
+        {inner}
+      </div>
+    );
+  }
+  return inner;
 }

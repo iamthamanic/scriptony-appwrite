@@ -30,7 +30,7 @@ function wordCount(text: string): number {
 async function ensureThreeActs(projectId: string, token: string) {
   let acts = await TimelineAPI.getActs(projectId, token);
   if (!acts.length) {
-    await ShotsAPI.initializeThreeActStructure(projectId, token);
+    await ShotsAPI.initializeTimelineStructureFromNarrative(projectId, token, '3-act');
     acts = await TimelineAPI.getActs(projectId, token);
   }
   return [...acts].sort((a, b) => (a.actNumber ?? 0) - (b.actNumber ?? 0));

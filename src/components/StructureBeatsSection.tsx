@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { BeatColumn } from './BeatColumn';
-import { BeatTimeline } from './BeatTimeline';
 import { VideoEditorTimeline } from './VideoEditorTimeline';
 import type { BeatCardData, TimelineNode } from './BeatCard';
 import { FilmDropdown, type TimelineData } from './FilmDropdown';
@@ -15,7 +14,13 @@ import { ScriptStructureImportButton } from './ScriptStructureImportButton';
 import { NativeBookView } from './NativeBookView';
 import { NativeScreenplayView } from './NativeScreenplayView';
 import { NativeAudiobookView } from './NativeAudiobookView';
-import { generateBeatsFromTemplate, LITE_7_TEMPLATE, SAVE_THE_CAT_TEMPLATE } from '../lib/beat-templates';
+import {
+  generateBeatsFromTemplate,
+  LITE_7_TEMPLATE,
+  SAVE_THE_CAT_TEMPLATE,
+  type BeatTemplate,
+} from '../lib/beat-templates';
+import { APP_UNDO_PRIORITY_TIMELINE } from '../lib/app-undo-operations';
 import { useBeats, useCreateBeat, useUpdateBeat, useDeleteBeat } from '../hooks/useBeats';
 import * as TimelineAPI from '../lib/api/timeline-api';
 import { toast } from 'sonner';
@@ -35,6 +40,8 @@ interface StructureBeatsSectionProps {
   projectId: string;
   projectType?: string;
   beatTemplate?: string | null;
+  /** Project narrative_structure (incl. edit-mode draft from ProjectDetail). */
+  narrativeStructure?: string | null;
   initialData?: TimelineData | BookTimelineData;
   onDataChange?: (data: TimelineData | BookTimelineData) => void;
   totalWords?: number;
@@ -49,6 +56,12 @@ interface StructureBeatsSectionProps {
 
 // LITE-7 Story Beat Preset (minimales Template für schnelles Prototyping)
 const MOCK_BEATS: BeatCardData[] = generateBeatsFromTemplate(LITE_7_TEMPLATE);
+
+/** Explicit beat generation only — no silent fallback to lite-7 or save-the-cat. */
+const SUPPORTED_BEAT_TEMPLATE_MAP: Record<string, BeatTemplate> = {
+  'lite-7': LITE_7_TEMPLATE,
+  'save-the-cat': SAVE_THE_CAT_TEMPLATE,
+};
 
 // 🧪 TEST: Hook bei 5% positionieren (oben sichtbar)
 const TEST_BEAT_HOOK: BeatCardData = {
@@ -106,6 +119,9 @@ function parseTargetMinutes(v: string | number | null | undefined): number | nul
 /**
  * 🔄 Keyboard shortcut handler for Undo/Redo (Cmd+Z / Cmd+Shift+Z)
  * Must be INSIDE TimelineStateProvider to access the context.
+ *
+ * Capture phase + only stop propagation when an action runs: so if the timeline stack is
+ * empty, the global undoManager (bubble on window) can still handle Cmd+Z.
  */
 function TimelineUndoRedoShortcuts() {
   const { undo, redo, canUndo, canRedo } = useTimelineUndo();
@@ -115,26 +131,34 @@ function TimelineUndoRedoShortcuts() {
       const isMod = e.metaKey || e.ctrlKey;
       if (!isMod || e.key.toLowerCase() !== 'z') return;
 
-      // Don't intercept when user is typing in an input/textarea
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      if (!el?.closest(`[data-app-undo-priority="${APP_UNDO_PRIORITY_TIMELINE}"]`)) return;
 
-      e.preventDefault();
+      // Don't intercept when user is typing in an input/textarea
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable) return;
+
       if (e.shiftKey) {
-        if (canRedo) redo();
-      } else {
-        if (canUndo) undo();
+        if (canRedo) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          redo();
+        }
+      } else if (canUndo) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        undo();
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
   }, [undo, redo, canUndo, canRedo]);
 
   return null; // Render nothing — pure side-effect component
 }
 
-export function StructureBeatsSection({ projectId, projectType, beatTemplate, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, targetDurationMinutes, isLoadingCache }: StructureBeatsSectionProps) {
+export function StructureBeatsSection({ projectId, projectType, beatTemplate, narrativeStructure, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, targetDurationMinutes, isLoadingCache }: StructureBeatsSectionProps) {
   const containerStackRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(true); // DEFAULT: OPEN
@@ -150,7 +174,8 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
   const createBeatMutation = useCreateBeat();
   const updateBeatMutation = useUpdateBeat();
   const deleteBeatMutation = useDeleteBeat();
-  
+  const [generatingBeatsFromTemplate, setGeneratingBeatsFromTemplate] = useState(false);
+
   // 🎬 Initialize with Save the Cat 15 Beats
   const [beats, setBeats] = useState<BeatCardData[]>([]);
   
@@ -288,7 +313,8 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     if (!data || !data.acts || !Array.isArray(data.acts)) return [];
     
     // Build hierarchical structure from flat arrays
-    const { acts, sequences, scenes, shots } = data;
+    const { acts, sequences, scenes, shots: shotsRaw } = data;
+    const shots = shotsRaw ?? [];
     
     // 🔍 DEBUG: Log shots data
     console.log('[StructureBeatsSection] Converting timeline data:', {
@@ -301,12 +327,12 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     
     return acts.map(act => ({
       id: act.id,
-      title: act.title,
+      title: act.title ?? '',
       sequences: sequences
         ?.filter(seq => seq.actId === act.id)
         .map(seq => ({
           id: seq.id,
-          title: seq.title,
+          title: seq.title ?? '',
           scenes: scenes
             ?.filter(scene => scene.sequenceId === seq.id)
             .map(scene => {
@@ -334,9 +360,8 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     const acts = timelineData.acts || [];
     const sequences = timelineData.sequences || [];
     const scenes = timelineData.scenes || [];
-    const shots = 'shots' in timelineData && Array.isArray((timelineData as TimelineData).shots)
-      ? (timelineData as TimelineData).shots
-      : [];
+    const shotsRaw = 'shots' in timelineData ? (timelineData as TimelineData).shots : undefined;
+    const shots = Array.isArray(shotsRaw) ? shotsRaw : [];
 
     const actById = new Map(acts.map((a) => [a.id, a]));
     const sequenceById = new Map(sequences.map((s) => [s.id, s]));
@@ -364,7 +389,10 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     }
 
     for (const scene of scenes) {
-      const parentSeq = sequenceById.get(scene.sequenceId);
+      const parentSeq =
+        scene.sequenceId != null
+          ? sequenceById.get(scene.sequenceId)
+          : undefined;
       out.push({
         id: scene.id,
         type: 'scene',
@@ -505,91 +533,78 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     }
   }, [beatsData, beatsLoading]);
 
-  // 🎬 AUTO-GENERATE: Create default beats if none exist
-  const hasAutoGenerated = useRef(false);
-  
-  useEffect(() => {
-    if (beatsLoading) return; // Warte bis Daten geladen sind
-    if (hasAutoGenerated.current) return; // Verhindere Doppel-Generierung
-    
-    const autoGenerateBeats = async () => {
-      try {
-        // Check if beats exist (from React Query)
-        if (!beatsData || beatsData.length === 0) {
-          const effectiveTemplate = beatTemplate || 'lite-7';
-          hasAutoGenerated.current = true; // Markiere als generiert
-          console.log(`[StructureBeatsSection] 🎬 No beats found, auto-generating ${effectiveTemplate} template...`);
-          
-          // Get first act to use as container
-          let firstActId = 'placeholder-act-1';
-          let lastActId = 'placeholder-act-3';
-          
-          try {
-            const acts = await TimelineAPI.getActs(projectId);
-            
-            if (acts.length === 0) {
-              console.log('[StructureBeatsSection] ⚠️ No acts found, will use placeholder IDs for beats');
-            } else {
-              firstActId = acts[0].id;
-              lastActId = acts[acts.length - 1].id;
-              console.log('[StructureBeatsSection] ✅ Using existing acts:', { firstActId, lastActId });
-            }
-          } catch (error) {
-            console.warn('[StructureBeatsSection] ⚠️ Could not load acts (may not exist yet), using placeholder IDs:', error);
-          }
-          
-          // 🎯 Select template based on project's beat_template
-          const templateMap: Record<string, any> = {
-            'lite-7': LITE_7_TEMPLATE,
-            'save-the-cat': SAVE_THE_CAT_TEMPLATE,
-          };
-          
-          const selectedTemplate = templateMap[effectiveTemplate] || SAVE_THE_CAT_TEMPLATE;
-          const generatedBeats = generateBeatsFromTemplate(selectedTemplate);
-          
-          console.log(`[StructureBeatsSection] 🎯 Creating ${generatedBeats.length} beats from ${effectiveTemplate} template...`);
-          
-          // Create beats in database using mutation
-          let successCount = 0;
-          for (let i = 0; i < generatedBeats.length; i++) {
-            const beat = generatedBeats[i];
-            try {
-              await createBeatMutation.mutateAsync({
-                project_id: projectId,
-                label: beat.label,
-                template_abbr: beat.templateAbbr || effectiveTemplate.toUpperCase().replace('-', ''),
-                description: beat.items?.join(', ') || '',
-                from_container_id: firstActId,
-                to_container_id: lastActId,
-                pct_from: beat.pctFrom,
-                pct_to: beat.pctTo === beat.pctFrom ? beat.pctFrom + 2 : beat.pctTo,
-                color: beat.color,
-                order_index: i,
-              });
-              successCount += 1;
-            } catch (error) {
-              console.error(`[StructureBeatsSection] ❌ Failed to create beat "${beat.label}":`, error);
-            }
-          }
-          
-          if (successCount > 0) {
-            console.log(`[StructureBeatsSection] ✅ Successfully created ${successCount}/${generatedBeats.length} beats`);
-            toast.success(`${successCount} Story Beats automatisch generiert`);
-          } else {
-            hasAutoGenerated.current = false;
-            console.warn('[StructureBeatsSection] ⚠️ Beat auto-generation finished with 0 successful creates');
-          }
-        } else {
-          console.log(`[StructureBeatsSection] ℹ️ Found ${beatsData.length} existing beats`);
-        }
-      } catch (error) {
-        console.error('[StructureBeatsSection] ❌ Error in auto-generate:', error);
-        toast.error('Fehler beim Generieren der Beats');
-      }
-    };
+  const handleGenerateBeatsFromTemplate = useCallback(async () => {
+    if (beatsLoading || generatingBeatsFromTemplate) return;
+    if (beatsData && beatsData.length > 0) return;
 
-    autoGenerateBeats();
-  }, [projectId, beatTemplate, beatsData, beatsLoading]); // 🔥 FIX: Entferne createBeatMutation von deps!
+    const key = beatTemplate?.trim();
+    if (!key || key.startsWith('custom:')) {
+      toast.error('Bitte ein unterstütztes Beat-Template in den Projekteinstellungen wählen.');
+      return;
+    }
+    const selectedTemplate = SUPPORTED_BEAT_TEMPLATE_MAP[key];
+    if (!selectedTemplate) {
+      toast.error(
+        `Das Beat-Template „${key}“ wird für die automatische Erzeugung noch nicht unterstützt.`
+      );
+      return;
+    }
+
+    try {
+      setGeneratingBeatsFromTemplate(true);
+      let firstActId = 'placeholder-act-1';
+      let lastActId = 'placeholder-act-3';
+      try {
+        const acts = await TimelineAPI.getActs(projectId);
+        if (acts.length > 0) {
+          firstActId = acts[0].id;
+          lastActId = acts[acts.length - 1].id;
+        }
+      } catch {
+        /* keep placeholders */
+      }
+
+      const generatedBeats = generateBeatsFromTemplate(selectedTemplate);
+      let successCount = 0;
+      for (let i = 0; i < generatedBeats.length; i++) {
+        const beat = generatedBeats[i];
+        try {
+          await createBeatMutation.mutateAsync({
+            project_id: projectId,
+            label: beat.label,
+            template_abbr: beat.templateAbbr || key.toUpperCase().replace('-', ''),
+            description: beat.items?.join(', ') || '',
+            from_container_id: firstActId,
+            to_container_id: lastActId,
+            pct_from: beat.pctFrom,
+            pct_to: beat.pctTo === beat.pctFrom ? beat.pctFrom + 2 : beat.pctTo,
+            color: beat.color,
+            order_index: i,
+          });
+          successCount += 1;
+        } catch (error) {
+          console.error(`[StructureBeatsSection] Failed to create beat "${beat.label}":`, error);
+        }
+      }
+      if (successCount > 0) {
+        toast.success(`${successCount} Story Beats erzeugt`);
+      } else {
+        toast.error('Keine Beats konnten angelegt werden.');
+      }
+    } catch (error) {
+      console.error('[StructureBeatsSection] generate beats:', error);
+      toast.error('Fehler beim Generieren der Beats');
+    } finally {
+      setGeneratingBeatsFromTemplate(false);
+    }
+  }, [
+    beatTemplate,
+    beatsData,
+    beatsLoading,
+    createBeatMutation,
+    generatingBeatsFromTemplate,
+    projectId,
+  ]);
 
   // 🔄 Prepare initialData for TimelineStateProvider
   const providerInitialData = useMemo(() => {
@@ -601,7 +616,12 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
     };
     // Film/Series have shots; Book does not
     if ('shots' in timelineData) {
-      return { ...base, shots: (timelineData as any).shots || [] };
+      const film = timelineData as TimelineData;
+      return {
+        ...base,
+        shots: film.shots || [],
+        clips: film.clips ?? [],
+      };
     }
     return base;
   }, [timelineData]);
@@ -611,6 +631,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
       initialData={providerInitialData}
       onDataChange={handleTimelineChange}
     >
+    <div data-app-undo-priority={APP_UNDO_PRIORITY_TIMELINE} className="contents">
     <TimelineUndoRedoShortcuts />
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       {/* Header */}
@@ -708,9 +729,42 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
 
       {/* Content */}
       <CollapsibleContent>
-        <div className="flex border border-border rounded-lg overflow-hidden bg-background" style={{ height: structureView === 'timeline' ? '600px' : 'auto' }}>
+        <div
+          className="flex flex-col border border-border rounded-lg overflow-hidden bg-background"
+          style={{ height: structureView === 'timeline' ? '600px' : 'auto' }}
+        >
+          {!beatsLoading && (!beatsData || beatsData.length === 0) && (
+            <div className="shrink-0 border-b border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground space-y-2">
+              {beatTemplate?.trim() && SUPPORTED_BEAT_TEMPLATE_MAP[beatTemplate.trim()] ? (
+                <>
+                  <p>Keine Story Beats angelegt. Du kannst Beats aus dem gewählten Template erzeugen.</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={generatingBeatsFromTemplate}
+                    onClick={() => void handleGenerateBeatsFromTemplate()}
+                  >
+                    {generatingBeatsFromTemplate ? 'Wird erzeugt…' : 'Beats aus Template erzeugen'}
+                  </Button>
+                </>
+              ) : beatTemplate?.trim()?.startsWith('custom:') ? (
+                <p>Custom Beat-Template: automatische Erzeugung ist hier noch nicht angebunden.</p>
+              ) : beatTemplate?.trim() ? (
+                <p>
+                  Beat-Template „{beatTemplate}“ wird für die automatische Erzeugung noch nicht
+                  unterstützt. Unterstützt: lite-7, save-the-cat.
+                </p>
+              ) : (
+                <p>
+                  Kein Beat-Template gewählt. Lege in den Projekteinstellungen ein Template fest, um
+                  hier Beats erzeugen zu können.
+                </p>
+              )}
+            </div>
+          )}
           {/* Container Stack - Dynamic Dropdown based on projectType */}
-          <div className="flex-1 overflow-y-auto h-full">
+          <div className="flex-1 min-h-0 overflow-y-auto h-full">
             {/* Never block Film/Book dropdown: they must mount to load from API if parent cache is empty. */}
             {structureView === 'dropdown' ? (
               projectType === 'book' ? (
@@ -750,6 +804,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
                   <FilmDropdown
                     projectId={projectId}
                     projectType={projectType}
+                    narrativeStructure={narrativeStructure}
                     initialData={(timelineData ?? initialData) as TimelineData}
                     onDataChange={handleTimelineChange}
                     containerRef={containerStackRef}
@@ -807,6 +862,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, in
         </div>
       </CollapsibleContent>
     </Collapsible>
+    </div>
     </TimelineStateProvider>
   );
 }

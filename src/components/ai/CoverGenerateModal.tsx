@@ -43,9 +43,8 @@ export function CoverGenerateModal({
       }}
     >
       <DialogContent
-        overlayClassName="!z-[130]"
         style={{ maxHeight: "min(85vh, 720px)" }}
-        className="!z-[130] !flex min-h-0 !top-[4vh] !left-[50%] !right-auto !bottom-auto !translate-x-[-50%] !translate-y-0 w-[95vw] max-w-2xl !max-h-[min(85vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl md:w-auto"
+        className="!flex min-h-0 !top-[4vh] !left-[50%] !right-auto !bottom-auto !translate-x-[-50%] !translate-y-0 w-[95vw] max-w-2xl !max-h-[min(85vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl md:w-auto"
       >
         <DialogHeader className="shrink-0 space-y-2 px-6 pt-6 pr-14 text-left">
           <DialogTitle>Cover generieren</DialogTitle>

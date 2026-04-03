@@ -23,6 +23,8 @@ export const BACKEND_FUNCTIONS = {
   PROJECT_NODES: 'scriptony-project-nodes', // template engine / nodes
   TIMELINE_V2: 'scriptony-timeline-v2', // deprecated: prefer PROJECT_NODES
   SHOTS: 'scriptony-shots',
+  /** Editorial timeline clips (NLE segments). */
+  CLIPS: 'scriptony-clips',
   CHARACTERS: 'scriptony-characters',
   /** Style Guide (project_visual_style + items). Deploy `scriptony-style-guide`. */
   STYLE_GUIDE: 'scriptony-style-guide',
@@ -109,6 +111,9 @@ const ROUTE_MAP: Record<string, string> = {
 
   // scriptony-shots (audio-specific paths handled in getBackendFunctionForRoute → AUDIO)
   '/shots': BACKEND_FUNCTIONS.SHOTS,
+
+  // scriptony-clips (editorial timeline; must not prefix-match /shots)
+  '/clips': BACKEND_FUNCTIONS.CLIPS,
 
   // scriptony-characters
   '/characters': BACKEND_FUNCTIONS.CHARACTERS,

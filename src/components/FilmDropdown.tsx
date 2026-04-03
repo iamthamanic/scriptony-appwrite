@@ -12,7 +12,8 @@
  * - overflow-hidden on Collapsible prevents layout shift
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, MoreVertical, Copy, Edit, Info } from 'lucide-react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -21,7 +22,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { cn } from './ui/utils';
 import { useIsMobile } from './ui/use-mobile';
-import { undoManager } from '../lib/undo-manager';
+import { pushAppUndoAction } from '../lib/undo-manager';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,9 @@ import { ShotCard } from './ShotCard';
 import { TimelineNodeStatsDialog } from './TimelineNodeStatsDialog';
 import { FilmDropdownMobile } from './FilmDropdownMobile';
 import { useAuth } from '../hooks/useAuth';
+import { useOptionalTimelineState } from '../contexts/TimelineStateContext';
 import * as ShotsAPI from '../lib/api/shots-api';
+import { narrativeStructureInitUiHint } from '../lib/narrative-structure-init';
 import {
   validateImageFile,
   needsGifUserConfirmation,
@@ -47,10 +50,11 @@ import { STORAGE_CONFIG } from '../lib/config';
 import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
 import * as TimelineAPI from '../lib/api/timeline-api';
 import * as TimelineAPIV2 from '../lib/api/timeline-api-v2';
-import type { Act, Sequence, Scene, Shot, Character } from '../lib/types';
+import type { Act, Sequence, Scene, Shot, Character, Clip } from '../lib/types';
 import { toast } from 'sonner';
 import { perfMonitor } from '../lib/performance-monitor';
 import { cacheManager } from '../lib/cache-manager';
+import { queryKeys } from '../lib/react-query';
 import { useOptimizedFilmDropdown } from '../hooks/useOptimizedFilmDropdown';
 import { LoadingSkeleton } from './OptimizedDropdownComponents';
 
@@ -59,7 +63,10 @@ export interface TimelineData {
   acts: Act[];
   sequences: Sequence[];
   scenes: Scene[];
-  shots: Shot[];
+  /** Film projects only; omitted for book timelines. */
+  shots?: Shot[];
+  /** Editorial clips (film timeline); optional for older caches. */
+  clips?: Clip[];
 }
 
 interface FilmDropdownProps {
@@ -68,7 +75,7 @@ interface FilmDropdownProps {
   characters?: Character[]; // Optionally pass characters from parent to avoid double-loading
   initialData?: TimelineData; // 🚀 PERFORMANCE: Pre-loaded timeline data for instant rendering
   onDataChange?: (data: TimelineData) => void; // Callback to update parent cache
-  containerRef?: React.RefObject<HTMLDivElement>; // 🎯 Ref for BeatColumn synchronization
+  containerRef?: React.RefObject<HTMLDivElement | null>; // 🎯 Ref for BeatColumn synchronization
   // 🎯 Controlled Collapse States for dynamic beat alignment
   expandedActs?: Set<string>;
   expandedSequences?: Set<string>;
@@ -79,6 +86,8 @@ interface FilmDropdownProps {
   /** From timeline: expand act→sequence→scene→shot and scroll into view once. */
   expandShotId?: string | null;
   onExpandShotIdConsumed?: () => void;
+  /** DB/UI `narrative_structure`; drives initialize-project payload when the timeline is empty. */
+  narrativeStructure?: string | null;
 }
 
 // DnD Types
@@ -130,7 +139,9 @@ function DropZone({ type, index, onDrop, label, height = 'act' }: DropZoneProps)
 
   return (
     <div
-      ref={drop}
+      ref={(el) => {
+        drop(el);
+      }}
       className={cn(
         'transition-all duration-100 flex items-center justify-center my-1',
         canDrop ? (isOver ? heightClass : normalHeight) : 'h-1'
@@ -188,7 +199,9 @@ function DraggableAct({ act, index, onSwap, children }: DraggableActProps) {
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        drag(drop(node));
+      }}
       className={cn(
         "relative transition-opacity duration-150",
         isDragging && "opacity-40 scale-[0.98]"
@@ -237,7 +250,9 @@ function DraggableSequence({ sequence, index, onSwap, children }: DraggableSeque
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        drag(drop(node));
+      }}
       className={cn(
         "relative transition-opacity duration-150",
         isDragging && "opacity-40 scale-[0.98]"
@@ -286,7 +301,9 @@ function DraggableScene({ scene, index, onSwap, children }: DraggableSceneProps)
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        drag(drop(node));
+      }}
       className={cn(
         "relative transition-opacity duration-150",
         isDragging && "opacity-40 scale-[0.98]"
@@ -335,7 +352,9 @@ function DraggableShot({ shot, index, onSwap, children }: DraggableShotProps) {
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        drag(drop(node));
+      }}
       className={cn(
         "relative transition-opacity duration-150",
         isDragging && "opacity-40 scale-[0.98]"
@@ -363,9 +382,36 @@ export function FilmDropdown({
   containerRef,
   expandShotId,
   onExpandShotIdConsumed,
+  narrativeStructure,
 }: FilmDropdownProps) {
   const { getAccessToken } = useAuth();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+
+  const invalidateTimelineQueries = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.timeline.byProject(projectId) });
+  };
+
+  const narrativeInitHint = useMemo(
+    () => narrativeStructureInitUiHint(narrativeStructure),
+    [narrativeStructure]
+  );
+
+  const narrativeEmptyStateParagraph = useMemo(() => {
+    switch (narrativeInitHint.kind) {
+      case 'ready':
+        return 'Noch keine Struktur. Ebene hinzufügen oder die gewählte Narrativ-Vorlage anlegen.';
+      case 'need_structure':
+        return 'Noch keine Struktur. Wähle zuerst unter Projekt-Informationen eine Narrativ-Struktur, oder füge manuell eine Ebene hinzu.';
+      case 'custom_structure':
+        return 'Noch keine Struktur. Für eine individuelle Narrativ-Struktur legst du Ebenen manuell an.';
+      default:
+        return 'Noch keine Struktur. Für diese Option gibt es keine automatische Vorlage — bitte Ebenen manuell hinzufügen.';
+    }
+  }, [narrativeInitHint]);
+
+  const narrativeInitButtonLabel =
+    narrativeInitHint.kind === 'ready' ? narrativeInitHint.shortLabel : 'Struktur aus Vorlage anlegen';
 
   // 🎯 DYNAMIC LABELS based on project type
   const getLabels = () => {
@@ -399,6 +445,8 @@ export function FilmDropdown({
   };
 
   const labels = getLabels();
+  const timelineCtx = useOptionalTimelineState();
+  const editorialClips = timelineCtx?.clips ?? initialData?.clips ?? [];
 
   // State - Initialize with initialData if available for instant rendering 🚀
   const [acts, setActs] = useState<Act[]>(initialData?.acts || []);
@@ -406,6 +454,7 @@ export function FilmDropdown({
   const [scenes, setScenes] = useState<Scene[]>(initialData?.scenes || []);
   const [shots, setShots] = useState<Shot[]>(initialData?.shots || []);
   const [loading, setLoading] = useState(!initialData); // No loading if we have initialData!
+  const [initializingThreeAct, setInitializingThreeAct] = useState(false);
 
   // Expand/Collapse State
   const [expandedActs, setExpandedActs] = useState<Set<string>>(new Set());
@@ -569,7 +618,7 @@ export function FilmDropdown({
         setActs(cached.data.acts);
         setSequences(cached.data.sequences);
         setScenes(cached.data.scenes);
-        setShots(cached.data.shots);
+        setShots(cached.data.shots ?? []);
         
         // If fresh, we're done!
         if (!cached.isStale) {
@@ -604,33 +653,10 @@ export function FilmDropdown({
         characters: loadedCharacters.length,
       });
 
-      // If no acts exist, initialize 3-Act structure (OUTSIDE perf tracking)
-      let finalActs = loadedActs;
-      let finalSequences = loadedSequences;
-      let finalScenes = loadedScenes;
-      if (!finalActs || finalActs.length === 0) {
-        // Stop perf monitoring before initialization
-        perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (API): ${projectId}`, {
-          acts: 0,
-          sequences: loadedSequences.length,
-          scenes: loadedScenes.length,
-          shots: loadedShots.length,
-        });
-        
-        console.log('[FilmDropdown] 🏗️ Initializing 3-act structure...');
-        await ShotsAPI.initializeThreeActStructure(projectId, token);
-        
-        // Reload minimal structure after initialization (single path).
-        const ultraReload = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
-          includeShots: false,
-          excludeContent: true,
-        });
-        finalActs = (ultraReload.timeline?.acts || []).map((n: any) => TimelineAPI.nodeToAct(n));
-        finalSequences = (ultraReload.timeline?.sequences || []).map((n: any) => TimelineAPI.nodeToSequence(n));
-        finalScenes = (ultraReload.timeline?.scenes || []).map((n: any) => TimelineAPI.nodeToScene(n));
-        console.log('[FilmDropdown] ✅ 3-act structure initialized:', finalActs.length);
-      }
-      
+      const finalActs = loadedActs;
+      const finalSequences = loadedSequences;
+      const finalScenes = loadedScenes;
+
       setActs(finalActs);
       setSequences(finalSequences);
       setScenes(finalScenes);
@@ -656,15 +682,12 @@ export function FilmDropdown({
         staleTime: 60 * 1000,    // 60 seconds (increased from 30)
       });
 
-      // Only end perf tracking if it wasn't already ended during initialization
-      if (finalActs.length > 0 || loadedActs.length > 0) {
-        perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (API): ${projectId}`, {
-          acts: finalActs.length,
-          sequences: finalSequences.length,
-          scenes: finalScenes.length,
-          shots: loadedShots.length,
-        });
-      }
+      perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (API): ${projectId}`, {
+        acts: finalActs.length,
+        sequences: finalSequences.length,
+        scenes: finalScenes.length,
+        shots: loadedShots.length,
+      });
 
     } catch (error) {
       console.error('Error loading timeline data:', error);
@@ -672,6 +695,40 @@ export function FilmDropdown({
       perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (ERROR): ${projectId}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** Explicit user action: create top-level structure from project narrative_structure (not from loaders). */
+  const handleInitializeNarrativeStructure = async () => {
+    if (initializingThreeAct) return;
+    if (narrativeInitHint.kind !== 'ready') {
+      if (narrativeInitHint.kind === 'need_structure') {
+        toast.error('Bitte wähle im Projekt unter Informationen eine Narrativ-Struktur.');
+      } else if (narrativeInitHint.kind === 'custom_structure') {
+        toast.error('Für eine individuelle Struktur legst du Ebenen manuell über „Act hinzufügen“ an.');
+      } else {
+        toast.error(
+          'Für diese Narrativ-Option gibt es keine automatische Vorlage. Bitte Acts oder Ebenen manuell hinzufügen.'
+        );
+      }
+      return;
+    }
+    try {
+      setInitializingThreeAct(true);
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error('Nicht angemeldet');
+        return;
+      }
+      await ShotsAPI.initializeTimelineStructureFromNarrative(projectId, token, narrativeStructure);
+      cacheManager.invalidate(`timeline:${projectId}`);
+      await loadTimelineData();
+      toast.success('Struktur angelegt');
+    } catch (e) {
+      console.error('[FilmDropdown] initializeTimelineStructureFromNarrative:', e);
+      toast.error(e instanceof Error ? e.message : 'Struktur konnte nicht angelegt werden');
+    } finally {
+      setInitializingThreeAct(false);
     }
   };
 
@@ -688,6 +745,7 @@ export function FilmDropdown({
     const newActNumber = maxActNumber + 1;
     
     const tempId = `temp-act-${Date.now()}`;
+    const now = new Date().toISOString();
     const optimisticAct: Act = {
       id: tempId,
       projectId,
@@ -695,6 +753,8 @@ export function FilmDropdown({
       title: `Act ${newActNumber}`,
       description: '',
       orderIndex: realActs.length,
+      createdAt: now,
+      updatedAt: now,
     };
 
     setActs([...acts, optimisticAct]);
@@ -762,6 +822,7 @@ export function FilmDropdown({
     const newSeqNumber = maxSeqNumber + 1;
     
     const tempId = `temp-seq-${Date.now()}`;
+    const now = new Date().toISOString();
     const optimisticSequence: Sequence = {
       id: tempId,
       projectId,
@@ -771,6 +832,8 @@ export function FilmDropdown({
       description: '',
       color: '#ECFDF5',
       orderIndex: actSequences.length,
+      createdAt: now,
+      updatedAt: now,
     };
 
     setSequences([...sequences, optimisticSequence]);
@@ -841,6 +904,7 @@ export function FilmDropdown({
     const newSceneNumber = maxSceneNumber + 1;
     
     const tempId = `temp-scene-${Date.now()}`;
+    const now = new Date().toISOString();
     const optimisticScene: Scene = {
       id: tempId,
       projectId,
@@ -852,6 +916,8 @@ export function FilmDropdown({
       timeOfDay: 'day',
       characters: [],
       orderIndex: seqScenes.length,
+      createdAt: now,
+      updatedAt: now,
     };
 
     setScenes([...scenes, optimisticScene]);
@@ -926,6 +992,7 @@ export function FilmDropdown({
     const newShotNumber = maxShotNumber + 1;
     
     const tempId = `temp-shot-${Date.now()}`;
+    const now = new Date().toISOString();
     const optimisticShot: Shot = {
       id: tempId,
       projectId,
@@ -933,6 +1000,8 @@ export function FilmDropdown({
       shotNumber: `Shot ${newShotNumber}`,
       description: '',
       orderIndex: sceneShots.length,
+      createdAt: now,
+      updatedAt: now,
     };
 
     setShots([...shots, optimisticShot]);
@@ -1096,7 +1165,9 @@ export function FilmDropdown({
 
     const actSequences = sequences.filter(s => s.actId === actId);
     const sequenceIds = actSequences.map(s => s.id);
-    const actScenes = scenes.filter(s => sequenceIds.includes(s.sequenceId));
+    const actScenes = scenes.filter(
+      (s) => s.sequenceId != null && sequenceIds.includes(s.sequenceId)
+    );
     const sceneIds = actScenes.map(s => s.id);
 
     console.log('[FilmDropdown] Deleting act with:', {
@@ -1109,8 +1180,15 @@ export function FilmDropdown({
     // Optimistic delete
     setActs(prevActs => prevActs.filter(a => a.id !== actId));
     setSequences(seqs => seqs.filter(s => s.actId !== actId));
-    setScenes(sc => sc.filter(s => !sequenceIds.includes(s.sequenceId)));
-    setShots(sh => sh.filter(s => !sceneIds.includes(s.sceneId)));
+    setScenes((sc) =>
+      sc.filter(
+        (s) =>
+          s.sequenceId == null || !sequenceIds.includes(s.sequenceId)
+      )
+    );
+    setShots((sh) =>
+      sh.filter((s) => s.sceneId != null && !sceneIds.includes(s.sceneId))
+    );
 
     try {
       const token = await getAccessToken();
@@ -1119,43 +1197,43 @@ export function FilmDropdown({
       console.log('[FilmDropdown] Calling API to delete act:', actId);
       await TimelineAPI.deleteAct(actId, token);
       console.log('[FilmDropdown] ✅ Act deleted successfully');
-      
-      // Register undo action
-      undoManager.push({
-        type: 'delete',
-        entity: 'act',
-        id: actId,
-        previousData: {
-          act: actToDelete,
-          sequences: actSequences,
-          scenes: actScenes,
-        },
-        timestamp: new Date(),
-        description: `Act "${actToDelete.title}" gelöscht`,
-      });
 
-      // Register undo callback
-      undoManager.registerCallback(`undo:delete:act:${actId}`, {
-        execute: async () => {
-          // Restore act
-          const token = await getAccessToken();
-          if (!token) throw new Error('Not authenticated');
-          
-          // Recreate act
-          const newAct = await TimelineAPI.createAct(projectId, {
-            actNumber: actToDelete.actNumber,
-            title: actToDelete.title,
-            description: actToDelete.description,
-          }, token);
-          
-          // Restore to state
-          setActs(prevActs => [...prevActs, newAct].sort((a, b) => a.actNumber - b.actNumber));
-          
+      invalidateTimelineQueries();
+
+      let restoredActId: string | null = null;
+
+      pushAppUndoAction({
+        description: `Act "${actToDelete.title}" gelöscht`,
+        undo: async () => {
+          const t = await getAccessToken();
+          if (!t) throw new Error('Not authenticated');
+
+          const newAct = await TimelineAPI.createAct(
+            projectId,
+            {
+              actNumber: actToDelete.actNumber,
+              title: actToDelete.title,
+              description: actToDelete.description,
+            },
+            t
+          );
+          restoredActId = newAct.id;
+
+          setActs((prevActs) => [...prevActs, newAct].sort((a, b) => a.actNumber - b.actNumber));
+
+          invalidateTimelineQueries();
           toast.success(`Act "${actToDelete.title}" wiederhergestellt`);
         },
-        description: `Act "${actToDelete.title}" wiederherstellen`,
+        redo: async () => {
+          const t = await getAccessToken();
+          if (!t || !restoredActId) return;
+          await TimelineAPI.deleteAct(restoredActId, t);
+          invalidateTimelineQueries();
+          await loadTimelineData();
+          toast.success(`Act "${actToDelete.title}" erneut gelöscht`);
+        },
       });
-      
+
       toast.success('Act gelöscht (CMD+Z zum Rückgängigmachen)');
     } catch (error) {
       console.error('Error deleting act:', error);
@@ -1459,7 +1537,7 @@ export function FilmDropdown({
 
   const handleDuplicateScene = async (sceneId: string) => {
     const sceneToDuplicate = scenes.find(s => s.id === sceneId);
-    if (!sceneToDuplicate) return;
+    if (!sceneToDuplicate?.sequenceId) return;
 
     try {
       const token = await getAccessToken();
@@ -1546,17 +1624,19 @@ export function FilmDropdown({
     // Optimistic delete
     setSequences(seqs => seqs.filter(s => s.id !== sequenceId));
     setScenes(sc => sc.filter(s => s.sequenceId !== sequenceId));
-    setShots(sh => sh.filter(s => !sceneIds.includes(s.sceneId)));
+    setShots((sh) =>
+      sh.filter((s) => s.sceneId != null && !sceneIds.includes(s.sceneId))
+    );
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       await TimelineAPI.deleteSequence(sequenceId, token);
-      
-      // 🚀 CACHE: Invalidate timeline cache
+
       cacheManager.invalidate(`timeline:${projectId}`);
-      
+      invalidateTimelineQueries();
+
       toast.success('Sequenz gelöscht');
     } catch (error) {
       console.error('Error deleting sequence:', error);
@@ -1566,22 +1646,80 @@ export function FilmDropdown({
   };
 
   const handleDeleteScene = async (sceneId: string) => {
+    const sceneToDelete = scenes.find((s) => s.id === sceneId);
+    if (!sceneToDelete?.sequenceId) {
+      toast.error('Szene nicht gefunden');
+      return;
+    }
     if (!confirm('Scene und alle Shots löschen?')) return;
 
-    // Optimistic delete - 🔥 FIX: Use functional updates to prevent stale state
-    setScenes(prevScenes => prevScenes.filter(s => s.id !== sceneId));
-    setShots(prevShots => prevShots.filter(s => s.sceneId !== sceneId));
+    const shotsForScene = shots.filter((s) => s.sceneId === sceneId);
+
+    setScenes((prevScenes) => prevScenes.filter((s) => s.id !== sceneId));
+    setShots((prevShots) => prevShots.filter((s) => s.sceneId !== sceneId));
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       await TimelineAPI.deleteScene(sceneId, token);
-      
-      // 🚀 CACHE: Invalidate timeline cache
+
       cacheManager.invalidate(`timeline:${projectId}`);
-      
-      toast.success('Scene gelöscht');
+      invalidateTimelineQueries();
+
+      let restoredSceneId: string | null = null;
+
+      pushAppUndoAction({
+        description: `Szene „${sceneToDelete.title || 'Szene'}“ gelöscht`,
+        undo: async () => {
+          const t = await getAccessToken();
+          if (!t) throw new Error('Not authenticated');
+          const newScene = await TimelineAPI.createScene(
+            sceneToDelete.sequenceId!,
+            {
+              sceneNumber: sceneToDelete.sceneNumber,
+              title: sceneToDelete.title,
+              description: sceneToDelete.description,
+              color: sceneToDelete.color,
+              location: sceneToDelete.location,
+              timeOfDay: sceneToDelete.timeOfDay,
+              characters: sceneToDelete.characters,
+              content: sceneToDelete.content,
+              metadata: sceneToDelete.metadata,
+              wordCount: sceneToDelete.wordCount,
+            },
+            t
+          );
+          restoredSceneId = newScene.id;
+
+          const createdShots: Shot[] = [];
+          for (const sh of shotsForScene) {
+            const { id: _omitId, sceneId: _omitScene, ...shotPayload } = sh;
+            const ns = await ShotsAPI.createShot(
+              newScene.id,
+              { ...shotPayload, projectId, sceneId: newScene.id },
+              t
+            );
+            createdShots.push(ns);
+          }
+
+          setScenes((prev) => [...prev, newScene]);
+          setShots((prev) => [...prev, ...createdShots]);
+          cacheManager.invalidate(`timeline:${projectId}`);
+          invalidateTimelineQueries();
+          toast.success('Szene wiederhergestellt');
+        },
+        redo: async () => {
+          const t = await getAccessToken();
+          if (!t || !restoredSceneId) return;
+          await TimelineAPI.deleteScene(restoredSceneId, t);
+          invalidateTimelineQueries();
+          await loadTimelineData();
+          toast.success('Szene erneut gelöscht');
+        },
+      });
+
+      toast.success('Scene gelöscht (CMD+Z zum Rückgängigmachen)');
     } catch (error) {
       console.error('Error deleting scene:', error);
       toast.error('Fehler beim Löschen');
@@ -1590,15 +1728,49 @@ export function FilmDropdown({
   };
 
   const handleDeleteShot = async (shotId: string) => {
-    // Optimistic delete - 🔥 FIX: Use functional updates to prevent stale state
-    setShots(prevShots => prevShots.filter(s => s.id !== shotId));
+    const shotToDelete = shots.find((s) => s.id === shotId);
+    if (!shotToDelete) return;
+
+    setShots((prevShots) => prevShots.filter((s) => s.id !== shotId));
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       await ShotsAPI.deleteShot(shotId, token);
-      toast.success('Shot gelöscht');
+      cacheManager.invalidate(`timeline:${projectId}`);
+      invalidateTimelineQueries();
+
+      let restoredShotId: string | null = null;
+
+      pushAppUndoAction({
+        description: `Shot „${shotToDelete.shotNumber || shotToDelete.description || 'Shot'}“ gelöscht`,
+        undo: async () => {
+          const t = await getAccessToken();
+          if (!t) throw new Error('Not authenticated');
+          const { id: _id, sceneId: _sc, ...shotPayload } = shotToDelete;
+          const newShot = await ShotsAPI.createShot(
+            shotToDelete.sceneId,
+            { ...shotPayload, projectId, sceneId: shotToDelete.sceneId },
+            t
+          );
+          restoredShotId = newShot.id;
+          setShots((prev) => [...prev, newShot]);
+          cacheManager.invalidate(`timeline:${projectId}`);
+          invalidateTimelineQueries();
+          toast.success('Shot wiederhergestellt');
+        },
+        redo: async () => {
+          const t = await getAccessToken();
+          if (!t || !restoredShotId) return;
+          await ShotsAPI.deleteShot(restoredShotId, t);
+          invalidateTimelineQueries();
+          await loadTimelineData();
+          toast.success('Shot erneut gelöscht');
+        },
+      });
+
+      toast.success('Shot gelöscht (CMD+Z zum Rückgängigmachen)');
     } catch (error) {
       console.error('Error deleting shot:', error);
       toast.error('Fehler beim Löschen');
@@ -1630,7 +1802,7 @@ export function FilmDropdown({
         const token = await getAccessToken();
         if (token) {
           const actIds = reordered.map(a => a.id);
-          await TimelineAPI.reorderNodes(actIds, token);
+          await TimelineAPI.reorderNodes(actIds);
         }
       } catch (error) {
         console.error('Error reordering acts:', error);
@@ -1660,7 +1832,7 @@ export function FilmDropdown({
         const token = await getAccessToken();
         if (token) {
           const actIds = reordered.map(a => a.id);
-          await TimelineAPI.reorderNodes(actIds, token);
+          await TimelineAPI.reorderNodes(actIds);
         }
       } catch (error) {
         console.error('Error swapping acts:', error);
@@ -1696,7 +1868,7 @@ export function FilmDropdown({
         const token = await getAccessToken();
         if (token) {
           const seqIds = reordered.map(s => s.id);
-          await TimelineAPI.reorderNodes(seqIds, token);
+          await TimelineAPI.reorderNodes(seqIds);
         }
       } catch (error) {
         console.error('Error reordering sequences:', error);
@@ -1734,7 +1906,7 @@ export function FilmDropdown({
         const token = await getAccessToken();
         if (token) {
           const seqIds = reordered.map(s => s.id);
-          await TimelineAPI.reorderNodes(seqIds, token);
+          await TimelineAPI.reorderNodes(seqIds);
         }
       } catch (error) {
         console.error('Error swapping sequences:', error);
@@ -1770,7 +1942,7 @@ export function FilmDropdown({
         const token = await getAccessToken();
         if (token) {
           const sceneIds = reordered.map(s => s.id);
-          await TimelineAPI.reorderNodes(sceneIds, token);
+          await TimelineAPI.reorderNodes(sceneIds);
         }
       } catch (error) {
         console.error('Error reordering scenes:', error);
@@ -1808,7 +1980,7 @@ export function FilmDropdown({
         const token = await getAccessToken();
         if (token) {
           const sceneIds = reordered.map(s => s.id);
-          await TimelineAPI.reorderNodes(sceneIds, token);
+          await TimelineAPI.reorderNodes(sceneIds);
         }
       } catch (error) {
         console.error('Error swapping scenes:', error);
@@ -2342,7 +2514,27 @@ export function FilmDropdown({
     return (
       <>
       <DndProvider backend={HTML5Backend}>
-        <div ref={containerRef} data-beat-container className="p-2">
+        <div ref={containerRef} data-beat-container className="p-2 space-y-2">
+          {acts.length === 0 && (
+            <div className="rounded-lg border border-dashed border-muted-foreground/35 bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground">
+              <p className="mb-2">{narrativeEmptyStateParagraph}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="w-full"
+                disabled={initializingThreeAct || narrativeInitHint.kind !== 'ready'}
+                title={
+                  narrativeInitHint.kind !== 'ready'
+                    ? 'Nicht verfügbar für die aktuelle Narrativ-Struktur'
+                    : undefined
+                }
+                onClick={() => void handleInitializeNarrativeStructure()}
+              >
+                {initializingThreeAct ? 'Wird angelegt…' : narrativeInitButtonLabel}
+              </Button>
+            </div>
+          )}
           <FilmDropdownMobile
             acts={acts}
             sequences={sequences}
@@ -2362,6 +2554,13 @@ export function FilmDropdown({
             onDeleteScene={handleDeleteScene}
             onDeleteShot={handleDeleteShot}
             onDuplicateShot={handleDuplicateShot}
+            onShotImageUpload={handleShotImageUpload}
+            onShotAudioUpload={handleShotAudioUpload}
+            onShotAudioDelete={handleShotAudioDelete}
+            onShotAudioUpdate={handleShotAudioUpdate}
+            onShotCharacterAdd={handleShotCharacterAdd}
+            onShotCharacterRemove={handleShotCharacterRemove}
+            onShotReorder={handleShotSwap}
             projectId={projectId}
             projectType={projectType}
           />
@@ -2383,11 +2582,31 @@ export function FilmDropdown({
           variant="outline"
           onClick={handleAddAct}
           disabled={creating === 'act'}
-          className="w-1/2 md:w-1/4 ml-auto bg-white text-center border-2 border-dashed border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+          className="w-1/2 md:w-1/4 ml-auto bg-background dark:bg-card text-center border-2 border-dashed border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
         >
           <Plus className="size-3.5 mr-1.5" />
           Act hinzufügen
         </Button>
+
+        {acts.length === 0 && (
+          <div className="rounded-lg border border-dashed border-muted-foreground/35 bg-muted/25 px-4 py-3 text-sm text-muted-foreground">
+            <p className="mb-2">{narrativeEmptyStateParagraph}</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={initializingThreeAct || narrativeInitHint.kind !== 'ready'}
+              title={
+                narrativeInitHint.kind !== 'ready'
+                  ? 'Nicht verfügbar für die aktuelle Narrativ-Struktur'
+                  : undefined
+              }
+              onClick={() => void handleInitializeNarrativeStructure()}
+            >
+              {initializingThreeAct ? 'Wird angelegt…' : narrativeInitButtonLabel}
+            </Button>
+          </div>
+        )}
 
         {/* Acts mit Drop Zones */}
         {acts.map((act, actIndex) => {
@@ -2460,7 +2679,7 @@ export function FilmDropdown({
                           ...prev,
                           [act.id]: { ...prev[act.id], title: e.target.value }
                         }))}
-                        className="h-7 flex-1 bg-white text-[18px] border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
+                        className="h-7 flex-1 bg-input-background text-foreground text-[18px] border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
                         placeholder="Titel"
                       />
                       <Button
@@ -2548,7 +2767,7 @@ export function FilmDropdown({
                           ...prev,
                           [act.id]: { ...prev[act.id], description: e.target.value }
                         }))}
-                        className="bg-white text-sm border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
+                        className="bg-input-background text-foreground text-sm border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
                         placeholder="Beschreibung"
                         rows={2}
                       />
@@ -2575,7 +2794,7 @@ export function FilmDropdown({
                       variant="outline"
                       onClick={() => handleAddSequence(act.id)}
                       disabled={creating === `sequence-${act.id}`}
-                      className="w-1/2 md:w-1/4 ml-auto h-7 text-xs bg-white text-center border-2 border-dashed border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
+                      className="w-1/2 md:w-1/4 ml-auto h-7 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
                     >
                       <Plus className="size-3 mr-1" />
                       Sequenz hinzufügen
@@ -2646,7 +2865,7 @@ export function FilmDropdown({
                                       ...prev,
                                       [sequence.id]: { ...prev[sequence.id], title: e.target.value }
                                     }))}
-                                    className="h-6 flex-1 bg-white text-sm border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
+                                    className="h-6 flex-1 bg-input-background text-foreground text-sm border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
                                     placeholder="Titel"
                                   />
                                   <Button
@@ -2734,7 +2953,7 @@ export function FilmDropdown({
                                       ...prev,
                                       [sequence.id]: { ...prev[sequence.id], description: e.target.value }
                                     }))}
-                                    className="bg-white text-xs border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
+                                    className="bg-input-background text-foreground text-xs border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
                                     placeholder="Beschreibung"
                                     rows={2}
                                   />
@@ -2761,7 +2980,7 @@ export function FilmDropdown({
                                   variant="outline"
                                   onClick={() => handleAddScene(sequence.id)}
                                   disabled={creating === `scene-${sequence.id}` || pendingIds.has(sequence.id)}
-                                  className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-white text-center border-2 border-dashed border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
+                                  className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
                                 >
                                   <Plus className="size-3 mr-1" />
                                   {pendingIds.has(sequence.id) ? 'Wird gespeichert...' : 'Scene hinzufügen'}
@@ -2833,7 +3052,7 @@ export function FilmDropdown({
                                                   ...prev,
                                                   [scene.id]: { ...prev[scene.id], title: e.target.value }
                                                 }))}
-                                                className="h-6 flex-1 bg-white text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
+                                                className="h-6 flex-1 bg-input-background text-foreground text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
                                                 placeholder="Titel"
                                               />
                                               <Button
@@ -2922,7 +3141,7 @@ export function FilmDropdown({
                                                   ...prev,
                                                   [scene.id]: { ...prev[scene.id], description: e.target.value }
                                                 }))}
-                                                className="bg-white text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
+                                                className="bg-input-background text-foreground text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
                                                 placeholder="Beschreibung"
                                                 rows={2}
                                               />
@@ -2949,7 +3168,7 @@ export function FilmDropdown({
                                               variant="outline"
                                               onClick={() => handleAddShot(scene.id)}
                                               disabled={creating === `shot-${scene.id}` || scene.id.startsWith('temp-') || pendingIds.has(scene.id)}
-                                              className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-white text-center border-2 border-dashed border-yellow-400 dark:border-yellow-600 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                                              className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-yellow-400 dark:border-yellow-600 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
                                             >
                                               <Plus className="size-3 mr-1" />
                                               {pendingIds.has(scene.id) ? 'Wird gespeichert...' : 'Shot hinzufügen'}
@@ -3014,7 +3233,21 @@ export function FilmDropdown({
                                                   onAudioUpdate={handleShotAudioUpdate}
                                                   onCharacterAdd={handleShotCharacterAdd}
                                                   onCharacterRemove={handleShotCharacterRemove}
+                                                  onReorder={handleShotSwap}
                                                 />
+                                                  {(() => {
+                                                    const forShot = editorialClips.filter((c) => c.shotId === shot.id);
+                                                    if (forShot.length === 0) return null;
+                                                    const dur = forShot.reduce(
+                                                      (s, c) => s + Math.max(0, c.endSec - c.startSec),
+                                                      0
+                                                    );
+                                                    return (
+                                                      <p className="text-[10px] text-muted-foreground pl-2 mt-0.5">
+                                                        Editorial: {forShot.length} Clip(s), {dur.toFixed(1)}s
+                                                      </p>
+                                                    );
+                                                  })()}
                                               </DraggableShot>
                                               
                                               {/* Drop Zone NACH diesem Shot (nur beim letzten) */}

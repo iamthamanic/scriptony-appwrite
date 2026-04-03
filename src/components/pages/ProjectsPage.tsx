@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useId } from "react";
 import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock, Share2, Download } from "lucide-react";
-import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { DndProvider, useDrag, useDrop, type DropTargetMonitor } from "react-dnd";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { SceneCharacterBadge } from "../SceneCharacterBadge";
 import { WorldReferenceAutocomplete } from "../WorldReferenceAutocomplete";
 import { useColoredTags } from "../hooks/useColoredTags";
+import { useBeats } from "../../hooks/useBeats";
 import { ImageCropDialog } from "../ImageCropDialog";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { FilmDropdown } from "../FilmDropdown";
@@ -53,12 +54,12 @@ import { AssistantParticleLoader } from "../ai/AssistantParticleLoader";
 import { buildProjectCoverPrompt, type CoverVisualStyle } from "../../lib/cover-prompt";
 import { applyScriptonyWatermarkToImageBase64 } from "../../lib/cover-watermark";
 import scriptonyLogo from "../../assets/scriptony-logo.png";
-import * as TimelineAPI from "../../lib/api/timeline-api";
 import * as ShotsAPI from "../../lib/api/shots-api";
-import { queryClient } from "../../lib/react-query";
+import { narrativeStructureToInitializeProjectPayload } from "../../lib/narrative-structure-init";
+import { wipeProjectTimelineForNarrativeReplace } from "../../lib/timeline-narrative-replace";
+import { queryClient, queryKeys } from "../../lib/react-query";
+import { cacheManager } from "../../lib/cache-manager";
 import { prefetchProjectTimeline, setProjectTimelineCache } from "../../hooks/useProjectTimeline";
-import * as BeatsAPI from "../../lib/api/beats-api";
-import { BEAT_TEMPLATES } from "../../lib/beat-templates";
 import type { TimelineData } from "../FilmDropdown";
 import type { BookTimelineData } from "../BookDropdown";
 import { useProjectTimeline } from "../../hooks/useProjectTimeline";
@@ -70,6 +71,7 @@ import {
   normalizeConceptBlocks,
   type ConceptBlock,
 } from "../../lib/concept-blocks";
+import type { Character } from "../../lib/types";
 
 /** Preset genres for new/edit project picker; custom labels are stored in the same comma-separated `genre` field. */
 export const PROJECT_PRESET_GENRES = [
@@ -606,7 +608,17 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         try {
           const token = await getAuthToken();
           if (token) {
-            await ShotsAPI.initializeThreeActStructure(project.id, token);
+            const scriptImportNsRaw =
+              newProjectType !== "series" ? narrativeStructureValue?.trim() : "";
+            let scriptImportNs = scriptImportNsRaw || "3-act";
+            if (!narrativeStructureToInitializeProjectPayload(scriptImportNs)) {
+              scriptImportNs = "3-act";
+            }
+            await ShotsAPI.initializeTimelineStructureFromNarrative(
+              project.id,
+              token,
+              scriptImportNs
+            );
             await importScriptFileToProject(project.id, newProjectType, scriptFileToImport, token);
             toast.success("Skriptstruktur importiert");
           }
@@ -722,6 +734,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       const originalProject = projects.find(p => p.id === projectId);
       if (!originalProject) return;
 
+      const dupInspirations = originalProject.inspirations;
       const duplicated = await projectsApi.create({
         title: `${originalProject.title} (Kopie)`,
         logline: originalProject.logline,
@@ -730,7 +743,18 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         duration: originalProject.duration,
         linkedWorldId: originalProject.linkedWorldId,
         concept_blocks: normalizeConceptBlocks(originalProject.concept_blocks),
+        ...(Array.isArray(dupInspirations) && dupInspirations.some((s: string) => String(s).trim())
+          ? { inspirations: dupInspirations }
+          : {}),
         coverImage: projectCoverImages[projectId],
+        episode_layout: originalProject.type === 'series' ? originalProject.episode_layout : undefined,
+        season_engine: originalProject.type === 'series' ? originalProject.season_engine : undefined,
+        narrative_structure:
+          originalProject.type !== 'series' ? originalProject.narrative_structure : undefined,
+        beat_template: originalProject.beat_template,
+        target_pages: originalProject.type === 'book' ? originalProject.target_pages : undefined,
+        words_per_page: originalProject.type === 'book' ? originalProject.words_per_page : undefined,
+        reading_speed_wpm: originalProject.type === 'book' ? originalProject.reading_speed_wpm : undefined,
       });
 
       setProjects([...projects, normalizeProjectClient(duplicated)]);
@@ -1924,6 +1948,7 @@ interface CharacterCardProps {
     weaknesses?: string;
     characterTraits?: string;
     image?: string;
+    referenceImages?: string[];
     lastEdited: Date;
   };
   onImageUpload: (characterId: string, imageUrl: string) => void;
@@ -2416,14 +2441,18 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
     ? "Szenen-Beschreibung (nutze @ für Charaktere, / für World-Items)"
     : "Szenen-Beschreibung (nutze @ um Charaktere zu taggen)";
 
-  const [{ handlerId }, drop] = useDrop({
+  const [{ handlerId }, drop] = useDrop<
+    { index: number },
+    void,
+    { handlerId: ReturnType<DropTargetMonitor["getHandlerId"]> }
+  >({
     accept: "SCENE",
     collect(monitor) {
       return {
         handlerId: monitor.getHandlerId(),
       };
     },
-    hover(item: { index: number }, monitor) {
+    hover(item, monitor) {
       if (!ref.current) {
         return;
       }
@@ -2995,11 +3024,46 @@ interface ProjectDetailProps {
   onRequestProjectExport?: (snapshot: Record<string, unknown>, linkedWorldLabel: string | null) => void;
 }
 
+/** Legacy scene row for ProjectDetail localStorage drafts. */
+interface ProjectSceneRow {
+  id: string;
+  number: number;
+  title: string;
+  description?: string;
+  image?: string;
+  lastEdited?: Date;
+  [key: string]: unknown;
+}
+
+/** Local character row for ProjectDetail (form strings + API bridge). */
+interface ProjectCharacterRow {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  age: string;
+  gender: string;
+  species: string;
+  backgroundStory: string;
+  skills: string;
+  strengths: string;
+  weaknesses: string;
+  characterTraits: string;
+  image?: string;
+  imageUrl?: string;
+  referenceImages?: string[];
+  lastEdited: Date;
+}
+
 function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, styleGuideOpen, setStyleGuideOpen, styleGuide, styleGuideLoading, styleGuideError, onStyleGuideChange, useStyleGuideForCover, setUseStyleGuideForCover, onRequestProjectExport }: ProjectDetailProps) {
   const [structureView, setStructureView] = useState<"dropdown" | "timeline">("dropdown");
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [beatTemplateSaveDialogOpen, setBeatTemplateSaveDialogOpen] = useState(false);
+  const [narrativeOverwriteDialogOpen, setNarrativeOverwriteDialogOpen] = useState(false);
+  const [narrativeOverwriteStep, setNarrativeOverwriteStep] = useState<1 | 2>(1);
+  const [pendingNarrativeReplace, setPendingNarrativeReplace] = useState(false);
   const [editedTitle, setEditedTitle] = useState(project.title || "");
   const [editedLogline, setEditedLogline] = useState(project.logline || "");
   const [editedType, setEditedType] = useState(project.type || "");
@@ -3047,6 +3111,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     isFetching: rqTimelineFetching,
     isError: rqTimelineError,
   } = useProjectTimeline(project.id, project.type);
+
+  const { data: beatsForTemplateWarning } = useBeats(project.id);
 
   const isTimelineQueryBusy =
     !rqTimelineError && (authLoading || rqTimelinePending || rqTimelineFetching);
@@ -3222,7 +3288,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     return [];
   };
 
-  const [scenesState, setScenesState] = useState(getInitialScenes);
+  const [scenesState, setScenesState] = useState<ProjectSceneRow[]>(() => getInitialScenes() as ProjectSceneRow[]);
 
   // Save scenes to localStorage whenever they change
   useEffect(() => {
@@ -3514,12 +3580,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   };
 
   // Characters State - NO MORE MOCK DATA! ✅
-  const getInitialCharacters = () => {
-    // Return empty array - characters will be loaded from backend
-    return [];
-  };
-
-  const [charactersState, setCharactersState] = useState(getInitialCharacters);
+  const [charactersState, setCharactersState] = useState<ProjectCharacterRow[]>([]);
   const [charactersLoading, setCharactersLoading] = useState(true);
 
   const handleCoverVisualStyleChange = (style: CoverVisualStyle) => {
@@ -3610,20 +3671,26 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           name: char.name,
           role: char.role || "Character",
           description: char.description || "",
-          age: char.age || "",
+          age: char.age != null && char.age !== "" ? String(char.age) : "",
           gender: char.gender || "",
           species: char.species || "",
           backgroundStory: char.backstory || "",
-          skills: char.skills || "",
-          strengths: char.strengths || "",
-          weaknesses: char.weaknesses || "",
+          skills: Array.isArray(char.skills)
+            ? char.skills.join(", ")
+            : char.skills || "",
+          strengths: Array.isArray(char.strengths)
+            ? char.strengths.join(", ")
+            : char.strengths || "",
+          weaknesses: Array.isArray(char.weaknesses)
+            ? char.weaknesses.join(", ")
+            : char.weaknesses || "",
           characterTraits: char.personality || "",
           image: char.imageUrl || char.image_url,
           imageUrl: char.imageUrl || char.image_url, // For timeline/shots
           lastEdited: new Date(char.updatedAt || char.updated_at)
         }));
         
-        setCharactersState(transformedCharacters);
+        setCharactersState(transformedCharacters as ProjectCharacterRow[]);
         console.timeEnd(`⏱️ [PERF] Characters Load: ${project.id}`);
       } catch (error: any) {
         console.error("[ProjectDetail] Error loading characters:", error);
@@ -3711,19 +3778,30 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       }
 
       // Transform to API format
-      await updateCharacterApi(characterId, {
-        name: updates.name,
-        role: updates.role,
-        description: updates.description,
-        age: updates.age,
-        gender: updates.gender,
-        species: updates.species,
-        backstory: updates.backgroundStory,
-        skills: updates.skills,
-        strengths: updates.strengths,
-        weaknesses: updates.weaknesses,
-        personality: updates.characterTraits,
-      }, token);
+      const parseList = (s?: string) =>
+        s
+          ? s
+              .split(/[,|]/)
+              .map((x) => x.trim())
+              .filter(Boolean)
+          : undefined;
+      await updateCharacterApi(
+        characterId,
+        {
+          name: updates.name,
+          role: (updates.role || "supporting") as Character["role"],
+          description: updates.description,
+          age: updates.age !== undefined && updates.age !== "" ? Number(updates.age) : undefined,
+          gender: updates.gender,
+          species: updates.species,
+          backstory: updates.backgroundStory,
+          skills: parseList(updates.skills),
+          strengths: parseList(updates.strengths),
+          weaknesses: parseList(updates.weaknesses),
+          personality: updates.characterTraits,
+        },
+        token
+      );
 
       toast.success("Character aktualisiert");
     } catch (error: any) {
@@ -3807,19 +3885,24 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       setCharactersState((prev) => [...prev, tempCharacter]);
       resetNewCharacterForm();
 
+      const toList = (s: string) =>
+        s
+          .split(/[,|]/)
+          .map((x) => x.trim())
+          .filter(Boolean);
       const createdCharacter = await createCharacterApi(
         project.id,
         {
           name: snap.name,
-          role: snap.role || "Character",
+          role: (snap.role || "Character") as Character["role"],
           description: snap.description,
-          age: snap.age,
+          age: snap.age ? Number(snap.age) : undefined,
           gender: snap.gender,
           species: snap.species,
           backstory: snap.backgroundStory,
-          skills: snap.skills,
-          strengths: snap.strengths,
-          weaknesses: snap.weaknesses,
+          skills: toList(snap.skills || ""),
+          strengths: toList(snap.strengths || ""),
+          weaknesses: toList(snap.weaknesses || ""),
           personality: snap.traits,
           imageUrl: snap.image,
           referenceImageUrls: snap.gallery,
@@ -3837,20 +3920,30 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 name: createdCharacter.name,
                 role: createdCharacter.role || "Character",
                 description: createdCharacter.description || "",
-                age: createdCharacter.age || "",
+                age: String(createdCharacter.age ?? ""),
                 gender: createdCharacter.gender || "",
                 species: createdCharacter.species || "",
                 backgroundStory: createdCharacter.backstory || "",
-                skills: createdCharacter.skills || "",
-                strengths: createdCharacter.strengths || "",
-                weaknesses: createdCharacter.weaknesses || "",
+                skills: Array.isArray(createdCharacter.skills)
+                  ? createdCharacter.skills.join(", ")
+                  : createdCharacter.skills || "",
+                strengths: Array.isArray(createdCharacter.strengths)
+                  ? createdCharacter.strengths.join(", ")
+                  : createdCharacter.strengths || "",
+                weaknesses: Array.isArray(createdCharacter.weaknesses)
+                  ? createdCharacter.weaknesses.join(", ")
+                  : createdCharacter.weaknesses || "",
                 characterTraits: createdCharacter.personality || "",
                 image: createdCharacter.imageUrl || createdCharacter.image_url,
                 referenceImages:
                   createdCharacter.referenceImageUrls ||
                   (createdCharacter as { reference_image_urls?: string[] }).reference_image_urls ||
                   [],
-                lastEdited: new Date(createdCharacter.updatedAt || createdCharacter.updated_at),
+                lastEdited: new Date(
+                  createdCharacter.updatedAt ??
+                    createdCharacter.updated_at ??
+                    Date.now()
+                ),
               }
             : char
         )
@@ -3915,86 +4008,147 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setTempImageForCrop(undefined);
   };
 
-  const handleSaveProjectInfo = async () => {
-    // Validation: At least 1 genre required
+  const performSaveProjectInfo = async (options?: { replaceNarrativeTimeline?: boolean }) => {
     if (!editedGenresMulti || editedGenresMulti.length === 0) {
       toast.error("Bitte wähle mindestens ein Genre aus");
       return;
     }
 
     try {
-      const previousBeatTemplate = project.beat_template;
-      const beatTemplateChanged = editedBeatTemplate !== previousBeatTemplate;
-
-      // Update project in backend
       await projectsApi.update(project.id, {
         title: editedTitle,
         logline: editedLogline,
         type: editedType,
-        genre: editedGenresMulti.join(", "), // Convert array to comma-separated string
+        genre: editedGenresMulti.join(", "),
         duration: editedDurationForApi,
         linkedWorldId: editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
         concept_blocks: editedConceptBlocks,
-        // Series: episode_layout + season_engine
         episode_layout: editedType === 'series' ? (editedEpisodeLayout || undefined) : undefined,
         season_engine: editedType === 'series' ? (editedSeasonEngine || undefined) : undefined,
-        // Film/Book/Audio: narrative_structure
         narrative_structure: editedType !== 'series' ? (editedNarrativeStructure || undefined) : undefined,
         beat_template: editedBeatTemplate || undefined,
-        // 📖 Book Metrics
         target_pages: editedType === 'book' ? (editedTargetPages ? parseInt(editedTargetPages) : undefined) : undefined,
         words_per_page: editedType === 'book' ? (editedWordsPerPage ? parseInt(editedWordsPerPage) : 250) : undefined,
         reading_speed_wpm: editedType === 'book' ? (editedReadingSpeed ? parseInt(editedReadingSpeed) : 230) : undefined,
       });
 
-      // 🎬 Generate Beats if template changed
-      if (beatTemplateChanged && editedBeatTemplate && editedBeatTemplate !== 'custom') {
-        const template = BEAT_TEMPLATES[editedBeatTemplate];
-        if (template) {
-          toast.info("Generiere Beats...");
-          
-          // Delete existing beats for this project
-          const existingBeats = await BeatsAPI.getBeats(project.id);
-          await Promise.all(existingBeats.map(beat => BeatsAPI.deleteBeat(beat.id)));
-          
-          // Create new beats from template
-          // Assuming first act exists for container reference
-          const acts = await TimelineAPI.getActs(project.id, await getAuthToken() || '');
-          const firstActId = acts[0]?.id || 'temp-act-id';
-          
-          await Promise.all(
-            template.beats.map((beat, index) => 
-              BeatsAPI.createBeat({
-                project_id: project.id,
-                label: beat.label,
-                template_abbr: template.abbr,
-                description: '',
-                from_container_id: firstActId,
-                to_container_id: firstActId,
-                pct_from: beat.pctFrom,
-                pct_to: beat.pctTo,
-                color: beat.color,
-                notes: '',
-                order_index: index,
-              })
-            )
-          );
-          
-          toast.success(`${template.beats.length} Beats generiert`);
+      let narrativeStructureMaterialized = false;
+      let narrativeTimelineCleared = false;
+
+      if (editedType !== "series") {
+        const initPayload = narrativeStructureToInitializeProjectPayload(editedNarrativeStructure);
+        const timelineActs = (rqTimeline as TimelineData | BookTimelineData | undefined)?.acts;
+        const hasActs = Array.isArray(timelineActs) && timelineActs.length > 0;
+        const token = await getAuthToken();
+
+        if (token) {
+          try {
+            if (options?.replaceNarrativeTimeline) {
+              await wipeProjectTimelineForNarrativeReplace(project.id, token);
+              narrativeTimelineCleared = true;
+              cacheManager.invalidate(`timeline:${project.id}`);
+              if (initPayload) {
+                await ShotsAPI.initializeTimelineStructureFromNarrative(
+                  project.id,
+                  token,
+                  editedNarrativeStructure
+                );
+                narrativeStructureMaterialized = true;
+              }
+              await queryClient.invalidateQueries({
+                queryKey: queryKeys.timeline.byProject(project.id),
+              });
+            } else if (initPayload && !hasActs) {
+              await ShotsAPI.initializeTimelineStructureFromNarrative(
+                project.id,
+                token,
+                editedNarrativeStructure
+              );
+              narrativeStructureMaterialized = true;
+              cacheManager.invalidate(`timeline:${project.id}`);
+              await queryClient.invalidateQueries({
+                queryKey: queryKeys.timeline.byProject(project.id),
+              });
+            }
+          } catch (initErr) {
+            console.error("[ProjectDetail] narrative timeline after save:", initErr);
+            toast.error(
+              initErr instanceof Error
+                ? initErr.message
+                : "Timeline konnte nicht angepasst werden."
+            );
+          }
         }
       }
 
-      // Refresh data to sync with backend
-      await onUpdate();
-
-      // Exit edit mode
+      await onUpdate?.();
       setIsEditingInfo(false);
-
-      toast.success("Projekt gespeichert");
+      toast.success(
+        narrativeStructureMaterialized
+          ? "Projekt gespeichert — Narrativ-Struktur angelegt"
+          : narrativeTimelineCleared
+            ? "Projekt gespeichert — bestehende Struktur wurde entfernt"
+            : "Projekt gespeichert"
+      );
     } catch (error: any) {
       console.error("[ProjectDetail] Error updating project info:", error);
       toast.error(error.message || "Fehler beim Speichern");
     }
+  };
+
+  const handleSaveProjectInfo = async () => {
+    if (!editedGenresMulti || editedGenresMulti.length === 0) {
+      toast.error("Bitte wähle mindestens ein Genre aus");
+      return;
+    }
+
+    const narrativeChanged =
+      (editedNarrativeStructure || "") !== (project.narrative_structure || "");
+    const timelineActs = (rqTimeline as TimelineData | BookTimelineData | undefined)?.acts;
+    const hasTimelineActs = Array.isArray(timelineActs) && timelineActs.length > 0;
+
+    if (editedType !== "series" && narrativeChanged && hasTimelineActs) {
+      setNarrativeOverwriteStep(1);
+      setNarrativeOverwriteDialogOpen(true);
+      return;
+    }
+
+    const beatChanged = (editedBeatTemplate || "") !== (project.beat_template || "");
+    if (
+      beatChanged &&
+      beatsForTemplateWarning &&
+      beatsForTemplateWarning.length > 0
+    ) {
+      setBeatTemplateSaveDialogOpen(true);
+      return;
+    }
+
+    await performSaveProjectInfo();
+  };
+
+  const confirmNarrativeOverwriteFinal = () => {
+    setNarrativeOverwriteDialogOpen(false);
+    setNarrativeOverwriteStep(1);
+    const beatChanged = (editedBeatTemplate || "") !== (project.beat_template || "");
+    if (
+      beatChanged &&
+      beatsForTemplateWarning &&
+      beatsForTemplateWarning.length > 0
+    ) {
+      setPendingNarrativeReplace(true);
+      setBeatTemplateSaveDialogOpen(true);
+      return;
+    }
+    void performSaveProjectInfo({ replaceNarrativeTimeline: true });
+  };
+
+  const confirmBeatTemplateProjectSave = async () => {
+    setBeatTemplateSaveDialogOpen(false);
+    const useReplace = pendingNarrativeReplace;
+    setPendingNarrativeReplace(false);
+    await performSaveProjectInfo(
+      useReplace ? { replaceNarrativeTimeline: true } : undefined
+    );
   };
 
   const renderCoverDownloadMenu = () =>
@@ -4037,6 +4191,93 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
   return (
     <div className="min-h-screen pb-24">
+      <AlertDialog
+        open={narrativeOverwriteDialogOpen}
+        onOpenChange={(open) => {
+          setNarrativeOverwriteDialogOpen(open);
+          if (!open) setNarrativeOverwriteStep(1);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {narrativeOverwriteStep === 1
+                ? "Narrativ-Struktur ändern"
+                : "Wirklich überschreiben?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {narrativeOverwriteStep === 1 ? (
+                  <>
+                    <p>
+                      Du hast die <strong className="text-foreground">Narrativ-Struktur</strong> geändert. Es sind
+                      bereits Acts/Ebenen in der Timeline vorhanden.
+                    </p>
+                    <p>
+                      Beim Speichern wird die <strong className="text-foreground">bestehende Timeline entfernt</strong>
+                      (Acts, Sequenzen, Szenen, Shots, Clips) und — sofern für die neue Auswahl eine Vorlage
+                      existiert — die Struktur neu angelegt.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      <strong className="text-foreground">Achtung:</strong> Dieser Vorgang kann nicht rückgängig
+                      gemacht werden.
+                    </p>
+                    <p>Bist du dir sicher, dass du fortfahren möchtest?</p>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            {narrativeOverwriteStep === 1 ? (
+              <>
+                <AlertDialogCancel type="button">Abbrechen</AlertDialogCancel>
+                <Button type="button" onClick={() => setNarrativeOverwriteStep(2)}>
+                  Weiter
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" variant="outline" onClick={() => setNarrativeOverwriteStep(1)}>
+                  Zurück
+                </Button>
+                <AlertDialogAction type="button" onClick={() => confirmNarrativeOverwriteFinal()}>
+                  Überschreiben und speichern
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={beatTemplateSaveDialogOpen}
+        onOpenChange={(open) => {
+          setBeatTemplateSaveDialogOpen(open);
+          if (!open) setPendingNarrativeReplace(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Beat-Template geändert</AlertDialogTitle>
+            <AlertDialogDescription>
+              Für dieses Projekt sind bereits Story-Beats angelegt. Beim Speichern wird nur die Template-Zuordnung
+              im Projekt aktualisiert — bestehende Beats werden nicht automatisch umbenannt oder gelöscht. Du kannst
+              sie in der Struktur-Sektion bei Bedarf über „Beats aus Template erzeugen“ anpassen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction type="button" onClick={() => void confirmBeatTemplateProjectSave()}>
+              Speichern
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Back Button */}
       <Button 
         variant="ghost" 
@@ -5715,6 +5956,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           projectId={project.id}
           projectType={project.type}
           beatTemplate={project.beat_template}
+          narrativeStructure={
+            isEditingInfo ? editedNarrativeStructure || "" : project.narrative_structure || ""
+          }
           initialData={rqTimeline}
           onDataChange={(data) => onTimelineDataChange(project.id, data)}
           isLoadingCache={!rqTimeline && isTimelineQueryBusy}

@@ -193,7 +193,7 @@ export function ApiDebugPage() {
                     <div className="font-medium">{result.name}</div>
                     {result.url && (
                       <div className="text-xs text-muted-foreground">
-                        GET {EDGE_FUNCTIONS[index].route}
+                        GET {BACKEND_FUNCTIONS[index].route}
                       </div>
                     )}
                   </div>

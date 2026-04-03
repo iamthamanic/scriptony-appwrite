@@ -42,7 +42,11 @@ export function useOptimizedFilmDropdown({
     const expandedSequenceIds = new Set(
       visibleSequences.filter((seq) => expandedSequences.has(seq.id)).map((s) => s.id)
     );
-    return scenes.filter((scene) => expandedSequenceIds.has(scene.sequenceId));
+    return scenes.filter(
+      (scene) =>
+        scene.sequenceId != null &&
+        expandedSequenceIds.has(scene.sequenceId)
+    );
   }, [scenes, visibleSequences, expandedSequences]);
 
   // 🚀 OPTIMIZATION 3: Only filter visible shots (expanded scenes only)
@@ -50,7 +54,10 @@ export function useOptimizedFilmDropdown({
     const expandedSceneIds = new Set(
       visibleScenes.filter((scene) => expandedScenes.has(scene.id)).map((s) => s.id)
     );
-    return shots.filter((shot) => expandedSceneIds.has(shot.sceneId));
+    return shots.filter(
+      (shot) =>
+        shot.sceneId != null && expandedSceneIds.has(shot.sceneId)
+    );
   }, [shots, visibleScenes, expandedScenes]);
 
   // 🚀 OPTIMIZATION 4: Memoized filter functions per container

@@ -26,6 +26,7 @@ FUNCTIONS=(
   scriptony-auth
   scriptony-beats
   scriptony-characters
+  scriptony-clips
   scriptony-gym
   scriptony-logs
   scriptony-project-nodes

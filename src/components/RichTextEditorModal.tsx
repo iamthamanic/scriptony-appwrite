@@ -538,7 +538,7 @@ export function RichTextEditorModal({
     
     if (currentJSON !== newJSON) {
       console.log('[RichTextEditorModal] 📥 Loading JSON content:', contentToSet);
-      editor.commands.setContent(contentToSet, false);
+      editor.commands.setContent(contentToSet, { emitUpdate: false });
     }
   }, [editor, value]);
 

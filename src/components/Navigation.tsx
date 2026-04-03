@@ -1,4 +1,4 @@
-import { Home, Film, Globe, Dumbbell, Upload, ShieldCheck, Settings, Moon, Sun, User, Presentation, Layers, Database, Trash2, Loader2 } from "lucide-react";
+import { Home, Film, Globe, Dumbbell, Upload, ShieldCheck, Settings, Moon, Sun, User, Presentation, Layers, Database, Trash2, Loader2, Undo2, Redo2 } from "lucide-react";
 import { Button } from "./ui/button";
 import scriptonyLogo from '../assets/scriptony-logo.png';
 import { useState } from "react";
@@ -7,6 +7,12 @@ import { getAuthToken } from "../lib/auth/getAuthToken";
 import { useIsMobile } from "./ui/use-mobile";
 import * as BeatsAPI from "../lib/api/beats-api";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
+import { useAppUndo } from "../hooks/useAppUndo";
+
+/**
+ * Hauptnavigation (Desktop + Mobile): Logo, Seiten, globaler Undo/Redo (useAppUndo), Theme, Einstellungen.
+ * Pfad: src/components/Navigation.tsx
+ */
 
 interface NavigationProps {
   currentPage: string;
@@ -21,6 +27,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isCleaningBeats, setIsCleaningBeats] = useState(false);
   const isMobile = useIsMobile();
+  const { canUndo, canRedo, undo, redo } = useAppUndo();
 
   const handleRecalculateWordCounts = async () => {
     console.log('🚨🚨🚨 NEUER CODE LÄUFT! WC Button geklickt! 🚨🚨🚨');
@@ -279,6 +286,36 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
             {/* Right Actions */}
             <div className="flex items-center gap-1">
               <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full w-9 h-9"
+                disabled={!canUndo}
+                aria-label="Rückgängig"
+                title="Rückgängig"
+                onClick={async () => {
+                  const ok = await undo();
+                  if (ok) toast.success("Rückgängig gemacht");
+                }}
+              >
+                <Undo2 className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full w-9 h-9"
+                disabled={!canRedo}
+                aria-label="Wiederholen"
+                title="Wiederholen"
+                onClick={async () => {
+                  const ok = await redo();
+                  if (ok) toast.success("Wiederhergestellt");
+                }}
+              >
+                <Redo2 className="size-4" />
+              </Button>
+              <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => onNavigate("settings")}
@@ -340,7 +377,36 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
           <div className="flex items-center gap-1">
 
             {/* Removed 🎨 Proto button */}
-            
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full w-9 h-9"
+              disabled={!canUndo}
+              aria-label="Rückgängig"
+              title="Rückgängig"
+              onClick={async () => {
+                const ok = await undo();
+                if (ok) toast.success("Rückgängig gemacht");
+              }}
+            >
+              <Undo2 className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full w-9 h-9"
+              disabled={!canRedo}
+              aria-label="Wiederholen"
+              title="Wiederholen"
+              onClick={async () => {
+                const ok = await redo();
+                if (ok) toast.success("Wiederhergestellt");
+              }}
+            >
+              <Redo2 className="size-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

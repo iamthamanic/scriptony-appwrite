@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface ImagePreviewPosition {
   top: number;
@@ -71,6 +71,23 @@ export function useImagePreview() {
     };
   }, []);
 
+  /** Programmatic preview (e.g. map pins) — centers in the viewport. */
+  const openPreview = useCallback((imageUrl: string) => {
+    if (typeof window === "undefined") return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const maxWidth = Math.min(400, viewportWidth - 32);
+    const maxHeight = Math.min(400, viewportHeight - 32);
+    setCurrentImage(imageUrl);
+    setPreviewPosition({
+      top: Math.max(16, (viewportHeight - maxHeight) / 2),
+      left: Math.max(16, (viewportWidth - maxWidth) / 2),
+      width: maxWidth,
+      height: maxHeight,
+    });
+    setIsPreviewOpen(true);
+  }, []);
+
   const ImagePreviewOverlay = () => {
     if (!isPreviewOpen || !previewPosition || !currentImage) return null;
 
@@ -102,6 +119,7 @@ export function useImagePreview() {
   return {
     handleMouseEnter,
     handleMouseLeave,
+    openPreview,
     ImagePreviewOverlay,
     isPreviewOpen,
   };
