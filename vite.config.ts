@@ -4,6 +4,39 @@
   import wasm from 'vite-plugin-wasm';
   import topLevelAwait from 'vite-plugin-top-level-await';
   import path from 'path';
+  import fs from 'node:fs';
+
+  /** Dev: append NDJSON from VideoEditorTimeline debug fetch → .cursor/debug-47af82.log */
+  const scriptonyDebugIngestPlugin: import('vite').Plugin = {
+    name: 'scriptony-debug-ingest',
+    configureServer(server) {
+      const logPath = path.join(process.cwd(), '.cursor', 'debug-47af82.log');
+      server.middlewares.use('/__scriptony-debug-ingest', (req, res, next) => {
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Debug-Session-Id');
+          res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+          return void res.end();
+        }
+        if (req.method !== 'POST') return next();
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          try {
+            const body = Buffer.concat(chunks).toString('utf8');
+            const dir = path.dirname(logPath);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.appendFileSync(logPath, body.endsWith('\n') ? body : `${body}\n`);
+          } catch (e) {
+            console.warn('[scriptony-debug-ingest]', e);
+          }
+          res.statusCode = 204;
+          res.end();
+        });
+      });
+    },
+  };
 
   export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
@@ -64,7 +97,7 @@
     }
 
     return {
-    plugins: [react(), wasm(), topLevelAwait()],
+    plugins: [react(), wasm(), topLevelAwait(), scriptonyDebugIngestPlugin],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       /** One copy of React — avoids "Invalid hook call" / useState from null in dev. */

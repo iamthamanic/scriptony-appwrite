@@ -50,6 +50,8 @@ interface StructureBeatsSectionProps {
   readingSpeedWpm?: number;
   /** Film/Series/Audio: target length in **minutes** (from project detail); drives timeline ruler & duration label. */
   targetDurationMinutes?: string | number | null;
+  /** Film timeline: trim commit needs more seconds than current project duration — parent can offer to extend. */
+  onProjectDurationSecondsHint?: (minSeconds: number) => void;
   // 🚀 NEW: Loading state when parent is fetching cache
   isLoadingCache?: boolean;
 }
@@ -158,7 +160,7 @@ function TimelineUndoRedoShortcuts() {
   return null; // Render nothing — pure side-effect component
 }
 
-export function StructureBeatsSection({ projectId, projectType, beatTemplate, narrativeStructure, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, targetDurationMinutes, isLoadingCache }: StructureBeatsSectionProps) {
+export function StructureBeatsSection({ projectId, projectType, beatTemplate, narrativeStructure, initialData, onDataChange, totalWords, targetPages, wordsPerPage, readingSpeedWpm, targetDurationMinutes, onProjectDurationSecondsHint, isLoadingCache }: StructureBeatsSectionProps) {
   const containerStackRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(true); // DEFAULT: OPEN
@@ -829,6 +831,7 @@ export function StructureBeatsSection({ projectId, projectType, beatTemplate, na
                   setExpandShotId(shotId);
                   setStructureView('dropdown');
                 }}
+                onProjectDurationSecondsHint={onProjectDurationSecondsHint}
               />
             ) : structureView === 'native' ? (
               projectType === 'book' ? (

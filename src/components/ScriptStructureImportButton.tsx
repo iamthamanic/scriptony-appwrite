@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { Upload, Loader2 } from 'lucide-react';
+import { Import as ImportIcon, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   AlertDialog,
@@ -130,7 +130,7 @@ export function ScriptStructureImportButton({
         disabled={busy}
         onClick={openPicker}
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImportIcon className="h-4 w-4 shrink-0" aria-hidden />}
         Import
       </Button>
 

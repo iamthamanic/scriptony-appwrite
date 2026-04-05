@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useId } from "react";
+import { useState, useRef, useEffect, useMemo, useId, useCallback } from "react";
 import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock, Share2, Download } from "lucide-react";
 import { DndProvider, useDrag, useDrop, type DropTargetMonitor } from "react-dnd";
 import { motion, AnimatePresence } from "motion/react";
@@ -445,14 +445,23 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const loadData = async () => {
     try {
       setLoading(true);
-      const [projectsData, worldsData] = await Promise.all([
+      const [projectsResult, worldsResult] = await Promise.allSettled([
         projectsApi.getAll(),
         worldsApi.getAll(),
       ]);
+      if (projectsResult.status !== "fulfilled") {
+        throw projectsResult.reason;
+      }
+      const projectsData = projectsResult.value;
+      const worldsData = worldsResult.status === "fulfilled" ? worldsResult.value : [];
       setProjects(
         projectsData.map((p: any) => normalizeProjectClient(p))
       );
       setWorlds(worldsData);
+      if (worldsResult.status !== "fulfilled") {
+        console.error("Error loading worlds:", worldsResult.reason);
+        toast.error("Welten konnten nicht geladen werden. Projekte werden ohne Weltliste angezeigt.");
+      }
       
       // 📸 Load cover images from DB into state
       const coverImages: Record<string, string> = {};
@@ -3104,6 +3113,10 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const [isCalculatingWords, setIsCalculatingWords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /** Timeline trim needs more span than project duration — confirm before extending stored minutes. */
+  const [projectDurationExtendOpen, setProjectDurationExtendOpen] = useState(false);
+  const [pendingDurationHintSeconds, setPendingDurationHintSeconds] = useState<number | null>(null);
+
   const { loading: authLoading } = useAuth();
   const {
     data: rqTimeline,
@@ -3160,6 +3173,40 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     [editedDurationHours, editedDurationMinutes]
   );
   const editedDurationForApi = durationPartsToApiString(editedDurationHours, editedDurationMinutes);
+
+  const handleProjectDurationSecondsHint = useCallback(
+    (minSeconds: number) => {
+      if (project.type === "book") return;
+      const currentTotalMin = totalMinutesFromHourMinuteParts(editedDurationHours, editedDurationMinutes);
+      const requiredTotalMin = Math.ceil(minSeconds / 60);
+      if (requiredTotalMin <= currentTotalMin) return;
+      setPendingDurationHintSeconds(minSeconds);
+      setProjectDurationExtendOpen(true);
+    },
+    [project.type, editedDurationHours, editedDurationMinutes]
+  );
+
+  const confirmProjectDurationExtend = useCallback(async () => {
+    if (pendingDurationHintSeconds == null) return;
+    const requiredTotalMin = Math.ceil(pendingDurationHintSeconds / 60);
+    const parts = splitTotalMinutesToHoursMinutesStrings(requiredTotalMin);
+    const durationStr = durationPartsToApiString(parts.h, parts.m);
+    try {
+      await projectsApi.update(project.id, { duration: durationStr });
+      setEditedDurationHours(parts.h);
+      setEditedDurationMinutes(parts.m);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects.byId(project.id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+      onUpdate?.();
+      toast.success("Projektdauer wurde angepasst.");
+    } catch (e: any) {
+      console.error("[ProjectDetail] extend duration:", e);
+      toast.error(e?.message || "Projektdauer konnte nicht gespeichert werden.");
+    } finally {
+      setProjectDurationExtendOpen(false);
+      setPendingDurationHintSeconds(null);
+    }
+  }, [pendingDurationHintSeconds, project.id, onUpdate]);
 
   const linkedWorldLabelForExport = useMemo(
     () =>
@@ -4273,6 +4320,37 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction type="button" onClick={() => void confirmBeatTemplateProjectSave()}>
               Speichern
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={projectDurationExtendOpen}
+        onOpenChange={(open) => {
+          setProjectDurationExtendOpen(open);
+          if (!open) setPendingDurationHintSeconds(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Projektdauer erhöhen?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Der Timeline-Inhalt braucht mindestens{" "}
+                <strong className="text-foreground">
+                  {pendingDurationHintSeconds != null ? Math.ceil(pendingDurationHintSeconds / 60) : "—"} Min.
+                </strong>{" "}
+                ({pendingDurationHintSeconds != null ? `${pendingDurationHintSeconds} s` : ""} erkannt). Die aktuelle
+                Projektdauer ist kürzer — ohne Anpassung bleibt die Expansion am rechten Ende begrenzt.
+              </p>
+              <p>Soll die gespeicherte Projektdauer entsprechend verlängert werden?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Abbrechen</AlertDialogCancel>
+            <AlertDialogAction type="button" onClick={() => void confirmProjectDurationExtend()}>
+              Projektdauer anpassen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -5974,6 +6052,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 ? String(editedDurationTotalMinutes)
                 : undefined
           }
+          onProjectDurationSecondsHint={handleProjectDurationSecondsHint}
         />
       </section>
 

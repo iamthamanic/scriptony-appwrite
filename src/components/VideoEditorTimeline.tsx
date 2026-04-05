@@ -11,6 +11,7 @@ import {
   ListTree,
   Magnet,
   Clapperboard,
+  Crosshair,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -62,6 +63,110 @@ import {
   getTimelineTrackClipClasses,
   TIMELINE_TRACK_REGISTRY,
 } from '../lib/timeline-track-tokens';
+import { isPersistedTimelineNodeId } from '../lib/timeline-node-ids';
+import {
+  computeParentPctPatchesAfterSceneTrim,
+  computeParentPctPatchesAfterSequenceTrim,
+  computeParentPctPatchesAfterActTrim,
+} from '../lib/timeline-trim-parent-sync';
+import {
+  outerTrimAdjustFirstPair,
+  outerTrimAdjustLastPair,
+  clampOuterFirstDurationToChildHull,
+  clampOuterLastDurationToChildHull,
+} from '../lib/timeline-structure-outer-trim';
+import { buildPctMapFromOrderedSegmentSeconds } from '../lib/timeline-structure-trim-pct';
+import type { FrozenGlobalBounds } from '../lib/timeline-structure-preserve-global';
+import {
+  preserveSequenceSceneTimingsAfterActPctChange,
+  preserveSceneTimingsAfterSequencePctChange,
+} from '../lib/timeline-structure-preserve-global';
+
+function snapshotSeqSceneFrozenBoundsFromRefs(
+  seqBlocks: Array<{ id: string; startSec: number; endSec: number }>,
+  sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>
+): { frozenSeq: FrozenGlobalBounds; frozenScene: FrozenGlobalBounds } {
+  const frozenSeq: FrozenGlobalBounds = {};
+  for (const b of seqBlocks) frozenSeq[b.id] = { startSec: b.startSec, endSec: b.endSec };
+  const frozenScene: FrozenGlobalBounds = {};
+  for (const b of sceneBlocks) frozenScene[b.id] = { startSec: b.startSec, endSec: b.endSec };
+  return { frozenSeq, frozenScene };
+}
+
+function snapshotSceneFrozenBoundsFromRefs(
+  sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>
+): FrozenGlobalBounds {
+  const frozenScene: FrozenGlobalBounds = {};
+  for (const b of sceneBlocks) frozenScene[b.id] = { startSec: b.startSec, endSec: b.endSec };
+  return frozenScene;
+}
+
+/**
+ * Volle Act-PCT-Karte für DOM-Vorschau beim Clip-Trim (kein React-setState).
+ * Reihenfolge/Fallback wie calculateActBlocks (Film): td.acts-Array, nicht orderIndex-Sort.
+ * layoutSnapshot = Act-Blöcke beim Pointerdown — für Acts ohne manual-Eintrag bleibt die sichtbare Position erhalten.
+ */
+function buildFullActPctPreviewMapForTrim(
+  td: TimelineData,
+  manual: Record<string, { pct_from: number; pct_to: number }>,
+  durationSec: number,
+  layoutSnapshot: Array<{ id: string; startSec: number; endSec: number }> | undefined
+): Record<string, { pct_from: number; pct_to: number }> {
+  const acts = td.acts || [];
+  const n = acts.length || 1;
+  const B = Math.max(1e-9, durationSec);
+  const out: Record<string, { pct_from: number; pct_to: number }> = {};
+  acts.forEach((a: any, actIndex: number) => {
+    const o = manual[a.id];
+    if (o && Number.isFinite(o.pct_from) && Number.isFinite(o.pct_to) && o.pct_from < o.pct_to) {
+      out[a.id] = { pct_from: o.pct_from, pct_to: o.pct_to };
+      return;
+    }
+    const snap = layoutSnapshot?.find((b) => b.id === a.id);
+    if (snap) {
+      out[a.id] = {
+        pct_from: (snap.startSec / B) * 100,
+        pct_to: (snap.endSec / B) * 100,
+      };
+      return;
+    }
+    const meta = a?.metadata ?? {};
+    const pctFrom = typeof meta?.pct_from === 'number' ? meta.pct_from : undefined;
+    const pctTo = typeof meta?.pct_to === 'number' ? meta.pct_to : undefined;
+    if (pctFrom !== undefined && pctTo !== undefined) {
+      out[a.id] = { pct_from: pctFrom, pct_to: pctTo };
+      return;
+    }
+    out[a.id] = {
+      pct_from: actIndex * (100 / n),
+      pct_to: (actIndex + 1) * (100 / n),
+    };
+  });
+  return out;
+}
+
+/** Act-Trim: globale Act-Sekunden für Clamp/Handles — gleiche Quelle wie Live-Preview (manual ref + Snapshot). */
+function mergeActBlocksWithTrimLivePct(
+  baseBlocks: Array<{ id: string; startSec: number; endSec: number }>,
+  livePctByAct: Record<string, { pct_from: number; pct_to: number }>,
+  durationSec: number
+): Array<{ id: string; startSec: number; endSec: number }> {
+  const B = Math.max(1e-9, durationSec);
+  const map = new Map(baseBlocks.map((b) => [b.id, { ...b }]));
+  for (const [id, p] of Object.entries(livePctByAct)) {
+    map.set(id, {
+      id,
+      startSec: (p.pct_from / 100) * B,
+      endSec: (p.pct_to / 100) * B,
+    });
+  }
+  return [...map.values()];
+}
+
+const SCRIPTONY_DEBUG_INGEST =
+  import.meta.env.DEV
+    ? '/__scriptony-debug-ingest'
+    : 'http://127.0.0.1:7638/ingest/9ae19260-7b19-4079-a44e-3346133bcc1e';
 
 /**
  * 🎬 VIDEO EDITOR TIMELINE (CapCut Style)
@@ -82,7 +187,17 @@ interface VideoEditorTimelineProps {
   projectType?: string;
   initialData?: TimelineData | BookTimelineData | null;
   onDataChange?: (data: TimelineData | BookTimelineData) => void;
-  duration?: number; // Total duration in SECONDS (for both films and books)
+  /**
+   * Project timeline length in seconds. Structure pct math and expansion clamp to this range;
+   * extending the timeline requires updating duration upstream (project “Dauer” / API).
+   */
+  duration?: number;
+  /**
+   * Optional: notify parent when merged structure/content would ideally use a longer timeline than
+   * `duration` (e.g. editorial clips or patches reaching the right edge). Parent may ignore or open
+   * “extend project duration”.
+   */
+  onProjectDurationSecondsHint?: (minSeconds: number) => void;
   beats?: any[];
   totalWords?: number;
   wordsPerPage?: number;
@@ -276,29 +391,6 @@ function calculateWordCountFromContent(content: any): number {
   return totalWords;
 }
 
-/** Rescale shot segment lengths to a target sum while respecting a minimum per segment. */
-function redistributeShotLensProportional(
-  prev: number[],
-  targetSum: number,
-  minEach: number
-): number[] {
-  const n = prev.length;
-  if (n === 0) return [];
-  const floor = n * minEach;
-  if (targetSum < floor - 1e-6) {
-    return prev.map(() => minEach);
-  }
-  const s0 = prev.reduce((a, b) => a + b, 0) || 1;
-  const out = prev.map((d) => Math.max(minEach, (d / s0) * targetSum));
-  let err = targetSum - out.reduce((a, b) => a + b, 0);
-  out[n - 1] = Math.max(minEach, out[n - 1] + err);
-  err = targetSum - out.reduce((a, b) => a + b, 0);
-  if (Math.abs(err) > 1e-3) {
-    out[0] = Math.max(minEach, out[0] + err);
-  }
-  return out;
-}
-
 /**
  * Einmal pro Track-Preset — `baseColorHex` erzwingt berechnete Inline-Farben (wie bei Shots/Beats mit Farbe).
  * Nur Tailwind-`bg-*` würde bei zusammengesetzten Klassennamen im Build oft fehlen → Griffe unsichtbar.
@@ -326,6 +418,7 @@ export function VideoEditorTimeline({
   initialData, 
   onDataChange,
   duration = 300,
+  onProjectDurationSecondsHint,
   beats: parentBeats,
   totalWords,
   wordsPerPage = 250,
@@ -382,11 +475,13 @@ export function VideoEditorTimeline({
   
   // 🧲 BEAT MAGNET (nur Beat-Trim / Ripple)
   const [beatMagnetEnabled, setBeatMagnetEnabled] = useState(true);
+  /** Master: wenn aus, kein Snapping am Beat-Trim (CapCut „Autosnap“). */
+  const [beatAutosnapEnabled, setBeatAutosnapEnabled] = useState(true);
 
-  // 🧲 CLIP MAGNETS (Act / Sequence / Scene / Shot separat, nur Film-Trim)
+  // 🧲 CLIP MAGNETS (Act / Sequence / Scene / Shot / Editorial — „Magnet“ = alle Kanten snappen)
   const CLIP_MAGNETS_STORAGE_KEY = `scriptony-timeline-clip-magnets-${projectId}`;
   const [clipMagnets, setClipMagnets] = useState(() => {
-    const defaults = { act: true, sequence: true, scene: true, shot: true };
+    const defaults = { act: true, sequence: true, scene: true, shot: true, editorialClip: true };
     if (typeof window === 'undefined') return defaults;
     try {
       const raw = localStorage.getItem(CLIP_MAGNETS_STORAGE_KEY);
@@ -397,7 +492,34 @@ export function VideoEditorTimeline({
         sequence: p.sequence !== false,
         scene: p.scene !== false,
         shot: p.shot !== false,
+        editorialClip: p.editorialClip !== false,
       };
+    } catch {
+      return defaults;
+    }
+  });
+
+  const TRACK_AUTOSNAP_STORAGE_KEY = `scriptony-timeline-track-autosnap-v1-${projectId}`;
+  type TrackAutosnapKey = 'beat' | 'act' | 'sequence' | 'scene' | 'shot' | 'editorialClip' | 'music';
+  const [trackAutosnap, setTrackAutosnap] = useState(() => {
+    const defaults: Record<TrackAutosnapKey, boolean> = {
+      beat: true,
+      act: true,
+      sequence: true,
+      scene: true,
+      shot: true,
+      editorialClip: true,
+      music: true,
+    };
+    if (typeof window === 'undefined') return defaults;
+    try {
+      const raw = localStorage.getItem(TRACK_AUTOSNAP_STORAGE_KEY);
+      if (!raw) return defaults;
+      const p = JSON.parse(raw) as Record<string, unknown>;
+      (Object.keys(defaults) as TrackAutosnapKey[]).forEach((k) => {
+        if (p[k] === false) defaults[k] = false;
+      });
+      return defaults;
     } catch {
       return defaults;
     }
@@ -407,6 +529,11 @@ export function VideoEditorTimeline({
     if (typeof window === 'undefined') return;
     localStorage.setItem(CLIP_MAGNETS_STORAGE_KEY, JSON.stringify(clipMagnets));
   }, [clipMagnets, CLIP_MAGNETS_STORAGE_KEY]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(TRACK_AUTOSNAP_STORAGE_KEY, JSON.stringify(trackAutosnap));
+  }, [trackAutosnap, TRACK_AUTOSNAP_STORAGE_KEY]);
   
   // 🎯 BEAT TRIM STATE
   const [trimingBeat, setTrimingBeat] = useState<{ id: string; handle: 'left' | 'right' } | null>(null);
@@ -422,6 +549,8 @@ export function VideoEditorTimeline({
     id: string;
     handle: 'left' | 'right';
   } | null>(null);
+  /** Erzwingt Re-Render nach Act-Trim-Ref-Updates; die sichtbare Map kommt immer aus useMemo + Refs (nie veraltetes Map-State). */
+  const [actTrimLayoutTick, setActTrimLayoutTick] = useState(0);
   const trimStartXRefClip = useRef(0);
   const trimClipBoundaryStartRef = useRef(0);
   const trimClipCtxRef = useRef<{
@@ -464,6 +593,8 @@ export function VideoEditorTimeline({
   const beatTrimActiveRef = useRef<{ id: string; handle: 'left' | 'right' } | null>(null);
   /** Set synchronously on clip trim pointerdown before setTrimingClip. */
   const clipTrimActiveRef = useRef<typeof trimingClip>(null);
+  /** Act-Zeilen-Layout (global sec) beim Start des Act-Trims — DOM-Vorschau für Acts ohne manual-Key. */
+  const actTrimBlocksSnapshotRef = useRef<Array<{ id: string; startSec: number; endSec: number }>>([]);
   const beatTrimWindowCleanupRef = useRef<(() => void) | null>(null);
   const clipTrimWindowCleanupRef = useRef<(() => void) | null>(null);
   const beatTrimEndGuardRef = useRef(false);
@@ -502,13 +633,17 @@ export function VideoEditorTimeline({
   >({}); // duration in seconds
 
   const manualActTimingsRef = useRef(manualActTimings);
-  manualActTimingsRef.current = manualActTimings;
   const manualSequenceTimingsRef = useRef(manualSequenceTimings);
-  manualSequenceTimingsRef.current = manualSequenceTimings;
   const manualSceneTimingsRef = useRef(manualSceneTimings);
-  manualSceneTimingsRef.current = manualSceneTimings;
   const manualShotDurationsRef = useRef(manualShotDurations);
-  manualShotDurationsRef.current = manualShotDurations;
+  // Während Clip-Trim schreibt queueManual* nur in die Refs (kein setState). Ohne Guard überschreibt
+  // jeder Re-Render die Refs wieder mit veraltetem React-State → Live-Vorschau kaputt.
+  if (!clipTrimActiveRef.current) {
+    manualActTimingsRef.current = manualActTimings;
+    manualSequenceTimingsRef.current = manualSequenceTimings;
+    manualSceneTimingsRef.current = manualSceneTimings;
+    manualShotDurationsRef.current = manualShotDurations;
+  }
 
   type TimingUpdater<T> = (prev: T) => T;
 
@@ -523,7 +658,7 @@ export function VideoEditorTimeline({
         setManualActTimings(action);
         return;
       }
-      // Clip-Trim: nur Ref (kein React setState) — Vorschau via applyClipTimingPreviewToDOM, 60fps ohne teure actBlocks-Neuberechnung
+      // Clip-Trim: Ref + Act-Zeile per actTrimLayoutTick + useMemo aus Refs (React left/width); Seq/Szene weiterhin applyClipTimingPreviewToDOM
       manualActTimingsRef.current = updater(manualActTimingsRef.current);
     },
     []
@@ -584,8 +719,12 @@ export function VideoEditorTimeline({
   pxPerSecRef.current = pxPerSec;
   const beatMagnetEnabledRef = useRef(beatMagnetEnabled);
   beatMagnetEnabledRef.current = beatMagnetEnabled;
+  const beatAutosnapEnabledRef = useRef(beatAutosnapEnabled);
+  beatAutosnapEnabledRef.current = beatAutosnapEnabled;
   const clipMagnetsRef = useRef(clipMagnets);
   clipMagnetsRef.current = clipMagnets;
+  const trackAutosnapRef = useRef(trackAutosnap);
+  trackAutosnapRef.current = trackAutosnap;
   const beatsRef = useRef(beats);
   beatsRef.current = beats;
 
@@ -603,6 +742,7 @@ export function VideoEditorTimeline({
     origStart: number;
     origEnd: number;
     sceneId: string;
+    shotId?: string;
   } | null>(null);
   const nleClipTrimCleanupRef = useRef<(() => void) | null>(null);
   const nleClipFinalBoundsRef = useRef<{ clipId: string; startSec: number; endSec: number } | null>(null);
@@ -959,6 +1099,37 @@ export function VideoEditorTimeline({
     return out;
   }
 
+  /** Autosnap master off → keine Kanten; Autosnap an + Magnet aus → nur Playhead; sonst alle Kanten. */
+  function getStructureTrimSnapEdges(kind: 'act' | 'sequence' | 'scene' | 'shot'): number[] {
+    const ta = trackAutosnapRef.current;
+    const cm = clipMagnetsRef.current;
+    if (!ta[kind]) return [];
+    if (cm[kind]) return collectClipSnapEdgesFilm(true);
+    return [currentTimeRef.current];
+  }
+
+  function getEditorialClipTrimSnapEdges(): number[] {
+    const ta = trackAutosnapRef.current;
+    const cm = clipMagnetsRef.current;
+    if (!ta.editorialClip) return [];
+    if (cm.editorialClip) return collectClipSnapEdgesFilm(true);
+    return [currentTimeRef.current];
+  }
+
+  function snapTimePlayheadOnly(
+    rawSec: number,
+    _beatsArray: BeatsAPI.StoryBeat[],
+    duration: number,
+    pxPerSec: number,
+    options?: { snapToPlayheadSec?: number }
+  ): number {
+    const ph = options?.snapToPlayheadSec;
+    if (typeof ph !== 'number') return Math.max(0, Math.min(duration, rawSec));
+    const thresholdSec = SNAP_THRESHOLD_PX / pxPerSec;
+    const clamped = Math.max(0, Math.min(duration, rawSec));
+    return Math.abs(clamped - ph) <= thresholdSec ? ph : clamped;
+  }
+
   function applyClipTimingPreviewToDOM(
     kind: 'act' | 'sequence' | 'scene',
     updates: Record<string, { pct_from: number; pct_to: number }>
@@ -969,17 +1140,6 @@ export function VideoEditorTimeline({
     const totalDur = durationRef.current;
 
     if (kind === 'act') {
-      const container = actTrackContainerRef.current;
-      if (!container) return;
-      for (const [id, pct] of Object.entries(updates)) {
-        const el = container.querySelector(`[data-act-id="${id}"]`) as HTMLElement | null;
-        if (!el) continue;
-        const start = (pct.pct_from / 100) * totalDur;
-        const end = (pct.pct_to / 100) * totalDur;
-        el.style.transform = `translateX(${(start - viewStart) * pxs}px)`;
-        el.style.width = `${Math.max(2, (end - start) * pxs)}px`;
-        el.style.left = '0';
-      }
       return;
     }
 
@@ -1021,6 +1181,78 @@ export function VideoEditorTimeline({
     }
   }
 
+  /** Während Act-Trim: Sequence-/Scene-Spur live an neue Act-PCTs koppeln (global Sekunden aus Blocks). */
+  function applySequenceScenePreviewFromMergedActs(
+    actPctUpdates: Record<string, { pct_from: number; pct_to: number }>
+  ) {
+    const td = timelineDataRef.current as TimelineData | null;
+    if (!td?.acts) return;
+    const totalDur = durationRef.current;
+    const px = 1;
+    const ma = { ...manualActTimingsRef.current, ...actPctUpdates };
+    const msq = manualSequenceTimingsRef.current;
+    const msc = manualSceneTimingsRef.current;
+    const merged: TimelineData = {
+      ...td,
+      acts: td.acts.map((a: any) => {
+        const o = ma[a.id];
+        if (!o) return a;
+        return { ...a, metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+      sequences: (td.sequences || []).map((s: any) => {
+        const o = msq[s.id];
+        if (!o) return s;
+        return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+      scenes: (td.scenes || []).map((s: any) => {
+        const o = msc[s.id];
+        if (!o) return s;
+        return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+    };
+    const seqBlocks = calculateSequenceBlocks(merged, totalDur, 0, totalDur, px, false);
+    const sceneBlocks = calculateSceneBlocks(merged, totalDur, 0, totalDur, px, false);
+    const pxs = pxPerSecRef.current;
+    const viewStart = viewStartSecRef.current;
+    const seqContainer = sequenceTrackContainerRef.current;
+    const sceneContainer = sceneTrackContainerRef.current;
+    if (seqContainer) {
+      for (const sb of seqBlocks) {
+        const el = seqContainer.querySelector(`[data-sequence-id="${sb.id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sb.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sb.endSec - sb.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+    if (sceneContainer) {
+      for (const sc of sceneBlocks) {
+        const el = sceneContainer.querySelector(`[data-scene-id="${sc.id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sc.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sc.endSec - sc.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+    const actTimings: FilmManualTimings = {
+      manualActTimings: ma,
+      manualSequenceTimings: msq,
+      manualSceneTimings: msc,
+      manualShotDurations: manualShotDurationsRef.current,
+    };
+    const shotSpans = computeFilmShotSpans(merged, totalDur, actTimings);
+    const shotContainerAct = shotTrackContainerRef.current;
+    if (shotContainerAct && shotSpans.length) {
+      for (const sp of shotSpans) {
+        const el = shotContainerAct.querySelector(`[data-shot-id="${sp.shotId}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sp.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sp.endSec - sp.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+  }
+
   /** Shot-Trim: DOM-Preview wie Act/Seq/Scene (Refs während Drag, kein useMemo pro Frame). */
   function applyShotTrimPreviewToDOM(sceneStartSec: number, shotIds: string[], durs: number[]) {
     const container = shotTrackContainerRef.current;
@@ -1038,6 +1270,140 @@ export function VideoEditorTimeline({
       el.style.transform = `translateX(${(startSec - viewStart) * pxs}px)`;
       el.style.width = `${Math.max(2, (endSec - startSec) * pxs)}px`;
       el.style.left = '0';
+    }
+  }
+
+
+  /** Sequence-Trim: Scene- und Shot-Spur live mitführen (globale Blocks + computeFilmShotSpans). */
+  function applySequenceDescendantPreviewFromMergedSequences(
+    sequencePctUpdates: Record<string, { pct_from: number; pct_to: number }>
+  ) {
+    const td = timelineDataRef.current as TimelineData | null;
+    if (!td?.acts) return;
+    const totalDur = durationRef.current;
+    const px = 1;
+    const ma = manualActTimingsRef.current;
+    const msq = { ...manualSequenceTimingsRef.current, ...sequencePctUpdates };
+    const msc = manualSceneTimingsRef.current;
+    const merged: TimelineData = {
+      ...td,
+      acts: td.acts.map((a: any) => {
+        const o = ma[a.id];
+        if (!o) return a;
+        return { ...a, metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+      sequences: (td.sequences || []).map((s: any) => {
+        const o = msq[s.id];
+        if (!o) return s;
+        return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+      scenes: (td.scenes || []).map((s: any) => {
+        const o = msc[s.id];
+        if (!o) return s;
+        return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+    };
+    const seqBlocks = calculateSequenceBlocks(merged, totalDur, 0, totalDur, px, false);
+    const sceneBlocks = calculateSceneBlocks(merged, totalDur, 0, totalDur, px, false);
+    const pxs = pxPerSecRef.current;
+    const viewStart = viewStartSecRef.current;
+    const seqContainer = sequenceTrackContainerRef.current;
+    const sceneContainer = sceneTrackContainerRef.current;
+    if (seqContainer) {
+      for (const sb of seqBlocks) {
+        const el = seqContainer.querySelector(`[data-sequence-id="${sb.id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sb.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sb.endSec - sb.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+    if (sceneContainer) {
+      for (const sc of sceneBlocks) {
+        const el = sceneContainer.querySelector(`[data-scene-id="${sc.id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sc.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sc.endSec - sc.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+    const timings: FilmManualTimings = {
+      manualActTimings: ma,
+      manualSequenceTimings: msq,
+      manualSceneTimings: msc,
+      manualShotDurations: manualShotDurationsRef.current,
+    };
+    const spans = computeFilmShotSpans(merged, totalDur, timings);
+    const shotContainer = shotTrackContainerRef.current;
+    if (shotContainer && spans.length) {
+      for (const sp of spans) {
+        const el = shotContainer.querySelector(`[data-shot-id="${sp.shotId}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sp.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sp.endSec - sp.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+  }
+
+  /** Scene-Trim: Shot-Spur live aus gemerged Szenen-PCT. */
+  function applySceneDescendantPreviewFromMergedScenes(
+    scenePctUpdates: Record<string, { pct_from: number; pct_to: number }>
+  ) {
+    const td = timelineDataRef.current as TimelineData | null;
+    if (!td?.acts) return;
+    const totalDur = durationRef.current;
+    const px = 1;
+    const ma = manualActTimingsRef.current;
+    const msq = manualSequenceTimingsRef.current;
+    const msc = { ...manualSceneTimingsRef.current, ...scenePctUpdates };
+    const merged: TimelineData = {
+      ...td,
+      acts: td.acts.map((a: any) => {
+        const o = ma[a.id];
+        if (!o) return a;
+        return { ...a, metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+      sequences: (td.sequences || []).map((s: any) => {
+        const o = msq[s.id];
+        if (!o) return s;
+        return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+      scenes: (td.scenes || []).map((s: any) => {
+        const o = msc[s.id];
+        if (!o) return s;
+        return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      }),
+    };
+    const sceneBlocks = calculateSceneBlocks(merged, totalDur, 0, totalDur, px, false);
+    const pxs = pxPerSecRef.current;
+    const viewStart = viewStartSecRef.current;
+    const sceneContainer = sceneTrackContainerRef.current;
+    if (sceneContainer) {
+      for (const sc of sceneBlocks) {
+        const el = sceneContainer.querySelector(`[data-scene-id="${sc.id}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sc.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sc.endSec - sc.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
+    }
+    const timings: FilmManualTimings = {
+      manualActTimings: ma,
+      manualSequenceTimings: msq,
+      manualSceneTimings: msc,
+      manualShotDurations: manualShotDurationsRef.current,
+    };
+    const spans = computeFilmShotSpans(merged, totalDur, timings);
+    const shotContainer = shotTrackContainerRef.current;
+    if (shotContainer && spans.length) {
+      for (const sp of spans) {
+        const el = shotContainer.querySelector(`[data-shot-id="${sp.shotId}"]`) as HTMLElement | null;
+        if (!el) continue;
+        el.style.transform = `translateX(${(sp.startSec - viewStart) * pxs}px)`;
+        el.style.width = `${Math.max(2, (sp.endSec - sp.startSec) * pxs)}px`;
+        el.style.left = '0';
+      }
     }
   }
 
@@ -1060,6 +1426,76 @@ export function VideoEditorTimeline({
     }
   }
 
+  function bumpActTrimReactPreviewFromRefs() {
+    const td0 = timelineDataRef.current;
+    if (!td0 || !('acts' in td0)) return;
+    if (clipTrimActiveRef.current?.kind !== 'act') return;
+    const map = buildFullActPctPreviewMapForTrim(
+      td0 as TimelineData,
+      manualActTimingsRef.current,
+      durationRef.current,
+      actTrimBlocksSnapshotRef.current
+    );
+    // #region agent log
+    {
+      const sigs = Object.values(map).map((v) => `${v.pct_from.toFixed(4)}|${v.pct_to.toFixed(4)}`);
+      const actIdsList = (td0 as TimelineData).acts?.map((a: any) => a.id) ?? [];
+      const duplicateActExtraRows = actIdsList.length - new Set(actIdsList).size;
+      if (typeof window !== 'undefined') {
+        (window as unknown as { __SCRIPTONY_LAST_ACT_TRIM_BUMP?: Record<string, unknown> }).__SCRIPTONY_LAST_ACT_TRIM_BUMP = {
+          t: Date.now(),
+          mapKeys: Object.keys(map).length,
+          uniqPctSig: new Set(sigs).size,
+          duplicateActExtraRows,
+          trimingClipKind: trimingClipRef.current?.kind ?? null,
+          clipTrimActiveKind: clipTrimActiveRef.current?.kind ?? null,
+          actTrimLiveGate:
+            trimingClipRef.current?.kind === 'act' ||
+            clipTrimActiveRef.current?.kind === 'act',
+          durationRef: durationRef.current,
+          source: 'tick-invalidate',
+        };
+        try {
+          if (import.meta.env.DEV) {
+            sessionStorage.setItem(
+              'scriptony_act_trim_debug',
+              JSON.stringify({
+                t: Date.now(),
+                hypothesisId: 'H-DUP-ACT',
+                duplicateActExtraRows,
+                mapKeys: Object.keys(map).length,
+                uniqPctSig: new Set(sigs).size,
+              })
+            );
+          }
+        } catch {
+          /* private mode */
+        }
+      }
+      fetch(SCRIPTONY_DEBUG_INGEST, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '47af82' },
+        body: JSON.stringify({
+          sessionId: '47af82',
+          runId: 'verify',
+          hypothesisId: 'H-TICK-BUMP',
+          location: 'VideoEditorTimeline.tsx:bumpActTrimReactPreviewFromRefs',
+          message: 'act trim bump → layout tick (map built from refs in useMemo)',
+          data: {
+            mapKeys: Object.keys(map).length,
+            uniqPctSig: new Set(sigs).size,
+            actTrimSnapLen: actTrimBlocksSnapshotRef.current?.length ?? 0,
+            refMaKeys: Object.keys(manualActTimingsRef.current || {}).length,
+            duplicateActExtraRows,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
+    setActTrimLayoutTick((t) => t + 1);
+  }
+
   const handleTrimClipMouseDown = (
     kind: TrimKind,
     id: string,
@@ -1072,6 +1508,8 @@ export function VideoEditorTimeline({
 
     const td = timelineDataRef.current;
     if (!td || !('acts' in td) || !td.acts?.length) return;
+    // Book timeline: acts/sequences/scenes are positioned by word flow; film-style pct trim does not apply.
+    if (isBookProject && kind !== 'shot') return;
 
     // Pointer capture for touch/pen support (after validation so we do not leave capture dangling)
     const target = e.currentTarget as HTMLElement;
@@ -1091,6 +1529,11 @@ export function VideoEditorTimeline({
     if (kind === 'act') {
       const idx = actsOrdered.findIndex((a: any) => a.id === id);
       if (idx < 0) return;
+      actTrimBlocksSnapshotRef.current = (actBlocksRef.current || []).map((b: any) => ({
+        id: b.id,
+        startSec: b.startSec,
+        endSec: b.endSec,
+      }));
       const sortedBlocks = [...actBlocksRef.current].sort((a: any, b: any) => a.startSec - b.startSec);
       const blockMap = new Map(sortedBlocks.map((b: any) => [b.id, b]));
       const cur = blockMap.get(id);
@@ -1113,6 +1556,7 @@ export function VideoEditorTimeline({
         clipTrimActiveRef.current = { kind: 'act', id, handle };
         registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'act', id, handle });
+        bumpActTrimReactPreviewFromRefs();
         return;
       }
       if (handle === 'left' && idx === 0) {
@@ -1127,6 +1571,7 @@ export function VideoEditorTimeline({
         clipTrimActiveRef.current = { kind: 'act', id, handle };
         registerClipTrimWindowListenersRef.current();
         setTrimingClip({ kind: 'act', id, handle });
+        bumpActTrimReactPreviewFromRefs();
         return;
       }
       trimClipCtxRef.current = {
@@ -1138,6 +1583,7 @@ export function VideoEditorTimeline({
       clipTrimActiveRef.current = { kind: 'act', id, handle };
       registerClipTrimWindowListenersRef.current();
       setTrimingClip({ kind: 'act', id, handle });
+      bumpActTrimReactPreviewFromRefs();
       return;
     }
 
@@ -1344,6 +1790,12 @@ export function VideoEditorTimeline({
     }
   };
 
+  /**
+   * Structure trim (film): outer handles use neighbor-pair segment budgets + pct map
+   * (buildPctMapFromOrderedSegmentSeconds); inner handles move only one boundary between two siblings.
+   * Parent expansion for overflow is applied on commit via timeline-trim-parent-sync; inner drag uses
+   * descendant live preview only (no expansion of parents during the drag).
+   */
   const handleTrimClipMove = (e: PointerEvent) => {
     const clip = clipTrimActiveRef.current ?? trimingClipRef.current;
     const ctx = trimClipCtxRef.current;
@@ -1351,30 +1803,54 @@ export function VideoEditorTimeline({
 
     const dTotal = durationRef.current;
     const pxs = pxPerSecRef.current;
-    const cm = clipMagnetsRef.current;
-    const magnet =
-      clip.kind === 'act'
-        ? cm.act
-        : clip.kind === 'sequence'
-          ? cm.sequence
-          : clip.kind === 'scene'
-            ? cm.scene
-            : cm.shot;
+    const snapEdges = getStructureTrimSnapEdges(clip.kind);
+    const magnet = snapEdges.length > 0;
     const deltaSec = (e.clientX - trimStartXRefClip.current) / pxs;
     let newBoundarySec = trimClipBoundaryStartRef.current + deltaSec;
     const td = timelineDataRef.current;
     if (!td || !('acts' in td)) return;
-
-    const snapEdges = magnet ? collectClipSnapEdgesFilm(true) : [];
+    if (isBookProjectRef.current && ctx.kind !== 'shot') return;
 
     if (ctx.kind === 'act' && ctx.actIds && ctx.actIndex !== undefined) {
       const actsOrdered = [...(td.acts || [])].sort(
         (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
       );
       const idx = ctx.actIndex;
-      const sortedBlocks = [...actBlocksRef.current].sort(
-        (a: any, b: any) => a.startSec - b.startSec
+      const livePctMapForMove = buildFullActPctPreviewMapForTrim(
+        td as TimelineData,
+        manualActTimingsRef.current,
+        dTotal,
+        actTrimBlocksSnapshotRef.current
       );
+      const actBlocksLive = mergeActBlocksWithTrimLivePct(
+        actBlocksRef.current,
+        livePctMapForMove,
+        dTotal
+      );
+      const sortedBlocks = [...ctx.actIds]
+        .map((aid: string) => actBlocksLive.find((x: any) => x.id === aid))
+        .filter(
+          (b): b is { id: string; startSec: number; endSec: number } =>
+            b != null && Number.isFinite(b.startSec) && Number.isFinite(b.endSec)
+        )
+        .sort((a, b) => a.startSec - b.startSec);
+      // #region agent log
+      if (sortedBlocks.length !== ctx.actIds.length) {
+        fetch(SCRIPTONY_DEBUG_INGEST, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '47af82' },
+          body: JSON.stringify({
+            sessionId: '47af82',
+            runId: 'verify',
+            hypothesisId: 'H-SORTED-MISS',
+            location: 'VideoEditorTimeline.tsx:handleTrimClipMove:act',
+            message: 'act trim sortedBlocks shorter than ctx.actIds',
+            data: { want: ctx.actIds.length, got: sortedBlocks.length, actIds: ctx.actIds.slice(0, 8) },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
       if (ctx.trimLastRight || ctx.trimFirstLeft) {
         const ids = ctx.actIds;
         const n = ids.length;
@@ -1395,9 +1871,37 @@ export function VideoEditorTimeline({
             newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
             newEnd = Math.max(lastStart + minD, Math.min(totalDur, newEnd));
           }
-          const newLast = newEnd - lastStart;
-          const prev = redistributeShotLensProportional(durs.slice(0, n - 1), totalDur - newLast, minD);
-          durs = [...prev, Math.max(minD, totalDur - prev.reduce((a, b) => a + b, 0))];
+          let newLast = newEnd - lastStart;
+          if (n > 1) {
+            const pairStart = durs.slice(0, n - 2).reduce((s, x) => s + x, 0);
+            const leftHullEnd = maxDescendantEndInAct(
+              ids[n - 2],
+              td as TimelineData,
+              actBlocksLive,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            const rightHullStart = minDescendantStartInAct(
+              ids[n - 1],
+              td as TimelineData,
+              actBlocksLive,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            newLast = clampOuterLastDurationToChildHull({
+              desiredLastDur: newLast,
+              pairStartSec: pairStart,
+              totalEndSec: totalDur,
+              minD,
+              leftHullEndSec: leftHullEnd,
+              rightHullStartSec: rightHullStart,
+            });
+          }
+          durs = outerTrimAdjustLastPair(durs, newLast, totalDur, minD);
         } else if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
           let newStart = newBoundarySec;
           const anchor = ctx.anchorEndFirstSec;
@@ -1406,21 +1910,89 @@ export function VideoEditorTimeline({
             newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
             newStart = Math.max(0, Math.min(anchor - minD, newStart));
           }
-          const newFirst = Math.max(minD, anchor - newStart);
-          const tail = redistributeShotLensProportional(durs.slice(1), totalDur - newFirst, minD);
-          durs = [newFirst, ...tail];
+          let newFirst = Math.max(minD, anchor - newStart);
+          if (n > 1) {
+            const pairEnd = durs[0] + durs[1];
+            const leftHullEnd = maxDescendantEndInAct(
+              ids[0],
+              td as TimelineData,
+              actBlocksLive,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            const rightHullStart = minDescendantStartInAct(
+              ids[1],
+              td as TimelineData,
+              actBlocksLive,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            newFirst = clampOuterFirstDurationToChildHull({
+              desiredFirstDur: newFirst,
+              totalStartSec: 0,
+              pairEndSec: pairEnd,
+              minD,
+              leftHullEndSec: leftHullEnd,
+              rightHullStartSec: rightHullStart,
+            });
+          }
+          durs = outerTrimAdjustFirstPair(durs, newFirst, totalDur, minD);
         }
         trimClipCtxRef.current = { ...ctx, actDurations: durs };
-        let acc = 0;
-        const next: Record<string, { pct_from: number; pct_to: number }> = {};
-        ids.forEach((aid, i) => {
-          const from = (acc / totalDur) * 100;
-          acc += durs[i];
-          const to = (acc / totalDur) * 100;
-          next[aid] = { pct_from: from, pct_to: to };
+        const next = buildPctMapFromOrderedSegmentSeconds({
+          ids,
+          segmentSeconds: durs,
+          budgetSec: totalDur,
         });
-        trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('act', next));
-        queueManualActTimings((prev) => ({ ...prev, ...next }));
+        // #region agent log
+        fetch(SCRIPTONY_DEBUG_INGEST, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '47af82' },
+          body: JSON.stringify({
+            sessionId: '47af82',
+            runId: 'post-fix',
+            hypothesisId: 'H4',
+            location: 'VideoEditorTimeline.tsx:handleTrimClipMove:act-outer',
+            message: 'outer act trim pct map',
+            data: {
+              n: ids.length,
+              dursSum: durs.reduce((a, x) => a + x, 0),
+              durs: durs.slice(0, 12),
+              nextKeys: Object.keys(next).length,
+              nextSample: Object.entries(next).slice(0, 4),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        const { frozenSeq, frozenScene } = snapshotSeqSceneFrozenBoundsFromRefs(
+          sequenceBlocksRef.current,
+          sceneBlocksRef.current
+        );
+        queueManualActTimings((prev) => {
+          const maNext = { ...prev, ...next };
+          const preserved = preserveSequenceSceneTimingsAfterActPctChange({
+            td: td as TimelineData,
+            duration: dTotal,
+            ma: maNext,
+            msq: manualSequenceTimingsRef.current,
+            msc: manualSceneTimingsRef.current,
+            frozenSeq,
+            frozenScene,
+            affectedActIds: Object.keys(next),
+          });
+          manualSequenceTimingsRef.current = preserved.msq;
+          manualSceneTimingsRef.current = preserved.msc;
+          trimEngine.scheduleRAF(() => {
+            bumpActTrimReactPreviewFromRefs();
+            applySequenceScenePreviewFromMergedActs(next);
+          });
+          return maNext;
+        });
         return;
       }
       const prevId = ctx.actIds[idx - 1];
@@ -1428,6 +2000,11 @@ export function VideoEditorTimeline({
       const prevB = sortedBlocks.find((b: any) => b.id === prevId);
       const curB = sortedBlocks.find((b: any) => b.id === curId);
       if (!prevB || !curB) return;
+
+      const actTrimFrozen = snapshotSeqSceneFrozenBoundsFromRefs(
+        sequenceBlocksRef.current,
+        sceneBlocksRef.current
+      );
 
       if (clip.handle === 'left') {
         const minB = prevB.startSec + MIN_CLIP_DURATION_SEC;
@@ -1442,7 +2019,7 @@ export function VideoEditorTimeline({
           const maxL = maxDescendantEndInAct(
             prevId,
             tdF,
-            actBlocksRef.current,
+            actBlocksLive,
             sequenceBlocksRef.current,
             sceneBlocksRef.current,
             shotBlocksRef.current,
@@ -1451,7 +2028,7 @@ export function VideoEditorTimeline({
           const minR = minDescendantStartInAct(
             curId,
             tdF,
-            actBlocksRef.current,
+            actBlocksLive,
             sequenceBlocksRef.current,
             sceneBlocksRef.current,
             shotBlocksRef.current,
@@ -1468,10 +2045,42 @@ export function VideoEditorTimeline({
             [prevId]: { pct_from: prevP.from, pct_to: newPct },
             [curId]: { pct_from: newPct, pct_to: curP.to },
           };
-          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('act', {
-            [prevId]: next[prevId],
-            [curId]: next[curId],
-          }));
+          const preserved = preserveSequenceSceneTimingsAfterActPctChange({
+            td: td as TimelineData,
+            duration: dTotal,
+            ma: next,
+            msq: manualSequenceTimingsRef.current,
+            msc: manualSceneTimingsRef.current,
+            frozenSeq: actTrimFrozen.frozenSeq,
+            frozenScene: actTrimFrozen.frozenScene,
+            affectedActIds: [prevId, curId],
+          });
+          manualSequenceTimingsRef.current = preserved.msq;
+          manualSceneTimingsRef.current = preserved.msc;
+          trimEngine.scheduleRAF(() => {
+            // #region agent log
+            fetch(SCRIPTONY_DEBUG_INGEST, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '47af82' },
+              body: JSON.stringify({
+                sessionId: '47af82',
+                runId: 'post-fix',
+                hypothesisId: 'H3',
+                location: 'VideoEditorTimeline.tsx:handleTrimClipMove:act-inner-left',
+                message: 'inner act boundary trim (left handle) preview keys',
+                data: {
+                  prevId,
+                  curId,
+                  newPct,
+                  prevKeysInRef: Object.keys(manualActTimingsRef.current || {}).length,
+                },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+            // #endregion
+            bumpActTrimReactPreviewFromRefs();
+            applySequenceScenePreviewFromMergedActs(next);
+          });
           return next;
         });
       } else {
@@ -1490,7 +2099,7 @@ export function VideoEditorTimeline({
           const maxL = maxDescendantEndInAct(
             curId,
             tdF,
-            actBlocksRef.current,
+            actBlocksLive,
             sequenceBlocksRef.current,
             sceneBlocksRef.current,
             shotBlocksRef.current,
@@ -1499,7 +2108,7 @@ export function VideoEditorTimeline({
           const minR = minDescendantStartInAct(
             nextId,
             tdF,
-            actBlocksRef.current,
+            actBlocksLive,
             sequenceBlocksRef.current,
             sceneBlocksRef.current,
             shotBlocksRef.current,
@@ -1516,10 +2125,22 @@ export function VideoEditorTimeline({
             [curId]: { pct_from: curP.from, pct_to: newPct },
             [nextId]: { pct_from: newPct, pct_to: nextP.to },
           };
-          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('act', {
-            [curId]: next[curId],
-            [nextId]: next[nextId],
-          }));
+          const preserved = preserveSequenceSceneTimingsAfterActPctChange({
+            td: td as TimelineData,
+            duration: dTotal,
+            ma: next,
+            msq: manualSequenceTimingsRef.current,
+            msc: manualSceneTimingsRef.current,
+            frozenSeq: actTrimFrozen.frozenSeq,
+            frozenScene: actTrimFrozen.frozenScene,
+            affectedActIds: [curId, nextId],
+          });
+          manualSequenceTimingsRef.current = preserved.msq;
+          manualSceneTimingsRef.current = preserved.msc;
+          trimEngine.scheduleRAF(() => {
+            bumpActTrimReactPreviewFromRefs();
+            applySequenceScenePreviewFromMergedActs(next);
+          });
           return next;
         });
       }
@@ -1562,9 +2183,35 @@ export function VideoEditorTimeline({
             newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
             newEnd = Math.max(lastStart + minD, Math.min(actStart + actDur, newEnd));
           }
-          const newLast = newEnd - lastStart;
-          const prev = redistributeShotLensProportional(durs.slice(0, n - 1), actDur - newLast, minD);
-          durs = [...prev, Math.max(minD, actDur - prev.reduce((a, b) => a + b, 0))];
+          let newLast = newEnd - lastStart;
+          if (n > 1) {
+            const pairStart = actStart + durs.slice(0, n - 2).reduce((s, x) => s + x, 0);
+            const leftHullEnd = maxDescendantEndInSequence(
+              ids[n - 2],
+              td as TimelineData,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            const rightHullStart = minDescendantStartInSequence(
+              ids[n - 1],
+              td as TimelineData,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            newLast = clampOuterLastDurationToChildHull({
+              desiredLastDur: newLast,
+              pairStartSec: pairStart,
+              totalEndSec: actStart + actDur,
+              minD,
+              leftHullEndSec: leftHullEnd,
+              rightHullStartSec: rightHullStart,
+            });
+          }
+          durs = outerTrimAdjustLastPair(durs, newLast, actDur, minD);
         } else if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
           let newStart = newBoundarySec;
           const anchor = ctx.anchorEndFirstSec;
@@ -1573,21 +2220,61 @@ export function VideoEditorTimeline({
             newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
             newStart = Math.max(actStart, Math.min(anchor - minD, newStart));
           }
-          const newFirst = Math.max(minD, anchor - newStart);
-          const tail = redistributeShotLensProportional(durs.slice(1), actDur - newFirst, minD);
-          durs = [newFirst, ...tail];
+          let newFirst = Math.max(minD, anchor - newStart);
+          if (n > 1) {
+            const pairEnd = actStart + durs[0] + durs[1];
+            const leftHullEnd = maxDescendantEndInSequence(
+              ids[0],
+              td as TimelineData,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            const rightHullStart = minDescendantStartInSequence(
+              ids[1],
+              td as TimelineData,
+              sequenceBlocksRef.current,
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            newFirst = clampOuterFirstDurationToChildHull({
+              desiredFirstDur: newFirst,
+              totalStartSec: actStart,
+              pairEndSec: pairEnd,
+              minD,
+              leftHullEndSec: leftHullEnd,
+              rightHullStartSec: rightHullStart,
+            });
+          }
+          durs = outerTrimAdjustFirstPair(durs, newFirst, actDur, minD);
         }
         trimClipCtxRef.current = { ...ctx, sequenceDurations: durs };
-        let acc = 0;
-        const next: Record<string, { pct_from: number; pct_to: number }> = {};
-        ids.forEach((sid, i) => {
-          const from = (acc / actDur) * 100;
-          acc += durs[i];
-          const to = (acc / actDur) * 100;
-          next[sid] = { pct_from: from, pct_to: to };
+        const next = buildPctMapFromOrderedSegmentSeconds({
+          ids,
+          segmentSeconds: durs,
+          budgetSec: actDur,
         });
-        trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('sequence', next));
-        queueManualSequenceTimings((prev) => ({ ...prev, ...next }));
+        const frozenSceneOuter = snapshotSceneFrozenBoundsFromRefs(sceneBlocksRef.current);
+        queueManualSequenceTimings((prev) => {
+          const msNext = { ...prev, ...next };
+          const preserved = preserveSceneTimingsAfterSequencePctChange({
+            td: td as TimelineData,
+            duration: dTotal,
+            ma: manualActTimingsRef.current,
+            msq: msNext,
+            msc: manualSceneTimingsRef.current,
+            frozenScene: frozenSceneOuter,
+            affectedSequenceIds: Object.keys(next),
+          });
+          manualSceneTimingsRef.current = preserved.msc;
+          trimEngine.scheduleRAF(() => {
+            applyClipTimingPreviewToDOM('sequence', next);
+            applySequenceDescendantPreviewFromMergedSequences(next);
+          });
+          return msNext;
+        });
         return;
       }
 
@@ -1597,6 +2284,9 @@ export function VideoEditorTimeline({
         const prevB = sortedBlocks.find((b: any) => b.id === prevId);
         const curB = sortedBlocks.find((b: any) => b.id === curId);
         if (!prevB || !curB) return;
+
+        const seqTrimFrozenScene = snapshotSceneFrozenBoundsFromRefs(sceneBlocksRef.current);
+
         const minB = prevB.startSec + MIN_CLIP_DURATION_SEC;
         const maxB = curB.endSec - MIN_CLIP_DURATION_SEC;
         newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
@@ -1633,10 +2323,23 @@ export function VideoEditorTimeline({
             [prevId]: { pct_from: prevP.from, pct_to: newPct },
             [curId]: { pct_from: newPct, pct_to: curP.to },
           };
-          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('sequence', {
+          const preserved = preserveSceneTimingsAfterSequencePctChange({
+            td: td as TimelineData,
+            duration: dTotal,
+            ma: manualActTimingsRef.current,
+            msq: next,
+            msc: manualSceneTimingsRef.current,
+            frozenScene: seqTrimFrozenScene,
+            affectedSequenceIds: [prevId, curId],
+          });
+          manualSceneTimingsRef.current = preserved.msc;
+          trimEngine.scheduleRAF(() => {
+            applyClipTimingPreviewToDOM('sequence', {
             [prevId]: next[prevId],
             [curId]: next[curId],
-          }));
+          });
+            applySequenceDescendantPreviewFromMergedSequences(next);
+          });
           return next;
         });
       } else {
@@ -1645,6 +2348,9 @@ export function VideoEditorTimeline({
         const curB = sortedBlocks.find((b: any) => b.id === curId);
         const nextB = sortedBlocks.find((b: any) => b.id === nextId);
         if (!curB || !nextB) return;
+
+        const seqTrimFrozenSceneRight = snapshotSceneFrozenBoundsFromRefs(sceneBlocksRef.current);
+
         const minB = curB.startSec + MIN_CLIP_DURATION_SEC;
         const maxB = nextB.endSec - MIN_CLIP_DURATION_SEC;
         newBoundarySec = Math.max(minB, Math.min(maxB, newBoundarySec));
@@ -1681,10 +2387,23 @@ export function VideoEditorTimeline({
             [curId]: { pct_from: curP.from, pct_to: newPct },
             [nextId]: { pct_from: newPct, pct_to: nextP.to },
           };
-          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('sequence', {
+          const preserved = preserveSceneTimingsAfterSequencePctChange({
+            td: td as TimelineData,
+            duration: dTotal,
+            ma: manualActTimingsRef.current,
+            msq: next,
+            msc: manualSceneTimingsRef.current,
+            frozenScene: seqTrimFrozenSceneRight,
+            affectedSequenceIds: [curId, nextId],
+          });
+          manualSceneTimingsRef.current = preserved.msc;
+          trimEngine.scheduleRAF(() => {
+            applyClipTimingPreviewToDOM('sequence', {
             [curId]: next[curId],
             [nextId]: next[nextId],
-          }));
+          });
+            applySequenceDescendantPreviewFromMergedSequences(next);
+          });
           return next;
         });
       }
@@ -1727,9 +2446,31 @@ export function VideoEditorTimeline({
             newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
             newEnd = Math.max(lastStart + minD, Math.min(seqStart + seqDur, newEnd));
           }
-          const newLast = newEnd - lastStart;
-          const prev = redistributeShotLensProportional(durs.slice(0, n - 1), seqDur - newLast, minD);
-          durs = [...prev, Math.max(minD, seqDur - prev.reduce((a, b) => a + b, 0))];
+          let newLast = newEnd - lastStart;
+          if (n > 1) {
+            const pairStart = seqStart + durs.slice(0, n - 2).reduce((s, x) => s + x, 0);
+            const leftHullEnd = maxDescendantEndInScene(
+              ids[n - 2],
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            const rightHullStart = minDescendantStartInScene(
+              ids[n - 1],
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            newLast = clampOuterLastDurationToChildHull({
+              desiredLastDur: newLast,
+              pairStartSec: pairStart,
+              totalEndSec: seqStart + seqDur,
+              minD,
+              leftHullEndSec: leftHullEnd,
+              rightHullStartSec: rightHullStart,
+            });
+          }
+          durs = outerTrimAdjustLastPair(durs, newLast, seqDur, minD);
         } else if (ctx.trimFirstLeft && ctx.anchorEndFirstSec !== undefined) {
           let newStart = newBoundarySec;
           const anchor = ctx.anchorEndFirstSec;
@@ -1738,20 +2479,42 @@ export function VideoEditorTimeline({
             newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
             newStart = Math.max(seqStart, Math.min(anchor - minD, newStart));
           }
-          const newFirst = Math.max(minD, anchor - newStart);
-          const tail = redistributeShotLensProportional(durs.slice(1), seqDur - newFirst, minD);
-          durs = [newFirst, ...tail];
+          let newFirst = Math.max(minD, anchor - newStart);
+          if (n > 1) {
+            const pairEnd = seqStart + durs[0] + durs[1];
+            const leftHullEnd = maxDescendantEndInScene(
+              ids[0],
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            const rightHullStart = minDescendantStartInScene(
+              ids[1],
+              sceneBlocksRef.current,
+              shotBlocksRef.current,
+              clipBlocksRef.current
+            );
+            newFirst = clampOuterFirstDurationToChildHull({
+              desiredFirstDur: newFirst,
+              totalStartSec: seqStart,
+              pairEndSec: pairEnd,
+              minD,
+              leftHullEndSec: leftHullEnd,
+              rightHullStartSec: rightHullStart,
+            });
+          }
+          durs = outerTrimAdjustFirstPair(durs, newFirst, seqDur, minD);
         }
         trimClipCtxRef.current = { ...ctx, sceneDurations: durs };
-        let acc = 0;
-        const next: Record<string, { pct_from: number; pct_to: number }> = {};
-        ids.forEach((sid, i) => {
-          const from = (acc / seqDur) * 100;
-          acc += durs[i];
-          const to = (acc / seqDur) * 100;
-          next[sid] = { pct_from: from, pct_to: to };
+        const next = buildPctMapFromOrderedSegmentSeconds({
+          ids,
+          segmentSeconds: durs,
+          budgetSec: seqDur,
         });
-        trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('scene', next));
+        trimEngine.scheduleRAF(() => {
+          applyClipTimingPreviewToDOM('scene', next);
+          applySceneDescendantPreviewFromMergedScenes(next);
+        });
         queueManualSceneTimings((prev) => ({ ...prev, ...next }));
         return;
       }
@@ -1793,10 +2556,13 @@ export function VideoEditorTimeline({
             [prevId]: { pct_from: prevP.from, pct_to: newPct },
             [curId]: { pct_from: newPct, pct_to: curP.to },
           };
-          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('scene', {
+          trimEngine.scheduleRAF(() => {
+            applyClipTimingPreviewToDOM('scene', {
             [prevId]: next[prevId],
             [curId]: next[curId],
-          }));
+          });
+            applySceneDescendantPreviewFromMergedScenes(next);
+          });
           return next;
         });
       } else {
@@ -1836,10 +2602,13 @@ export function VideoEditorTimeline({
             [curId]: { pct_from: curP.from, pct_to: newPct },
             [nextId]: { pct_from: newPct, pct_to: nextP.to },
           };
-          trimEngine.scheduleRAF(() => applyClipTimingPreviewToDOM('scene', {
+          trimEngine.scheduleRAF(() => {
+            applyClipTimingPreviewToDOM('scene', {
             [curId]: next[curId],
             [nextId]: next[nextId],
-          }));
+          });
+            applySceneDescendantPreviewFromMergedScenes(next);
+          });
           return next;
         });
       }
@@ -1893,6 +2662,10 @@ export function VideoEditorTimeline({
             newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
             newEnd = Math.max(lastStart + minD, Math.min(sceneStart + sceneDur, newEnd));
           }
+          const rightHullEnd = maxClipEndForShot(ids[0], clipBlocksRef.current);
+          if (rightHullEnd != null) {
+            newEnd = Math.max(rightHullEnd, newEnd);
+          }
           durs[0] = newEnd - lastStart;
         } else {
           const lastStartRel = durs.slice(0, n - 1).reduce((s, x) => s + x, 0);
@@ -1903,12 +2676,16 @@ export function VideoEditorTimeline({
             newEnd = snapClipBoundary(newEnd, snapEdges, dTotal, pxs, true);
             newEnd = Math.max(lastStart + minD, Math.min(sceneStart + sceneDur, newEnd));
           }
-          const newLastDur = newEnd - lastStart;
-          const prevBudget = sceneDur - newLastDur;
-          const prevDurs = durs.slice(0, n - 1);
-          const nextPrev = redistributeShotLensProportional(prevDurs, prevBudget, minD);
-          const lastDur = Math.max(minD, sceneDur - nextPrev.reduce((a, b) => a + b, 0));
-          durs = [...nextPrev, lastDur];
+          let newLastDur = newEnd - lastStart;
+          newLastDur = clampOuterLastDurationToChildHull({
+            desiredLastDur: newLastDur,
+            pairStartSec: sceneStart + durs.slice(0, n - 2).reduce((s, x) => s + x, 0),
+            totalEndSec: sceneStart + sceneDur,
+            minD,
+            leftHullEndSec: maxClipEndForShot(ids[n - 2], clipBlocksRef.current),
+            rightHullStartSec: minClipStartForShot(ids[n - 1], clipBlocksRef.current),
+          });
+          durs = outerTrimAdjustLastPair(durs, newLastDur, sceneDur, minD);
         }
         commitShotDurs(durs);
         return;
@@ -1924,6 +2701,10 @@ export function VideoEditorTimeline({
             newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
             newStart = Math.max(sceneStart, Math.min(anchorEnd - minD, newStart));
           }
+          const leftHullStart = minClipStartForShot(ids[0], clipBlocksRef.current);
+          if (leftHullStart != null) {
+            newStart = Math.min(leftHullStart, newStart);
+          }
           durs[0] = anchorEnd - newStart;
         } else {
           let newStart = newBoundarySec;
@@ -1932,11 +2713,16 @@ export function VideoEditorTimeline({
             newStart = snapClipBoundary(newStart, snapEdges, dTotal, pxs, true);
             newStart = Math.max(sceneStart, Math.min(anchorEnd - minD, newStart));
           }
-          const newFirstDur = Math.max(minD, anchorEnd - newStart);
-          const tailBudget = sceneDur - newFirstDur;
-          const tail = durs.slice(1);
-          const nextTail = redistributeShotLensProportional(tail, tailBudget, minD);
-          durs = [newFirstDur, ...nextTail];
+          let newFirstDur = Math.max(minD, anchorEnd - newStart);
+          newFirstDur = clampOuterFirstDurationToChildHull({
+            desiredFirstDur: newFirstDur,
+            totalStartSec: sceneStart,
+            pairEndSec: sceneStart + durs[0] + durs[1],
+            minD,
+            leftHullEndSec: maxClipEndForShot(ids[0], clipBlocksRef.current),
+            rightHullStartSec: minClipStartForShot(ids[1], clipBlocksRef.current),
+          });
+          durs = outerTrimAdjustFirstPair(durs, newFirstDur, sceneDur, minD);
         }
         commitShotDurs(durs);
         return;
@@ -2056,11 +2842,90 @@ export function VideoEditorTimeline({
         for (const actId of toWrite) {
           const o = ma[actId];
           if (!o) continue;
+          if (!isPersistedTimelineNodeId(actId)) continue;
           await TimelineAPI.updateAct(actId, { metadata: { pct_from: o.pct_from, pct_to: o.pct_to } }, token);
         }
+
+        const affectedActIdSet = new Set([...toWrite]);
+        for (const s of td.sequences || []) {
+          if (!affectedActIdSet.has(s.actId)) continue;
+          const o = msq[s.id];
+          if (!o) continue;
+          if (!isPersistedTimelineNodeId(s.id)) continue;
+          await TimelineAPI.updateSequence(
+            s.id,
+            {
+              metadata: {
+                ...(s.metadata || {}),
+                pct_from: o.pct_from,
+                pct_to: o.pct_to,
+              },
+            },
+            token
+          );
+        }
+        for (const sc of td.scenes || []) {
+          const seq = (td.sequences || []).find((x: any) => x.id === sc.sequenceId);
+          if (!seq || !affectedActIdSet.has(seq.actId)) continue;
+          const o = msc[sc.id];
+          if (!o) continue;
+          if (!isPersistedTimelineNodeId(sc.id)) continue;
+          await TimelineAPI.updateScene(
+            sc.id,
+            {
+              metadata: {
+                ...(sc.metadata || {}),
+                pct_from: o.pct_from,
+                pct_to: o.pct_to,
+              },
+            },
+            token
+          );
+        }
+
+        const totalDurAct = durationRef.current;
+        const parentPatchesAct = computeParentPctPatchesAfterActTrim({
+          td,
+          actIds: [...toWrite].filter(isPersistedTimelineNodeId),
+          ma,
+          msq,
+          msc,
+          duration: totalDurAct,
+        });
+        for (const [aid, p] of Object.entries(parentPatchesAct.act)) {
+          if (!isPersistedTimelineNodeId(aid)) continue;
+          const actRow = (td.acts || []).find((a: any) => a.id === aid);
+          await TimelineAPI.updateAct(
+            aid,
+            {
+              metadata: {
+                ...(actRow?.metadata || {}),
+                pct_from: p.pct_from,
+                pct_to: p.pct_to,
+              },
+            },
+            token
+          );
+        }
+        for (const [sqid, p] of Object.entries(parentPatchesAct.sequence)) {
+          if (!isPersistedTimelineNodeId(sqid)) continue;
+          const seqRow = (td.sequences || []).find((s: any) => s.id === sqid);
+          await TimelineAPI.updateSequence(
+            sqid,
+            {
+              metadata: {
+                ...(seqRow?.metadata || {}),
+                pct_from: p.pct_from,
+                pct_to: p.pct_to,
+              },
+            },
+            token
+          );
+        }
+
         setTimelineData((prev) => {
           if (!prev || !('acts' in prev)) return prev;
-          return {
+          let next: TimelineData = {
             ...prev,
             acts: prev.acts.map((a: any) => {
               const o = ma[a.id];
@@ -2070,11 +2935,71 @@ export function VideoEditorTimeline({
                 metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
               };
             }),
+            sequences: (prev.sequences || []).map((s: any) => {
+              const o = msq[s.id];
+              if (!o) return s;
+              return {
+                ...s,
+                metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
+              };
+            }),
+            scenes: (prev.scenes || []).map((sc: any) => {
+              const o = msc[sc.id];
+              if (!o) return sc;
+              return {
+                ...sc,
+                metadata: { ...(sc.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
+              };
+            }),
           };
+          if (Object.keys(parentPatchesAct.act).length > 0) {
+            next = {
+              ...next,
+              acts: next.acts.map((a: any) => {
+                const p = parentPatchesAct.act[a.id];
+                if (!p) return a;
+                return {
+                  ...a,
+                  metadata: { ...(a.metadata || {}), pct_from: p.pct_from, pct_to: p.pct_to },
+                };
+              }),
+            };
+          }
+          if ('sequences' in next && Object.keys(parentPatchesAct.sequence).length > 0) {
+            next = {
+              ...next,
+              sequences: (next as TimelineData).sequences.map((s: any) => {
+                const p = parentPatchesAct.sequence[s.id];
+                if (!p) return s;
+                return {
+                  ...s,
+                  metadata: { ...(s.metadata || {}), pct_from: p.pct_from, pct_to: p.pct_to },
+                };
+              }),
+            };
+          }
+          return next;
         });
         setManualActTimings((prev) => {
           const next = { ...prev };
           for (const id of toWrite) delete next[id];
+          return next;
+        });
+        setManualSequenceTimings((prev) => {
+          const next = { ...prev };
+          for (const s of td.sequences || []) {
+            if (!affectedActIdSet.has(s.actId)) continue;
+            delete next[s.id];
+          }
+          return next;
+        });
+        setManualSceneTimings((prev) => {
+          const next = { ...prev };
+          for (const sc of td.scenes || []) {
+            const seq = (td.sequences || []).find((x: any) => x.id === sc.sequenceId);
+            if (!seq || !affectedActIdSet.has(seq.actId)) continue;
+            delete next[sc.id];
+          }
           return next;
         });
       } else if (clip.kind === 'sequence' && td && 'sequences' in td) {
@@ -2099,11 +3024,72 @@ export function VideoEditorTimeline({
           for (const sid of toWrite) {
             const o = msq[sid];
             if (!o) continue;
+            if (!isPersistedTimelineNodeId(sid)) continue;
             await TimelineAPI.updateSequence(sid, { metadata: { pct_from: o.pct_from, pct_to: o.pct_to } }, token);
           }
+
+          const toWriteSeqSet = new Set([...toWrite]);
+          for (const sc of td.scenes || []) {
+            if (!sc.sequenceId || !toWriteSeqSet.has(sc.sequenceId)) continue;
+            const o = msc[sc.id];
+            if (!o) continue;
+            if (!isPersistedTimelineNodeId(sc.id)) continue;
+            await TimelineAPI.updateScene(
+              sc.id,
+              {
+                metadata: {
+                  ...(sc.metadata || {}),
+                  pct_from: o.pct_from,
+                  pct_to: o.pct_to,
+                },
+              },
+              token
+            );
+          }
+
+          const totalDurSeq = durationRef.current;
+          const parentPatchesSeq = computeParentPctPatchesAfterSequenceTrim({
+            td,
+            sequenceIds: [...toWrite].filter(isPersistedTimelineNodeId),
+            ma,
+            msq,
+            msc,
+            duration: totalDurSeq,
+          });
+          for (const [aid, p] of Object.entries(parentPatchesSeq.act)) {
+            if (!isPersistedTimelineNodeId(aid)) continue;
+            const actRow = (td.acts || []).find((a: any) => a.id === aid);
+            await TimelineAPI.updateAct(
+              aid,
+              {
+                metadata: {
+                  ...(actRow?.metadata || {}),
+                  pct_from: p.pct_from,
+                  pct_to: p.pct_to,
+                },
+              },
+              token
+            );
+          }
+          for (const [sqid, p] of Object.entries(parentPatchesSeq.sequence)) {
+            if (!isPersistedTimelineNodeId(sqid)) continue;
+            const seqRow = (td.sequences || []).find((s: any) => s.id === sqid);
+            await TimelineAPI.updateSequence(
+              sqid,
+              {
+                metadata: {
+                  ...(seqRow?.metadata || {}),
+                  pct_from: p.pct_from,
+                  pct_to: p.pct_to,
+                },
+              },
+              token
+            );
+          }
+
           setTimelineData((prev) => {
             if (!prev || !('sequences' in prev)) return prev;
-            return {
+            let next: TimelineData = {
               ...prev,
               sequences: prev.sequences.map((s: any) => {
                 const o = msq[s.id];
@@ -2113,11 +3099,54 @@ export function VideoEditorTimeline({
                   metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
                 };
               }),
+              scenes: (prev.scenes || []).map((sc: any) => {
+                const o = msc[sc.id];
+                if (!o) return sc;
+                return {
+                  ...sc,
+                  metadata: { ...(sc.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to },
+                };
+              }),
             };
+            if ('acts' in next && Object.keys(parentPatchesSeq.act).length > 0) {
+              next = {
+                ...next,
+                acts: (next as TimelineData).acts.map((a: any) => {
+                  const p = parentPatchesSeq.act[a.id];
+                  if (!p) return a;
+                  return {
+                    ...a,
+                    metadata: { ...(a.metadata || {}), pct_from: p.pct_from, pct_to: p.pct_to },
+                  };
+                }),
+              };
+            }
+            if (Object.keys(parentPatchesSeq.sequence).length > 0) {
+              next = {
+                ...next,
+                sequences: next.sequences.map((s: any) => {
+                  const p = parentPatchesSeq.sequence[s.id];
+                  if (!p) return s;
+                  return {
+                    ...s,
+                    metadata: { ...(s.metadata || {}), pct_from: p.pct_from, pct_to: p.pct_to },
+                  };
+                }),
+              };
+            }
+            return next;
           });
           setManualSequenceTimings((prev) => {
             const next = { ...prev };
             for (const id of toWrite) delete next[id];
+            return next;
+          });
+          setManualSceneTimings((prev) => {
+            const next = { ...prev };
+            for (const sc of td.scenes || []) {
+              if (!sc.sequenceId || !toWriteSeqSet.has(sc.sequenceId)) continue;
+              delete next[sc.id];
+            }
             return next;
           });
         }
@@ -2143,11 +3172,53 @@ export function VideoEditorTimeline({
           for (const scid of toWrite) {
             const o = msc[scid];
             if (!o) continue;
+            if (!isPersistedTimelineNodeId(scid)) continue;
             await TimelineAPI.updateScene(scid, { metadata: { pct_from: o.pct_from, pct_to: o.pct_to } }, token);
           }
+
+          const totalDur = durationRef.current;
+          const parentPatches = computeParentPctPatchesAfterSceneTrim({
+            td,
+            sceneIds: [...toWrite].filter(isPersistedTimelineNodeId),
+            ma,
+            msq,
+            msc,
+            duration: totalDur,
+          });
+          for (const [aid, p] of Object.entries(parentPatches.act)) {
+            if (!isPersistedTimelineNodeId(aid)) continue;
+            const actRow = (td.acts || []).find((a: any) => a.id === aid);
+            await TimelineAPI.updateAct(
+              aid,
+              {
+                metadata: {
+                  ...(actRow?.metadata || {}),
+                  pct_from: p.pct_from,
+                  pct_to: p.pct_to,
+                },
+              },
+              token
+            );
+          }
+          for (const [sqid, p] of Object.entries(parentPatches.sequence)) {
+            if (!isPersistedTimelineNodeId(sqid)) continue;
+            const seqRow = (td.sequences || []).find((s: any) => s.id === sqid);
+            await TimelineAPI.updateSequence(
+              sqid,
+              {
+                metadata: {
+                  ...(seqRow?.metadata || {}),
+                  pct_from: p.pct_from,
+                  pct_to: p.pct_to,
+                },
+              },
+              token
+            );
+          }
+
           setTimelineData((prev) => {
             if (!prev || !('scenes' in prev)) return prev;
-            return {
+            let next = {
               ...prev,
               scenes: prev.scenes.map((s: any) => {
                 const o = msc[s.id];
@@ -2158,6 +3229,33 @@ export function VideoEditorTimeline({
                 };
               }),
             };
+            if ('acts' in next && Object.keys(parentPatches.act).length > 0) {
+              next = {
+                ...next,
+                acts: (next as TimelineData).acts.map((a: any) => {
+                  const p = parentPatches.act[a.id];
+                  if (!p) return a;
+                  return {
+                    ...a,
+                    metadata: { ...(a.metadata || {}), pct_from: p.pct_from, pct_to: p.pct_to },
+                  };
+                }),
+              };
+            }
+            if ('sequences' in next && Object.keys(parentPatches.sequence).length > 0) {
+              next = {
+                ...next,
+                sequences: (next as TimelineData).sequences.map((s: any) => {
+                  const p = parentPatches.sequence[s.id];
+                  if (!p) return s;
+                  return {
+                    ...s,
+                    metadata: { ...(s.metadata || {}), pct_from: p.pct_from, pct_to: p.pct_to },
+                  };
+                }),
+              };
+            }
+            return next;
           });
           setManualSceneTimings((prev) => {
             const next = { ...prev };
@@ -2186,6 +3284,7 @@ export function VideoEditorTimeline({
           };
 
           const pushShotApi = async (shotId: string, totalSec: number) => {
+            if (!isPersistedTimelineNodeId(shotId)) return;
             const total = Math.max(MIN_CLIP_DURATION_SEC, Math.round(Number(totalSec)));
             const minutes = Math.floor(total / 60);
             const seconds = total % 60;
@@ -2249,6 +3348,39 @@ export function VideoEditorTimeline({
           }
         }
       }
+
+      if (onProjectDurationSecondsHint && !isBookProject && td && 'acts' in td) {
+        const d = durationRef.current;
+        const mergedTd: TimelineData = {
+          ...td,
+          acts: td.acts.map((a: any) => {
+            const o = ma[a.id];
+            if (!o) return a;
+            return { ...a, metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+          }),
+          sequences: (td.sequences || []).map((s: any) => {
+            const o = msq[s.id];
+            if (!o) return s;
+            return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+          }),
+          scenes: (td.scenes || []).map((s: any) => {
+            const o = msc[s.id];
+            if (!o) return s;
+            return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+          }),
+        };
+        const px = 1;
+        const abs = calculateActBlocks(mergedTd, d, 0, d, px, false);
+        let maxEnd = 0;
+        for (const a of abs) maxEnd = Math.max(maxEnd, a.endSec);
+        for (const c of mergedTd.clips || []) {
+          const e = (c as Clip).endSec;
+          if (typeof e === 'number') maxEnd = Math.max(maxEnd, e);
+        }
+        if (maxEnd > d + 0.25) {
+          onProjectDurationSecondsHint(Math.ceil(maxEnd));
+        }
+      }
     } catch (err) {
       console.error('[Clip Trim] save failed', err);
       toast.error('Trim konnte nicht gespeichert werden');
@@ -2263,7 +3395,7 @@ export function VideoEditorTimeline({
   };
 
   const handleNleClipPointerDown = (
-    row: { id: string; sceneId: string; startSec: number; endSec: number },
+    row: { id: string; sceneId: string; shotId?: string; startSec: number; endSec: number },
     handle: 'left' | 'right',
     e: React.PointerEvent
   ) => {
@@ -2279,6 +3411,7 @@ export function VideoEditorTimeline({
       origStart: row.startSec,
       origEnd: row.endSec,
       sceneId: row.sceneId,
+      shotId: row.shotId,
     };
     nleClipFinalBoundsRef.current = { clipId: row.id, startSec: row.startSec, endSec: row.endSec };
     setNleClipPreview({ [row.id]: { startSec: row.startSec, endSec: row.endSec } });
@@ -2304,10 +3437,39 @@ export function VideoEditorTimeline({
     }
     start = Math.max(0, Math.min(dTotal, start));
     end = Math.max(0, Math.min(dTotal, end));
+    let parentStart = 0;
+    let parentEnd = dTotal;
     const sc = sceneBlocksRef.current.find((b: any) => b.id === drag.sceneId);
     if (sc) {
-      start = Math.max(sc.startSec, Math.min(sc.endSec, start));
-      end = Math.max(sc.startSec, Math.min(sc.endSec, end));
+      parentStart = Math.max(parentStart, sc.startSec);
+      parentEnd = Math.min(parentEnd, sc.endSec);
+    }
+    const sh =
+      drag.shotId != null
+        ? shotBlocksRef.current.find((b: any) => b.id === drag.shotId)
+        : null;
+    if (sh) {
+      parentStart = Math.max(parentStart, sh.startSec);
+      parentEnd = Math.min(parentEnd, sh.endSec);
+    }
+    start = Math.max(parentStart, Math.min(parentEnd, start));
+    end = Math.max(parentStart, Math.min(parentEnd, end));
+    if (end - start < MIN_CLIP_DURATION_SEC) return;
+    const edSnap = getEditorialClipTrimSnapEdges();
+    if (edSnap.length > 0) {
+      if (drag.handle === 'left') {
+        start = snapClipBoundary(start, edSnap, dTotal, pxs, true);
+      } else {
+        end = snapClipBoundary(end, edSnap, dTotal, pxs, true);
+      }
+      start = Math.max(parentStart, Math.min(parentEnd, start));
+      end = Math.max(parentStart, Math.min(parentEnd, end));
+      if (end - start < MIN_CLIP_DURATION_SEC) {
+        if (drag.handle === 'left') start = end - MIN_CLIP_DURATION_SEC;
+        else end = start + MIN_CLIP_DURATION_SEC;
+      }
+      start = Math.max(parentStart, Math.min(parentEnd, start));
+      end = Math.max(parentStart, Math.min(parentEnd, end));
       if (end - start < MIN_CLIP_DURATION_SEC) return;
     }
     nleClipFinalBoundsRef.current = { clipId: drag.clipId, startSec: start, endSec: end };
@@ -2354,7 +3516,7 @@ export function VideoEditorTimeline({
           sceneBlock,
           totalDur,
         });
-        if (exp.act && act) {
+        if (exp.act && act && isPersistedTimelineNodeId(act.id)) {
           await TimelineAPI.updateAct(
             act.id,
             {
@@ -2367,7 +3529,7 @@ export function VideoEditorTimeline({
             token
           );
         }
-        if (exp.sequence && seq) {
+        if (exp.sequence && seq && isPersistedTimelineNodeId(seq.id)) {
           await TimelineAPI.updateSequence(
             seq.id,
             {
@@ -2380,7 +3542,7 @@ export function VideoEditorTimeline({
             token
           );
         }
-        if (exp.scene && scene) {
+        if (exp.scene && scene && isPersistedTimelineNodeId(scene.id)) {
           await TimelineAPI.updateScene(
             scene.id,
             {
@@ -2565,13 +3727,18 @@ export function VideoEditorTimeline({
     const active = beatTrimActiveRef.current;
     if (!active) return;
 
+    const useAutosnap = beatAutosnapEnabledRef.current;
+    const useFullMagnet = beatMagnetEnabledRef.current;
+    const snapFnBeat =
+      !useAutosnap ? snapTime : useFullMagnet ? snapTime : snapTimePlayheadOnly;
+
     const result = trimEngine.updateBeatTrim(
       e.clientX,
       snapshotBeats as any[],
       durationRef.current,
       pxPerSecRef.current,
-      beatMagnetEnabledRef.current,
-      snapTime as any,
+      useAutosnap,
+      snapFnBeat as any,
       currentTimeRef.current,
     );
 
@@ -3234,10 +4401,20 @@ export function VideoEditorTimeline({
   
   // 📊 LOAD TIMELINE DATA (props → context hydrate → single batch fetch)
   useEffect(() => {
-    if (initialData) {
-      setTimelineData(initialData);
-      setIsLoadingData(false);
+    if (!initialData) return;
+    // Während Trim: kein Überschreiben aus Props — sonst neue initialData-Referenzen (Parent-Re-Renders)
+    // resetten timelineData und kollidieren mit manual*TimingsRef / Live-Vorschau (Acts stapeln sich).
+    if (
+      clipTrimActiveRef.current ||
+      beatTrimActiveRef.current ||
+      trimingClipRef.current ||
+      nleClipDragRef.current ||
+      trimEngine.isBeatTrimActive()
+    ) {
+      return;
     }
+    setTimelineData(initialData);
+    setIsLoadingData(false);
   }, [initialData]);
   
   useEffect(() => {
@@ -3728,6 +4905,35 @@ export function VideoEditorTimeline({
     isBookProject,
     readingSpeedWpm,
   ]);
+
+  const liveActPctByActTrim = useMemo(() => {
+    void actTrimLayoutTick;
+    if (isBookProject || !timelineData || !('acts' in timelineData)) return null;
+    const actTrimLive =
+      trimingClip?.kind === 'act' || clipTrimActiveRef.current?.kind === 'act';
+    if (!actTrimLive) return null;
+    return buildFullActPctPreviewMapForTrim(
+      timelineData as TimelineData,
+      manualActTimingsRef.current,
+      duration,
+      actTrimBlocksSnapshotRef.current
+    );
+  }, [isBookProject, timelineData, trimingClip, actTrimLayoutTick, duration]);
+
+  /** Film: doppelte act.id in timelineData → mehrere Blöcke gleicher left/width (gestapelte Titel). Nur erste Instanz rendern. */
+  const filmActRowBlocks = useMemo(() => {
+    const vis = actBlocks.filter((a) => a.visible);
+    if (isBookProject) return vis;
+    const seen = new Set<string>();
+    const out: typeof vis = [];
+    for (const a of vis) {
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      out.push(a);
+    }
+    return out;
+  }, [actBlocks, isBookProject]);
+
   
   // ⚠️ DEPRECATED: Old inline calculation (replaced by memoized version below)
   // Kept for reference only - not used in render
@@ -4700,21 +5906,38 @@ export function VideoEditorTimeline({
             style={{ height: `${trackHeights.beat}px` }}
           >
             <span className="text-[9px] text-foreground font-medium">Beat</span>
-            <button
-              type="button"
-              onClick={() => setBeatMagnetEnabled(!beatMagnetEnabled)}
-              className={cn(
-                'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
-                beatMagnetEnabled ? 'opacity-100 text-primary' : 'opacity-35 text-muted-foreground'
-              )}
-              title={
-                beatMagnetEnabled
-                  ? 'Beat-Magnet: an (Snapping & Ripple nur für Beats)'
-                  : 'Beat-Magnet: aus'
-              }
-            >
-              <Magnet className="size-4" strokeWidth={2.25} />
-            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setBeatAutosnapEnabled(!beatAutosnapEnabled)}
+                className={cn(
+                  'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                  beatAutosnapEnabled ? 'opacity-100 text-primary' : 'opacity-35 text-muted-foreground'
+                )}
+                title={
+                  beatAutosnapEnabled
+                    ? 'Autosnap: an (Snapping am Beat-Trim)'
+                    : 'Autosnap: aus'
+                }
+              >
+                <Crosshair className="size-3.5" strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setBeatMagnetEnabled(!beatMagnetEnabled)}
+                className={cn(
+                  'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                  beatMagnetEnabled ? 'opacity-100 text-primary' : 'opacity-35 text-muted-foreground'
+                )}
+                title={
+                  beatMagnetEnabled
+                    ? 'Magnet: alle Kanten (Beats + Playhead). Aus = nur Playhead, wenn Autosnap an'
+                    : 'Magnet: aus (nur Playhead-Snap bei Autosnap)'
+                }
+              >
+                <Magnet className="size-3.5" strokeWidth={2.25} />
+              </button>
+            </div>
             <div 
               className={cn(
                 "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
@@ -4731,23 +5954,38 @@ export function VideoEditorTimeline({
               {isBookProject ? 'Akt' : 'Act'}
             </span>
             {showFilmClipMagnets && (
-              <button
-                type="button"
-                onClick={() =>
-                  setClipMagnets((m) => ({ ...m, act: !m.act }))
-                }
-                className={cn(
-                  'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
-                  clipMagnets.act ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
-                )}
-                title={
-                  clipMagnets.act
-                    ? 'Act-Trim: Magnet an (Snapping)'
-                    : 'Act-Trim: Magnet aus'
-                }
-              >
-                <Magnet className="size-3.5" strokeWidth={2.25} />
-              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTrackAutosnap((t) => ({ ...t, act: !t.act }))
+                  }
+                  className={cn(
+                    'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    trackAutosnap.act ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={trackAutosnap.act ? 'Act: Autosnap an' : 'Act: Autosnap aus'}
+                >
+                  <Crosshair className="size-3.5" strokeWidth={2.25} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setClipMagnets((m) => ({ ...m, act: !m.act }))
+                  }
+                  className={cn(
+                    'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    clipMagnets.act ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={
+                    clipMagnets.act
+                      ? 'Act: Magnet (alle Kanten)'
+                      : 'Act: nur Playhead, wenn Autosnap an'
+                  }
+                >
+                  <Magnet className="size-3.5" strokeWidth={2.25} />
+                </button>
+              </div>
             )}
             <div 
               className={cn(
@@ -4765,23 +6003,34 @@ export function VideoEditorTimeline({
               {isBookProject ? 'Kapitel' : 'Seq'}
             </span>
             {showFilmClipMagnets && (
-              <button
-                type="button"
-                onClick={() =>
-                  setClipMagnets((m) => ({ ...m, sequence: !m.sequence }))
-                }
-                className={cn(
-                  'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
-                  clipMagnets.sequence ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
-                )}
-                title={
-                  clipMagnets.sequence
-                    ? 'Sequence-Trim: Magnet an'
-                    : 'Sequence-Trim: Magnet aus'
-                }
-              >
-                <Magnet className="size-3.5" strokeWidth={2.25} />
-              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTrackAutosnap((t) => ({ ...t, sequence: !t.sequence }))
+                  }
+                  className={cn(
+                    'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    trackAutosnap.sequence ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={trackAutosnap.sequence ? 'Seq.: Autosnap an' : 'Seq.: Autosnap aus'}
+                >
+                  <Crosshair className="size-3.5" strokeWidth={2.25} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setClipMagnets((m) => ({ ...m, sequence: !m.sequence }))
+                  }
+                  className={cn(
+                    'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    clipMagnets.sequence ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={clipMagnets.sequence ? 'Seq.: Magnet (alle Kanten)' : 'Seq.: nur Playhead'}
+                >
+                  <Magnet className="size-3.5" strokeWidth={2.25} />
+                </button>
+              </div>
             )}
             <div 
               className={cn(
@@ -4799,23 +6048,34 @@ export function VideoEditorTimeline({
               {isBookProject ? 'Abschnitt' : 'Scene'}
             </span>
             {showFilmClipMagnets && (
-              <button
-                type="button"
-                onClick={() =>
-                  setClipMagnets((m) => ({ ...m, scene: !m.scene }))
-                }
-                className={cn(
-                  'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
-                  clipMagnets.scene ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
-                )}
-                title={
-                  clipMagnets.scene
-                    ? 'Scene-Trim: Magnet an'
-                    : 'Scene-Trim: Magnet aus'
-                }
-              >
-                <Magnet className="size-3.5" strokeWidth={2.25} />
-              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTrackAutosnap((t) => ({ ...t, scene: !t.scene }))
+                  }
+                  className={cn(
+                    'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    trackAutosnap.scene ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={trackAutosnap.scene ? 'Scene: Autosnap an' : 'Scene: Autosnap aus'}
+                >
+                  <Crosshair className="size-3.5" strokeWidth={2.25} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setClipMagnets((m) => ({ ...m, scene: !m.scene }))
+                  }
+                  className={cn(
+                    'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                    clipMagnets.scene ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                  )}
+                  title={clipMagnets.scene ? 'Scene: Magnet (alle Kanten)' : 'Scene: nur Playhead'}
+                >
+                  <Magnet className="size-3.5" strokeWidth={2.25} />
+                </button>
+              </div>
             )}
             <div 
               className={cn(
@@ -4834,23 +6094,34 @@ export function VideoEditorTimeline({
                 <span className="text-[9px] text-foreground font-medium truncate min-w-0">
                   Shot
                 </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setClipMagnets((m) => ({ ...m, shot: !m.shot }))
-                  }
-                  className={cn(
-                    'shrink-0 relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
-                    clipMagnets.shot ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
-                  )}
-                  title={
-                    clipMagnets.shot
-                      ? 'Shot-Trim: Magnet an'
-                      : 'Shot-Trim: Magnet aus'
-                  }
-                >
-                  <Magnet className="size-3.5" strokeWidth={2.25} />
-                </button>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTrackAutosnap((t) => ({ ...t, shot: !t.shot }))
+                    }
+                    className={cn(
+                      'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                      trackAutosnap.shot ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                    )}
+                    title={trackAutosnap.shot ? 'Shot: Autosnap an' : 'Shot: Autosnap aus'}
+                  >
+                    <Crosshair className="size-3.5" strokeWidth={2.25} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setClipMagnets((m) => ({ ...m, shot: !m.shot }))
+                    }
+                    className={cn(
+                      'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                      clipMagnets.shot ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                    )}
+                    title={clipMagnets.shot ? 'Shot: Magnet (alle Kanten)' : 'Shot: nur Playhead'}
+                  >
+                    <Magnet className="size-3.5" strokeWidth={2.25} />
+                  </button>
+                </div>
                 <div
                   className={cn(
                     "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
@@ -4861,12 +6132,42 @@ export function VideoEditorTimeline({
               </div>
               {showEditorialClipTrack && (
                 <div
-                  className="border-b border-border px-1.5 flex items-center gap-1 bg-muted/20 relative"
+                  className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-muted/20 relative"
                   style={{ height: `${trackHeights.editorialClip}px` }}
                   title="Editorial-Clips (NLE): gleiche Spur wie Shot/Musik — nur im Tab „Timeline“"
                 >
-                  <Clapperboard className="size-3 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
-                  <span className="text-[9px] text-foreground font-semibold leading-tight">Clip</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <Clapperboard className="size-3 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
+                    <span className="text-[9px] text-foreground font-semibold leading-tight truncate">Clip</span>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTrackAutosnap((t) => ({ ...t, editorialClip: !t.editorialClip }))
+                      }
+                      className={cn(
+                        'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                        trackAutosnap.editorialClip ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                      )}
+                      title={trackAutosnap.editorialClip ? 'Clip: Autosnap an' : 'Clip: Autosnap aus'}
+                    >
+                      <Crosshair className="size-3.5" strokeWidth={2.25} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setClipMagnets((m) => ({ ...m, editorialClip: !m.editorialClip }))
+                      }
+                      className={cn(
+                        'relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50',
+                        clipMagnets.editorialClip ? 'text-primary opacity-100' : 'text-muted-foreground opacity-40'
+                      )}
+                      title={clipMagnets.editorialClip ? 'Clip: Magnet (alle Kanten)' : 'Clip: nur Playhead'}
+                    >
+                      <Magnet className="size-3.5" strokeWidth={2.25} />
+                    </button>
+                  </div>
                   <div
                     className={cn(
                       "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
@@ -5086,18 +6387,27 @@ export function VideoEditorTimeline({
               className="relative border-b border-border bg-muted/30"
               style={{ height: `${trackHeights.act}px` }}
             >
-              {actBlocks
-                .filter(act => act.visible)
-                .map((act, index) => {
+              {filmActRowBlocks.map((act, index) => {
                   const displayText = getBlockText(act.title || '', act.width, 'act', index);
+                  const livePr = liveActPctByActTrim?.[act.id];
+                  const useLiveActLayout = !!livePr;
+                  const durSafe = Math.max(1e-9, Number(duration) || 0);
+                  const vsSafe = Number(viewStartSec) || 0;
+                  const pxsSafe = Math.max(1e-6, Number(pxPerSec) || 1);
+                  const liveLeftPx = useLiveActLayout
+                    ? ((livePr!.pct_from / 100) * durSafe - vsSafe) * pxsSafe
+                    : act.x;
+                  const liveWidthPx = useLiveActLayout
+                    ? Math.max(2, ((livePr!.pct_to - livePr!.pct_from) / 100) * durSafe * pxsSafe)
+                    : act.width;
                   return (
                     <div
                       key={act.id}
                       data-act-id={act.id}
                       className={getTimelineTrackClipClasses('act')}
                       style={{
-                        left: `${act.x}px`,
-                        width: `${act.width}px`,
+                        left: `${liveLeftPx}px`,
+                        width: `${liveWidthPx}px`,
                         ['--trim-cap' as string]: TRIM_END_CAP_WIDTH,
                         ...(ACT_TRIM_GRAB_STYLES.clipBorderColor
                           ? { borderColor: ACT_TRIM_GRAB_STYLES.clipBorderColor }
@@ -5580,6 +6890,7 @@ export function VideoEditorTimeline({
                             {
                               id: c.id,
                               sceneId: c.sceneId,
+                              shotId: c.shotId,
                               startSec: c.startSec,
                               endSec: c.endSec,
                             },
@@ -5600,6 +6911,7 @@ export function VideoEditorTimeline({
                             {
                               id: c.id,
                               sceneId: c.sceneId,
+                              shotId: c.shotId,
                               startSec: c.startSec,
                               endSec: c.endSec,
                             },

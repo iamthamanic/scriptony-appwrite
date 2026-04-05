@@ -40,6 +40,7 @@ import { FilmDropdownMobile } from './FilmDropdownMobile';
 import { useAuth } from '../hooks/useAuth';
 import { useOptionalTimelineState } from '../contexts/TimelineStateContext';
 import * as ShotsAPI from '../lib/api/shots-api';
+import { getCharacters as getTimelineCharacters } from '../lib/api/characters-api';
 import { narrativeStructureInitUiHint } from '../lib/narrative-structure-init';
 import {
   validateImageFile,
@@ -49,7 +50,6 @@ import {
 import { STORAGE_CONFIG } from '../lib/config';
 import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
 import * as TimelineAPI from '../lib/api/timeline-api';
-import * as TimelineAPIV2 from '../lib/api/timeline-api-v2';
 import type { Act, Sequence, Scene, Shot, Character, Clip } from '../lib/types';
 import { toast } from 'sonner';
 import { perfMonitor } from '../lib/performance-monitor';
@@ -57,6 +57,7 @@ import { cacheManager } from '../lib/cache-manager';
 import { queryKeys } from '../lib/react-query';
 import { useOptimizedFilmDropdown } from '../hooks/useOptimizedFilmDropdown';
 import { LoadingSkeleton } from './OptimizedDropdownComponents';
+import { loadProjectTimelineBundle } from '../lib/timeline-map';
 
 // Timeline Cache Data Structure
 export interface TimelineData {
@@ -632,18 +633,21 @@ export function FilmDropdown({
 
       perfMonitor.start(perfId);
 
-      // Single fast path: one ultra-batch call, no eager shots, no scene content.
-      const ultra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
-        includeShots: false,
-        excludeContent: true,
-      });
-      const loadedActs = (ultra.timeline?.acts || []).map((n: any) => TimelineAPI.nodeToAct(n));
-      const loadedSequences = (ultra.timeline?.sequences || []).map((n: any) => TimelineAPI.nodeToSequence(n));
-      const loadedScenes = (ultra.timeline?.scenes || []).map((n: any) => TimelineAPI.nodeToScene(n));
-      const loadedShots: Shot[] = [];
-      const loadedCharacters = externalCharacters
-        ? []
-        : ((ultra.characters || []) as Character[]);
+      // Shared robust loader: ultra-batch first, then silent fallback to batch+shots/clips.
+      const bundle = (await loadProjectTimelineBundle(projectId, token, false)) as TimelineData;
+      const loadedActs = bundle.acts || [];
+      const loadedSequences = bundle.sequences || [];
+      const loadedScenes = bundle.scenes || [];
+      const loadedShots: Shot[] = bundle.shots || [];
+      let loadedCharacters: Character[] = [];
+      if (!externalCharacters) {
+        try {
+          loadedCharacters = await getTimelineCharacters(projectId, token);
+        } catch (characterError) {
+          console.error('[FilmDropdown] Character fallback load failed:', characterError);
+          loadedCharacters = [];
+        }
+      }
       
       console.log('[FilmDropdown] ✅ Parallel load complete:', {
         acts: loadedActs.length,

@@ -164,6 +164,19 @@ export function mapCharacter(row: JsonRecord): JsonRecord {
 }
 
 export function mapNode(row: JsonRecord): JsonRecord {
+  const rawMetadata =
+    typeof row.metadata_json === "string" ? JSON.parse(row.metadata_json || "{}") : (row.metadata_json ?? {});
+  const metadata =
+    rawMetadata && typeof rawMetadata === "object"
+      ? { ...(rawMetadata as JsonRecord) }
+      : {};
+  // Tolerate older typoed metadata keys from legacy initializers / migrated data.
+  if (metadata.pct_from === undefined && typeof metadata.pt_from === "number") {
+    metadata.pct_from = metadata.pt_from;
+  }
+  if (metadata.pct_to === undefined && typeof metadata.pt_to === "number") {
+    metadata.pct_to = metadata.pt_to;
+  }
   return {
     id: row.id,
     projectId: row.project_id,
@@ -185,7 +198,7 @@ export function mapNode(row: JsonRecord): JsonRecord {
     nodeType: row.node_type ?? undefined,
     scene_id: row.scene_id ?? undefined,
     sceneId: row.scene_id ?? undefined,
-    metadata: typeof row.metadata_json === "string" ? JSON.parse(row.metadata_json || "{}") : (row.metadata_json ?? {}),
+    metadata,
     createdAt: row.created_at,
     created_at: row.created_at,
     updatedAt: row.updated_at,
