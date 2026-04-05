@@ -1,0 +1,381 @@
+/**
+ * 🔊 SCRIPTONY AUDIO TTS - Text-to-Speech Edge Function
+ * 
+ * Speech Synthesis Service for Scriptony:
+ * - Convert text to speech
+ * - Multiple providers: OpenAI TTS, ElevenLabs, Google TTS
+ * - Multiple voices and languages
+ * - Audio format options (MP3, WAV, etc.)
+ * 
+ * Uses centralized AI service from _shared/ai-service/
+ */
+
+import { Hono } from "npm:hono";
+import { cors } from "npm:hono/cors";
+import { Client, Databases, Query } from "npm:@appwrite/node-sdk";
+
+// =============================================================================
+// SETUP
+// =============================================================================
+
+const app = new Hono().basePath("/scriptony-audio/tts");
+
+// Initialize Appwrite client
+const client = new Client()
+  .setEndpoint(Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT")!)
+  .setProject(Deno.env.get("APPWRITE_FUNCTION_PROJECT_ID")!);
+
+const databases = new Databases(client);
+
+// Database IDs
+const AUDIO_DB_ID = Deno.env.get("AUDIO_DATABASE_ID") || "scriptony_audio";
+const SYNTHESIS_COLLECTION = "synthesis";
+
+// =============================================================================
+// MIDDLEWARE
+// =============================================================================
+
+app.use("*", cors({
+  origin: "*",
+  allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  exposeHeaders: ["Content-Length"],
+  maxAge: 600,
+}));
+
+// Auth middleware
+async function getUserIdFromAuth(authHeader: string | undefined): Promise<string | null> {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  
+  try {
+    const token = authHeader.substring(7);
+    return token; // Placeholder
+  } catch {
+    return null;
+  }
+}
+
+// =============================================================================
+// HEALTH CHECK
+// =============================================================================
+
+app.get("/", (c) => {
+  return c.json({ 
+    status: "ok", 
+    function: "scriptony-audio-tts",
+    version: "1.0.0",
+    message: "Scriptony Text-to-Speech Service",
+    endpoints: [
+      "POST /synthesize - Convert text to speech",
+      "POST /synthesize/stream - Stream synthesis (for long texts)",
+      "GET /voices - List available voices",
+      "GET /history - Get synthesis history",
+      "GET /providers - List TTS-capable providers",
+      "GET /models - List available TTS models",
+    ],
+  });
+});
+
+app.get("/health", (c) => {
+  return c.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// =============================================================================
+// PROVIDERS ROUTES
+// =============================================================================
+
+/**
+ * GET /providers
+ * List all TTS-capable providers
+ */
+app.get("/providers", async (c) => {
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../../_shared/ai-service/providers");
+  
+  const ttsProviders = Object.entries(PROVIDER_CAPABILITIES)
+    .filter(([name, caps]) => caps.audio_tts)
+    .map(([name, caps]) => ({
+      id: name,
+      name: PROVIDER_DISPLAY_NAMES[name] || name,
+      capabilities: caps,
+    }));
+  
+  return c.json({ providers: ttsProviders });
+});
+
+/**
+ * GET /models
+ * List all TTS models
+ */
+app.get("/models", async (c) => {
+  const { getModelsForFeature } = await import("../../_shared/ai-service/config");
+  
+  const models = getModelsForFeature("audio_tts");
+  
+  return c.json({ models });
+});
+
+// =============================================================================
+// VOICES ROUTES
+// =============================================================================
+
+/**
+ * GET /voices
+ * List available voices for TTS
+ */
+app.get("/voices", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  const userId = await getUserIdFromAuth(authHeader);
+  
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  
+  const provider = c.req.query("provider") || "openai";
+  
+  try {
+    const { getVoices } = await import("../../_shared/ai-service");
+    
+    const voices = await getVoices(userId, { provider });
+    
+    return c.json({ voices });
+  } catch (error: any) {
+    // Return default voices if provider doesn't support voice listing
+    const defaultVoices: Record<string, any> = {
+      openai: [
+        { id: "alloy", name: "Alloy", gender: "neutral" },
+        { id: "echo", name: "Echo", gender: "male" },
+        { id: "fable", name: "Fable", gender: "neutral" },
+        { id: "onyx", name: "Onyx", gender: "male" },
+        { id: "nova", name: "Nova", gender: "female" },
+        { id: "shimmer", name: "Shimmer", gender: "female" },
+      ],
+      elevenlabs: [
+        { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", gender: "female" },
+        { id: "AZnzlk1XvdvUkg3lJpIB", name: "Domi", gender: "male" },
+        { id: "EXAVITQu4vrhnxnUiwQ0", name: "Bella", gender: "female" },
+        { id: "VR6AewZ2W9e8O7y5iQ6I", name: "Antoni", gender: "male" },
+        { id: "pNInz6obpgDQG4Oca3Ib", name: "Adam", gender: "male" },
+      ],
+      google: [
+        { id: "en-US-Neural2-A", name: "Neural2-A (US)", gender: "female" },
+        { id: "en-US-Neural2-C", name: "Neural2-C (US)", gender: "male" },
+        { id: "en-GB-Neural2-A", name: "Neural2-A (UK)", gender: "female" },
+        { id: "en-GB-Neural2-B", name: "Neural2-B (UK)", gender: "male" },
+      ],
+    };
+    
+    const voices = defaultVoices[provider] || [];
+    return c.json({ voices });
+  }
+});
+
+// =============================================================================
+// SYNTHESIS ROUTES
+// =============================================================================
+
+/**
+ * POST /synthesize
+ * Convert text to speech
+ */
+app.post("/synthesize", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  const userId = await getUserIdFromAuth(authHeader);
+  
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  
+  const body = await c.req.json();
+  const { 
+    text,
+    provider = "openai",
+    model = "tts-1",
+    voice = "alloy",
+    speed = 1.0,
+    format = "mp3",
+    language,
+    save_to_history = true,
+  } = body;
+  
+  if (!text) {
+    return c.json({ error: "Text required" }, 400);
+  }
+  
+  if (text.length > 10000) {
+    return c.json({ error: "Text too long (max 10000 characters)" }, 400);
+  }
+  
+  try {
+    const { synthesize } = await import("../../_shared/ai-service");
+    
+    const result = await synthesize(userId, text, {
+      provider,
+      model,
+      voice,
+      speed,
+      format: format as "mp3" | "opus" | "aac" | "flac",
+      language,
+    });
+    
+    // Save to history if requested
+    if (save_to_history) {
+      try {
+        await databases.createDocument(
+          AUDIO_DB_ID,
+          SYNTHESIS_COLLECTION,
+          "unique()",
+          {
+            user_id: userId,
+            text_preview: text.substring(0, 200),
+            text_length: text.length,
+            provider,
+            model,
+            voice,
+            audio_url: result.url,
+            duration: result.duration,
+            created_at: new Date().toISOString(),
+          }
+        );
+      } catch (e) {
+        console.log("Could not save synthesis:", e);
+      }
+    }
+    
+    return c.json({
+      success: true,
+      audio: {
+        url: result.url,
+        duration: result.duration,
+        format: result.format,
+        voice,
+        provider,
+      },
+    });
+  } catch (error: any) {
+    console.error("Synthesis error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+/**
+ * POST /synthesize/stream
+ * Stream synthesis for long texts
+ */
+app.post("/synthesize/stream", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  const userId = await getUserIdFromAuth(authHeader);
+  
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  
+  const body = await c.req.json();
+  const { 
+    text_chunks,
+    provider = "openai",
+    model = "tts-1",
+    voice = "alloy",
+    format = "mp3",
+  } = body;
+  
+  if (!text_chunks || !Array.isArray(text_chunks) || text_chunks.length === 0) {
+    return c.json({ error: "text_chunks array required" }, 400);
+  }
+  
+  if (text_chunks.length > 50) {
+    return c.json({ error: "Maximum 50 chunks per request" }, 400);
+  }
+  
+  try {
+    const { synthesize } = await import("../../_shared/ai-service");
+    
+    const results = await Promise.all(
+      text_chunks.map(async (text: string, index: number) => {
+        if (!text || text.length > 10000) {
+          return { 
+            index, 
+            success: false, 
+            error: text ? "Text too long" : "Text required" 
+          };
+        }
+        
+        try {
+          const result = await synthesize(userId, text, {
+            provider,
+            model,
+            voice,
+            format: format as "mp3" | "opus" | "aac" | "flac",
+          });
+          return { index, success: true, ...result };
+        } catch (error: any) {
+          return { index, success: false, error: error.message };
+        }
+      })
+    );
+    
+    const successful = results.filter((r: any) => r.success);
+    const failed = results.filter((r: any) => !r.success);
+    
+    return c.json({
+      success: true,
+      total: text_chunks.length,
+      synthesized: successful.length,
+      failed: failed.length,
+      chunks: successful,
+      errors: failed.length > 0 ? failed : undefined,
+    });
+  } catch (error: any) {
+    console.error("Stream synthesis error:", error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// =============================================================================
+// HISTORY ROUTES
+// =============================================================================
+
+/**
+ * GET /history
+ * Get user's synthesis history
+ */
+app.get("/history", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  const userId = await getUserIdFromAuth(authHeader);
+  
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  
+  const limit = parseInt(c.req.query("limit") || "50");
+  const offset = parseInt(c.req.query("offset") || "0");
+  
+  try {
+    const response = await databases.listDocuments(
+      AUDIO_DB_ID,
+      SYNTHESIS_COLLECTION,
+      [
+        Query.equal("user_id", userId),
+        Query.orderDesc("created_at"),
+        Query.limit(limit),
+        Query.offset(offset),
+      ]
+    );
+    
+    return c.json({
+      synthesis: response.documents,
+      total: response.total,
+    });
+  } catch (error: any) {
+    // Return empty history if DB doesn't exist
+    return c.json({ synthesis: [], total: 0 });
+  }
+});
+
+// =============================================================================
+// START SERVER
+// =============================================================================
+
+console.log("🔊 Scriptony Audio TTS Service starting...");
+Deno.serve(app.fetch);
