@@ -22,6 +22,8 @@ import type {
   TTSResponse,
   ImageOptions,
   ImageResponse,
+  VideoOptions,
+  VideoResponse,
   EmbeddingOptions,
   EmbeddingResponse,
 } from "./base";

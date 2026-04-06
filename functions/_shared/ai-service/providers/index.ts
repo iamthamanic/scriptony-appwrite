@@ -73,7 +73,7 @@ export function getProvider(name: string, config: ProviderConfig = {}): AIProvid
       return new ElevenLabsProvider(config.apiKey, config.baseUrl);
     
     case "ollama":
-      return new OllamaProvider(config.baseUrl);
+      return new OllamaProvider(config.baseUrl, config.apiKey);
     
     case "huggingface":
       if (!config.apiKey) throw new Error("HuggingFace API key required");

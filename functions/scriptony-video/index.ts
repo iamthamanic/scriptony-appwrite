@@ -11,25 +11,28 @@
  * Uses centralized AI service from _shared/ai-service/
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { Client, Databases, Query } from "npm:@appwrite/node-sdk";
+import "../_shared/fetch-polyfill";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { Client, Databases, Query } from "node-appwrite";
+import { getUserFromAuthHeader } from "../_shared/auth";
+import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 
 // =============================================================================
 // SETUP
 // =============================================================================
 
-const app = new Hono().basePath("/scriptony-video");
+const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT")!)
-  .setProject(Deno.env.get("APPWRITE_FUNCTION_PROJECT_ID")!);
+  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
+  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
 
 const databases = new Databases(client);
 
 // Database IDs
-const VIDEO_DB_ID = Deno.env.get("VIDEO_DATABASE_ID") || "scriptony_videos";
+const VIDEO_DB_ID = process.env.VIDEO_DATABASE_ID || "scriptony_videos";
 const GENERATIONS_COLLECTION = "video_generations";
 const PRESETS_COLLECTION = "video_presets";
 
@@ -47,16 +50,8 @@ app.use("*", cors({
 
 // Auth middleware
 async function getUserIdFromAuth(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  
-  try {
-    const token = authHeader.substring(7);
-    return token; // Placeholder
-  } catch {
-    return null;
-  }
+  const user = await getUserFromAuthHeader(authHeader);
+  return user?.id || null;
 }
 
 // =============================================================================
@@ -647,4 +642,4 @@ app.post("/presets", async (c) => {
 // =============================================================================
 
 console.log("🎬 Scriptony Video Generation Service starting...");
-Deno.serve(app.fetch);
+export default createHonoAppwriteHandler(app);

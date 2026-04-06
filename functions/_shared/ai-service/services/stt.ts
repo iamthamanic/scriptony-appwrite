@@ -4,27 +4,8 @@
  * Transcribes audio to text using configured provider.
  */
 
+import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type STTOptions, type STTResponse } from "../providers";
-
-interface UserAISettings {
-  api_keys: Record<string, string>;
-  features: {
-    audio_stt: {
-      provider: string;
-      model: string;
-    };
-  };
-}
-
-async function getUserSettings(userId: string): Promise<UserAISettings> {
-  // Placeholder - implement actual DB lookup
-  return {
-    api_keys: {},
-    features: {
-      audio_stt: { provider: "openai", model: "whisper-1" },
-    },
-  };
-}
 
 /**
  * Transcribe audio to text
@@ -39,26 +20,21 @@ export async function transcribe(
   audioUrl: string,
   options?: Partial<STTOptions>
 ): Promise<STTResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.audio_stt;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, "audio_stt");
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.audio_stt || !provider.transcribe) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support speech-to-text`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support speech-to-text`);
   }
-  
-  // Transcribe
+
+  const { model: _ignoredModel, ...rest } = options || {};
   return provider.transcribe(audioUrl, {
-    model: featureConfig.model,
-    ...options,
+    ...rest,
+    model: runtime.config.model,
   });
 }
 

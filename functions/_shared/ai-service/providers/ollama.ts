@@ -40,9 +40,21 @@ export class OllamaProvider implements AIProvider {
   };
   
   private baseUrl: string;
+  private apiKey?: string;
   
-  constructor(baseUrl?: string) {
+  constructor(baseUrl?: string, apiKey?: string) {
     this.baseUrl = baseUrl || "http://localhost:11434";
+    this.apiKey = apiKey;
+  }
+
+  private headers(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (this.apiKey) {
+      headers.Authorization = `Bearer ${this.apiKey}`;
+    }
+    return headers;
   }
   
   async chat(messages: ChatMessage[], options: ChatOptions): Promise<ChatResponse> {
@@ -52,9 +64,7 @@ export class OllamaProvider implements AIProvider {
     
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: this.headers(),
       body: JSON.stringify({
         model: options.model || "llama3.1",
         messages: [...systemMessages, ...messages],
@@ -98,9 +108,7 @@ export class OllamaProvider implements AIProvider {
     // This is a simplified implementation
     const response = await fetch(`${this.baseUrl}/api/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: this.headers(),
       body: JSON.stringify({
         model: options.model || "whisper",
         prompt: "Transcribe this audio",
@@ -124,9 +132,7 @@ export class OllamaProvider implements AIProvider {
     // This is a placeholder for models like bark or similar
     const response = await fetch(`${this.baseUrl}/api/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: this.headers(),
       body: JSON.stringify({
         model: options.model || "bark",
         prompt: text,
@@ -151,9 +157,7 @@ export class OllamaProvider implements AIProvider {
     // Use stable-diffusion or similar model
     const response = await fetch(`${this.baseUrl}/api/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: this.headers(),
       body: JSON.stringify({
         model: options.model || "stable-diffusion",
         prompt,
@@ -175,9 +179,7 @@ export class OllamaProvider implements AIProvider {
   async createEmbedding(text: string, options: EmbeddingOptions): Promise<EmbeddingResponse> {
     const response = await fetch(`${this.baseUrl}/api/embeddings`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: this.headers(),
       body: JSON.stringify({
         model: options.model || "nomic-embed-text",
         prompt: text,
@@ -202,7 +204,9 @@ export class OllamaProvider implements AIProvider {
   
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/tags`);
+      const response = await fetch(`${this.baseUrl}/api/tags`, {
+        headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : undefined,
+      });
       return response.ok;
     } catch {
       return false;
@@ -211,7 +215,9 @@ export class OllamaProvider implements AIProvider {
   
   // Get available models
   async getModels(): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/api/tags`);
+    const response = await fetch(`${this.baseUrl}/api/tags`, {
+      headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : undefined,
+    });
     
     if (!response.ok) {
       throw new Error("Failed to fetch models");

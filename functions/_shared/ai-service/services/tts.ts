@@ -4,27 +4,8 @@
  * Synthesizes text to audio using configured provider.
  */
 
+import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type TTSOptions, type TTSResponse } from "../providers";
-
-interface UserAISettings {
-  api_keys: Record<string, string>;
-  features: {
-    audio_tts: {
-      provider: string;
-      model: string;
-    };
-  };
-}
-
-async function getUserSettings(userId: string): Promise<UserAISettings> {
-  // Placeholder - implement actual DB lookup
-  return {
-    api_keys: {},
-    features: {
-      audio_tts: { provider: "elevenlabs", model: "eleven_multilingual_v2" },
-    },
-  };
-}
 
 /**
  * Synthesize text to speech
@@ -39,26 +20,22 @@ export async function synthesize(
   text: string,
   options?: Partial<TTSOptions>
 ): Promise<TTSResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.audio_tts;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, "audio_tts");
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.audio_tts || !provider.synthesize) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support text-to-speech`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support text-to-speech`);
   }
-  
-  // Synthesize
+
+  const { model: _ignoredModel, voice: _ignoredVoice, ...rest } = options || {};
   return provider.synthesize(text, {
-    model: featureConfig.model,
-    ...options,
+    ...rest,
+    model: runtime.config.model,
+    voice: runtime.config.voice || options?.voice,
   });
 }
 
@@ -68,16 +45,15 @@ export async function synthesize(
  * @param userId - User ID
  * @returns List of available voices
  */
-export async function getVoices(userId: string): Promise<Array<{ id: string; name: string }>> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.audio_tts;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+export async function getVoices(
+  userId: string,
+  options?: { provider?: string }
+): Promise<Array<{ id: string; name: string }>> {
+  const runtime = await resolveFeatureRuntime(userId, "audio_tts");
+  const providerName = (options?.provider as typeof runtime.config.provider | undefined) || runtime.config.provider;
+  const provider = getProvider(providerName, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check if provider has voice selection
@@ -87,7 +63,7 @@ export async function getVoices(userId: string): Promise<Array<{ id: string; nam
   }
   
   // Default voices for other providers
-  if (featureConfig.provider === "openai") {
+  if (providerName === "openai") {
     return [
       { id: "alloy", name: "Alloy" },
       { id: "echo", name: "Echo" },

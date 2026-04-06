@@ -4,27 +4,8 @@
  * Generates images from text prompts using configured provider.
  */
 
+import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type ImageOptions, type ImageResponse } from "../providers";
-
-interface UserAISettings {
-  api_keys: Record<string, string>;
-  features: {
-    image_generation: {
-      provider: string;
-      model: string;
-    };
-  };
-}
-
-async function getUserSettings(userId: string): Promise<UserAISettings> {
-  // Placeholder - implement actual DB lookup
-  return {
-    api_keys: {},
-    features: {
-      image_generation: { provider: "openai", model: "dall-e-3" },
-    },
-  };
-}
 
 /**
  * Generate an image from a text prompt
@@ -39,26 +20,21 @@ export async function generateImage(
   prompt: string,
   options?: Partial<ImageOptions>
 ): Promise<ImageResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.image_generation;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, "image_generation");
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.image || !provider.generateImage) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support image generation`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support image generation`);
   }
-  
-  // Generate image
+
+  const { model: _ignoredModel, ...rest } = options || {};
   return provider.generateImage(prompt, {
-    model: featureConfig.model,
-    ...options,
+    ...rest,
+    model: runtime.config.model,
   });
 }
 

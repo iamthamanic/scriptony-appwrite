@@ -3,6 +3,7 @@
  */
 
 import { generateAiResponse } from "../../_shared/ai";
+import { getLegacyAssistantSettings } from "../../_shared/ai-central-store";
 import { buildRagChatContext, normalizeRagIdList } from "../../_shared/rag-chat-context";
 
 import { resolveAiFeatureProfile } from "../../_shared/ai-feature-profile";
@@ -38,37 +39,6 @@ function enrichChatMessageForApi(entry: Record<string, any>): Record<string, any
     provider: meta.provider,
     tokens_used: meta.tokens_used,
   };
-}
-
-async function getSettings(userId: string): Promise<Record<string, any> | null> {
-  const data = await requestGraphql<{
-    ai_chat_settings: Array<Record<string, any>>;
-  }>(
-    `
-      query GetChatSettings($userId: uuid!) {
-        ai_chat_settings(where: { user_id: { _eq: $userId } }, limit: 1) {
-          id
-          active_provider
-          active_model
-          system_prompt
-          temperature
-          max_tokens
-          use_rag
-          settings_json
-          openai_api_key
-          anthropic_api_key
-          google_api_key
-          openrouter_api_key
-          deepseek_api_key
-          ollama_base_url
-          ollama_api_key
-        }
-      }
-    `,
-    { userId }
-  );
-
-  return data.ai_chat_settings[0] || null;
 }
 
 async function getConversationMessages(conversationId: string): Promise<
@@ -119,10 +89,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const settings = await getSettings(bootstrap.user.id);
+    const settings = await getLegacyAssistantSettings(bootstrap.user.id);
     const resolved = resolveAiFeatureProfile(settings, "assistant");
     if (!resolved.ok) {
-      sendBadRequest(res, resolved.error);
+      sendBadRequest(res, "error" in resolved ? resolved.error : "Assistant is not configured");
       return;
     }
     const provider = resolved.settings.provider;

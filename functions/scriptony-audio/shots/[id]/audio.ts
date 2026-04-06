@@ -2,8 +2,8 @@
  * Shot audio listing routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
-import { requestGraphql } from "../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../_shared/auth";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   sendBadRequest,
@@ -13,8 +13,8 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../../_shared/http";
-import { mapShotAudio } from "../../../../_shared/timeline";
+} from "../../../_shared/http";
+import { mapShotAudio } from "../../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {

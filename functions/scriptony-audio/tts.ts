@@ -10,25 +10,28 @@
  * Uses centralized AI service from _shared/ai-service/
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { Client, Databases, Query } from "npm:@appwrite/node-sdk";
+import "../_shared/fetch-polyfill";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { Client, Databases, Query } from "node-appwrite";
+import { getUserFromAuthHeader } from "../_shared/auth";
+import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 
 // =============================================================================
 // SETUP
 // =============================================================================
 
-const app = new Hono().basePath("/scriptony-audio/tts");
+export const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT")!)
-  .setProject(Deno.env.get("APPWRITE_FUNCTION_PROJECT_ID")!);
+  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
+  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
 
 const databases = new Databases(client);
 
 // Database IDs
-const AUDIO_DB_ID = Deno.env.get("AUDIO_DATABASE_ID") || "scriptony_audio";
+const AUDIO_DB_ID = process.env.AUDIO_DATABASE_ID || "scriptony_audio";
 const SYNTHESIS_COLLECTION = "synthesis";
 
 // =============================================================================
@@ -45,16 +48,8 @@ app.use("*", cors({
 
 // Auth middleware
 async function getUserIdFromAuth(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  
-  try {
-    const token = authHeader.substring(7);
-    return token; // Placeholder
-  } catch {
-    return null;
-  }
+  const user = await getUserFromAuthHeader(authHeader);
+  return user?.id || null;
 }
 
 // =============================================================================
@@ -91,7 +86,7 @@ app.get("/health", (c) => {
  * List all TTS-capable providers
  */
 app.get("/providers", async (c) => {
-  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../../_shared/ai-service/providers");
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../_shared/ai-service/providers");
   
   const ttsProviders = Object.entries(PROVIDER_CAPABILITIES)
     .filter(([name, caps]) => caps.audio_tts)
@@ -109,7 +104,7 @@ app.get("/providers", async (c) => {
  * List all TTS models
  */
 app.get("/models", async (c) => {
-  const { getModelsForFeature } = await import("../../_shared/ai-service/config");
+  const { getModelsForFeature } = await import("../_shared/ai-service/config");
   
   const models = getModelsForFeature("audio_tts");
   
@@ -135,7 +130,7 @@ app.get("/voices", async (c) => {
   const provider = c.req.query("provider") || "openai";
   
   try {
-    const { getVoices } = await import("../../_shared/ai-service");
+    const { getVoices } = await import("../_shared/ai-service");
     
     const voices = await getVoices(userId, { provider });
     
@@ -208,16 +203,18 @@ app.post("/synthesize", async (c) => {
   }
   
   try {
-    const { synthesize } = await import("../../_shared/ai-service");
+    const { synthesize } = await import("../_shared/ai-service");
+    const responseFormat = format === "wav" || format === "pcm" ? format : "mp3";
     
     const result = await synthesize(userId, text, {
       provider,
       model,
       voice,
       speed,
-      format: format as "mp3" | "opus" | "aac" | "flac",
+      responseFormat,
       language,
     });
+    const audioUrl = `data:audio/${result.format};base64,${result.audioBuffer.toString("base64")}`;
     
     // Save to history if requested
     if (save_to_history) {
@@ -233,7 +230,7 @@ app.post("/synthesize", async (c) => {
             provider,
             model,
             voice,
-            audio_url: result.url,
+            audio_url: audioUrl,
             duration: result.duration,
             created_at: new Date().toISOString(),
           }
@@ -246,7 +243,7 @@ app.post("/synthesize", async (c) => {
     return c.json({
       success: true,
       audio: {
-        url: result.url,
+        url: audioUrl,
         duration: result.duration,
         format: result.format,
         voice,
@@ -289,7 +286,7 @@ app.post("/synthesize/stream", async (c) => {
   }
   
   try {
-    const { synthesize } = await import("../../_shared/ai-service");
+    const { synthesize } = await import("../_shared/ai-service");
     
     const results = await Promise.all(
       text_chunks.map(async (text: string, index: number) => {
@@ -302,11 +299,12 @@ app.post("/synthesize/stream", async (c) => {
         }
         
         try {
+          const responseFormat = format === "wav" || format === "pcm" ? format : "mp3";
           const result = await synthesize(userId, text, {
             provider,
             model,
             voice,
-            format: format as "mp3" | "opus" | "aac" | "flac",
+            responseFormat,
           });
           return { index, success: true, ...result };
         } catch (error: any) {
@@ -378,4 +376,4 @@ app.get("/history", async (c) => {
 // =============================================================================
 
 console.log("🔊 Scriptony Audio TTS Service starting...");
-Deno.serve(app.fetch);
+export default createHonoAppwriteHandler(app);

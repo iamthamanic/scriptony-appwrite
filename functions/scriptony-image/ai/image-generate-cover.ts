@@ -9,7 +9,7 @@ import {
   parseSettingsJsonField,
   resolveCoverImageRoute,
 } from "../../_shared/ai-feature-profile";
-import { fetchAiChatSettingsByUserId } from "../../_shared/image-function-settings-db";
+import { getLegacyImageSettings } from "../../_shared/ai-central-store";
 import { requireImageFunctionUser } from "../../_shared/image-function-auth";
 import {
   readJsonBody,
@@ -123,20 +123,19 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const dbRow = await fetchAiChatSettingsByUserId(user.id);
-    const settings = dbRow || {};
+    const settings = await getLegacyImageSettings(user.id);
     const json = parseSettingsJsonField(settings.settings_json);
     const route = resolveCoverImageRoute(json, body.model?.trim());
     if (!route.ok) {
-      sendJson(res, 400, { error: route.error });
+      sendJson(res, 400, { error: "error" in route ? route.error : "Image route is not configured" });
       return;
     }
     const { provider, model: selectedModel } = route;
     const imageKey =
       readImageApiKeyFromSettings(settings.settings_json, provider) ||
-      (provider === "ollama" && typeof settings.ollama_image_api_key === "string"
+      (provider === "ollama"
         ? settings.ollama_image_api_key.trim()
-        : "");
+        : settings.openrouter_image_api_key.trim());
     if (!imageKey) {
       sendJson(res, 400, {
         error:

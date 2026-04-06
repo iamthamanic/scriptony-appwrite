@@ -4,9 +4,9 @@
  */
 
 import { generateAiResponse } from "../../_shared/ai";
+import { getLegacyAssistantSettings } from "../../_shared/ai-central-store";
 import { resolveAiFeatureProfile } from "../../_shared/ai-feature-profile";
 import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/graphql-compat";
 import { getCharactersByProject, getProjectIfAccessible } from "../../_shared/timeline";
 import {
   readJsonBody,
@@ -34,34 +34,6 @@ function allowGymRate(userId: string, maxPerWindow = 40, windowMs = 60_000): boo
   if (e.n >= maxPerWindow) return false;
   e.n += 1;
   return true;
-}
-
-async function loadAiSettingsRow(userId: string): Promise<Record<string, unknown> | null> {
-  const data = await requestGraphql<{
-    ai_chat_settings: Array<Record<string, unknown>>;
-  }>(
-    `
-      query GetAiSettings($userId: uuid!) {
-        ai_chat_settings(where: { user_id: { _eq: $userId } }, limit: 1) {
-          active_provider
-          active_model
-          system_prompt
-          temperature
-          max_tokens
-          openai_api_key
-          anthropic_api_key
-          google_api_key
-          openrouter_api_key
-          deepseek_api_key
-          ollama_base_url
-          ollama_api_key
-          settings_json
-        }
-      }
-    `,
-    { userId }
-  );
-  return data.ai_chat_settings[0] ?? null;
 }
 
 function languageBlock(
@@ -129,10 +101,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const row = await loadAiSettingsRow(bootstrap.user.id);
+    const row = await getLegacyAssistantSettings(bootstrap.user.id);
     const resolved = resolveAiFeatureProfile(row, "gym");
     if (!resolved.ok) {
-      sendBadRequest(res, resolved.error);
+      sendBadRequest(res, "error" in resolved ? resolved.error : "Gym is not configured");
       return;
     }
 

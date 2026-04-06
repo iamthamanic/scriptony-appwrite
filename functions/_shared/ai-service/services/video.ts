@@ -4,27 +4,8 @@
  * Generates videos from text prompts using configured provider.
  */
 
+import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type VideoOptions, type VideoResponse } from "../providers";
-
-interface UserAISettings {
-  api_keys: Record<string, string>;
-  features: {
-    video_generation: {
-      provider: string;
-      model: string;
-    };
-  };
-}
-
-async function getUserSettings(userId: string): Promise<UserAISettings> {
-  // Placeholder - implement actual DB lookup
-  return {
-    api_keys: {},
-    features: {
-      video_generation: { provider: "openrouter", model: "runway-gen3" },
-    },
-  };
-}
 
 /**
  * Generate a video from a text prompt
@@ -39,26 +20,21 @@ export async function generateVideo(
   prompt: string,
   options?: Partial<VideoOptions>
 ): Promise<VideoResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.video_generation;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, "video_generation");
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.video || !provider.generateVideo) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support video generation`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support video generation`);
   }
-  
-  // Generate video
+
+  const { model: _ignoredModel, ...rest } = options || {};
   return provider.generateVideo(prompt, {
-    model: featureConfig.model,
-    ...options,
+    ...rest,
+    model: runtime.config.model,
   });
 }
 
@@ -73,20 +49,15 @@ export async function getVideoStatus(
   userId: string,
   videoId: string
 ): Promise<VideoResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.video_generation;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, "video_generation");
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.video || !provider.getVideoStatus) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support video generation`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support video generation`);
   }
   
   // Get status
@@ -98,10 +69,12 @@ export async function getVideoStatus(
  */
 export async function generateShortVideo(
   userId: string,
-  prompt: string
+  prompt: string,
+  options?: Partial<VideoOptions>
 ): Promise<VideoResponse> {
   return generateVideo(userId, prompt, {
     duration: 5,
+    ...(options || {}),
   });
 }
 
@@ -110,9 +83,11 @@ export async function generateShortVideo(
  */
 export async function generateVideoLandscape(
   userId: string,
-  prompt: string
+  prompt: string,
+  options?: Partial<VideoOptions>
 ): Promise<VideoResponse> {
   return generateVideo(userId, prompt, {
     aspectRatio: "16:9",
+    ...(options || {}),
   });
 }

@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "appwrite:bootstrap-scriptony-ai": "node ./scripts/appwrite-bootstrap-scriptony-ai.mjs",
     "provision-schema": "node ./tools/provision-appwrite-schema.mjs",
     "provision-buckets": "node ./tools/provision-appwrite-buckets.mjs",
     "delete-collection": "node ./tools/delete-appwrite-collection.mjs"

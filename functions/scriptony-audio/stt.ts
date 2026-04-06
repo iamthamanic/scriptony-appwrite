@@ -10,25 +10,28 @@
  * Uses centralized AI service from _shared/ai-service/
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { Client, Databases, Query } from "npm:@appwrite/node-sdk";
+import "../_shared/fetch-polyfill";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { Client, Databases, Query } from "node-appwrite";
+import { getUserFromAuthHeader } from "../_shared/auth";
+import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 
 // =============================================================================
 // SETUP
 // =============================================================================
 
-const app = new Hono().basePath("/scriptony-audio/stt");
+export const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT")!)
-  .setProject(Deno.env.get("APPWRITE_FUNCTION_PROJECT_ID")!);
+  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
+  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
 
 const databases = new Databases(client);
 
 // Database IDs
-const AUDIO_DB_ID = Deno.env.get("AUDIO_DATABASE_ID") || "scriptony_audio";
+const AUDIO_DB_ID = process.env.AUDIO_DATABASE_ID || "scriptony_audio";
 const TRANSCRIPTIONS_COLLECTION = "transcriptions";
 
 // =============================================================================
@@ -45,16 +48,8 @@ app.use("*", cors({
 
 // Auth middleware
 async function getUserIdFromAuth(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  
-  try {
-    const token = authHeader.substring(7);
-    return token; // Placeholder
-  } catch {
-    return null;
-  }
+  const user = await getUserFromAuthHeader(authHeader);
+  return user?.id || null;
 }
 
 // =============================================================================
@@ -91,7 +86,7 @@ app.get("/health", (c) => {
  * List all STT-capable providers
  */
 app.get("/providers", async (c) => {
-  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../../_shared/ai-service/providers");
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../_shared/ai-service/providers");
   
   const sttProviders = Object.entries(PROVIDER_CAPABILITIES)
     .filter(([name, caps]) => caps.audio_stt)
@@ -109,7 +104,7 @@ app.get("/providers", async (c) => {
  * List all STT models
  */
 app.get("/models", async (c) => {
-  const { getModelsForFeature } = await import("../../_shared/ai-service/config");
+  const { getModelsForFeature } = await import("../_shared/ai-service/config");
   
   const models = getModelsForFeature("audio_stt");
   
@@ -154,7 +149,7 @@ app.post("/transcribe", async (c) => {
       // Create a URL for the audio (in production, upload to storage first)
       const audioUrl = URL.createObjectURL(new Blob([audioBuffer], { type: audioFile.type }));
       
-      const { transcribe } = await import("../../_shared/ai-service");
+      const { transcribe } = await import("../_shared/ai-service");
       
       const result = await transcribe(userId, audioUrl, {
         provider,
@@ -217,7 +212,7 @@ app.post("/transcribe", async (c) => {
   }
   
   try {
-    const { transcribe } = await import("../../_shared/ai-service");
+    const { transcribe } = await import("../_shared/ai-service");
     
     const result = await transcribe(userId, audio_url, {
       provider,
@@ -267,7 +262,7 @@ app.post("/transcribe/url", async (c) => {
   }
   
   try {
-    const { transcribe } = await import("../../_shared/ai-service");
+    const { transcribe } = await import("../_shared/ai-service");
     
     const result = await transcribe(userId, audio_url, {
       provider,
@@ -315,7 +310,7 @@ app.post("/transcribe/batch", async (c) => {
   }
   
   try {
-    const { transcribe } = await import("../../_shared/ai-service");
+    const { transcribe } = await import("../_shared/ai-service");
     
     const results = await Promise.all(
       audio_urls.map(async (audio_url: string) => {
@@ -395,4 +390,4 @@ app.get("/history", async (c) => {
 // =============================================================================
 
 console.log("🎤 Scriptony Audio STT Service starting...");
-Deno.serve(app.fetch);
+export default createHonoAppwriteHandler(app);

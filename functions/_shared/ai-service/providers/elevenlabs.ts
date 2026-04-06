@@ -9,6 +9,9 @@
 
 import type {
   AIProvider,
+  ChatMessage,
+  ChatOptions,
+  ChatResponse,
   TTSOptions,
   TTSResponse,
 } from "./base";
@@ -31,6 +34,10 @@ export class ElevenLabsProvider implements AIProvider {
   constructor(apiKey: string, baseUrl?: string) {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl || "https://api.elevenlabs.io/v1";
+  }
+
+  async chat(_messages: ChatMessage[], _options: ChatOptions): Promise<ChatResponse> {
+    throw new Error("ElevenLabs does not support text chat");
   }
   
   async synthesize(text: string, options: TTSOptions): Promise<TTSResponse> {

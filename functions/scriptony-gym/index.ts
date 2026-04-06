@@ -14,25 +14,28 @@
  * Uses centralized AI service from _shared/ai-service/
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { Client, Databases, Query } from "npm:@appwrite/node-sdk";
+import "../_shared/fetch-polyfill";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { Client, Databases, Query } from "node-appwrite";
+import { getUserFromAuthHeader } from "../_shared/auth";
+import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 
 // =============================================================================
 // SETUP
 // =============================================================================
 
-const app = new Hono().basePath("/scriptony-gym");
+const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT")!)
-  .setProject(Deno.env.get("APPWRITE_FUNCTION_PROJECT_ID")!);
+  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
+  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
 
 const databases = new Databases(client);
 
 // Database IDs
-const GYM_DB_ID = Deno.env.get("GYM_DATABASE_ID") || "scriptony_gym";
+const GYM_DB_ID = process.env.GYM_DATABASE_ID || "scriptony_gym";
 const EXERCISES_COLLECTION = "exercises";
 const PROGRESS_COLLECTION = "user_progress";
 const ACHIEVEMENTS_COLLECTION = "achievements";
@@ -53,17 +56,8 @@ app.use("*", cors({
 
 // Auth middleware
 async function getUserIdFromAuth(authHeader: string | undefined): Promise<string | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  
-  try {
-    const token = authHeader.substring(7);
-    // TODO: Verify JWT with Appwrite
-    return token; // Placeholder
-  } catch {
-    return null;
-  }
+  const user = await getUserFromAuthHeader(authHeader);
+  return user?.id || null;
 }
 
 // =============================================================================
@@ -564,7 +558,7 @@ Be creative and specific. Focus on actionable exercises.`;
 
     const messages = [
       {
-        role: "user",
+        role: "user" as const,
         content: `Generate a ${difficulty || "medium"} difficulty ${category || "characters"} exercise${focus ? ` focusing on ${focus}` : ""}. Make it unique and engaging.`,
       },
     ];
@@ -641,7 +635,7 @@ Be specific, supportive, and actionable. Focus on growth.`;
 
     const messages = [
       {
-        role: "user",
+        role: "user" as const,
         content: `Please provide feedback on this writing submission:\n\n${submission}`,
       },
     ];
@@ -702,7 +696,7 @@ Return 3 exercise suggestions as:
 
     const messages = [
       {
-        role: "user",
+        role: "user" as const,
         content: `Suggest exercises for a writer with this progress: ${JSON.stringify(progress || {})}
 Interests: ${interests?.join(", ") || "general improvement"}`,
       },
@@ -739,4 +733,4 @@ Interests: ${interests?.join(", ") || "general improvement"}`,
 // =============================================================================
 
 console.log("💪 Scriptony Gym Function starting...");
-Deno.serve(app.fetch);
+export default createHonoAppwriteHandler(app);

@@ -284,8 +284,8 @@ export function mapShot(row: JsonRecord): JsonRecord {
     updated_at: row.updated_at,
     updatedBy: row.user_id ?? undefined,
     user_id: row.user_id ?? undefined,
-    characters: asArray(row.shot_characters).map((entry) =>
-      mapCharacter(entry.character)
+    characters: asArray(row.shot_characters).map((entry: any) =>
+      mapCharacter(entry?.character)
     ),
     audioFiles: asArray(row.shot_audio).map(mapShotAudio),
     audio_files: asArray(row.shot_audio).map(mapShotAudio),

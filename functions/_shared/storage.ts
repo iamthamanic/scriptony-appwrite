@@ -39,13 +39,16 @@ function asArray<T>(value: T | T[] | undefined | null): T[] {
 }
 
 function bufferToUint8Array(value: Buffer | Uint8Array | ArrayBuffer): Uint8Array {
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
   if (value instanceof Uint8Array) {
     return value;
   }
   if (value instanceof ArrayBuffer) {
     return new Uint8Array(value);
   }
-  return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  return new Uint8Array(value);
 }
 
 /** Create a File-like duck-typed object that works in Node 16+ (no global File). */

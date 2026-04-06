@@ -5,40 +5,12 @@
  * Uses the provider registry to route to the correct provider.
  */
 
+import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type ChatMessage, type ChatOptions, type ChatResponse } from "../providers";
 
-/**
- * User AI settings (loaded from database)
- */
-interface UserAISettings {
-  api_keys: Record<string, string>;
-  features: {
-    [feature: string]: {
-      provider: string;
-      model: string;
-    };
-  };
-}
-
-/**
- * Get AI settings for a user
- * 
- * TODO: Replace with actual database lookup
- */
-async function getUserSettings(userId: string): Promise<UserAISettings> {
-  // Placeholder - implement actual DB lookup
-  return {
-    api_keys: {},
-    features: {
-      assistant_chat: { provider: "openai", model: "gpt-4o-mini" },
-      assistant_embeddings: { provider: "openai", model: "text-embedding-3-small" },
-      creative_gym: { provider: "openai", model: "gpt-4o" },
-      image_generation: { provider: "openai", model: "dall-e-3" },
-      audio_stt: { provider: "openai", model: "whisper-1" },
-      audio_tts: { provider: "elevenlabs", model: "eleven_multilingual_v2" },
-      video_generation: { provider: "openrouter", model: "runway-gen3" },
-    },
-  };
+function toCanonicalTextFeature(feature: string): "assistant_chat" | "creative_gym" {
+  if (feature === "creative_gym" || feature === "gym") return "creative_gym";
+  return "assistant_chat";
 }
 
 /**
@@ -56,29 +28,22 @@ export async function chat(
   feature: string,
   options?: Partial<ChatOptions>
 ): Promise<ChatResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features[feature];
-  if (!featureConfig) {
-    throw new Error(`Feature "${feature}" not configured`);
-  }
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, toCanonicalTextFeature(feature));
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.text) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support text generation`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support text generation`);
   }
-  
-  // Chat
+
+  const { model: _ignoredModel, ...rest } = options || {};
   return provider.chat(messages, {
-    model: featureConfig.model,
-    ...options,
+    ...rest,
+    model: runtime.config.model,
+    systemPrompt: options?.systemPrompt ?? runtime.userSettings.system_prompt,
   });
 }
 
@@ -98,31 +63,23 @@ export async function streamChat(
   onChunk: (chunk: string) => void,
   options?: Partial<ChatOptions>
 ): Promise<void> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features[feature];
-  if (!featureConfig) {
-    throw new Error(`Feature "${feature}" not configured`);
-  }
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, toCanonicalTextFeature(feature));
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.text) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support text generation`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support text generation`);
   }
-  
-  // Stream chat
-  // Note: Streaming implementation depends on provider
+
+  const { model: _ignoredModel, ...rest } = options || {};
   const response = await provider.chat(messages, {
-    model: featureConfig.model,
+    ...rest,
     stream: true,
-    ...options,
+    model: runtime.config.model,
+    systemPrompt: options?.systemPrompt ?? runtime.userSettings.system_prompt,
   });
   
   // For now, just return the full response

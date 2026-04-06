@@ -38,9 +38,11 @@ export interface ChatResponse {
 }
 
 export interface STTOptions {
+  provider?: string;
   model?: string;
   language?: string;
   temperature?: number;
+  timestamps?: boolean;
   timestampGranularities?: ("word" | "segment")[];
 }
 
@@ -56,9 +58,12 @@ export interface STTResponse {
 }
 
 export interface TTSOptions {
+  provider?: string;
   model?: string;
   voice?: string;
   speed?: number;
+  language?: string;
+  format?: "mp3" | "wav" | "pcm";
   responseFormat?: "mp3" | "wav" | "pcm";
 }
 
@@ -69,10 +74,13 @@ export interface TTSResponse {
 }
 
 export interface ImageOptions {
+  provider?: string;
   model?: string;
   size?: "256x256" | "512x512" | "1024x1024" | "1792x1024" | "1024x1792";
   quality?: "standard" | "hd";
   style?: "vivid" | "natural";
+  negative_prompt?: string;
+  style_preset?: string;
   responseFormat?: "url" | "b64_json";
 }
 
@@ -83,10 +91,15 @@ export interface ImageResponse {
 }
 
 export interface VideoOptions {
+  provider?: string;
   model?: string;
   duration?: number; // seconds
   aspectRatio?: "16:9" | "9:16" | "1:1";
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
   resolution?: "720p" | "1080p" | "4k";
+  fps?: number;
+  style_preset?: string;
+  negative_prompt?: string;
 }
 
 export interface VideoResponse {
@@ -95,6 +108,7 @@ export interface VideoResponse {
   url?: string;
   duration?: number;
   thumbnail?: string;
+  estimated_time?: number;
 }
 
 export interface EmbeddingOptions {

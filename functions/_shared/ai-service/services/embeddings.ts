@@ -4,27 +4,8 @@
  * Creates vector embeddings from text using configured provider.
  */
 
+import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type EmbeddingOptions, type EmbeddingResponse } from "../providers";
-
-interface UserAISettings {
-  api_keys: Record<string, string>;
-  features: {
-    assistant_embeddings: {
-      provider: string;
-      model: string;
-    };
-  };
-}
-
-async function getUserSettings(userId: string): Promise<UserAISettings> {
-  // Placeholder - implement actual DB lookup
-  return {
-    api_keys: {},
-    features: {
-      assistant_embeddings: { provider: "openai", model: "text-embedding-3-small" },
-    },
-  };
-}
 
 /**
  * Create an embedding from text
@@ -39,26 +20,21 @@ export async function createEmbedding(
   text: string,
   options?: Partial<EmbeddingOptions>
 ): Promise<EmbeddingResponse> {
-  // Load user settings
-  const settings = await getUserSettings(userId);
-  
-  // Get feature configuration
-  const featureConfig = settings.features.assistant_embeddings;
-  
-  // Get provider
-  const provider = getProvider(featureConfig.provider, {
-    apiKey: settings.api_keys[featureConfig.provider],
+  const runtime = await resolveFeatureRuntime(userId, "assistant_embeddings");
+  const provider = getProvider(runtime.config.provider, {
+    apiKey: runtime.apiKey || undefined,
+    baseUrl: runtime.baseUrl,
   });
   
   // Check capability
   if (!provider.capabilities.embeddings || !provider.createEmbedding) {
-    throw new Error(`Provider "${featureConfig.provider}" does not support embeddings`);
+    throw new Error(`Provider "${runtime.config.provider}" does not support embeddings`);
   }
-  
-  // Create embedding
+
+  const { model: _ignoredModel, ...rest } = options || {};
   return provider.createEmbedding(text, {
-    model: featureConfig.model,
-    ...options,
+    ...rest,
+    model: runtime.config.model,
   });
 }
 
