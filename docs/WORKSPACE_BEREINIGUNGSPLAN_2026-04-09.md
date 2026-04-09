@@ -1,14 +1,16 @@
 # Workspace-Bereinigungsplan
 
 - Datum: `2026-04-09`
-- Uhrzeit: `21:46:30 CEST`
+- Uhrzeit: `22:36:19 CEST`
 - Branch: `workspace-main-ai-20260406`
-- Status: `Ticket 10 in progress`
+- Status: `Ticket 10 weitgehend erledigt`
 - Letzte Split-Commits:
   - `4b9a588` (`chore: add appwrite parity and deployment tooling`)
   - `a18811e` (`refactor: centralize auth and gateway runtime contract`)
   - `8813e73` (`refactor: roll out shared auth across function handlers`)
   - `1770e3d` (`feat: reintegrate ai control plane and assistant flows`)
+  - `5abf796` (`chore: add appwrite entrypoints for packaged functions`)
+  - `70a14ed` (`fix: align residual routes and backend config helpers`)
 
 ## Ziel
 
@@ -202,7 +204,9 @@ Aktuelle Einschaetzung:
 4. Gruppe D committen
    Status: erledigt in Commit `1770e3d`
 5. Gruppe E committen
+   Status: erledigt in Commit `5abf796`
 6. Unklare Artefakte bewusst entscheiden
+   Rest-Follow-up commit ausserhalb von A-E: `70a14ed`
 
 ## Wiedereinstieg
 
@@ -212,7 +216,8 @@ Wenn die Bereinigung spaeter fortgesetzt wird, nicht mit Code-Fixes anfangen, so
 - Gruppe B ist bereits als Commit `a18811e` geschrieben
 - Gruppe C ist bereits als Commit `8813e73` geschrieben
 - Gruppe D ist bereits als Commit `1770e3d` geschrieben
-- als Naechstes folgt Gruppe E als Appwrite-Entrypoint- und Packaging-Commit
-- danach bleibt noch ein kleiner Rest-Cluster ausserhalb von A-E
+- Gruppe E ist bereits als Commit `5abf796` geschrieben
+- der kleine Rest-Cluster ausserhalb von A-E ist bereits als Commit `70a14ed` geschrieben
+- offen sind nur noch die vier lokalen Artefakte `deno.lock`, `functions/deno.lock`, `repo-visualization.html`, `repo-visualization-full.html`
 
-Damit ist der naechste sinnvolle Schritt fuer Ticket 10 nicht mehr Analyse, sondern der Split von Gruppe E.
+Damit ist Ticket 10 code-seitig weitgehend abgeschlossen. Als Naechstes bleibt nur die bewusste Entscheidung ueber die vier lokalen Artefakte.
