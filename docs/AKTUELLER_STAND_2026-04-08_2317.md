@@ -1,8 +1,8 @@
 # Aktueller Stand
 
 - Datum: `2026-04-09`
-- Uhrzeit: `20:46:54 CEST`
-- Snapshot-Typ: `Arbeitsstand nach Fix von Ticket 09 und Dokumentationsupdate`
+- Uhrzeit: `21:32:00 CEST`
+- Snapshot-Typ: `Arbeitsstand nach Ticket-10-Split von Gruppe B`
 
 ## Live-Zustand
 
@@ -57,9 +57,11 @@
   - `npm --prefix functions run build:scriptony-ai` gruen
   - repraesentative Shared-Function-Builds fuer `scriptony-projects` und `scriptony-auth` gruen
 - Der breite Live-Rollout der neuen Function-Logik aus Ticket 09 ist noch nicht separat ausgerollt. Das ist aktuell kein Produktblocker, aber noch offen.
-- Ticket 10 hat jetzt den ersten echten Split-Commit:
+- Ticket 10 hat jetzt zwei echte Split-Commits:
   - `4b9a588` `chore: add appwrite parity and deployment tooling`
   - darin stecken Docs, Verify-/Smoke-Tooling und Deploy-Helfer aus Gruppe A
+  - `a18811e` `refactor: centralize auth and gateway runtime contract`
+  - darin steckt die technische Basis aus Shared-Auth, Shared-Runtime und Frontend-Gateway aus Gruppe B
 
 ## Lokal vorbereitete Arbeiten
 
@@ -75,7 +77,7 @@
 Der letzte Live-Blocker ist geloest. Die naechsten sinnvollen Schritte sind jetzt wieder Hygiene und Integration:
 
 - Ticket 10:
-  - mit Gruppe B des Bereinigungsplans weitermachen
+  - mit Gruppe C des Bereinigungsplans weitermachen
 - Ticket 11:
   - Release-Gate und Rollback-Doku festziehen
 
