@@ -5,7 +5,12 @@
  * where dispatch is `(req, res) => Promise<void>`.
  */
 
-import { corsHeadersForIncomingRequest, type RequestLike, type ResponseLike } from "./http";
+import {
+  corsHeadersForIncomingRequest,
+  sendNotFound,
+  type RequestLike,
+  type ResponseLike,
+} from "./http";
 
 type AppwriteContext = {
   req: {
@@ -24,6 +29,43 @@ type AppwriteContext = {
 };
 
 type Dispatch = (req: RequestLike, res: ResponseLike) => Promise<void>;
+
+export function getPathname(req: RequestLike): string {
+  const raw =
+    (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
+  try {
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      return new URL(raw).pathname || "/";
+    }
+  } catch {
+    /* ignore malformed URL-like input */
+  }
+  const q = raw.indexOf("?");
+  return q >= 0 ? raw.slice(0, q) : raw;
+}
+
+export function withParams(
+  req: RequestLike,
+  params: Record<string, string>
+): RequestLike {
+  return {
+    ...req,
+    params: {
+      ...(req?.params || {}),
+      ...params,
+    },
+  };
+}
+
+export function sendRouteNotFound(
+  service: string,
+  req: RequestLike,
+  res: ResponseLike
+): void {
+  sendNotFound(res, `Route not found for ${service}: ${req?.method || "GET"} ${getPathname(req)}`);
+}
 
 export function createAppwriteHandler(dispatch: Dispatch) {
   return async function handler(ctx: AppwriteContext): Promise<unknown> {
