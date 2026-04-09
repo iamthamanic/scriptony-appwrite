@@ -1,12 +1,13 @@
 # Workspace-Bereinigungsplan
 
 - Datum: `2026-04-09`
-- Uhrzeit: `21:32:00 CEST`
+- Uhrzeit: `21:41:08 CEST`
 - Branch: `workspace-main-ai-20260406`
 - Status: `Ticket 10 in progress`
 - Letzte Split-Commits:
   - `4b9a588` (`chore: add appwrite parity and deployment tooling`)
   - `a18811e` (`refactor: centralize auth and gateway runtime contract`)
+  - `8813e73` (`refactor: roll out shared auth across function handlers`)
 
 ## Ziel
 
@@ -196,6 +197,7 @@ Aktuelle Einschaetzung:
 2. Gruppe B committen
    Status: erledigt in Commit `a18811e`
 3. Gruppe C committen
+   Status: erledigt in Commit `8813e73`
 4. Gruppe D committen
 5. Gruppe E committen
 6. Unklare Artefakte bewusst entscheiden
@@ -206,6 +208,7 @@ Wenn die Bereinigung spaeter fortgesetzt wird, nicht mit Code-Fixes anfangen, so
 
 - Gruppe A ist bereits als Commit `4b9a588` geschrieben
 - Gruppe B ist bereits als Commit `a18811e` geschrieben
-- als Naechstes folgt Gruppe C als Handler-Rollout-Commit
+- Gruppe C ist bereits als Commit `8813e73` geschrieben
+- als Naechstes folgt Gruppe D als AI- und Assistant-Integrations-Commit
 
-Damit ist der naechste sinnvolle Schritt fuer Ticket 10 nicht mehr Analyse, sondern der Split von Gruppe C.
+Damit ist der naechste sinnvolle Schritt fuer Ticket 10 nicht mehr Analyse, sondern der Split von Gruppe D.
