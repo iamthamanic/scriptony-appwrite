@@ -3,7 +3,7 @@
  * Location: functions/scriptony-image/ai/image-validate-key.ts
  */
 
-import { requireImageFunctionUser } from "../../_shared/image-function-auth";
+import { requireAuthenticatedUser } from "../../_shared/auth";
 import { fetchUnifiedModels, toLegacyModelRows } from "../../_shared/model-capabilities";
 import {
   readJsonBody,
@@ -16,7 +16,7 @@ import {
 } from "../../_shared/http";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
-  const user = await requireImageFunctionUser(req.headers.authorization);
+  const user = await requireAuthenticatedUser(req);
   if (!user) {
     sendUnauthorized(res);
     return;
@@ -51,4 +51,3 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     callable_image_models: callableOnly.map((m) => m.model_id),
   });
 }
-

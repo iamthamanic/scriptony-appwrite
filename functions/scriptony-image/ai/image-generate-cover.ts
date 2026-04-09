@@ -1,6 +1,6 @@
 /**
  * Generates a project cover image via Ollama Cloud with the dedicated image key.
- * Uses slim DB/auth (no graphql handlers-all) to keep the bundle small and cold starts fast.
+ * Uses the central shared auth contract with the lightweight user-resolution path.
  * Location: functions/scriptony-image/ai/image-generate-cover.ts
  */
 
@@ -10,7 +10,7 @@ import {
   resolveCoverImageRoute,
 } from "../../_shared/ai-feature-profile";
 import { getLegacyImageSettings } from "../../_shared/ai-central-store";
-import { requireImageFunctionUser } from "../../_shared/image-function-auth";
+import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
   sendBadRequest,
@@ -106,7 +106,7 @@ function readImageApiKeyFromSettings(raw: unknown, provider: "ollama" | "openrou
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
-    const user = await requireImageFunctionUser(req.headers.authorization);
+    const user = await requireAuthenticatedUser(req);
     if (!user) {
       sendUnauthorized(res);
       return;

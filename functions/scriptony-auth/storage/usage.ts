@@ -18,7 +18,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return;
   }
 
-  const bootstrap = await requireUserBootstrap(req.headers.authorization);
+  const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return;

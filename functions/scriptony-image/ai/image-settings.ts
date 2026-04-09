@@ -3,7 +3,7 @@
  */
 
 import { getLegacyImageSettings, updateLegacyImageSettings } from "../../_shared/ai-central-store";
-import { requireImageFunctionUser } from "../../_shared/image-function-auth";
+import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
   sendJson,
@@ -16,7 +16,7 @@ import {
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
-    const user = await requireImageFunctionUser(req.headers.authorization);
+    const user = await requireAuthenticatedUser(req);
     if (!user) {
       sendUnauthorized(res);
       return;

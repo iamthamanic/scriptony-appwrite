@@ -11,7 +11,7 @@ import {
 } from "../_shared/http";
 
 export async function requireSuperadmin(req: RequestLike, res: ResponseLike) {
-  const bootstrap = await requireUserBootstrap(req.headers.authorization);
+  const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return null;

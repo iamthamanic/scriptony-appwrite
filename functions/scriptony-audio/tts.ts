@@ -14,7 +14,7 @@ import "../_shared/fetch-polyfill";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Client, Databases, Query } from "node-appwrite";
-import { getUserFromAuthHeader } from "../_shared/auth";
+import { requireAuthenticatedUser, type AuthSource } from "../_shared/auth";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 
 // =============================================================================
@@ -47,8 +47,8 @@ app.use("*", cors({
 }));
 
 // Auth middleware
-async function getUserIdFromAuth(authHeader: string | undefined): Promise<string | null> {
-  const user = await getUserFromAuthHeader(authHeader);
+async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null> {
+  const user = await requireAuthenticatedUser(authSource);
   return user?.id || null;
 }
 
@@ -120,8 +120,7 @@ app.get("/models", async (c) => {
  * List available voices for TTS
  */
 app.get("/voices", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -175,8 +174,7 @@ app.get("/voices", async (c) => {
  * Convert text to speech
  */
 app.post("/synthesize", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);

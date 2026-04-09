@@ -2,7 +2,7 @@
  * Direct shot lookup route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requireUserBootstrap } from "../../../_shared/auth";
 import {
   getParam,
   sendBadRequest,
@@ -13,12 +13,12 @@ import {
   sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../../_shared/http";
-import { getShotById, mapShot } from "../../../../_shared/timeline";
+} from "../../../_shared/http";
+import { getShotById, mapShot } from "../../../_shared/timeline";
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;

@@ -56,7 +56,7 @@ async function requireProjectAccess(
   res: ResponseLike,
   projectId: string
 ): Promise<{ userId: string; organizationIds: string[] } | null> {
-  const bootstrap = await requireUserBootstrap(req.headers?.authorization);
+  const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return null;

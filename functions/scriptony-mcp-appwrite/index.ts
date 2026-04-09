@@ -60,7 +60,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
