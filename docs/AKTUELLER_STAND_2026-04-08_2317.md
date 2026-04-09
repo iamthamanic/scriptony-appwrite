@@ -1,8 +1,8 @@
 # Aktueller Stand
 
 - Datum: `2026-04-09`
-- Uhrzeit: `23:12 CEST`
-- Snapshot-Typ: `Release-Gate gruen und Integrationsbranch fast-forwarded`
+- Uhrzeit: `23:20 CEST`
+- Snapshot-Typ: `Release-Gate gruen, Integrationsbranch aktualisiert, nur Freigabe-/Prozessschritte offen`
 
 ## Live-Zustand
 
@@ -10,7 +10,8 @@
 - `verify-appwrite-parity -- --require-auth` ist gruen.
 - `smoke-user-flows` ist gruen.
 - Das Release-Gate wurde mit echtem Demo-User-JWT am `2026-04-09 23:12 CEST` erfolgreich gegen live ausgefuehrt.
-- `integration-main-plus-ai-20260406` wurde danach per Fast-Forward auf `9841ee1` gezogen.
+- `workspace-main-ai-20260406` steht auf `796a362` (`docs: record green release gate execution`).
+- `integration-main-plus-ai-20260406` wurde danach per Fast-Forward auf `796a362` gezogen.
 - `main` bleibt bewusst unveraendert auf `b5089e2`.
 - Alle sechs kritischen Live-Flows sind aktuell gruen:
   - `/profile`
@@ -89,11 +90,22 @@
 
 ## Naechster sinnvoller Schritt
 
-Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der Integrationsbranch ist auf den verifizierten Stand gezogen. Die naechsten sinnvollen Schritte sind jetzt:
+Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der Integrationsbranch ist auf den verifizierten Stand gezogen. Offene Arbeit ist aktuell kein Fehlerfixing mehr, sondern nur noch:
 
-- Push oder Freigabe von `integration-main-plus-ai-20260406` als validierter Integrationsschnitt.
-- Danach erst eine explizite Entscheidung ueber den Merge nach `main`.
+- `integration-main-plus-ai-20260406` zum Remote pushen oder explizit freigeben.
+- Danach separat entscheiden, ob dieser Stand nach `main` gemerged werden soll.
+- Optionaler strenger Abschluss von Ticket 05:
+  - breiteren Live-Rollout der zentralen Auth-Schicht fuer weitere Feature-Functions als eigenen Release-Schnitt fahren
+- Optionaler strenger Abschluss von Ticket 09:
+  - die neuen Log-/Error-Codes als breiteren Function-Rollout auch live ausrollen
 - [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) bleibt die verbindliche Freigabegrundlage.
+
+## Was aktuell nicht offen ist
+
+- Kein akuter Produktblocker
+- Kein offener `401`- oder `500`-Regression-Blocker in den sechs Referenz-Flows
+- Kein offener Workspace-Cleanup
+- Kein offener Ticket-10-Split
 
 ## Ticket-5-Richtung
 

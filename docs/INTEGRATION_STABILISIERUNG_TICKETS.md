@@ -1,6 +1,6 @@
 # Integrations- und Stabilisierungstickets
 
-Stand: 2026-04-09 23:12 CEST
+Stand: 2026-04-09 23:20 CEST
 
 ## Aktueller Umsetzungsstand
 
@@ -8,10 +8,12 @@ Stand: 2026-04-09 23:12 CEST
   `scriptony-ai` Deployment `69d7c509b600942df0a5`
 - Letzte erfolgreiche Gate-Ausfuehrung:
   `2026-04-09 23:12 CEST` mit echtem Demo-User-JWT
+- Letzter Workspace-Stand:
+  `workspace-main-ai-20260406` -> `796a362`
 - Letzter Ticket-10-Split-Commit:
   `70a14ed` (`fix: align residual routes and backend config helpers`)
 - Letzter Integrationsbranch-Stand:
-  `integration-main-plus-ai-20260406` -> `9841ee1`
+  `integration-main-plus-ai-20260406` -> `796a362`
 - Hauptbranch:
   `main` bleibt unveraendert auf `b5089e2`
 - Live-Verifikation:
@@ -19,7 +21,7 @@ Stand: 2026-04-09 23:12 CEST
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Naechster sinnvoller Wiedereinstieg:
-  Push oder Freigabe des validierten Integrationsbranches; `main` erst danach explizit entscheiden
+  Push oder Freigabe des validierten Integrationsbranches; `main` erst danach explizit entscheiden. Optional danach Ticket 05 und 09 als breiteren Live-Rollout streng abschliessen.
 
 ### Ticket-Status
 

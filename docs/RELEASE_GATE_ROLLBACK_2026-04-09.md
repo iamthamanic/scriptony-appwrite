@@ -10,7 +10,8 @@
 - Token-Basis: echter Demo-User-JWT aus der Appwrite-Serverkonfiguration
 - `verify-appwrite-parity -- --require-auth`: gruen
 - `smoke-user-flows`: gruen (`6/6`)
-- Danach wurde `integration-main-plus-ai-20260406` per Fast-Forward auf `9841ee1` gezogen.
+- Danach wurde `integration-main-plus-ai-20260406` per Fast-Forward auf `796a362` gezogen.
+- `workspace-main-ai-20260406` steht ebenfalls auf `796a362`.
 - `main` bleibt bewusst unveraendert auf `b5089e2`.
 
 ## Referenzstand
