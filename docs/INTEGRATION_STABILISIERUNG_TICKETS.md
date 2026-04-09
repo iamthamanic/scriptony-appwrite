@@ -13,7 +13,7 @@ Stand: 2026-04-09 22:36 CEST
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Naechster sinnvoller Wiedereinstieg:
-  Ticket 11
+  Entscheidung ueber die vier lokalen Artefakte oder finalen Release vorbereiten
 
 ### Ticket-Status
 
@@ -29,7 +29,7 @@ Stand: 2026-04-09 22:36 CEST
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
 | 09 | lokal umgesetzt, Live-Rollout offen | Log-Ebenen und Error-Codes bereinigt |
 | 10 | weitgehend erledigt | Gruppen A bis E plus Rest-Follow-up sind committed; nur lokale Artefakte sind offen |
-| 11 | offen | nach Ticket 10 |
+| 11 | erledigt | Release-Gate und Rollback-Pfad sind dokumentiert |
 
 ## Ziel
 
@@ -428,7 +428,7 @@ Ein Entwickler möchte nach der Bereinigung wieder normal arbeiten können, ohne
 
 ## Ticket 11: Release-Gate und Rollback-Plan definieren
 
-> Status 2026-04-09 20:46 CEST: Offen. Sinnvoll nach Ticket 10, wenn der technische Zustand wieder sauber verpackt ist.
+> Status 2026-04-09 22:36 CEST: Erledigt. Das Release-Gate und der Rollback-Pfad sind in `docs/RELEASE_GATE_ROLLBACK_2026-04-09.md` dokumentiert.
 
 ### Kontext
 
@@ -461,4 +461,4 @@ Ein Verantwortlicher möchte einen Integrationsschritt freigeben, ohne die Platt
 
 ## Empfohlener Start
 
-Wenn die Arbeit spaeter wieder aufgenommen wird, muss innerhalb von Ticket 10 nur noch entschieden werden, ob die vier lokalen Artefakte (`deno.lock`, `functions/deno.lock`, `repo-visualization.html`, `repo-visualization-full.html`) uebernommen oder verworfen werden. Ticket 01 bis 09 sind fuer den aktuellen Kernscope abgearbeitet, und Ticket 10 ist code-seitig weitgehend abgeschlossen. Der naechste inhaltliche Block ist Ticket 11.
+Wenn die Arbeit spaeter wieder aufgenommen wird, muss nur noch entschieden werden, ob die vier lokalen Artefakte (`deno.lock`, `functions/deno.lock`, `repo-visualization.html`, `repo-visualization-full.html`) uebernommen oder verworfen werden. Ticket 01 bis 11 sind fuer den aktuellen Kernscope dokumentiert, und die operative Hauptarbeit ist abgeschlossen.

@@ -90,3 +90,8 @@ See [docs/SMOKE_TEST_MATRIX.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/
 
 - Never put Appwrite API keys or function admin secrets in `VITE_*`.
 - Rate-limit and authenticate public HTTP entrypoints in production.
+
+## Release Gate
+
+For the current integration branch, use the explicit release and rollback checklist in
+[docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md).

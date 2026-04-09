@@ -92,7 +92,7 @@ Der letzte Live-Blocker ist geloest. Die naechsten sinnvollen Schritte sind jetz
 - Ticket 10:
   - nur noch die vier lokalen Artefakte bewusst entscheiden
 - Ticket 11:
-  - Release-Gate und Rollback-Doku festziehen
+  - [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) ist erstellt und dient als Freigabegrundlage
 
 ## Ticket-5-Richtung
 
