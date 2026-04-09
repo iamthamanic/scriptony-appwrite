@@ -25,12 +25,8 @@ export interface BackendConfig {
   appwrite: AppwritePublicConfig | null;
   /** Base URL of deployed Scriptony functions (path prefix before function name). */
   functionsBaseUrl: string;
-  /**
-   * Optional: Appwrite per-function HTTP domains (Console → Functions → Domains).
-   * Keys are function IDs (e.g. scriptony-projects). When set, requests use joinUrl(domain, route)
-   * instead of joinUrl(base, functionId, route) — matches Appwrite’s function URLs.
-   */
-  functionDomainMap: Record<string, string> | null;
+  /** Optional direct per-function domains, e.g. { "scriptony-projects": "https://..." }. */
+  functionDomainMap: Record<string, string>;
   publicAuthToken: string;
   capacitor: CapacitorConfig;
 }
@@ -58,6 +54,53 @@ export function joinUrl(base: string, path: string): string {
   if (!base) return path;
   if (!path) return base;
   return `${trimTrailingSlash(base)}/${trimLeadingSlash(path)}`;
+}
+
+/**
+ * HTTPS pages cannot fetch `http://` function URLs (mixed content). If the SPA is secure and the
+ * map only lists `http://`, rewrite to `https://` so TLS-enabled function domains work without
+ * duplicating env.
+ *
+ * Self-hosted Appwrite proxy often serves **HTTP on :8080** and **HTTPS on :443**. Rewriting only
+ * the scheme would yield `https://host:8080`, which typically 404s — drop **:8080** when switching
+ * to HTTPS. For other ports, keep the port. Set `https://…` explicitly in the map if your setup differs.
+ */
+export function upgradeHttpFunctionUrlForSecurePage(url: string): string {
+  if (typeof window === "undefined") return url;
+  if (window.location.protocol !== "https:") return url;
+  if (!url.startsWith("http://")) return url;
+
+  try {
+    const u = new URL(url);
+    u.protocol = "https:";
+    if (u.port === "8080") {
+      u.port = "";
+    }
+    return u.href.replace(/\/$/, "");
+  } catch {
+    return `https://${url.slice(7)}`;
+  }
+}
+
+/**
+ * Vite dev: self-hosted function domains often use TLS certs the browser does not trust
+ * (`ERR_CERT_AUTHORITY_INVALID` on `https://*.appwrite…`). Set `VITE_DEV_FUNCTIONS_USE_HTTP=true`
+ * to call the same host over `http://…:8080` instead. Set to `false` if your cert is valid locally.
+ */
+export function devFunctionUrlUsePlainHttp(url: string): string {
+  if (!import.meta.env.DEV) return url;
+  if (validateString(env.VITE_DEV_FUNCTIONS_USE_HTTP) !== "true") return url;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return url;
+    u.protocol = "http:";
+    if (!u.port || u.port === "443") {
+      u.port = "8080";
+    }
+    return u.href.replace(/\/$/, "");
+  } catch {
+    return url;
+  }
 }
 
 let _backendConfig: BackendConfig | null = null;
@@ -92,15 +135,15 @@ export function getMissingAppwriteConfig(): string[] {
 /**
  * Parses VITE_BACKEND_FUNCTION_DOMAIN_MAP: one-line JSON object { "scriptony-projects": "https://…", … }.
  */
-export function parseFunctionDomainMap(raw: unknown): Record<string, string> | null {
+export function parseFunctionDomainMap(raw: unknown): Record<string, string> {
   const s = validateString(raw);
   if (!s) {
-    return null;
+    return {};
   }
   try {
     const parsed = JSON.parse(s) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return null;
+      return {};
     }
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
@@ -110,9 +153,9 @@ export function parseFunctionDomainMap(raw: unknown): Record<string, string> | n
         out[key] = trimTrailingSlash(val);
       }
     }
-    return Object.keys(out).length > 0 ? out : null;
+    return out;
   } catch {
-    return null;
+    return {};
   }
 }
 
@@ -125,7 +168,6 @@ export function getBackendConfig(): BackendConfig {
     validateString(env.VITE_APPWRITE_FUNCTIONS_BASE_URL) ||
       validateString(env.VITE_BACKEND_API_BASE_URL)
   );
-
   const functionDomainMap = parseFunctionDomainMap(env.VITE_BACKEND_FUNCTION_DOMAIN_MAP);
 
   _backendConfig = {
@@ -141,7 +183,7 @@ export function getBackendConfig(): BackendConfig {
     },
   };
 
-  return _backendConfig;
+  return _backendConfig!;
 }
 
 let _appConfig: AppConfig | null = null;
@@ -201,8 +243,13 @@ export const appConfig = getAppConfig();
 export function isBackendConfigured(): boolean {
   return Boolean(
     backendConfig.functionsBaseUrl?.trim() ||
-      (backendConfig.functionDomainMap &&
-        Object.keys(backendConfig.functionDomainMap).length > 0)
+      Object.keys(backendConfig.functionDomainMap).length > 0
+  );
+}
+
+export function hasFunctionConfigured(functionName: string): boolean {
+  return Boolean(
+    backendConfig.functionDomainMap[functionName] || backendConfig.functionsBaseUrl?.trim()
   );
 }
 
@@ -211,9 +258,7 @@ if (appConfig.isDevelopment) {
   /* eslint-disable no-console -- dev-only diagnostics */
   console.log("Environment ready:", {
     functionsBaseUrl: backendConfig.functionsBaseUrl || "(unset)",
-    functionDomainMapKeys: backendConfig.functionDomainMap
-      ? Object.keys(backendConfig.functionDomainMap)
-      : [],
+    functionDomainMapKeys: Object.keys(backendConfig.functionDomainMap),
     appwriteEndpoint: backendConfig.appwrite?.endpoint || "(unset)",
     missingAppwriteConfig: missingAppwrite,
   });
@@ -221,9 +266,7 @@ if (appConfig.isDevelopment) {
 
   const ep = backendConfig.appwrite?.endpoint;
   const fb = backendConfig.functionsBaseUrl;
-  const hasMap =
-    backendConfig.functionDomainMap &&
-    Object.keys(backendConfig.functionDomainMap).length > 0;
+  const hasMap = Object.keys(backendConfig.functionDomainMap).length > 0;
   if (ep && fb && trimTrailingSlash(ep) === trimTrailingSlash(fb) && !hasMap) {
     console.warn(
       "[Scriptony] VITE_BACKEND_API_BASE_URL (or VITE_APPWRITE_FUNCTIONS_BASE_URL) equals the Appwrite API base. " +

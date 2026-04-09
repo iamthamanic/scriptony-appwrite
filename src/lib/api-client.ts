@@ -8,7 +8,7 @@
  */
 
 import { API_CONFIG } from './config';
-import { apiGateway as internalApiGateway } from './api-gateway';
+import { ApiGatewayError, apiGateway as internalApiGateway } from './api-gateway';
 import { backendConfig } from './env';
 
 // =============================================================================
@@ -19,6 +19,8 @@ export interface ApiError {
   message: string;
   status?: number;
   statusText?: string;
+  code?: string;
+  layer?: string;
   details?: any;
 }
 
@@ -47,6 +49,15 @@ const API_BASE_URL_LEGACY = `${backendConfig.functionsBaseUrl || ""}${API_CONFIG
 
 // NEW: Use API Gateway for multi-function routing
 const USE_API_GATEWAY = true;
+const API_CLIENT_DEBUG =
+  import.meta.env.DEV &&
+  String(import.meta.env.VITE_DEBUG_API_CLIENT || '').trim() === '1';
+
+function debugApiClient(...args: unknown[]): void {
+  if (API_CLIENT_DEBUG) {
+    console.log(...args);
+  }
+}
 
 // =============================================================================
 // Helpers
@@ -88,6 +99,13 @@ function formatError(error: any, status?: number, statusText?: string): ApiError
       message: error.message,
       status: status || error.status,
       statusText: statusText || error.statusText,
+      code: typeof error.code === 'string' ? error.code : undefined,
+      layer:
+        typeof error.layer === 'string'
+          ? error.layer
+          : typeof error.kind === 'string'
+            ? error.kind
+            : undefined,
       details: error.details || error,
     };
   }
@@ -96,8 +114,40 @@ function formatError(error: any, status?: number, statusText?: string): ApiError
     message: 'An unknown error occurred',
     status,
     statusText,
+    code: typeof error?.code === 'string' ? error.code : undefined,
+    layer:
+      typeof error?.layer === 'string'
+        ? error.layer
+        : typeof error?.kind === 'string'
+          ? error.kind
+          : undefined,
     details: error,
   };
+}
+
+function logGatewayFailure(method: string, endpoint: string, error: ApiGatewayError): void {
+  const payload = {
+    layer: error.layer,
+    functionName: error.functionName,
+    route: error.route,
+    status: error.status,
+    statusText: error.statusText,
+    code: error.code,
+    url: error.url,
+    details: error.details,
+  };
+
+  if (error.layer === 'function-auth') {
+    console.warn(`[API Client] Function auth failure for ${method} ${endpoint}`, payload);
+    return;
+  }
+
+  if (error.layer === 'transport') {
+    console.error(`[API Client] Gateway transport failure for ${method} ${endpoint}`, payload);
+    return;
+  }
+
+  console.error(`[API Client] Function error for ${method} ${endpoint}`, payload);
 }
 
 // =============================================================================
@@ -126,7 +176,7 @@ export async function apiRequest<T = any>(
 
   // Use API Gateway for automatic routing to the correct backend function
   if (USE_API_GATEWAY) {
-    console.log(`[API Client] Using API Gateway for ${method} ${endpoint}`);
+    debugApiClient(`[API Client] Using API Gateway for ${method} ${endpoint}`);
     
     try {
       // Get auth token if required
@@ -134,16 +184,18 @@ export async function apiRequest<T = any>(
       if (requireAuth) {
         authToken = await getAuthToken();
         if (!authToken) {
-          console.error('[API Client] No auth token available for', method, endpoint);
+          console.warn('[API Client] No auth token available for', method, endpoint);
           return {
             error: {
               message: 'Unauthorized - please log in',
               status: 401,
               statusText: 'Unauthorized',
+              code: 'AUTH_MISSING_TOKEN',
+              layer: 'client-auth',
             },
           };
         }
-        console.log(`[API Client] Auth token acquired for ${method} ${endpoint}`);
+        debugApiClient(`[API Client] Auth token acquired for ${method} ${endpoint}`);
       }
       
       // Call API Gateway
@@ -158,21 +210,20 @@ export async function apiRequest<T = any>(
       
       return { data };
     } catch (error: any) {
-      console.error(`[API Client via Gateway] Error:`, error);
+      if (error instanceof ApiGatewayError) {
+        logGatewayFailure(method, endpoint, error);
+      } else {
+        console.error(`[API Client] Unexpected gateway failure for ${method} ${endpoint}`, error);
+      }
       return {
-        error: {
-          message: error.message || 'Request failed',
-          status: error.status,
-          statusText: error.statusText,
-          details: error,
-        },
+        error: formatError(error, error?.status, error?.statusText),
       };
     }
   }
   
   // LEGACY: Fallback to old direct function call (for backward compatibility)
   const url = `${API_BASE_URL_LEGACY}${endpoint}`;
-  console.log(`[API Client] LEGACY MODE: ${method} request to ${url}`);
+  debugApiClient(`[API Client] LEGACY MODE: ${method} request to ${url}`);
 
   try {
     // Get auth token if required
@@ -180,16 +231,18 @@ export async function apiRequest<T = any>(
     if (requireAuth) {
       authToken = await getAuthToken();
       if (!authToken) {
-        console.error('[API Client] No auth token available for', method, endpoint);
+        console.warn('[API Client] No auth token available for', method, endpoint);
         return {
           error: {
             message: 'Unauthorized - please log in',
             status: 401,
             statusText: 'Unauthorized',
+            code: 'AUTH_MISSING_TOKEN',
+            layer: 'client-auth',
           },
         };
       }
-      console.log(`[API Client] Auth token acquired for ${method} ${endpoint}`);
+      debugApiClient(`[API Client] Auth token acquired for ${method} ${endpoint}`);
     }
 
     // Build headers
@@ -207,14 +260,14 @@ export async function apiRequest<T = any>(
     }
 
     // Log request
-    console.log(`[API] Starting ${method} ${url}`, fetchOptions.body ? JSON.parse(fetchOptions.body as string) : '');
-    console.log(`[API] Request headers:`, requestHeaders);
+    debugApiClient(`[API] Starting ${method} ${url}`, fetchOptions.body ? JSON.parse(fetchOptions.body as string) : '');
+    debugApiClient(`[API] Request headers:`, requestHeaders);
 
     // Make request with timeout
     let response: Response;
     
     try {
-      console.log(`[API] Fetching with ${timeout}ms timeout...`);
+      debugApiClient(`[API] Fetching with ${timeout}ms timeout...`);
       response = await Promise.race([
         fetch(url, {
           ...fetchOptions,
@@ -222,7 +275,7 @@ export async function apiRequest<T = any>(
         }),
         createTimeout(timeout),
       ]) as Response;
-      console.log(`[API] Response received:`, response.status, response.statusText);
+      debugApiClient(`[API] Response received:`, response.status, response.statusText);
     } catch (fetchError: any) {
       // Handle network errors or timeout
       if (fetchError.message?.includes('timeout')) {
@@ -387,6 +440,8 @@ export function unwrapApiResult<T>(result: ApiResult<T>): T {
     const error = new Error(err.message);
     (error as any).status = err.status;
     (error as any).statusText = err.statusText;
+    (error as any).code = err.code;
+    (error as any).layer = err.layer;
     (error as any).details = err.details;
     throw error;
   }

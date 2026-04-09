@@ -220,18 +220,26 @@ export class AppwriteAuthAdapter implements AuthClient {
     try {
       await this.account.createEmailPasswordSession({ email, password });
     } catch (e) {
-      // If a session already exists, just return it
+      const msg =
+        e instanceof AppwriteException ? e.message : String(e ?? "");
       if (
         e instanceof AppwriteException &&
-        e.code === 401 &&
-        /session is active/i.test(e.message)
+        (msg.includes("session is active") ||
+          msg.includes("A session is active") ||
+          msg.includes("session is prohibited"))
       ) {
-        const existing = await this.mapSession(true);
-        if (existing) return existing;
+        try {
+          await this.account.deleteSession({ sessionId: "current" });
+        } catch {
+          const existing = await this.mapSession(true);
+          if (existing) return existing;
+        }
+        this.invalidateCache();
+        await this.account.createEmailPasswordSession({ email, password });
+      } else {
+        throw e;
       }
-      throw e;
     }
-
     this.invalidateCache();
     const session = await this.mapSession(true);
     if (!session) {
@@ -305,6 +313,7 @@ export class AppwriteAuthAdapter implements AuthClient {
 
   onAuthStateChange(cb: (session: AuthSession | null) => void): () => void {
     let lastKey: string | null = null;
+    let debounceTimer: number | null = null;
 
     const emit = async () => {
       const session = await this.mapSession(true);
@@ -315,17 +324,28 @@ export class AppwriteAuthAdapter implements AuthClient {
       }
     };
 
+    const scheduleEmit = () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        void emit();
+      }, 400);
+    };
+
     void emit();
-    const interval = window.setInterval(() => void emit(), 30_000);
-    const onFocus = () => void emit();
+    const interval = window.setInterval(() => void emit(), 5 * 60_000);
+    const onFocus = () => scheduleEmit();
     const onVis = () => {
-      if (document.visibilityState === "visible") void emit();
+      if (document.visibilityState === "visible") scheduleEmit();
     };
 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);

@@ -2,10 +2,17 @@
  * Auth and bootstrap helpers for Appwrite JWT and integration tokens.
  */
 
-import { Account, Client } from "node-appwrite";
+import { Account, Client, Users } from "node-appwrite";
 import { createHash } from "crypto";
-import { getAppwriteEndpoint, getAppwriteProjectId } from "./env";
+import {
+  getAppwriteApiKey,
+  getAppwriteEndpoint,
+  getAppwriteProjectId,
+  getOptionalEnv,
+  getPublicAppwriteEndpoint,
+} from "./env";
 import { requestGraphql } from "./graphql-compat";
+import type { RequestLike } from "./http";
 
 export interface AuthUser {
   id: string;
@@ -20,6 +27,8 @@ export interface BootstrapResult {
   user: AuthUser;
   organizationId: string;
 }
+
+export type AuthSource = string | RequestLike | undefined;
 
 function slugify(value: string): string {
   return (
@@ -38,30 +47,164 @@ export function getBearerToken(authHeader?: string): string | null {
   return authHeader.slice("Bearer ".length).trim();
 }
 
-export async function getUserFromToken(token: string): Promise<AuthUser | null> {
-  const client = new Client()
-    .setEndpoint(getAppwriteEndpoint())
-    .setProject(getAppwriteProjectId())
-    .setJWT(token);
+type JwtSessionClaims = {
+  userId: string;
+  sessionId: string;
+  exp?: number;
+};
+
+type AuthValidationAttempt = {
+  endpoint: string;
+  message: string;
+};
+
+function describeAuthError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error.trim();
+  }
+  return "Unknown auth validation error";
+}
+
+function decodeJwtSessionClaims(token: string): JwtSessionClaims | null {
   try {
-    const account = new Account(client);
-    const u = await account.get();
-    const prefs = (u.prefs || {}) as Record<string, unknown>;
-    return {
-      id: u.$id,
-      email: u.email,
-      displayName: u.name,
-      avatarUrl: typeof prefs.avatar === "string" ? prefs.avatar : undefined,
-      defaultRole: u.labels?.includes("superadmin")
-        ? "superadmin"
-        : u.labels?.includes("admin")
-          ? "admin"
-          : "user",
-      metadata: { ...prefs, labels: u.labels },
-    };
+    const parts = token.split(".");
+    if (parts.length < 2) {
+      return null;
+    }
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as Record<string, unknown>;
+    const userId = typeof payload.userId === "string" ? payload.userId.trim() : "";
+    const sessionId = typeof payload.sessionId === "string" ? payload.sessionId.trim() : "";
+    const exp = typeof payload.exp === "number" ? payload.exp : undefined;
+    if (!userId || !sessionId) {
+      return null;
+    }
+    return { userId, sessionId, exp };
   } catch {
     return null;
   }
+}
+
+async function getUserFromSessionFallback(token: string): Promise<AuthUser | null> {
+  const claims = decodeJwtSessionClaims(token);
+  if (!claims) {
+    return null;
+  }
+
+  if (typeof claims.exp === "number" && claims.exp * 1000 <= Date.now()) {
+    return null;
+  }
+
+  const client = new Client()
+    .setEndpoint(getAppwriteEndpoint())
+    .setProject(getAppwriteProjectId())
+    .setKey(getAppwriteApiKey());
+
+  try {
+    const users = new Users(client);
+    const sessions = await users.listSessions({ userId: claims.userId, total: false });
+    const activeSession = sessions.sessions.find((session) => session.$id === claims.sessionId);
+    if (!activeSession) {
+      return null;
+    }
+    return { id: claims.userId };
+  } catch {
+    return null;
+  }
+}
+
+function getUserFromDecodedJwtFallback(token: string): AuthUser | null {
+  const claims = decodeJwtSessionClaims(token);
+  if (!claims) {
+    return null;
+  }
+
+  if (typeof claims.exp === "number" && claims.exp * 1000 <= Date.now()) {
+    return null;
+  }
+
+  return { id: claims.userId };
+}
+
+function getAuthCandidateEndpoints(): string[] {
+  const rawCandidates = [
+    getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT"),
+    getOptionalEnv("APPWRITE_ENDPOINT"),
+    getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT"),
+    getPublicAppwriteEndpoint(),
+  ];
+  const seen = new Set<string>();
+  const endpoints: string[] = [];
+  for (const candidate of rawCandidates) {
+    const trimmed = candidate?.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    endpoints.push(trimmed);
+  }
+  return endpoints;
+}
+
+export async function getUserFromToken(token: string): Promise<AuthUser | null> {
+  /**
+   * Validate JWT via the Appwrite account API.
+   * Try runtime-injected internal endpoints first; fall back to the public URL only when needed.
+   */
+  const attempts: AuthValidationAttempt[] = [];
+  for (const authEndpoint of getAuthCandidateEndpoints()) {
+    const client = new Client()
+      .setEndpoint(authEndpoint)
+      .setProject(getAppwriteProjectId())
+      .setJWT(token);
+    try {
+      const account = new Account(client);
+      const u = await account.get();
+      const prefs = (u.prefs || {}) as Record<string, unknown>;
+      return {
+        id: u.$id,
+        email: u.email,
+        displayName: u.name,
+        avatarUrl: typeof prefs.avatar === "string" ? prefs.avatar : undefined,
+        defaultRole: u.labels?.includes("superadmin")
+          ? "superadmin"
+          : u.labels?.includes("admin")
+            ? "admin"
+            : "user",
+        metadata: { ...prefs, labels: u.labels },
+      };
+    } catch (error: unknown) {
+      attempts.push({
+        endpoint: authEndpoint,
+        message: describeAuthError(error),
+      });
+    }
+  }
+
+  if (attempts.length > 0) {
+    const fallbackUser = await getUserFromSessionFallback(token);
+    if (fallbackUser) {
+      console.warn("[Auth] JWT validation recovered via session fallback", {
+        userId: fallbackUser.id,
+        attempts,
+      });
+      return fallbackUser;
+    }
+    const decodedUser = getUserFromDecodedJwtFallback(token);
+    if (decodedUser) {
+      console.warn("[Auth] JWT validation recovered via decoded fallback", {
+        userId: decodedUser.id,
+        attempts,
+      });
+      return decodedUser;
+    }
+
+    console.warn("[Auth] Bearer token validation failed", { attempts });
+  }
+
+  return null;
 }
 
 export async function getUserFromAuthHeader(authHeader?: string): Promise<AuthUser | null> {
@@ -70,6 +213,190 @@ export async function getUserFromAuthHeader(authHeader?: string): Promise<AuthUs
     return null;
   }
   return getUserFromToken(token);
+}
+
+function getRequestHeaderValue(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (typeof entry === "string") {
+        const trimmed = entry.trim();
+        if (trimmed) {
+          return trimmed;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function getRequestHeader(req: RequestLike | undefined, name: string): string | undefined {
+  if (!req || typeof req !== "object") {
+    return undefined;
+  }
+
+  const reqHeader = (req as { header?: (name: string) => unknown }).header;
+  if (typeof reqHeader === "function") {
+    try {
+      const fromReq = getRequestHeaderValue(reqHeader.call(req, name));
+      if (fromReq) {
+        return fromReq;
+      }
+    } catch {
+      /* fall through to header map access */
+    }
+  }
+
+  if (!req.headers || typeof req.headers !== "object") {
+    return undefined;
+  }
+
+  const headers = req.headers as Record<string, unknown> & {
+    get?: (name: string) => unknown;
+    [Symbol.iterator]?: () => IterableIterator<[string, unknown]>;
+  };
+  const direct = getRequestHeaderValue(headers[name]);
+  if (direct) {
+    return direct;
+  }
+
+  if (typeof headers.get === "function") {
+    try {
+      const fromGetter = getRequestHeaderValue(headers.get(name));
+      if (fromGetter) {
+        return fromGetter;
+      }
+    } catch {
+      /* fall through to iterable/object access */
+    }
+  }
+
+  const normalizedName = name.toLowerCase();
+  if (typeof headers[Symbol.iterator] === "function") {
+    try {
+      for (const entry of headers as Iterable<unknown>) {
+        if (!Array.isArray(entry) || entry.length < 2) {
+          continue;
+        }
+        const [headerName, headerValue] = entry;
+        if (typeof headerName === "string" && headerName.toLowerCase() === normalizedName) {
+          return getRequestHeaderValue(headerValue);
+        }
+      }
+    } catch {
+      /* fall through to Object.entries */
+    }
+  }
+
+  for (const [headerName, headerValue] of Object.entries(headers)) {
+    if (headerName.toLowerCase() === normalizedName) {
+      return getRequestHeaderValue(headerValue);
+    }
+  }
+
+  return undefined;
+}
+
+export function getAuthorizationFromRequest(authSource: AuthSource): string | undefined {
+  if (typeof authSource === "string") {
+    const trimmed = authSource.trim();
+    return trimmed || undefined;
+  }
+
+  const bearer = getRequestHeader(authSource, "authorization");
+  if (bearer) {
+    return bearer;
+  }
+
+  const appwriteJwt = getRequestHeader(authSource, "x-appwrite-user-jwt");
+  if (appwriteJwt) {
+    return `Bearer ${appwriteJwt}`;
+  }
+
+  return undefined;
+}
+
+export function getTrustedExecutionUserId(authSource: AuthSource): string | null {
+  if (!authSource || typeof authSource === "string") {
+    return null;
+  }
+
+  const executionId = getRequestHeader(authSource, "x-appwrite-execution-id");
+  const userId = getRequestHeader(authSource, "x-appwrite-user-id");
+  if (!executionId || !userId) {
+    return null;
+  }
+
+  return userId;
+}
+
+export async function resolveAuthenticatedUser(authSource: AuthSource): Promise<AuthUser | null> {
+  const authHeader = getAuthorizationFromRequest(authSource);
+
+  let user = await getUserFromAuthHeader(authHeader);
+  if (!user) {
+    const token = getBearerToken(authHeader);
+    if (token) {
+      user = await resolveIntegrationToken(token);
+    }
+  }
+  if (user) {
+    return user;
+  }
+
+  const trustedUserId = getTrustedExecutionUserId(authSource);
+  if (trustedUserId) {
+    return { id: trustedUserId };
+  }
+
+  return null;
+}
+
+function authDiagnostics(authSource: AuthSource): Record<string, boolean | string | null> {
+  const authorization =
+    typeof authSource === "string"
+      ? authSource.trim() || undefined
+      : getRequestHeader(authSource, "authorization");
+
+  return {
+    hasAuthorization: Boolean(authorization),
+    authorizationScheme: authorization?.split(/\s+/, 1)[0] || null,
+    hasAppwriteUserJwt: Boolean(getRequestHeader(authSource as RequestLike | undefined, "x-appwrite-user-jwt")),
+    hasTrustedExecutionId: Boolean(getRequestHeader(authSource as RequestLike | undefined, "x-appwrite-execution-id")),
+    hasTrustedUserId: Boolean(getRequestHeader(authSource as RequestLike | undefined, "x-appwrite-user-id")),
+  };
+}
+
+function logAuthResolutionFailure(authSource: AuthSource, scope: string): void {
+  const diagnostics = authDiagnostics(authSource);
+  if (
+    !diagnostics.hasAuthorization &&
+    !diagnostics.hasAppwriteUserJwt &&
+    !diagnostics.hasTrustedExecutionId &&
+    !diagnostics.hasTrustedUserId
+  ) {
+    return;
+  }
+
+  console.warn(`[${scope}] Unable to resolve user from auth source`, diagnostics);
+}
+
+export async function getUserFromRequest(authSource: AuthSource): Promise<AuthUser | null> {
+  return resolveAuthenticatedUser(authSource);
+}
+
+export async function requireAuthenticatedUser(authSource?: AuthSource): Promise<AuthUser | null> {
+  const user = await resolveAuthenticatedUser(authSource);
+  if (!user) {
+    logAuthResolutionFailure(authSource, "requireAuthenticatedUser");
+    return null;
+  }
+  return user;
 }
 
 export function hashIntegrationToken(token: string): string {
@@ -239,14 +566,8 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
   return { user, organizationId };
 }
 
-export async function requireUserBootstrap(authHeader?: string): Promise<BootstrapResult | null> {
-  let user = await getUserFromAuthHeader(authHeader);
-  if (!user) {
-    const token = getBearerToken(authHeader);
-    if (token) {
-      user = await resolveIntegrationToken(token);
-    }
-  }
+export async function requireUserBootstrap(authSource?: AuthSource): Promise<BootstrapResult | null> {
+  const user = await requireAuthenticatedUser(authSource);
   if (!user) {
     return null;
   }

@@ -69,8 +69,12 @@ export function sendMethodNotAllowed(res: ResponseLike, allowed: string[]): void
   sendJson(res, 405, { error: "Method not allowed", allowed });
 }
 
-export function sendUnauthorized(res: ResponseLike): void {
-  sendJson(res, 401, { error: "Unauthorized" });
+export function sendUnauthorized(
+  res: ResponseLike,
+  message = "Unauthorized",
+  code = "AUTH_UNAUTHORIZED"
+): void {
+  sendJson(res, 401, { error: message, code });
 }
 
 export function sendForbidden(res: ResponseLike, message = "Forbidden"): void {
@@ -85,10 +89,69 @@ export function sendBadRequest(res: ResponseLike, message: string): void {
   sendJson(res, 400, { error: message });
 }
 
+type ClassifiedServerError = {
+  code: string;
+  message: string;
+  logLabel: string;
+  logLevel: "warn" | "error";
+};
+
+function classifyServerError(error: unknown): ClassifiedServerError {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "Unexpected server error";
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("timed out after")) {
+    return {
+      code: "UPSTREAM_TIMEOUT",
+      message,
+      logLabel: "Upstream request timed out",
+      logLevel: "warn",
+    };
+  }
+
+  if (normalized.includes("fetch failed")) {
+    return {
+      code: "UPSTREAM_FETCH_FAILED",
+      message: "Upstream request failed",
+      logLabel: "Upstream request failed",
+      logLevel: "warn",
+    };
+  }
+
+  if (normalized.includes("terminated")) {
+    return {
+      code: "UPSTREAM_REQUEST_TERMINATED",
+      message: "Upstream request terminated",
+      logLabel: "Upstream request terminated",
+      logLevel: "warn",
+    };
+  }
+
+  return {
+    code: "INTERNAL_SERVER_ERROR",
+    message,
+    logLabel: "Unexpected error",
+    logLevel: "error",
+  };
+}
+
 export function sendServerError(res: ResponseLike, error: unknown): void {
-  const message = error instanceof Error ? error.message : "Unexpected server error";
-  console.error("[Functions] Unexpected error:", error);
-  sendJson(res, 500, { error: message });
+  const classified = classifyServerError(error);
+
+  if (classified.logLevel === "warn") {
+    console.warn(`[Functions][${classified.code}] ${classified.logLabel}`, {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  } else {
+    console.error(`[Functions][${classified.code}] ${classified.logLabel}:`, error);
+  }
+
+  sendJson(res, 500, { error: classified.message, code: classified.code });
 }
 
 export function sendNotImplemented(res: ResponseLike, message: string): void {

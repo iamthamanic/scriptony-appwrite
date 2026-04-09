@@ -8,7 +8,55 @@
  * Location: src/lib/api-gateway.ts
  */
 
-import { backendConfig, joinUrl } from './env';
+import {
+  backendConfig,
+  devFunctionUrlUsePlainHttp,
+  joinUrl,
+  upgradeHttpFunctionUrlForSecurePage,
+} from './env';
+
+export type ApiGatewayErrorLayer =
+  | 'transport'
+  | 'function-auth'
+  | 'function-response';
+
+type ApiGatewayErrorInit = {
+  layer: ApiGatewayErrorLayer;
+  functionName: string;
+  route: string;
+  url: string;
+  method: string;
+  status?: number;
+  statusText?: string;
+  code?: string;
+  details?: unknown;
+};
+
+export class ApiGatewayError extends Error {
+  readonly layer: ApiGatewayErrorLayer;
+  readonly functionName: string;
+  readonly route: string;
+  readonly url: string;
+  readonly method: string;
+  readonly status?: number;
+  readonly statusText?: string;
+  readonly code?: string;
+  readonly details?: unknown;
+
+  constructor(message: string, init: ApiGatewayErrorInit) {
+    super(message);
+    this.name = 'ApiGatewayError';
+    this.layer = init.layer;
+    this.functionName = init.functionName;
+    this.route = init.route;
+    this.url = init.url;
+    this.method = init.method;
+    this.status = init.status;
+    this.statusText = init.statusText;
+    this.code = init.code;
+    this.details = init.details;
+  }
+}
 
 // =============================================================================
 // BACKEND FUNCTION DEFINITIONS
@@ -21,7 +69,6 @@ export const BACKEND_FUNCTIONS = {
   MAIN_SERVER: 'make-server-3b52693b', // legacy unified server / special routes
   PROJECTS: 'scriptony-projects',
   PROJECT_NODES: 'scriptony-project-nodes', // template engine / nodes
-  TIMELINE_V2: 'scriptony-timeline-v2', // deprecated: prefer PROJECT_NODES
   SHOTS: 'scriptony-shots',
   /** Editorial timeline clips (NLE segments). */
   CLIPS: 'scriptony-clips',
@@ -31,6 +78,8 @@ export const BACKEND_FUNCTIONS = {
   AUDIO: 'scriptony-audio', // selected in getBackendFunctionForRoute for paths under /shots/... (audio)
   BEATS: 'scriptony-beats',
   WORLDBUILDING: 'scriptony-worldbuilding',
+  /** Unified AI service: `/ai/*`, feature config, provider keys (replaces assistant for gateway `/ai`). */
+  AI: 'scriptony-ai',
   ASSISTANT: 'scriptony-assistant',
   IMAGE: 'scriptony-image',
   GYM: 'scriptony-gym',
@@ -72,7 +121,13 @@ export function buildFunctionBaseUrl(functionName: string): string {
     );
   }
 
-  return joinUrl(backendConfig.functionsBaseUrl, functionName);
+  if (!backendConfig.functionsBaseUrl) {
+    throw new Error(`Backend function URL is not configured for ${functionName}.`);
+  }
+
+  return upgradeHttpFunctionUrlForSecurePage(
+    devFunctionUrlUsePlainHttp(joinUrl(backendConfig.functionsBaseUrl, functionName))
+  );
 }
 
 export function buildFunctionRouteUrl(functionName: string, route = ''): string {
@@ -86,7 +141,7 @@ export function buildFunctionRouteUrl(functionName: string, route = ''): string 
 
 /**
  * Maps URL path prefixes (SPA route argument to apiGateway) → function slug.
- * Resolution: first prefix in insertion order where `route.startsWith(prefix)`; see getBackendFunctionForRoute
+ * Resolution: longest matching prefix wins (`route.startsWith(prefix)`); see getBackendFunctionForRoute
  * for exceptions (e.g. audio under /shots/* → AUDIO before this map is used for /shots).
  */
 const ROUTE_MAP: Record<string, string> = {
@@ -136,8 +191,16 @@ const ROUTE_MAP: Record<string, string> = {
   // scriptony-image (must be above /ai prefix)
   '/ai/image': BACKEND_FUNCTIONS.IMAGE,
 
-  // scriptony-assistant
-  '/ai': BACKEND_FUNCTIONS.ASSISTANT,
+  // scriptony-ai control plane (provider registry, feature routing, key storage)
+  '/providers': BACKEND_FUNCTIONS.AI,
+  '/api-keys': BACKEND_FUNCTIONS.AI,
+  '/features': BACKEND_FUNCTIONS.AI,
+  '/settings': BACKEND_FUNCTIONS.AI,
+
+  // scriptony-ai unified `/ai/*` runtime (legacy assistant routes are bundled there)
+  '/ai': BACKEND_FUNCTIONS.AI,
+
+  // Remaining standalone assistant-only routes
   '/conversations': BACKEND_FUNCTIONS.ASSISTANT,
   '/rag': BACKEND_FUNCTIONS.ASSISTANT,
   '/mcp': BACKEND_FUNCTIONS.ASSISTANT,
@@ -164,11 +227,10 @@ function getBackendFunctionForRoute(route: string): string {
     return BACKEND_FUNCTIONS.AUDIO;
   }
   
-  // Find the matching route prefix
-  const matchedPrefix = Object.keys(ROUTE_MAP).find(prefix => 
-    route.startsWith(prefix)
-  );
-  
+  // Longest-prefix match (more specific routes win over shorter shared prefixes)
+  const sortedPrefixes = Object.keys(ROUTE_MAP).sort((a, b) => b.length - a.length);
+  const matchedPrefix = sortedPrefixes.find((prefix) => route.startsWith(prefix));
+
   if (!matchedPrefix) {
     console.warn(`[API Gateway] No backend function found for route: ${route}`);
     // Fallback to projects function for unknown routes
@@ -219,6 +281,36 @@ function humanizeHtmlOrGatewayError(
   );
 }
 
+function getResponseErrorCode(errorData: unknown): string | undefined {
+  if (!errorData || typeof errorData !== 'object' || Array.isArray(errorData)) {
+    return undefined;
+  }
+  const code = (errorData as { code?: unknown }).code;
+  return typeof code === 'string' && code.trim() ? code.trim() : undefined;
+}
+
+function getResponseErrorMessage(
+  functionName: string,
+  status: number,
+  errorData: unknown
+): string {
+  if (errorData && typeof errorData === 'object' && !Array.isArray(errorData)) {
+    const payload = errorData as { error?: unknown; message?: unknown; details?: unknown };
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error.trim();
+    }
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+    if (typeof payload.details === 'string' && payload.details.trim()) {
+      return payload.details.trim();
+    }
+    return JSON.stringify(errorData);
+  }
+
+  return humanizeHtmlOrGatewayError(functionName, status, String(errorData ?? ''));
+}
+
 /**
  * Makes an API call through the API Gateway
  * 
@@ -234,7 +326,7 @@ function humanizeHtmlOrGatewayError(
  *   accessToken: token,
  * });
  * 
- * // Automatically routed to scriptony-ai
+ * // Routed to scriptony-ai (Hono: `/ai/chat`, `/ai/settings`, …)
  * const response = await apiGateway({
  *   method: 'POST',
  *   route: '/ai/chat',
@@ -247,13 +339,12 @@ export async function apiGateway<T = any>(
   options: ApiGatewayOptions
 ): Promise<T> {
   const { method, route, body, headers = {}, accessToken } = options;
-  
+
   // Determine which backend function to use
   const functionName = getBackendFunctionForRoute(route);
+
   const baseUrl = buildFunctionBaseUrl(functionName);
-  
-  console.log(`[API Gateway] ${method} ${route} → ${functionName}`);
-  
+
   const url = joinUrl(baseUrl, route);
   
   // Build headers
@@ -266,12 +357,9 @@ export async function apiGateway<T = any>(
   if (bearerToken) {
     requestHeaders.Authorization = `Bearer ${bearerToken}`;
   }
-  
-  console.log(`[API Gateway] Fetching ${url}`);
-  console.log(`[API Gateway] Headers:`, requestHeaders);
-  console.log(`[API Gateway] Body (raw):`, body);
-  console.log(`[API Gateway] Body (stringified):`, body ? JSON.stringify(body) : 'undefined');
-  
+  // Note: We do NOT send x-appwrite-user-jwt on browser fetch - it's a non-simple header
+  // that triggers CORS preflight. The backend validates the Bearer token instead.
+
   // Make request with error handling
   let response: Response;
   try {
@@ -281,20 +369,25 @@ export async function apiGateway<T = any>(
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (fetchError: any) {
-    console.error(`[API Gateway] Network Error:`, {
+    console.error(`[API Gateway] Transport failure`, {
+      method,
+      route,
       url,
       functionName,
-      error: fetchError.message,
+      error: fetchError?.message || String(fetchError),
     });
-    console.error(`[API Gateway] Possible causes:`);
-    console.error(`  1. Backend function "${functionName}" is not deployed`);
-    console.error(`  2. CORS issue (check function CORS settings)`);
-    console.error(`  3. Network/internet connection issue`);
-    console.error(`  4. Backend host offline or unreachable`);
-    throw new Error(`Cannot connect to ${functionName}: ${fetchError.message}`);
+    throw new ApiGatewayError(
+      `Cannot connect to ${functionName}: ${fetchError?.message || 'Network request failed'}`,
+      {
+        layer: 'transport',
+        functionName,
+        route,
+        url,
+        method,
+        details: fetchError,
+      }
+    );
   }
-  
-  console.log(`[API Gateway] Response received:`, response.status, response.statusText);
   
   // Handle response
   if (!response.ok) {
@@ -307,39 +400,46 @@ export async function apiGateway<T = any>(
     } catch {
       errorData = errorText;
     }
-    
-    console.error(`[API Gateway] Error Response:`, {
+
+    const errorCode = getResponseErrorCode(errorData);
+    const errorMessage = getResponseErrorMessage(functionName, response.status, errorData);
+    const layer: ApiGatewayErrorLayer =
+      response.status === 401 || response.status === 403
+        ? 'function-auth'
+        : 'function-response';
+
+    const logPayload = {
+      method,
+      route,
       url,
+      functionName,
       status: response.status,
       statusText: response.statusText,
-      errorData,
-    });
-    
-    // Extract error message if available
-    const errorMessage =
-      typeof errorData === 'object'
-        ? errorData.error || errorData.message || errorData.details || JSON.stringify(errorData)
-        : humanizeHtmlOrGatewayError(functionName, response.status, String(errorData));
+      code: errorCode,
+      error: errorMessage,
+      response: errorData,
+    };
 
-    throw new Error(`API Error: ${response.status} - ${errorMessage}`);
+    if (layer === 'function-auth') {
+      console.warn(`[API Gateway] Function auth rejected request`, logPayload);
+    } else {
+      console.error(`[API Gateway] Function responded with error`, logPayload);
+    }
+
+    throw new ApiGatewayError(errorMessage, {
+      layer,
+      functionName,
+      route,
+      url,
+      method,
+      status: response.status,
+      statusText: response.statusText,
+      code: errorCode,
+      details: errorData,
+    });
   }
   
   const data = await response.json();
-  console.log(`[API Gateway] ✅ Success Response (JSON):`, JSON.stringify(data, null, 2));
-  
-  // Extra detailed logging for arrays
-  if (Array.isArray(data)) {
-    console.log(`[API Gateway]    → Array with ${data.length} items`);
-    if (data.length > 0) {
-      console.log(`[API Gateway]    → First item:`, JSON.stringify(data[0], null, 2));
-    }
-  } else if (data && typeof data === 'object') {
-    console.log(`[API Gateway]    → Object keys:`, Object.keys(data));
-    if (data.projects) {
-      console.log(`[API Gateway]    → Contains ${data.projects.length} projects`);
-    }
-  }
-  
   return data;
 }
 

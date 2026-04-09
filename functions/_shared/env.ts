@@ -13,7 +13,7 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
-function getOptionalEnv(name: string): string | null {
+export function getOptionalEnv(name: string): string | null {
   const value = process.env[name]?.trim();
   return value ? value : null;
 }
@@ -26,11 +26,19 @@ export function getRequiredEnv(name: string): string {
   return value;
 }
 
-/** Internal endpoint for server-to-server calls (prefers in-cluster APPWRITE_FUNCTION_ENDPOINT). */
+/** Internal endpoint for server-to-server calls. Prefer stable in-cluster endpoints over external runtime URLs. */
 export function getAppwriteEndpoint(): string {
   const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
   if (functionEndpoint) {
     return trimTrailingSlash(functionEndpoint);
+  }
+  const publicEndpoint = getOptionalEnv("APPWRITE_ENDPOINT");
+  if (publicEndpoint) {
+    return trimTrailingSlash(publicEndpoint);
+  }
+  const functionApiEndpoint = getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT");
+  if (functionApiEndpoint) {
+    return trimTrailingSlash(functionApiEndpoint);
   }
   return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
 }
@@ -46,6 +54,10 @@ export function getPublicAppwriteEndpoint(): string {
 }
 
 export function getAppwriteProjectId(): string {
+  const fn = getOptionalEnv("APPWRITE_FUNCTION_PROJECT_ID");
+  if (fn) {
+    return fn;
+  }
   return getOptionalEnv("APPWRITE_PROJECT_ID") || getRequiredEnv("APPWRITE_FUNCTION_PROJECT_ID");
 }
 
