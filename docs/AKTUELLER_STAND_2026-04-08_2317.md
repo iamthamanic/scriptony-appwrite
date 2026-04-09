@@ -70,11 +70,10 @@
   - darin steckt die Appwrite-Entrypoint- und Packaging-Schnitt aus Gruppe E
   - `70a14ed` `fix: align residual routes and backend config helpers`
   - darin steckt der kleine Rest-Cluster aus Route-, Config- und UI-Nachlaeufern ausserhalb von A-E
-- Im Worktree liegen jetzt nur noch vier bewusst unentschiedene lokale Artefakte:
-  - `deno.lock`
-  - `functions/deno.lock`
-  - `repo-visualization.html`
-  - `repo-visualization-full.html`
+- Artefakt-Entscheidung:
+  - Root-`deno.lock` wird bewusst versioniert, weil `package.json` den echten Script `test:model-discovery` ueber `deno test` definiert
+  - `functions/deno.lock` wird nicht versioniert
+  - `repo-visualization.html` und `repo-visualization-full.html` werden nicht versioniert
 
 ## Lokal vorbereitete Arbeiten
 
@@ -90,7 +89,7 @@
 Der letzte Live-Blocker ist geloest. Die naechsten sinnvollen Schritte sind jetzt wieder Hygiene und Integration:
 
 - Ticket 10:
-  - nur noch die vier lokalen Artefakte bewusst entscheiden
+  - ist praktisch abgeschlossen; nur normale Release-/Merge-Entscheidung bleibt
 - Ticket 11:
   - [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) ist erstellt und dient als Freigabegrundlage
 

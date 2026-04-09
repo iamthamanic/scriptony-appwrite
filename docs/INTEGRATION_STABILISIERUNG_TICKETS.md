@@ -28,7 +28,7 @@ Stand: 2026-04-09 22:36 CEST
 | 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
 | 09 | lokal umgesetzt, Live-Rollout offen | Log-Ebenen und Error-Codes bereinigt |
-| 10 | weitgehend erledigt | Gruppen A bis E plus Rest-Follow-up sind committed; nur lokale Artefakte sind offen |
+| 10 | erledigt | Gruppen A bis E plus Rest-Follow-up sind committed; Root-`deno.lock` ist uebernommen, lokale Analyseartefakte sind ignoriert |
 | 11 | erledigt | Release-Gate und Rollback-Pfad sind dokumentiert |
 
 ## Ziel
@@ -399,7 +399,7 @@ Ein Entwickler sieht einen Fehler in Browser oder Logs und kann innerhalb wenige
 
 ## Ticket 10: Workspace bereinigen und in wartbaren Branch-Zustand überführen
 
-> Status 2026-04-09 22:36 CEST: Weitgehend erledigt. Der aktuelle Dirty-Workspace ist in commitbare Cluster zerlegt und als Gruppen A bis E plus Rest-Follow-up committed. Offen sind nur noch vier lokale Artefakte (`deno.lock`, `functions/deno.lock`, `repo-visualization.html`, `repo-visualization-full.html`), die bewusst nicht automatisch uebernommen wurden. Der naechste operative Schritt liegt damit bei Ticket 11.
+> Status 2026-04-09 22:36 CEST: Erledigt. Der aktuelle Dirty-Workspace ist in commitbare Cluster zerlegt und als Gruppen A bis E plus Rest-Follow-up committed. Das Root-`deno.lock` wurde bewusst uebernommen, weil `package.json` einen echten `deno`-Testpfad besitzt. `functions/deno.lock` sowie `repo-visualization*.html` sind als lokale bzw. redundante Artefakte aus dem normalen Arbeitszustand herausgenommen. Der naechste operative Schritt liegt damit bei Ticket 11 bzw. beim eigentlichen Release.
 
 ### Kontext
 
@@ -461,4 +461,4 @@ Ein Verantwortlicher möchte einen Integrationsschritt freigeben, ohne die Platt
 
 ## Empfohlener Start
 
-Wenn die Arbeit spaeter wieder aufgenommen wird, muss nur noch entschieden werden, ob die vier lokalen Artefakte (`deno.lock`, `functions/deno.lock`, `repo-visualization.html`, `repo-visualization-full.html`) uebernommen oder verworfen werden. Ticket 01 bis 11 sind fuer den aktuellen Kernscope dokumentiert, und die operative Hauptarbeit ist abgeschlossen.
+Wenn die Arbeit spaeter wieder aufgenommen wird, ist die operative Hauptarbeit abgeschlossen. Ticket 01 bis 11 sind fuer den aktuellen Kernscope dokumentiert. Offen bleibt nur noch die eigentliche Release- oder Merge-Entscheidung auf Basis des definierten Gates.

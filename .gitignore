@@ -20,6 +20,8 @@ functions/scriptony-ai/index.js
 .appwrite-deploy/
 functions/.deploy-staging/
 starter-for-react/
+functions/deno.lock
+repo-visualization*.html
 
 # OS
 .DS_Store

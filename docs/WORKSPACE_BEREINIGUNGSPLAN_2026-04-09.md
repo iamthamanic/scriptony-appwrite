@@ -3,7 +3,7 @@
 - Datum: `2026-04-09`
 - Uhrzeit: `22:36:19 CEST`
 - Branch: `workspace-main-ai-20260406`
-- Status: `Ticket 10 weitgehend erledigt`
+- Status: `Ticket 10 erledigt`
 - Letzte Split-Commits:
   - `4b9a588` (`chore: add appwrite parity and deployment tooling`)
   - `a18811e` (`refactor: centralize auth and gateway runtime contract`)
@@ -207,6 +207,10 @@ Aktuelle Einschaetzung:
    Status: erledigt in Commit `5abf796`
 6. Unklare Artefakte bewusst entscheiden
    Rest-Follow-up commit ausserhalb von A-E: `70a14ed`
+   Ergebnis:
+   - Root-`deno.lock` wird versioniert
+   - `functions/deno.lock` wird nicht versioniert
+   - `repo-visualization*.html` werden nicht versioniert
 
 ## Wiedereinstieg
 
@@ -218,6 +222,9 @@ Wenn die Bereinigung spaeter fortgesetzt wird, nicht mit Code-Fixes anfangen, so
 - Gruppe D ist bereits als Commit `1770e3d` geschrieben
 - Gruppe E ist bereits als Commit `5abf796` geschrieben
 - der kleine Rest-Cluster ausserhalb von A-E ist bereits als Commit `70a14ed` geschrieben
-- offen sind nur noch die vier lokalen Artefakte `deno.lock`, `functions/deno.lock`, `repo-visualization.html`, `repo-visualization-full.html`
+- entschieden:
+  - Root-`deno.lock` bleibt Teil des Repos
+  - `functions/deno.lock` bleibt lokal
+  - `repo-visualization.html` und `repo-visualization-full.html` bleiben lokal
 
-Damit ist Ticket 10 code-seitig weitgehend abgeschlossen. Als Naechstes bleibt nur die bewusste Entscheidung ueber die vier lokalen Artefakte.
+Damit ist Ticket 10 code-seitig abgeschlossen. Als Naechstes bleibt nur die eigentliche Release- oder Merge-Entscheidung.
