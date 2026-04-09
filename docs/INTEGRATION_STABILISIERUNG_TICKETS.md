@@ -1,19 +1,19 @@
 # Integrations- und Stabilisierungstickets
 
-Stand: 2026-04-09 21:41 CEST
+Stand: 2026-04-09 21:46 CEST
 
 ## Aktueller Umsetzungsstand
 
 - Letzter verifizierter Live-Stand:
   `scriptony-ai` Deployment `69d7c509b600942df0a5`
 - Letzter Ticket-10-Split-Commit:
-  `8813e73` (`refactor: roll out shared auth across function handlers`)
+  `1770e3d` (`feat: reintegrate ai control plane and assistant flows`)
 - Live-Verifikation:
   `verify-appwrite-parity -- --require-auth` gruen
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Naechster sinnvoller Wiedereinstieg:
-  Ticket 10, Gruppe D
+  Ticket 10, Gruppe E
 
 ### Ticket-Status
 
@@ -28,7 +28,7 @@ Stand: 2026-04-09 21:41 CEST
 | 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
 | 09 | lokal umgesetzt, Live-Rollout offen | Log-Ebenen und Error-Codes bereinigt |
-| 10 | in progress | Gruppen A bis C sind committed, Gruppe D ist der naechste Split |
+| 10 | in progress | Gruppen A bis D sind committed, Gruppe E ist der naechste Split |
 | 11 | offen | nach Ticket 10 |
 
 ## Ziel
@@ -399,7 +399,7 @@ Ein Entwickler sieht einen Fehler in Browser oder Logs und kann innerhalb wenige
 
 ## Ticket 10: Workspace bereinigen und in wartbaren Branch-Zustand überführen
 
-> Status 2026-04-09 21:41 CEST: In progress. Der aktuelle Dirty-Workspace ist in commitbare Cluster zerlegt. Gruppe A ist als Commit `4b9a588`, Gruppe B als Commit `a18811e` und Gruppe C als Commit `8813e73` geschrieben. Siehe `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md`. Der naechste operative Schritt ist jetzt Gruppe D.
+> Status 2026-04-09 21:46 CEST: In progress. Der aktuelle Dirty-Workspace ist in commitbare Cluster zerlegt. Gruppe A ist als Commit `4b9a588`, Gruppe B als Commit `a18811e`, Gruppe C als Commit `8813e73` und Gruppe D als Commit `1770e3d` geschrieben. Siehe `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md`. Der naechste operative Schritt ist jetzt Gruppe E; danach bleibt noch ein kleiner Rest-Cluster ausserhalb von A-E zur bewussten Entscheidung.
 
 ### Kontext
 
@@ -461,4 +461,4 @@ Ein Verantwortlicher möchte einen Integrationsschritt freigeben, ohne die Platt
 
 ## Empfohlener Start
 
-Wenn die Arbeit spaeter wieder aufgenommen wird, sollte innerhalb von Ticket 10 mit Gruppe D aus `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md` fortgesetzt werden. Ticket 01 bis 08 sind fuer den aktuellen Kernscope abgearbeitet, Ticket 09 ist code-seitig umgesetzt, und Gruppen A bis C von Ticket 10 sind bereits committed.
+Wenn die Arbeit spaeter wieder aufgenommen wird, sollte innerhalb von Ticket 10 mit Gruppe E aus `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md` fortgesetzt werden. Ticket 01 bis 08 sind fuer den aktuellen Kernscope abgearbeitet, Ticket 09 ist code-seitig umgesetzt, und Gruppen A bis D von Ticket 10 sind bereits committed.
