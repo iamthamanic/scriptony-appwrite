@@ -57,6 +57,9 @@
   - `npm --prefix functions run build:scriptony-ai` gruen
   - repraesentative Shared-Function-Builds fuer `scriptony-projects` und `scriptony-auth` gruen
 - Der breite Live-Rollout der neuen Function-Logik aus Ticket 09 ist noch nicht separat ausgerollt. Das ist aktuell kein Produktblocker, aber noch offen.
+- Ticket 10 hat jetzt den ersten echten Split-Commit:
+  - `4b9a588` `chore: add appwrite parity and deployment tooling`
+  - darin stecken Docs, Verify-/Smoke-Tooling und Deploy-Helfer aus Gruppe A
 
 ## Lokal vorbereitete Arbeiten
 
@@ -72,7 +75,7 @@
 Der letzte Live-Blocker ist geloest. Die naechsten sinnvollen Schritte sind jetzt wieder Hygiene und Integration:
 
 - Ticket 10:
-  - dirty Workspace in saubere Commits und Branches ueberfuehren
+  - mit Gruppe B des Bereinigungsplans weitermachen
 - Ticket 11:
   - Release-Gate und Rollback-Doku festziehen
 

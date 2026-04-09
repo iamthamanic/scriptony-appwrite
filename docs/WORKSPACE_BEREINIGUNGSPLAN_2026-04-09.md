@@ -4,6 +4,7 @@
 - Uhrzeit: `20:46:54 CEST`
 - Branch: `workspace-main-ai-20260406`
 - Status: `Ticket 10 in progress`
+- Erster Split-Commit: `4b9a588` (`chore: add appwrite parity and deployment tooling`)
 
 ## Ziel
 
@@ -189,6 +190,7 @@ Aktuelle Einschaetzung:
 ## Empfohlene Reihenfolge
 
 1. Gruppe A committen
+   Status: erledigt in Commit `4b9a588`
 2. Gruppe B committen
 3. Gruppe C committen
 4. Gruppe D committen
@@ -197,9 +199,9 @@ Aktuelle Einschaetzung:
 
 ## Wiedereinstieg
 
-Wenn die Bereinigung spaeter fortgesetzt wird, nicht mit Code-Fixes anfangen, sondern direkt mit dem Commit-Split:
+Wenn die Bereinigung spaeter fortgesetzt wird, nicht mit Code-Fixes anfangen, sondern direkt mit dem naechsten Commit-Split:
 
-- zuerst Gruppe A als sicheren Dokumentations-/Tooling-Commit
-- danach Gruppe B als technischer Basis-Commit
+- Gruppe A ist bereits als Commit `4b9a588` geschrieben
+- als Naechstes folgt Gruppe B als technischer Basis-Commit
 
-Damit ist der naechste sinnvolle Schritt fuer Ticket 10 nicht mehr Analyse, sondern der erste echte Split-Commit.
+Damit ist der naechste sinnvolle Schritt fuer Ticket 10 nicht mehr Analyse, sondern der Split von Gruppe B.

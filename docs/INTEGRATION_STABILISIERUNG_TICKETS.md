@@ -6,12 +6,14 @@ Stand: 2026-04-09 20:46 CEST
 
 - Letzter verifizierter Live-Stand:
   `scriptony-ai` Deployment `69d7c509b600942df0a5`
+- Letzter Ticket-10-Split-Commit:
+  `4b9a588` (`chore: add appwrite parity and deployment tooling`)
 - Live-Verifikation:
   `verify-appwrite-parity -- --require-auth` gruen
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Naechster sinnvoller Wiedereinstieg:
-  Ticket 10
+  Ticket 10, Gruppe B
 
 ### Ticket-Status
 
@@ -26,7 +28,7 @@ Stand: 2026-04-09 20:46 CEST
 | 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
 | 09 | lokal umgesetzt, Live-Rollout offen | Log-Ebenen und Error-Codes bereinigt |
-| 10 | in progress | Commit-Split und Bereinigungsplan dokumentiert |
+| 10 | in progress | Gruppe A ist committed, Gruppe B ist der naechste Split |
 | 11 | offen | nach Ticket 10 |
 
 ## Ziel
@@ -397,7 +399,7 @@ Ein Entwickler sieht einen Fehler in Browser oder Logs und kann innerhalb wenige
 
 ## Ticket 10: Workspace bereinigen und in wartbaren Branch-Zustand überführen
 
-> Status 2026-04-09 20:46 CEST: In progress. Der aktuelle Dirty-Workspace ist jetzt in commitbare Cluster zerlegt. Siehe `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md`. Der naechste operative Schritt ist nicht weitere Analyse, sondern der erste echte Split-Commit mit Gruppe A.
+> Status 2026-04-09 20:46 CEST: In progress. Der aktuelle Dirty-Workspace ist in commitbare Cluster zerlegt. Gruppe A ist als Commit `4b9a588` geschrieben. Siehe `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md`. Der naechste operative Schritt ist jetzt Gruppe B.
 
 ### Kontext
 
@@ -459,4 +461,4 @@ Ein Verantwortlicher möchte einen Integrationsschritt freigeben, ohne die Platt
 
 ## Empfohlener Start
 
-Wenn die Arbeit spaeter wieder aufgenommen wird, sollte innerhalb von Ticket 10 mit dem ersten Split-Commit aus `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md` begonnen werden. Ticket 01 bis 08 sind fuer den aktuellen Kernscope abgearbeitet, Ticket 09 ist code-seitig umgesetzt, und Ticket 10 hat jetzt eine konkrete Commit-Reihenfolge.
+Wenn die Arbeit spaeter wieder aufgenommen wird, sollte innerhalb von Ticket 10 mit Gruppe B aus `docs/WORKSPACE_BEREINIGUNGSPLAN_2026-04-09.md` fortgesetzt werden. Ticket 01 bis 08 sind fuer den aktuellen Kernscope abgearbeitet, Ticket 09 ist code-seitig umgesetzt, und Gruppe A von Ticket 10 ist bereits committed.
