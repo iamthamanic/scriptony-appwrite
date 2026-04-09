@@ -1,14 +1,17 @@
 # Aktueller Stand
 
 - Datum: `2026-04-09`
-- Uhrzeit: `22:36:19 CEST`
-- Snapshot-Typ: `Arbeitsstand nach Abschluss der Ticket-10-Commit-Splits`
+- Uhrzeit: `23:12 CEST`
+- Snapshot-Typ: `Release-Gate gruen und Integrationsbranch fast-forwarded`
 
 ## Live-Zustand
 
 - `scriptony-ai` ist live auf Deployment `69d7c509b600942df0a5`.
 - `verify-appwrite-parity -- --require-auth` ist gruen.
 - `smoke-user-flows` ist gruen.
+- Das Release-Gate wurde mit echtem Demo-User-JWT am `2026-04-09 23:12 CEST` erfolgreich gegen live ausgefuehrt.
+- `integration-main-plus-ai-20260406` wurde danach per Fast-Forward auf `9841ee1` gezogen.
+- `main` bleibt bewusst unveraendert auf `b5089e2`.
 - Alle sechs kritischen Live-Flows sind aktuell gruen:
   - `/profile`
   - `/projects`
@@ -86,12 +89,11 @@
 
 ## Naechster sinnvoller Schritt
 
-Der letzte Live-Blocker ist geloest. Die naechsten sinnvollen Schritte sind jetzt wieder Hygiene und Integration:
+Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der Integrationsbranch ist auf den verifizierten Stand gezogen. Die naechsten sinnvollen Schritte sind jetzt:
 
-- Ticket 10:
-  - ist praktisch abgeschlossen; nur normale Release-/Merge-Entscheidung bleibt
-- Ticket 11:
-  - [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) ist erstellt und dient als Freigabegrundlage
+- Push oder Freigabe von `integration-main-plus-ai-20260406` als validierter Integrationsschnitt.
+- Danach erst eine explizite Entscheidung ueber den Merge nach `main`.
+- [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) bleibt die verbindliche Freigabegrundlage.
 
 ## Ticket-5-Richtung
 

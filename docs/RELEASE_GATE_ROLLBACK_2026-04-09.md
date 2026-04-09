@@ -4,6 +4,15 @@
 - Ticket: `11`
 - Status: `verbindliche Freigabegrundlage fuer den aktuellen Integrationsstand`
 
+## Letzte Gate-Ausfuehrung
+
+- Zeitpunkt: `2026-04-09 23:12 CEST`
+- Token-Basis: echter Demo-User-JWT aus der Appwrite-Serverkonfiguration
+- `verify-appwrite-parity -- --require-auth`: gruen
+- `smoke-user-flows`: gruen (`6/6`)
+- Danach wurde `integration-main-plus-ai-20260406` per Fast-Forward auf `9841ee1` gezogen.
+- `main` bleibt bewusst unveraendert auf `b5089e2`.
+
 ## Referenzstand
 
 Der letzte verifizierte Live-Stand fuer diese Integrationsrunde ist:

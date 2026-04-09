@@ -1,19 +1,25 @@
 # Integrations- und Stabilisierungstickets
 
-Stand: 2026-04-09 22:36 CEST
+Stand: 2026-04-09 23:12 CEST
 
 ## Aktueller Umsetzungsstand
 
 - Letzter verifizierter Live-Stand:
   `scriptony-ai` Deployment `69d7c509b600942df0a5`
+- Letzte erfolgreiche Gate-Ausfuehrung:
+  `2026-04-09 23:12 CEST` mit echtem Demo-User-JWT
 - Letzter Ticket-10-Split-Commit:
   `70a14ed` (`fix: align residual routes and backend config helpers`)
+- Letzter Integrationsbranch-Stand:
+  `integration-main-plus-ai-20260406` -> `9841ee1`
+- Hauptbranch:
+  `main` bleibt unveraendert auf `b5089e2`
 - Live-Verifikation:
   `verify-appwrite-parity -- --require-auth` gruen
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Naechster sinnvoller Wiedereinstieg:
-  Entscheidung ueber die vier lokalen Artefakte oder finalen Release vorbereiten
+  Push oder Freigabe des validierten Integrationsbranches; `main` erst danach explizit entscheiden
 
 ### Ticket-Status
 
@@ -461,4 +467,4 @@ Ein Verantwortlicher möchte einen Integrationsschritt freigeben, ohne die Platt
 
 ## Empfohlener Start
 
-Wenn die Arbeit spaeter wieder aufgenommen wird, ist die operative Hauptarbeit abgeschlossen. Ticket 01 bis 11 sind fuer den aktuellen Kernscope dokumentiert. Offen bleibt nur noch die eigentliche Release- oder Merge-Entscheidung auf Basis des definierten Gates.
+Wenn die Arbeit spaeter wieder aufgenommen wird, ist die operative Hauptarbeit abgeschlossen. Ticket 01 bis 11 sind fuer den aktuellen Kernscope dokumentiert. Das Gate ist live gruen, und `integration-main-plus-ai-20260406` steht bereits auf dem validierten Stand. Offen bleibt nur noch die ausdrueckliche Freigabe oder ein spaeterer Merge nach `main`.
