@@ -57,21 +57,19 @@ The deploy script runs **esbuild** from `functions/`: it bundles `scriptony-shot
 
 Ensure the function’s active deployment entrypoint in the Console is **`index.js`** after you deploy (the CLI sets it per deployment).
 
-### Deploy `scriptony-assistant` (KI & LLM, `/ai/settings`, Chat)
+### Deploy `scriptony-ai` (KI & LLM, `/ai/*`, central AI control plane)
 
 Required for **Einstellungen → Integrationen → KI & LLM** and any route under `/ai/*` in the SPA.
 
 From the **repo root** (same CLI login as above):
 
 ```bash
-npm run appwrite:deploy:assistant
-# alias:
 npm run appwrite:deploy:ai
 ```
 
-Then in **Appwrite Console → Functions → scriptony-assistant → Domains**, attach the HTTP URL that matches `VITE_BACKEND_FUNCTION_DOMAIN_MAP` (`"scriptony-assistant": "https://…"`). Without a deployment **and** a domain, `/health` returns HTML/404 and the browser shows **Failed to fetch**.
+Then in **Appwrite Console → Functions → scriptony-ai → Domains**, attach the HTTP URL that matches `VITE_BACKEND_FUNCTION_DOMAIN_MAP` (`"scriptony-ai": "https://…"`). Without a deployment **and** a domain, `/health` returns HTML/404 and the browser shows **Failed to fetch**.
 
-Verify: `npm run verify:test-env` (checks `scriptony-assistant/health` when the URL is derivable from `.env.local`).
+Verify: `npm run verify:parity -- --require-auth` and `npm run smoke:user-flows`.
 
 ### Deploy `scriptony-image` (Image-Key + Cover-Generierung)
 
