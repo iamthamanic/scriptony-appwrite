@@ -67,14 +67,17 @@ export function getProvider(name: string, config: ProviderConfig = {}): AIProvid
     case "deepseek":
       if (!config.apiKey) throw new Error("DeepSeek API key required");
       return new DeepSeekProvider(config.apiKey, config.baseUrl);
-    
     case "elevenlabs":
       if (!config.apiKey) throw new Error("ElevenLabs API key required");
       return new ElevenLabsProvider(config.apiKey, config.baseUrl);
-    
+
     case "ollama":
-      return new OllamaProvider(config.baseUrl, config.apiKey);
-    
+    case "ollama_local":
+      return new OllamaProvider(config.baseUrl || "http://127.0.0.1:11434", config.apiKey);
+
+    case "ollama_cloud":
+      return new OllamaProvider(config.baseUrl || "https://ollama.com", config.apiKey);
+
     case "huggingface":
       if (!config.apiKey) throw new Error("HuggingFace API key required");
       return new HuggingFaceProvider(config.apiKey, config.baseUrl);
@@ -110,6 +113,14 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   openrouter: "OpenRouter",
   deepseek: "DeepSeek",
   elevenlabs: "ElevenLabs",
-  ollama: "Ollama (Lokal)",
+  ollama: "Ollama",
+  ollama_local: "Ollama (lokal)",
+  ollama_cloud: "Ollama (Cloud)",
   huggingface: "HuggingFace",
 };
+
+export const OLLAMA_FAMILY_IDS = ["ollama", "ollama_local", "ollama_cloud"] as const;
+
+export function isOllamaFamilyProvider(id: string): boolean {
+  return (OLLAMA_FAMILY_IDS as readonly string[]).includes(id);
+}

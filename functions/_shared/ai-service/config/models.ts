@@ -55,6 +55,100 @@ export const MODELS: Record<string, ModelInfo[]> = {
       maxOutputTokens: 4096,
       pricing: { input: 10, output: 30 },
     },
+    {
+      id: "gpt-4",
+      name: "GPT-4",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 8192,
+      maxOutputTokens: 8192,
+      pricing: { input: 30, output: 60 },
+    },
+    {
+      id: "gpt-3.5-turbo",
+      name: "GPT-3.5 Turbo",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 16385,
+      maxOutputTokens: 4096,
+      pricing: { input: 0.5, output: 1.5 },
+    },
+    {
+      id: "o1",
+      name: "o1",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 200000,
+      pricing: { input: 15, output: 60 },
+    },
+    {
+      id: "o1-mini",
+      name: "o1 Mini",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 128000,
+      pricing: { input: 3, output: 12 },
+    },
+    {
+      id: "o1-preview",
+      name: "o1 Preview",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 128000,
+      pricing: { input: 15, output: 60 },
+    },
+    {
+      id: "o3-mini",
+      name: "o3 Mini",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 200000,
+      pricing: { input: 1.1, output: 4.4 },
+    },
+    {
+      id: "o4-mini",
+      name: "o4 Mini",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 200000,
+      pricing: { input: 1.1, output: 4.4 },
+    },
+    {
+      id: "gpt-4.1",
+      name: "GPT-4.1",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 1047576,
+      maxOutputTokens: 32768,
+      pricing: { input: 2, output: 8 },
+    },
+    {
+      id: "gpt-4.1-mini",
+      name: "GPT-4.1 Mini",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 1047576,
+      maxOutputTokens: 32768,
+      pricing: { input: 0.4, output: 1.6 },
+    },
+    {
+      id: "gpt-4.1-nano",
+      name: "GPT-4.1 Nano",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 1047576,
+      maxOutputTokens: 32768,
+      pricing: { input: 0.1, output: 0.4 },
+    },
+    {
+      id: "chatgpt-4o-latest",
+      name: "ChatGPT-4o Latest",
+      provider: "openai",
+      features: ["text"],
+      contextWindow: 128000,
+      maxOutputTokens: 16384,
+      pricing: { input: 5, output: 15 },
+    },
     // Image models
     {
       id: "dall-e-3",
@@ -113,6 +207,15 @@ export const MODELS: Record<string, ModelInfo[]> = {
   
   anthropic: [
     {
+      id: "claude-sonnet-4-20250514",
+      name: "Claude Sonnet 4",
+      provider: "anthropic",
+      features: ["text"],
+      contextWindow: 200000,
+      maxOutputTokens: 8192,
+      pricing: { input: 3, output: 15 },
+    },
+    {
       id: "claude-3-5-sonnet-20241022",
       name: "Claude 3.5 Sonnet",
       provider: "anthropic",
@@ -120,6 +223,15 @@ export const MODELS: Record<string, ModelInfo[]> = {
       contextWindow: 200000,
       maxOutputTokens: 8192,
       pricing: { input: 3, output: 15 },
+    },
+    {
+      id: "claude-3-5-haiku-20241022",
+      name: "Claude 3.5 Haiku",
+      provider: "anthropic",
+      features: ["text"],
+      contextWindow: 200000,
+      maxOutputTokens: 8192,
+      pricing: { input: 0.8, output: 4 },
     },
     {
       id: "claude-3-opus-20240229",
@@ -298,7 +410,15 @@ export const MODELS: Record<string, ModelInfo[]> = {
  * Get all models for a provider
  */
 export function getModelsForProvider(provider: string): ModelInfo[] {
-  return MODELS[provider] || [];
+  const key =
+    provider === "ollama_local" || provider === "ollama_cloud" || provider === "ollama"
+      ? "ollama"
+      : provider;
+  const rows = MODELS[key] || [];
+  if (provider === "ollama_local" || provider === "ollama_cloud") {
+    return rows.map((m) => ({ ...m, provider }));
+  }
+  return rows;
 }
 
 /**

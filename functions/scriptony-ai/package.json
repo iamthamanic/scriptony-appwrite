@@ -1,0 +1,9 @@
+{
+  "name": "scriptony-ai-function",
+  "private": true,
+  "dependencies": {
+    "hono": "^4.7.4",
+    "node-appwrite": "^22.1.3",
+    "undici": "^5.29.0"
+  }
+}

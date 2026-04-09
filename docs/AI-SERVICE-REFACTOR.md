@@ -765,6 +765,12 @@ function validateFeatureConfig(feature: string, config: FeatureConfig): boolean 
 
 ## Migration
 
+### Datenhaltung: Assistant-Routen in `scriptony-ai` (2026)
+
+Die HTTP-Pfade `/ai/*` (Chat, Konversationen, RAG-Sync, Token-Zähler, Legacy-Chat-Settings) werden von **`scriptony-ai`** bedient. Die eingebundenen Handler nutzen weiterhin **`requestGraphql`** und dieselben Collections wie zuvor (`ai_chat_settings`, `ai_conversations`, `ai_chat_messages`, `rag_sync_queue`). Die **`scriptony_ai`**-Datenbank (`api_keys`, `feature_config`) bleibt der Ort für Provider-Keys und Feature-Routing in der Integrations-UI.
+
+**Optional (später):** Chat-Preferences und Konversationen in `scriptony_ai` konsolidieren und die GraphQL-Schicht dort schrittweise reduzieren — erst sinnvoll, wenn Migration und Backfill geklärt sind.
+
 ### Schritt 1: Datenbank
 
 Neue Collections in Appwrite:
@@ -900,12 +906,56 @@ POST /ai/chat                        ← Refactored: Nutzt AI-Service
 {
   "$id": "unique()",
   "user_id": "string",
+  "feature": "string",   // assistant_chat, image_generation, assistant_embeddings, … (required for new writes)
   "provider": "string",  // openai, anthropic, google, etc.
-  "api_key": "string",   // Encrypted
+  "api_key": "string",
   "$createdAt": "datetime",
   "$updatedAt": "datetime"
 }
 ```
+
+Unique identity per user: `(user_id, feature, provider)`. Legacy rows without `feature` are treated as migration candidates until backfilled.
+
+### Pflicht: Attribut `feature` anlegen und Migration ausführen
+
+Ohne das Attribut schlagen neue `createDocument`-Aufrufe fehl; ohne Migration laufen alte Zeilen nur über den Legacy-Fallback im Code.
+
+**Empfohlen (CLI / ein Befehl):** Schema per **Appwrite Server API** (`node-appwrite`, gleiche Lib wie im Backend) — ohne separate **Appwrite CLI** (`appwrite` Binary), die hier nicht im Repo liegt und zusätzlich Login/Projektkontext bräuchte.
+
+1. **`scriptony-ai`** deployen (enthält die Key-Logik).
+2. **Env:** Skripte lesen **Repo-Root `.env.local`** (und optional `.env.migration`). `VITE_APPWRITE_ENDPOINT` / `VITE_APPWRITE_PROJECT_ID` werden automatisch auf `APPWRITE_*` gemappt, falls gesetzt. **`APPWRITE_API_KEY`** muss in `.env.local` stehen (oder per `export`) — **nie** als `VITE_*` (kein Secret im Frontend).
+
+   | Variable | Hinweis |
+   |----------|---------|
+   | `APPWRITE_ENDPOINT` | aus `VITE_APPWRITE_ENDPOINT` möglich |
+   | `APPWRITE_PROJECT_ID` | aus `VITE_APPWRITE_PROJECT_ID` möglich |
+   | `APPWRITE_API_KEY` | nur Server; in Console erzeugen |
+   | `AI_DATABASE_ID` | optional; Standard ist `scriptony_ai` |
+
+   **Neue Umgebung:** Fehlt die Datenbank `scriptony_ai` oder die Collections `api_keys` / `feature_config`, einmal aus dem Repo-Root ausführen:
+
+   ```bash
+   npm run appwrite:bootstrap-scriptony-ai
+   ```
+
+   (Legt DB, Attribute und Indizes per Server-API an; idempotent.)
+
+3. **Alles in einem** (Attribut `feature` anlegen, auf `available` warten, dann Legacy-Dokumente setzen):
+
+   ```bash
+   npm run appwrite:setup:api-keys-feature
+   ```
+
+   (Wechselt intern nach `functions` und führt `setup:api-keys-feature` aus.)
+
+   Einzeln, falls nötig:
+
+   - Nur Schema: `cd functions && npm run appwrite:ensure-api-keys-feature`
+   - Nur Datenmigration: `cd functions && npm run migrate:api-keys-feature`
+
+**Fallback (Console):** Databases → **`scriptony_ai`** → **`api_keys`** → Attribut **`feature`** (String, z. B. 128 Zeichen, optional bis zur Migration). Optional Index **Composite** auf `user_id`, `feature`, `provider`.
+
+Das Datenmigrationsskript setzt bei allen Dokumenten ohne `feature` den Wert **`assistant_chat`**.
 
 ### feature_config Collection
 

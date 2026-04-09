@@ -67,3 +67,12 @@ export {
   getModelInfo,
   MODELS 
 } from "./config/models";
+
+export {
+  discoverModels,
+  enrichWithRegistry,
+  featureKeyToRegistryFeature,
+  isDiscoverableFeatureKey,
+  DISCOVERABLE_FEATURE_KEYS,
+} from "./model-discovery";
+export type { DiscoverableFeatureKey, DiscoverModelsOptions } from "./model-discovery";

@@ -4,7 +4,6 @@
  * Central control plane for AI configuration stored in Appwrite DB `scriptony_ai`.
  */
 
-import "../_shared/fetch-polyfill";
 import {
   getFeatureConfigMap,
   getLegacyAssistantSettings,
@@ -31,7 +30,18 @@ import {
   type ResponseLike,
 } from "../_shared/http";
 import { getModelsForProvider } from "../_shared/ai-service/config";
-import { getProvider, PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } from "../_shared/ai-service/providers";
+import { discoverModels } from "../_shared/ai-service/model-discovery";
+import {
+  getProvider,
+  isOllamaFamilyProvider,
+  PROVIDER_CAPABILITIES,
+  PROVIDER_DISPLAY_NAMES,
+} from "../_shared/ai-service/providers";
+import { dispatchAssistantLegacyRoute } from "./assistant-legacy";
+
+async function ensureFetchPolyfillLoaded(): Promise<void> {
+  await import("../_shared/fetch-polyfill");
+}
 
 function getPathname(req: RequestLike): string {
   const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
@@ -65,17 +75,30 @@ async function buildSettingsPayload(userId: string): Promise<Record<string, unkn
     getLegacyImageSettings(userId),
   ]);
 
+  const feature_provider_keys = Object.fromEntries(
+    api_keys
+      .filter((entry) => entry.feature !== "global")
+      .map((entry) => [`${entry.feature}:${entry.provider}`, true] as const)
+  );
+  const providerKeyIndex = api_keys.reduce<Record<string, boolean>>((acc, entry) => {
+    acc[entry.provider] = true;
+    return acc;
+  }, {});
+
   return {
     user,
     features,
-    api_keys,
+    api_keys: providerKeyIndex,
+    api_key_rows: api_keys,
+    feature_provider_keys,
     assistant,
     image,
     providers: Object.entries(PROVIDER_CAPABILITIES).map(([name, caps]) => ({
       id: name,
       name: PROVIDER_DISPLAY_NAMES[name] || name,
       capabilities: caps,
-      requiresApiKey: name !== "ollama",
+      requiresApiKey: !isOllamaFamilyProvider(name),
+      has_key: isOllamaFamilyProvider(name) || Boolean(providerKeyIndex[name]),
     })),
   };
 }
@@ -94,7 +117,11 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    if (await dispatchAssistantLegacyRoute(req, res)) {
+      return;
+    }
+
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -111,7 +138,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           id: name,
           name: PROVIDER_DISPLAY_NAMES[name] || name,
           capabilities: caps,
-          requiresApiKey: name !== "ollama",
+          requiresApiKey: !isOllamaFamilyProvider(name),
         })),
       });
       return;
@@ -128,12 +155,34 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
+    const providerDiscoverMatch = pathname.match(/^\/providers\/([^/]+)\/models\/discover$/);
+    if (providerDiscoverMatch) {
+      if (req.method !== "POST") {
+        sendMethodNotAllowed(res, ["POST"]);
+        return;
+      }
+      await ensureFetchPolyfillLoaded();
+      const provider = providerDiscoverMatch[1];
+      const body = await readJsonBody<{ feature?: string; api_key?: string; base_url?: string }>(req);
+      if (!body.feature) {
+        sendBadRequest(res, "feature is required");
+        return;
+      }
+      const models = await discoverModels(provider, body.feature, {
+        apiKey: body.api_key?.trim() || undefined,
+        baseUrl: body.base_url?.trim() || undefined,
+      });
+      sendJson(res, 200, { provider, feature: body.feature, models });
+      return;
+    }
+
     const providerValidateMatch = pathname.match(/^\/providers\/([^/]+)\/validate$/);
     if (providerValidateMatch) {
       if (req.method !== "POST") {
         sendMethodNotAllowed(res, ["POST"]);
         return;
       }
+      await ensureFetchPolyfillLoaded();
       const provider = providerValidateMatch[1];
       const body = await readJsonBody<{ api_key?: string; base_url?: string }>(req);
       const apiKey = body.api_key?.trim() || "";
@@ -183,6 +232,22 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       sendMethodNotAllowed(res, ["GET", "POST"]);
+      return;
+    }
+
+    const scopedApiKeyDeleteMatch = pathname.match(/^\/api-keys\/([^/]+)\/([^/]+)$/);
+    if (scopedApiKeyDeleteMatch) {
+      if (req.method !== "DELETE") {
+        sendMethodNotAllowed(res, ["DELETE"]);
+        return;
+      }
+      await updateApiKey(
+        userId,
+        scopedApiKeyDeleteMatch[1] as CanonicalAiFeature,
+        scopedApiKeyDeleteMatch[2] as any,
+        null
+      );
+      sendJson(res, 200, { success: true });
       return;
     }
 

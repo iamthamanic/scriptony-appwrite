@@ -13,8 +13,8 @@ import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { toast } from "sonner@2.0.3";
 import { apiGet, apiPost, apiDelete, unwrapApiResult } from "../../lib/api-client";
+import { AIIntegrationsSection } from "../AIIntegrationsSection";
 import { StorageSettingsSection } from "../StorageSettingsSection";
-import { AISettingsForm } from "../ai/AISettingsForm";
 import {
   isImageWebpConversionEnabled,
   setImageWebpConversionEnabled,
@@ -413,21 +413,7 @@ export function SettingsPage() {
 
         {/* Integrationen Tab – API-Tokens für externe Tools (Blender/ComfyUI) */}
         <TabsContent value="integrations" className="space-y-4">
-          <Card id="settings-ai-integrations">
-            <CardHeader className="p-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Bot className="size-4" />
-                KI &amp; LLM
-              </CardTitle>
-              <CardDescription className="text-xs">
-                API-Keys, Provider, Modell und System-Prompt für den Scriptony-Assistant, Creative Gym und weitere KI-Features.
-                Dieselben Einstellungen erreichst du im Gym über „KI-Einstellungen öffnen“.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <AISettingsForm embedded active />
-            </CardContent>
-          </Card>
+          <AIIntegrationsSection />
 
           <Card>
             <CardHeader className="p-4">

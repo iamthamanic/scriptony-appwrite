@@ -218,12 +218,29 @@ export const PROVIDER_CAPABILITIES: Record<string, AIProvider['capabilities']> =
     video: false,
     embeddings: false,
   },
+  /** @deprecated Prefer ollama_local / ollama_cloud; kept for existing feature_config rows. */
   ollama: {
     text: true,
     audio_stt: true,
     audio_tts: true,
     image: true,
-    video: false,
+    video: true,
+    embeddings: true,
+  },
+  ollama_local: {
+    text: true,
+    audio_stt: true,
+    audio_tts: true,
+    image: true,
+    video: true,
+    embeddings: true,
+  },
+  ollama_cloud: {
+    text: true,
+    audio_stt: true,
+    audio_tts: true,
+    image: true,
+    video: true,
     embeddings: true,
   },
   huggingface: {

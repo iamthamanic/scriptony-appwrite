@@ -33,7 +33,7 @@ const TOOL_DESCRIPTORS = [
 ] as const;
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req.headers.authorization);
+  const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return;

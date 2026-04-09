@@ -41,6 +41,8 @@ export type CanonicalProvider =
   | "openrouter"
   | "deepseek"
   | "ollama"
+  | "ollama_local"
+  | "ollama_cloud"
   | "elevenlabs"
   | "huggingface";
 
@@ -140,6 +142,10 @@ export const DEFAULT_USER_SETTINGS = {
   settings_json: "{}",
 };
 
+function isOllamaFamilyProvider(provider: string): provider is "ollama" | "ollama_local" | "ollama_cloud" {
+  return provider === "ollama" || provider === "ollama_local" || provider === "ollama_cloud";
+}
+
 function getAiDatabases(): Databases {
   const endpoint = getAppwriteEndpoint();
   const projectId = getAppwriteProjectId();
@@ -195,11 +201,23 @@ async function getOrCreateUserSettingsDocument(userId: string): Promise<Record<s
   const rows = await listDocuments(USER_SETTINGS_COLLECTION, [Query.equal("user_id", userId)]);
   if (rows[0]) return rows[0];
 
-  const created = await getAiDatabases().createDocument(AI_DB_ID, USER_SETTINGS_COLLECTION, ID.unique(), {
-    user_id: userId,
-    ...DEFAULT_USER_SETTINGS,
-  });
-  return docToRow(created as Record<string, unknown>);
+  try {
+    const created = await getAiDatabases().createDocument(AI_DB_ID, USER_SETTINGS_COLLECTION, ID.unique(), {
+      user_id: userId,
+      ...DEFAULT_USER_SETTINGS,
+    });
+    return docToRow(created as Record<string, unknown>);
+  } catch (error: any) {
+    // Parallel first-access requests can race on the unique user_id index.
+    if (error?.code !== 409) {
+      throw error;
+    }
+    const existing = await listDocuments(USER_SETTINGS_COLLECTION, [Query.equal("user_id", userId)]);
+    if (existing[0]) {
+      return existing[0];
+    }
+    throw error;
+  }
 }
 
 async function listApiKeyRows(userId: string): Promise<ApiKeyRow[]> {
@@ -463,9 +481,15 @@ export async function resolveFeatureRuntime(
   const apiKey = keyRow ? normalizeApiKey(keyRow.api_key) || null : null;
 
   let baseUrl: string | undefined;
-  if (config.provider === "ollama") {
-    const mode = userSettings.settings_json_parsed.ollama?.mode === "cloud" ? "cloud" : "local";
-    baseUrl = mode === "cloud" ? OLLAMA_CLOUD_ORIGIN : userSettings.ollama_base_url || undefined;
+  if (isOllamaFamilyProvider(config.provider)) {
+    if (config.provider === "ollama_cloud") {
+      baseUrl = OLLAMA_CLOUD_ORIGIN;
+    } else if (config.provider === "ollama_local") {
+      baseUrl = userSettings.ollama_base_url || undefined;
+    } else {
+      const mode = userSettings.settings_json_parsed.ollama?.mode === "cloud" ? "cloud" : "local";
+      baseUrl = mode === "cloud" ? OLLAMA_CLOUD_ORIGIN : userSettings.ollama_base_url || undefined;
+    }
   }
 
   return {
