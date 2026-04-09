@@ -16,8 +16,13 @@ import {
 export type { ImageUploadGifMode } from '../image-upload-prep';
 export { needsGifUserConfirmation } from '../image-upload-prep';
 
-const PROJECTS_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS);
-const WORLDBUILDING_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDING);
+function getProjectsApiBase(): string {
+  return buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS);
+}
+
+function getWorldbuildingApiBase(): string {
+  return buildFunctionRouteUrl(EDGE_FUNCTIONS.WORLDBUILDING);
+}
 
 export type ClientImageUploadPrepOptions = {
   gifMode?: ImageUploadGifMode;
@@ -62,6 +67,7 @@ export async function uploadProjectImage(
   file: File,
   prepOptions?: ClientImageUploadPrepOptions
 ): Promise<string> {
+  const projectsApiBase = getProjectsApiBase();
   // Get access token
   const accessToken = await getAuthToken();
   if (!accessToken) {
@@ -74,7 +80,7 @@ export async function uploadProjectImage(
   const base64 = await fileToBase64(ready);
 
   const response = await fetch(
-    `${PROJECTS_API_BASE}/projects/${projectIdParam}/upload-image`,
+    `${projectsApiBase}/projects/${projectIdParam}/upload-image`,
     {
       method: 'POST',
       headers: {
@@ -109,6 +115,7 @@ export async function uploadWorldImage(
   file: File,
   prepOptions?: ClientImageUploadPrepOptions
 ): Promise<string> {
+  const worldbuildingApiBase = getWorldbuildingApiBase();
   // Get access token
   const accessToken = await getAuthToken();
   if (!accessToken) {
@@ -121,7 +128,7 @@ export async function uploadWorldImage(
   const base64 = await fileToBase64(ready);
 
   const response = await fetch(
-    `${WORLDBUILDING_API_BASE}/worlds/${worldId}/upload-image`,
+    `${worldbuildingApiBase}/worlds/${worldId}/upload-image`,
     {
       method: 'POST',
       headers: {

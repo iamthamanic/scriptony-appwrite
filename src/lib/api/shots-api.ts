@@ -16,7 +16,7 @@ import { assertPreparedImageWithinUploadLimit, fileToBase64 } from './image-uplo
 import { narrativeStructureToInitializeProjectPayload } from '../narrative-structure-init';
 
 // API Base URLs for direct file uploads
-const TIMELINE_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.TIMELINE_V2);
+const SHOTS_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.SHOTS);
 const AUDIO_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUDIO);
 
 // =============================================================================
@@ -342,7 +342,7 @@ export async function addCharacterToShot(
   characterId: string,
   accessToken: string
 ): Promise<{ id: string; projectId: string; sceneId: string; characters: any[] }> {
-  const response = await fetch(`${TIMELINE_API_BASE}/shots/${shotId}/characters`, {
+  const response = await fetch(`${SHOTS_API_BASE}/shots/${shotId}/characters`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -368,7 +368,7 @@ export async function removeCharacterFromShot(
   characterId: string,
   accessToken: string
 ): Promise<void> {
-  const response = await fetch(`${TIMELINE_API_BASE}/shots/${shotId}/characters/${characterId}`, {
+  const response = await fetch(`${SHOTS_API_BASE}/shots/${shotId}/characters/${characterId}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${accessToken}`,

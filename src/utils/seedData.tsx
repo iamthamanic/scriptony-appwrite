@@ -1,9 +1,14 @@
 import { projectsApi, worldsApi, categoriesApi, itemsApi } from "./api";
-import { backendConfig } from "../lib/env";
+import { backendConfig, isBackendConfigured } from "../lib/env";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 
 export async function seedTestUser() {
   try {
+    if (!isBackendConfigured()) {
+      console.log("ℹ️ Skipping demo user seed because backend functions base URL is not configured.");
+      return null;
+    }
+
     console.log("🔗 Calling create-demo-user endpoint...");
     
     // Use the existing /create-demo-user endpoint

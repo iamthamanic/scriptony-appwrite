@@ -24,9 +24,9 @@ interface TestResult {
 const BACKEND_FUNCTIONS = [
   { name: 'scriptony-auth', route: '/storage/usage' },
   { name: 'scriptony-projects', route: '/projects' },
-  { name: 'scriptony-timeline-v2', route: '/timeline' },
+  { name: 'scriptony-project-nodes', route: '/nodes?project_id=debug-project' },
   { name: 'scriptony-worldbuilding', route: '/worlds' },
-  { name: 'scriptony-assistant', route: '/ai/models' },
+  { name: 'scriptony-ai', route: '/ai/models' },
   { name: 'scriptony-gym', route: '/categories' },
   { name: 'scriptony-superadmin', route: '/superadmin/stats' },
 ];
@@ -189,14 +189,14 @@ export function ApiDebugPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {getStatusIcon(result.status)}
-                  <div>
-                    <div className="font-medium">{result.name}</div>
-                    {result.url && (
-                      <div className="text-xs text-muted-foreground">
+                    <div>
+                      <div className="font-medium">{result.name}</div>
+                      {result.url && (
+                        <div className="text-xs text-muted-foreground">
                         GET {BACKEND_FUNCTIONS[index].route}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -271,7 +271,7 @@ export function ApiDebugPage() {
             <strong>Expected Result:</strong>
             <ul className="list-disc list-inside ml-4 mt-1 text-muted-foreground">
               <li>All 7 functions should return 200 OK</li>
-              <li>Response time should be under 2000ms</li>
+              <li>Response time should be {"<"} 2000ms</li>
               <li>No "Network Error" or "Failed to fetch" errors</li>
             </ul>
           </div>

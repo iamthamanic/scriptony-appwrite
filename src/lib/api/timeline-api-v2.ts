@@ -6,7 +6,7 @@
  * API Client für die generische Timeline Engine.
  * Funktioniert mit ALLEN Templates (Film, Serie, Buch, Theater, Game, ...)
  * 
- * Uses API Gateway for routing to scriptony-timeline-v2 function.
+ * Uses API Gateway for routing to the current project-nodes backend routes.
  */
 
 import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-client';

@@ -19,13 +19,12 @@ export function BackendNotConfiguredBanner() {
       </AlertTitle>
       <AlertDescription className="mt-1 space-y-2">
         <p className="text-sm">
-          Login kann funktionieren, aber die App braucht entweder{" "}
-          <code className="text-xs">VITE_BACKEND_FUNCTION_DOMAIN_MAP</code> (JSON mit Appwrite
-          Function-Domains) oder <code className="text-xs">VITE_APPWRITE_FUNCTIONS_BASE_URL</code> /{" "}
-          <code className="text-xs">VITE_BACKEND_API_BASE_URL</code> (Gateway mit Pfad{" "}
-          <code className="text-xs">/scriptony-*</code>), plus{" "}
-          <code className="text-xs">VITE_APPWRITE_*</code>. In <strong>Vercel</strong> Variablen setzen
-          und <strong>Redeploy</strong> ausführen.
+          Login kann funktionieren, aber die App braucht entweder eine globale Functions-URL
+          (<code className="text-xs">VITE_APPWRITE_FUNCTIONS_BASE_URL</code> oder{" "}
+          <code className="text-xs">VITE_BACKEND_API_BASE_URL</code>) oder eine
+          Function-Domain-Map über <code className="text-xs">VITE_BACKEND_FUNCTION_DOMAIN_MAP</code> sowie{" "}
+          <code className="text-xs">VITE_APPWRITE_*</code> für Appwrite. In{" "}
+          <strong>Vercel</strong> die Variablen setzen und ein <strong>Redeploy</strong> ausführen.
         </p>
         <a
           href={DOC_URL}
