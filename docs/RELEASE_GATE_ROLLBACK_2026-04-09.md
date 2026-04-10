@@ -10,9 +10,8 @@
 - Token-Basis: echter Demo-User-JWT aus der Appwrite-Serverkonfiguration
 - `verify-appwrite-parity -- --require-auth`: gruen
 - `smoke-user-flows`: gruen (`6/6`)
-- Danach wurden `workspace-main-ai-20260406`, `integration-main-plus-ai-20260406` und `main` auf `01aa96f` vereinheitlicht.
-- `integration-main-plus-ai-20260406` ist auf `origin/integration-main-plus-ai-20260406` gepusht.
-- `main` ist auf `origin/main` gepusht.
+- Danach wurden `workspace-main-ai-20260406`, `integration-main-plus-ai-20260406` und `main` auf denselben dokumentierten Release-Schnitt vereinheitlicht.
+- `integration-main-plus-ai-20260406` und `main` sind auf den Remote gepusht.
 
 ## Referenzstand
 

@@ -10,9 +10,8 @@
 - `verify-appwrite-parity -- --require-auth` ist gruen.
 - `smoke-user-flows` ist gruen.
 - Das Release-Gate wurde mit echtem Demo-User-JWT am `2026-04-09 23:12 CEST` erfolgreich gegen live ausgefuehrt.
-- `workspace-main-ai-20260406` steht auf `01aa96f` (`docs: clarify remaining release steps`).
-- `integration-main-plus-ai-20260406` steht auf `01aa96f` und ist auf `origin/integration-main-plus-ai-20260406` gepusht.
-- `main` steht auf `01aa96f` und ist auf `origin/main` gepusht.
+- `workspace-main-ai-20260406`, `integration-main-plus-ai-20260406` und `main` sind auf demselben dokumentierten Release-Schnitt vereinheitlicht.
+- Der Integrationsbranch und `main` sind auf den Remote gepusht.
 - Alle sechs kritischen Live-Flows sind aktuell gruen:
   - `/profile`
   - `/projects`

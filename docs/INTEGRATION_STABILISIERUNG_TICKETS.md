@@ -9,13 +9,13 @@ Stand: 2026-04-10 07:59 CEST
 - Letzte erfolgreiche Gate-Ausfuehrung:
   `2026-04-09 23:12 CEST` mit echtem Demo-User-JWT
 - Letzter Workspace-Stand:
-  `workspace-main-ai-20260406` -> `01aa96f`
+  auf demselben dokumentierten Release-Schnitt wie Integration und `main`
 - Letzter Ticket-10-Split-Commit:
   `70a14ed` (`fix: align residual routes and backend config helpers`)
 - Letzter Integrationsbranch-Stand:
-  `integration-main-plus-ai-20260406` -> `01aa96f`
+  verifiziert, gepusht und mit `main` vereinheitlicht
 - Hauptbranch:
-  `main` -> `01aa96f`
+  verifiziert, gepusht und mit dem dokumentierten Release-Schnitt synchron
 - Live-Verifikation:
   `verify-appwrite-parity -- --require-auth` gruen
 - Smoke-Matrix:
