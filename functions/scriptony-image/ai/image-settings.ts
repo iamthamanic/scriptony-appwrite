@@ -14,6 +14,18 @@ import {
   type ResponseLike,
 } from "../../_shared/http";
 
+function buildFallbackImageSettings(userId: string) {
+  return {
+    id: `fallback-image-settings:${userId}`,
+    user_id: userId,
+    settings_json: "{}",
+    settings_json_parsed: {},
+    image_provider: "ollama" as const,
+    ollama_image_api_key: "",
+    openrouter_image_api_key: "",
+  };
+}
+
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
     const user = await requireAuthenticatedUser(req);
@@ -23,7 +35,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      const settings = await getLegacyImageSettings(user.id);
+      let settings;
+      try {
+        settings = await getLegacyImageSettings(user.id);
+      } catch (error) {
+        console.warn("[scriptony-image] image settings fallback", {
+          userId: user.id,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        settings = buildFallbackImageSettings(user.id);
+      }
       sendJson(res, 200, { settings });
       return;
     }

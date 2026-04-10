@@ -36,6 +36,7 @@ FUNCTIONS=(
   scriptony-stats
   scriptony-timeline-v2
   scriptony-superadmin
+  scriptony-video
   scriptony-worldbuilding
 )
 

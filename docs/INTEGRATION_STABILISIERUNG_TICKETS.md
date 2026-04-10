@@ -1,6 +1,6 @@
 # Integrations- und Stabilisierungstickets
 
-Stand: 2026-04-10 07:59 CEST
+Stand: 2026-04-10 19:33 CEST
 
 ## Aktueller Umsetzungsstand
 
@@ -20,8 +20,10 @@ Stand: 2026-04-10 07:59 CEST
   `verify-appwrite-parity -- --require-auth` gruen
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
+- Feature-Rollout-Smoke:
+  `smoke:feature-auth-rollout` gruen (`5/5`)
 - Naechster sinnvoller Wiedereinstieg:
-  Kein weiterer Pflichtschritt fuer den aktuellen Release-Schnitt. Optional als naechstes Ticket 05 und 09 als breiteren Live-Rollout streng abschliessen.
+  Kein weiterer Pflichtschritt fuer den aktuellen Release-Schnitt. Als naechstes den breiteren Ticket-09-Live-Rollout oder anderes gezieltes Hardening angehen.
 
 ### Ticket-Status
 
@@ -31,7 +33,7 @@ Stand: 2026-04-10 07:59 CEST
 | 02 | erledigt | Branch-/Commit-Landkarte vorhanden |
 | 03 | erledigt | Auth-/Transportvertrag definiert |
 | 04 | erledigt, live verifiziert | `/projects` und `/worlds` wieder stabil |
-| 05 | lokal umgesetzt, Live-Rollout optional offen | zentrale Auth-Library mit leichter und voller Stufe steht |
+| 05 | erledigt, live verifiziert | `image`, `audio`, `gym`, `assistant` und `video` ueber zentralen Auth-/Deploy-Pfad live verifiziert |
 | 06 | erledigt, live verifiziert | Deploy-/Env-Paritaet und Auth-Smokes vorhanden |
 | 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
@@ -228,7 +230,7 @@ In beiden Fällen werden Listen ohne `401` geladen und die Seiten bleiben nutzba
 
 ## Ticket 05: Function-Auth zentral härten und kompatibel ausrollen
 
-> Status 2026-04-09 17:27 CEST: Lokal umgesetzt. Die zentrale Auth-Library bietet jetzt leichte User-Aufloesung plus vollen Bootstrap. `image`, `audio`, `video` und `gym` sind code-seitig angebunden. Ein breiter Live-Rollout aller betroffenen Feature-Functions ist noch nicht separat abgeschlossen, ist aktuell aber kein Blocker.
+> Status 2026-04-10 19:33 CEST: Erledigt und live verifiziert. Die zentrale Auth-Library bietet leichte User-Aufloesung plus vollen Bootstrap. `image`, `audio`, `video`, `gym` und `assistant` sind angebunden; `image`, `audio`, `gym`, `assistant` und `video` wurden live ueber den gemeinsamen Deploy-/Env-Pfad ausgerollt und per `smoke:feature-auth-rollout` erfolgreich geprueft.
 
 ### Kontext
 
@@ -264,6 +266,20 @@ Ein Nutzer verwendet verschiedene App-Bereiche wie Profile, Beats, Conversations
 - `image`, `video`, `audio` und `assistant` nutzen keinen separaten proprietaeren Auth-Adapter ausserhalb dieser Library mehr.
 - Der Auth-Vertrag verarbeitet dokumentierte Quellen konsistent.
 - Auth-Fehler lassen sich in Logs eindeutig zuordnen.
+
+### Verifizierter Live-Schnitt 2026-04-10
+
+- `scriptony-image` Deployment `69d9092ec368201a9d5e`
+- `scriptony-audio` Deployment `69d9038c942234c1e3c9`
+- `scriptony-gym` Deployment `69d9038c3a4165198656`
+- `scriptony-assistant` Deployment `69d93317c7d9d5a1ec51`
+- `scriptony-video` Deployment `69d9333745f110d7a990`
+- `npm run smoke:feature-auth-rollout` gruen (`5/5`)
+- `video_history` ist ueber eine User-JWT-authentifizierte Appwrite-Execution verifiziert, weil fuer `scriptony-video` derzeit keine aktive Browser-Domain in `VITE_BACKEND_FUNCTION_DOMAIN_MAP` genutzt wird.
+- Neuer gemeinsamer Deploy-Pfad:
+  - Server-SDK statt `appwrite-cli`-Login
+  - Server-Env-Sync pro Function vor dem Deployment
+  - eigener Live-Smoke fuer den vollstaendigen Feature-Scope
 
 ---
 

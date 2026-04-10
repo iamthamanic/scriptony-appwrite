@@ -26,19 +26,19 @@ export function getRequiredEnv(name: string): string {
   return value;
 }
 
-/** Internal endpoint for server-to-server calls. Prefer stable in-cluster endpoints over external runtime URLs. */
+/** Server-to-server Appwrite endpoint. Prefer explicit API/public endpoints over flaky injected internal hosts. */
 export function getAppwriteEndpoint(): string {
-  const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
-  if (functionEndpoint) {
-    return trimTrailingSlash(functionEndpoint);
+  const functionApiEndpoint = getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT");
+  if (functionApiEndpoint) {
+    return trimTrailingSlash(functionApiEndpoint);
   }
   const publicEndpoint = getOptionalEnv("APPWRITE_ENDPOINT");
   if (publicEndpoint) {
     return trimTrailingSlash(publicEndpoint);
   }
-  const functionApiEndpoint = getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT");
-  if (functionApiEndpoint) {
-    return trimTrailingSlash(functionApiEndpoint);
+  const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
+  if (functionEndpoint) {
+    return trimTrailingSlash(functionEndpoint);
   }
   return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
 }

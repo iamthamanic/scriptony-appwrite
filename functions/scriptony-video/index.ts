@@ -245,8 +245,7 @@ app.post("/generate/short", async (c) => {
  * Generate a landscape video (16:9)
  */
 app.post("/generate/landscape", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -283,8 +282,7 @@ app.post("/generate/landscape", async (c) => {
  * Generate video from an image
  */
 app.post("/generate/from-image", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -323,8 +321,7 @@ app.post("/generate/from-image", async (c) => {
  * Check video generation status
  */
 app.get("/status/:id", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -352,8 +349,7 @@ app.get("/status/:id", async (c) => {
  * Check status of multiple videos
  */
 app.get("/status/batch", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -402,8 +398,7 @@ app.get("/status/batch", async (c) => {
  * Get user's generation history
  */
 app.get("/history", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -446,8 +441,7 @@ app.get("/history", async (c) => {
  * Delete a generation from history
  */
 app.delete("/history/:id", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -565,8 +559,7 @@ app.get("/presets", async (c) => {
   ];
   
   try {
-    const authHeader = c.req.header("Authorization");
-    const userId = await getUserIdFromAuth(authHeader);
+    const userId = await getUserIdFromAuth(c.req);
     
     // Get user custom presets
     const customPresets = await databases.listDocuments(
@@ -591,8 +584,7 @@ app.get("/presets", async (c) => {
  * Create custom video preset
  */
 app.post("/presets", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const userId = await getUserIdFromAuth(authHeader);
+  const userId = await getUserIdFromAuth(c.req);
   
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);

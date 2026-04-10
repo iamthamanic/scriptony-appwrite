@@ -130,9 +130,9 @@ function getUserFromDecodedJwtFallback(token: string): AuthUser | null {
 
 function getAuthCandidateEndpoints(): string[] {
   const rawCandidates = [
-    getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT"),
-    getOptionalEnv("APPWRITE_ENDPOINT"),
     getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT"),
+    getOptionalEnv("APPWRITE_ENDPOINT"),
+    getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT"),
     getPublicAppwriteEndpoint(),
   ];
   const seen = new Set<string>();

@@ -3,7 +3,8 @@
 # Fixes "Failed to fetch" / KI settings when the function was never deployed or the domain
 # points at an empty deployment — this script uploads a working Node bundle (same pattern as scriptony-shots).
 #
-# Prerequisite: `npx appwrite-cli login` + `appwrite init project` (linked project).
+# Requires server env (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`)
+# via `.env.local` / `.env.server.local` / shell environment.
 # Function id `scriptony-assistant` must exist (see `npm run appwrite:functions:create`).
 # Run from repo root: `npm run appwrite:deploy:assistant`
 #
@@ -32,13 +33,12 @@ if [[ ! -s "$STAGE/index.js" ]]; then
 fi
 
 echo "Deploying bundle (entrypoint index.js)…"
-# Must run with cwd = functions/ so relative --code matches appwrite-cli expectations.
-npx --yes appwrite-cli functions create-deployment \
-  --function-id scriptony-assistant \
-  --code ".deploy-staging/scriptony-assistant" \
-  --activate true \
+node "$FUN/scripts/deploy-appwrite-function.mjs" \
+  --function-id "scriptony-assistant" \
+  --source-dir ".deploy-staging/scriptony-assistant" \
   --entrypoint "index.js" \
-  --commands ""
+  --commands "" \
+  --sync-default-server-env
 
 echo ""
 echo "Done. Next steps (required for the browser):"

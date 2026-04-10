@@ -47,7 +47,8 @@ Runs [`tools/provision-appwrite-buckets.mjs`](tools/provision-appwrite-buckets.m
 
 ## Deploy a single function (example: `scriptony-shots`)
 
-After `npx appwrite-cli login` and a linked project, from the **repo root**:
+With server env (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`)
+available via `.env.local`, `.env.server.local`, or the shell environment, from the **repo root**:
 
 ```bash
 npm run appwrite:deploy:shots
@@ -61,7 +62,7 @@ Ensure the function’s active deployment entrypoint in the Console is **`index.
 
 Required for **Einstellungen → Integrationen → KI & LLM** and any route under `/ai/*` in the SPA.
 
-From the **repo root** (same CLI login as above):
+From the **repo root** (same server env as above):
 
 ```bash
 npm run appwrite:deploy:ai
@@ -77,13 +78,25 @@ Routes:
 - `POST /ai/image/validate-key`
 - `POST /ai/image/generate-cover`
 
-From the repo root:
+From the repo root (same server env as above):
 
 ```bash
 npm run appwrite:deploy:image
 ```
 
 Then ensure `"scriptony-image":"https://…"` exists in `VITE_BACKEND_FUNCTION_DOMAIN_MAP` (or run `npm run appwrite:sync:function-domains`) and restart Vite.
+
+### Deploy `scriptony-audio`, `scriptony-gym`, `scriptony-video`
+
+From repo root:
+
+```bash
+npm run appwrite:deploy:audio
+npm run appwrite:deploy:gym
+npm run appwrite:deploy:video
+```
+
+These deploy the current CommonJS bundles with `index.js` entrypoints through the Appwrite Server SDK. `scriptony-audio` and `scriptony-gym` are part of the current browser/domain map; verify authenticated reads after deploy. `scriptony-video` is deployable the same way, but currently has no active browser route in `src/lib/api-gateway.ts`.
 
 **First-time / self-hosted (CLI logged in):** create if missing + deploy in one step:
 

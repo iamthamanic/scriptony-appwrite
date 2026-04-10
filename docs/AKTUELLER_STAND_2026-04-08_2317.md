@@ -1,14 +1,20 @@
 # Aktueller Stand
 
 - Datum: `2026-04-10`
-- Uhrzeit: `07:59 CEST`
-- Snapshot-Typ: `Release-Gate gruen, Integrationsbranch und main gepusht, nur optionale Hardening-Schritte offen`
+- Uhrzeit: `19:33 CEST`
+- Snapshot-Typ: `Release-Gate weiter gruen, Ticket 05 vollstaendig live verifiziert`
 
 ## Live-Zustand
 
 - `scriptony-ai` ist live auf Deployment `69d7c509b600942df0a5`.
 - `verify-appwrite-parity -- --require-auth` ist gruen.
 - `smoke-user-flows` ist gruen.
+- `smoke:feature-auth-rollout` ist gruen (`5/5`):
+  - `image_settings`
+  - `audio_voices`
+  - `gym_categories`
+  - `assistant_settings`
+  - `video_history`
 - Das Release-Gate wurde mit echtem Demo-User-JWT am `2026-04-09 23:12 CEST` erfolgreich gegen live ausgefuehrt.
 - `workspace-main-ai-20260406`, `integration-main-plus-ai-20260406` und `main` sind auf demselben dokumentierten Release-Schnitt vereinheitlicht.
 - Der Integrationsbranch und `main` sind auf den Remote gepusht.
@@ -19,6 +25,12 @@
   - `/ai/settings`
   - `/ai/conversations`
   - `/settings`
+- Ticket 05 ist live auf diesen Deployments verifiziert:
+  - `scriptony-image` `69d9092ec368201a9d5e`
+  - `scriptony-audio` `69d9038c942234c1e3c9`
+  - `scriptony-gym` `69d9038c3a4165198656`
+  - `scriptony-assistant` `69d93317c7d9d5a1ec51`
+  - `scriptony-video` `69d9333745f110d7a990`
 
 ## Was erledigt wurde
 
@@ -35,6 +47,15 @@
 - Smoke-Matrix aufgebaut:
   - [scripts/smoke-user-flows.mjs](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/scripts/smoke-user-flows.mjs)
   - [docs/SMOKE_TEST_MATRIX.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/SMOKE_TEST_MATRIX.md)
+- Ticket 05 vollstaendig live verifiziert:
+  - generischer Appwrite-Deploy-Helper ueber Server-SDK statt CLI-Session
+  - Deploy-Scripts fuer `image`, `audio`, `gym`, `video`, `assistant` auf denselben Pfad umgestellt
+  - Server-Env-Sync (`APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`) direkt im Deploy-Helper
+  - eigener Feature-Smoke fuer `image`, `audio`, `gym`, `assistant`, `video` angelegt:
+    - [scripts/smoke-feature-auth-rollout.mjs](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/scripts/smoke-feature-auth-rollout.mjs)
+  - `GET /ai/image/settings` liefert bei Upstream-Ausfall jetzt Defaults statt `500`
+  - `GET /ai/settings` in `scriptony-assistant` nutzt die leichte zentrale Auth-Stufe und liefert bei Upstream-Ausfall Defaults statt `500`
+  - `scriptony-video` ist ueber User-JWT-authentifizierte Appwrite-Execution auf `/history` live verifiziert
 - `scriptony-ai` lokal auf den neuen Routing-Pfad vorbereitet:
   - `/ai/*` ueber `scriptony-ai`
   - Legacy-Assistant-Routen ueber `assistant-legacy`
@@ -60,6 +81,7 @@
   - `npm --prefix functions run build:scriptony-ai` gruen
   - repraesentative Shared-Function-Builds fuer `scriptony-projects` und `scriptony-auth` gruen
 - Der breite Live-Rollout der neuen Function-Logik aus Ticket 09 ist noch nicht separat ausgerollt. Das ist aktuell kein Produktblocker, aber noch offen.
+- Ticket 05 ist jetzt vollstaendig live abgeschlossen.
 - Ticket 10 hat jetzt die kompletten Split-Commits plus Rest-Follow-up:
   - `4b9a588` `chore: add appwrite parity and deployment tooling`
   - darin stecken Docs, Verify-/Smoke-Tooling und Deploy-Helfer aus Gruppe A
@@ -89,10 +111,8 @@
 
 ## Naechster sinnvoller Schritt
 
-Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der validierte Stand ist inzwischen auch in `main`. Offene Arbeit ist aktuell kein Fehlerfixing mehr, sondern nur noch optionales Hardening:
+Ticket 05 ist jetzt komplett live gruen, das Release-Gate bleibt gruen, und der validierte Stand ist weiter in `main`. Offene Arbeit ist aktuell nur noch optionales Hardening:
 
-- Optionaler strenger Abschluss von Ticket 05:
-  - breiteren Live-Rollout der zentralen Auth-Schicht fuer weitere Feature-Functions als eigenen Release-Schnitt fahren
 - Optionaler strenger Abschluss von Ticket 09:
   - die neuen Log-/Error-Codes als breiteren Function-Rollout auch live ausrollen
 - [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) bleibt die verbindliche Freigabegrundlage.

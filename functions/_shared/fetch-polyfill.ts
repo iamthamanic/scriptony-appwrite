@@ -5,8 +5,40 @@
  * Location: functions/_shared/fetch-polyfill.ts
  */
 
-import { fetch as undiciFetch } from "undici";
+import { ReadableStream, WritableStream, TransformStream } from "node:stream/web";
 
-if (typeof globalThis.fetch !== "function") {
-  (globalThis as unknown as { fetch: typeof undiciFetch }).fetch = undiciFetch;
+type StreamGlobals = {
+  ReadableStream?: typeof ReadableStream;
+  WritableStream?: typeof WritableStream;
+  TransformStream?: typeof TransformStream;
+  fetch?: typeof import("undici").fetch;
+  Headers?: typeof import("undici").Headers;
+  Request?: typeof import("undici").Request;
+  Response?: typeof import("undici").Response;
+  FormData?: typeof import("undici").FormData;
+  File?: typeof import("undici").File;
+};
+
+const runtimeGlobals = globalThis as unknown as StreamGlobals;
+
+if (typeof runtimeGlobals.ReadableStream === "undefined") {
+  runtimeGlobals.ReadableStream = ReadableStream;
+}
+
+if (typeof runtimeGlobals.WritableStream === "undefined") {
+  runtimeGlobals.WritableStream = WritableStream;
+}
+
+if (typeof runtimeGlobals.TransformStream === "undefined") {
+  runtimeGlobals.TransformStream = TransformStream;
+}
+
+if (typeof runtimeGlobals.fetch !== "function") {
+  const undici = require("undici") as typeof import("undici");
+  runtimeGlobals.fetch = undici.fetch;
+  runtimeGlobals.Headers = runtimeGlobals.Headers || undici.Headers;
+  runtimeGlobals.Request = runtimeGlobals.Request || undici.Request;
+  runtimeGlobals.Response = runtimeGlobals.Response || undici.Response;
+  runtimeGlobals.FormData = runtimeGlobals.FormData || undici.FormData;
+  runtimeGlobals.File = runtimeGlobals.File || undici.File;
 }
