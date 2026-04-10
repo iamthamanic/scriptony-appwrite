@@ -1,8 +1,8 @@
 # Aktueller Stand
 
-- Datum: `2026-04-09`
-- Uhrzeit: `23:20 CEST`
-- Snapshot-Typ: `Release-Gate gruen, Integrationsbranch aktualisiert, nur Freigabe-/Prozessschritte offen`
+- Datum: `2026-04-10`
+- Uhrzeit: `07:59 CEST`
+- Snapshot-Typ: `Release-Gate gruen, Integrationsbranch und main gepusht, nur optionale Hardening-Schritte offen`
 
 ## Live-Zustand
 
@@ -10,9 +10,9 @@
 - `verify-appwrite-parity -- --require-auth` ist gruen.
 - `smoke-user-flows` ist gruen.
 - Das Release-Gate wurde mit echtem Demo-User-JWT am `2026-04-09 23:12 CEST` erfolgreich gegen live ausgefuehrt.
-- `workspace-main-ai-20260406` steht auf `796a362` (`docs: record green release gate execution`).
-- `integration-main-plus-ai-20260406` wurde danach per Fast-Forward auf `796a362` gezogen.
-- `main` bleibt bewusst unveraendert auf `b5089e2`.
+- `workspace-main-ai-20260406` steht auf `01aa96f` (`docs: clarify remaining release steps`).
+- `integration-main-plus-ai-20260406` steht auf `01aa96f` und ist auf `origin/integration-main-plus-ai-20260406` gepusht.
+- `main` steht auf `01aa96f` und ist auf `origin/main` gepusht.
 - Alle sechs kritischen Live-Flows sind aktuell gruen:
   - `/profile`
   - `/projects`
@@ -90,10 +90,8 @@
 
 ## Naechster sinnvoller Schritt
 
-Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der Integrationsbranch ist auf den verifizierten Stand gezogen. Offene Arbeit ist aktuell kein Fehlerfixing mehr, sondern nur noch:
+Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der validierte Stand ist inzwischen auch in `main`. Offene Arbeit ist aktuell kein Fehlerfixing mehr, sondern nur noch optionales Hardening:
 
-- `integration-main-plus-ai-20260406` zum Remote pushen oder explizit freigeben.
-- Danach separat entscheiden, ob dieser Stand nach `main` gemerged werden soll.
 - Optionaler strenger Abschluss von Ticket 05:
   - breiteren Live-Rollout der zentralen Auth-Schicht fuer weitere Feature-Functions als eigenen Release-Schnitt fahren
 - Optionaler strenger Abschluss von Ticket 09:
@@ -106,6 +104,7 @@ Der letzte Live-Blocker ist geloest, das Gate ist gruen, und der Integrationsbra
 - Kein offener `401`- oder `500`-Regression-Blocker in den sechs Referenz-Flows
 - Kein offener Workspace-Cleanup
 - Kein offener Ticket-10-Split
+- Kein offener Integrations- oder Main-Merge fuer den aktuellen Release-Schnitt
 
 ## Ticket-5-Richtung
 

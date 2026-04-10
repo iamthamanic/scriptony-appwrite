@@ -1,6 +1,6 @@
 # Integrations- und Stabilisierungstickets
 
-Stand: 2026-04-09 23:20 CEST
+Stand: 2026-04-10 07:59 CEST
 
 ## Aktueller Umsetzungsstand
 
@@ -9,19 +9,19 @@ Stand: 2026-04-09 23:20 CEST
 - Letzte erfolgreiche Gate-Ausfuehrung:
   `2026-04-09 23:12 CEST` mit echtem Demo-User-JWT
 - Letzter Workspace-Stand:
-  `workspace-main-ai-20260406` -> `796a362`
+  `workspace-main-ai-20260406` -> `01aa96f`
 - Letzter Ticket-10-Split-Commit:
   `70a14ed` (`fix: align residual routes and backend config helpers`)
 - Letzter Integrationsbranch-Stand:
-  `integration-main-plus-ai-20260406` -> `796a362`
+  `integration-main-plus-ai-20260406` -> `01aa96f`
 - Hauptbranch:
-  `main` bleibt unveraendert auf `b5089e2`
+  `main` -> `01aa96f`
 - Live-Verifikation:
   `verify-appwrite-parity -- --require-auth` gruen
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Naechster sinnvoller Wiedereinstieg:
-  Push oder Freigabe des validierten Integrationsbranches; `main` erst danach explizit entscheiden. Optional danach Ticket 05 und 09 als breiteren Live-Rollout streng abschliessen.
+  Kein weiterer Pflichtschritt fuer den aktuellen Release-Schnitt. Optional als naechstes Ticket 05 und 09 als breiteren Live-Rollout streng abschliessen.
 
 ### Ticket-Status
 
@@ -31,11 +31,11 @@ Stand: 2026-04-09 23:20 CEST
 | 02 | erledigt | Branch-/Commit-Landkarte vorhanden |
 | 03 | erledigt | Auth-/Transportvertrag definiert |
 | 04 | erledigt, live verifiziert | `/projects` und `/worlds` wieder stabil |
-| 05 | lokal umgesetzt, Live-Rollout teils offen | zentrale Auth-Library mit leichter und voller Stufe steht |
+| 05 | lokal umgesetzt, Live-Rollout optional offen | zentrale Auth-Library mit leichter und voller Stufe steht |
 | 06 | erledigt, live verifiziert | Deploy-/Env-Paritaet und Auth-Smokes vorhanden |
 | 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
-| 09 | lokal umgesetzt, Live-Rollout offen | Log-Ebenen und Error-Codes bereinigt |
+| 09 | lokal umgesetzt, Live-Rollout optional offen | Log-Ebenen und Error-Codes bereinigt |
 | 10 | erledigt | Gruppen A bis E plus Rest-Follow-up sind committed; Root-`deno.lock` ist uebernommen, lokale Analyseartefakte sind ignoriert |
 | 11 | erledigt | Release-Gate und Rollback-Pfad sind dokumentiert |
 
