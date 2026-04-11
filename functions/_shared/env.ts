@@ -26,8 +26,12 @@ export function getRequiredEnv(name: string): string {
   return value;
 }
 
-/** Server-to-server Appwrite endpoint. Prefer explicit API/public endpoints over flaky injected internal hosts. */
+/** Server-to-server Appwrite endpoint. Prefer a repo-controlled internal endpoint over injected/public hosts. */
 export function getAppwriteEndpoint(): string {
+  const customInternalEndpoint = getOptionalEnv("SCRIPTONY_APPWRITE_API_ENDPOINT");
+  if (customInternalEndpoint) {
+    return trimTrailingSlash(customInternalEndpoint);
+  }
   const functionApiEndpoint = getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT");
   if (functionApiEndpoint) {
     return trimTrailingSlash(functionApiEndpoint);

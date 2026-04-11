@@ -1,11 +1,11 @@
 # Integrations- und Stabilisierungstickets
 
-Stand: 2026-04-10 19:33 CEST
+Stand: 2026-04-11 08:24 CEST
 
 ## Aktueller Umsetzungsstand
 
 - Letzter verifizierter Live-Stand:
-  `scriptony-ai` Deployment `69d7c509b600942df0a5`
+  `scriptony-auth` `69d9e82352a8ac512d5b`, `scriptony-projects` `69d9e8787a1f5620f127`, `scriptony-worldbuilding` `69d9e88c68c7c3377214`, `scriptony-ai` `69d9e8b927c3ba8095e8`
 - Letzte erfolgreiche Gate-Ausfuehrung:
   `2026-04-09 23:12 CEST` mit echtem Demo-User-JWT
 - Letzter Workspace-Stand:
@@ -17,13 +17,13 @@ Stand: 2026-04-10 19:33 CEST
 - Hauptbranch:
   verifiziert, gepusht und mit dem dokumentierten Release-Schnitt synchron
 - Live-Verifikation:
-  `verify-appwrite-parity -- --require-auth` gruen
+  `verify-appwrite-parity` gruen fuer Deployment/Env/Health; authentifizierte Reads zusaetzlich ueber `smoke-user-flows` mit Demo-User-JWT verifiziert
 - Smoke-Matrix:
   `smoke-user-flows` gruen (`6/6`)
 - Feature-Rollout-Smoke:
   `smoke:feature-auth-rollout` gruen (`5/5`)
 - Naechster sinnvoller Wiedereinstieg:
-  Kein weiterer Pflichtschritt fuer den aktuellen Release-Schnitt. Als naechstes den breiteren Ticket-09-Live-Rollout oder anderes gezieltes Hardening angehen.
+  Kein akuter Produktblocker. Als naechstes optional Release-/Doku-Nachzug fuer den Ticket-09-Recovery-Schnitt oder anderes gezieltes Hardening angehen.
 
 ### Ticket-Status
 
@@ -37,7 +37,7 @@ Stand: 2026-04-10 19:33 CEST
 | 06 | erledigt, live verifiziert | Deploy-/Env-Paritaet und Auth-Smokes vorhanden |
 | 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
 | 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
-| 09 | lokal umgesetzt, Live-Rollout optional offen | Log-Ebenen und Error-Codes bereinigt |
+| 09 | erledigt, live verifiziert | Breiter Core-Rollout plus Runtime-Recovery ueber internen Appwrite-Override live verifiziert |
 | 10 | erledigt | Gruppen A bis E plus Rest-Follow-up sind committed; Root-`deno.lock` ist uebernommen, lokale Analyseartefakte sind ignoriert |
 | 11 | erledigt | Release-Gate und Rollback-Pfad sind dokumentiert |
 

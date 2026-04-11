@@ -1,14 +1,18 @@
 # Aktueller Stand
 
-- Datum: `2026-04-10`
-- Uhrzeit: `19:33 CEST`
-- Snapshot-Typ: `Release-Gate weiter gruen, Ticket 05 vollstaendig live verifiziert`
+- Datum: `2026-04-11`
+- Uhrzeit: `08:24 CEST`
+- Snapshot-Typ: `Ticket 09 live recovered und breit auf Core-Functions verifiziert`
 
 ## Live-Zustand
 
-- `scriptony-ai` ist live auf Deployment `69d7c509b600942df0a5`.
-- `verify-appwrite-parity -- --require-auth` ist gruen.
-- `smoke-user-flows` ist gruen.
+- Die vier Core-Functions sind live auf diesen Deployments:
+  - `scriptony-auth` `69d9e82352a8ac512d5b`
+  - `scriptony-projects` `69d9e8787a1f5620f127`
+  - `scriptony-worldbuilding` `69d9e88c68c7c3377214`
+  - `scriptony-ai` `69d9e8b927c3ba8095e8`
+- `verify-appwrite-parity` ist fuer Deployment/Env/Health gruen.
+- `smoke-user-flows` ist gruen (`6/6`) mit echtem Demo-User-JWT.
 - `smoke:feature-auth-rollout` ist gruen (`5/5`):
   - `image_settings`
   - `audio_voices`
@@ -42,6 +46,11 @@
   - API-Client loggt Gateway-Fehler klar nach Layer statt generisch
   - Shared-Function-Errors tragen jetzt Codes wie `AUTH_UNAUTHORIZED`, `UPSTREAM_FETCH_FAILED`, `UPSTREAM_REQUEST_TERMINATED`
   - Auth-Fallback-Logs wurden auf zusammengefasste Warnungen statt mehrfache Error-Spam-Logs umgestellt
+- Ticket 09 live recovered und breit ausgerollt:
+  - die vier Core-Functions wurden mit dem breiten Runtime-/Error-Code-Rollout erneut deployed
+  - fuer die self-hosted Appwrite-Runtime musste zusaetzlich ein expliziter interner Endpoint-Override wieder aktiviert werden
+  - `SCRIPTONY_APPWRITE_API_ENDPOINT=http://appwrite/v1` ist jetzt der wirksame serverseitige Runtime-Pfad fuer die Core-Functions
+  - danach wurden `verify-appwrite-parity` und `smoke-user-flows` erneut erfolgreich gegen live ausgefuehrt
 - Parity-Check aufgebaut:
   - [scripts/verify-appwrite-parity.mjs](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/scripts/verify-appwrite-parity.mjs)
 - Smoke-Matrix aufgebaut:
@@ -69,18 +78,20 @@
 
 - Die fruehere `401`-Basisregression ist behoben.
 - Der spaetere AI-Blocker war ein Runtime-Problem in `scriptony-ai`, nicht mehr im SPA-Gateway.
+- Der Ticket-09-Rollout hat zunaechst die Core-Functions regressiert, weil die Runtime fuer serverseitige Appwrite-Calls wieder auf den falschen oeffentlichen Host `http://appwrite.scriptony.raccoova.com/v1` gefallen ist.
+- Der verifizierte gruene Runtime-Pfad ist fuer diese self-hosted Umgebung `http://appwrite/v1`.
+- `APPWRITE_FUNCTION_API_ENDPOINT` allein wurde in dieser Runtime nicht verlaesslich gezogen; der funktionierende Recovery-Fix war deshalb ein expliziter Override ueber `SCRIPTONY_APPWRITE_API_ENDPOINT`.
 - Die Appwrite-Endpoint-Prioritaet musste fuer diese self-hosted Runtime angepasst werden:
-  - `APPWRITE_ENDPOINT` vor `APPWRITE_FUNCTION_API_ENDPOINT`
+  - `SCRIPTONY_APPWRITE_API_ENDPOINT` vor `APPWRITE_FUNCTION_API_ENDPOINT`
 - `scriptony-ai` lief zusaetzlich auf einem abweichenden lokalen Unterpaket mit `undici@6`, was fuer die Appwrite-Node-16-Runtime unpassend war.
 - Der entscheidende Live-Fix war danach:
   - `scriptony-ai` startet nicht mehr mit globalem Fetch-Polyfill fuer alle Routen
   - der Polyfill wird nur noch fuer echte Provider-/Model-Endpunkte bei Bedarf nachgeladen
 - Seit diesem Fix sind die AI-Read-Flows live wieder stabil.
-- Ticket 09 ist lokal verifiziert:
-  - `npm run typecheck` gruen
-  - `npm --prefix functions run build:scriptony-ai` gruen
-  - repraesentative Shared-Function-Builds fuer `scriptony-projects` und `scriptony-auth` gruen
-- Der breite Live-Rollout der neuen Function-Logik aus Ticket 09 ist noch nicht separat ausgerollt. Das ist aktuell kein Produktblocker, aber noch offen.
+- Ticket 09 ist jetzt live verifiziert:
+  - `verify-appwrite-parity` Deployment/Env/Health gruen
+  - `smoke-user-flows` gruen (`6/6`)
+  - `auth`, `projects`, `worldbuilding` und `ai` sind auf aktuellem Recovery-Deployment `live=true`
 - Ticket 05 ist jetzt vollstaendig live abgeschlossen.
 - Ticket 10 hat jetzt die kompletten Split-Commits plus Rest-Follow-up:
   - `4b9a588` `chore: add appwrite parity and deployment tooling`
@@ -111,10 +122,10 @@
 
 ## Naechster sinnvoller Schritt
 
-Ticket 05 ist jetzt komplett live gruen, das Release-Gate bleibt gruen, und der validierte Stand ist weiter in `main`. Offene Arbeit ist aktuell nur noch optionales Hardening:
+Ticket 05 und Ticket 09 sind jetzt live gruen. Der validierte Stand ist funktional wiederhergestellt. Offene Arbeit ist aktuell nur noch nachgelagerte Hygiene:
 
-- Optionaler strenger Abschluss von Ticket 09:
-  - die neuen Log-/Error-Codes als breiteren Function-Rollout auch live ausrollen
+- Doku-/Release-Nachzug fuer den Ticket-09-Recovery-Schnitt
+- optional frischer Gate-Lauf mit dokumentierter `--require-auth`-Ausfuehrung
 - [docs/RELEASE_GATE_ROLLBACK_2026-04-09.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/RELEASE_GATE_ROLLBACK_2026-04-09.md) bleibt die verbindliche Freigabegrundlage.
 
 ## Was aktuell nicht offen ist
