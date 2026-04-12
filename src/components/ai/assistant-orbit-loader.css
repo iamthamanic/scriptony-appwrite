@@ -1,0 +1,103 @@
+/**
+ * 3-ring orbit loader for assistant chat replies.
+ * Adapted from the user's reference and scoped to the chat bubble only.
+ * Location: src/components/ai/assistant-orbit-loader.css
+ */
+
+.assistant-orbit-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid hsl(var(--border));
+  background:
+    radial-gradient(circle at 20% 20%, rgba(110, 89, 165, 0.18), transparent 52%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(236, 239, 244, 0.92));
+  box-shadow: 0 10px 24px rgba(23, 26, 31, 0.08);
+}
+
+.dark .assistant-orbit-root {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(142, 117, 209, 0.24), transparent 52%),
+    linear-gradient(135deg, rgba(33, 38, 45, 0.96), rgba(24, 30, 37, 0.94));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.assistant-orbit-loader {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  perspective: 800px;
+}
+
+.assistant-orbit-ring {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: 9999px;
+}
+
+.assistant-orbit-ring-one {
+  animation: assistant-orbit-rotate-one 1s linear infinite;
+  border-bottom: 3px solid rgba(110, 89, 165, 0.95);
+}
+
+.assistant-orbit-ring-two {
+  animation: assistant-orbit-rotate-two 1s linear infinite;
+  border-right: 3px solid rgba(73, 173, 140, 0.92);
+}
+
+.assistant-orbit-ring-three {
+  animation: assistant-orbit-rotate-three 1s linear infinite;
+  border-top: 3px solid rgba(244, 113, 143, 0.92);
+}
+
+.dark .assistant-orbit-ring-one {
+  border-bottom-color: rgba(189, 163, 255, 0.96);
+}
+
+.dark .assistant-orbit-ring-two {
+  border-right-color: rgba(118, 231, 193, 0.96);
+}
+
+.dark .assistant-orbit-ring-three {
+  border-top-color: rgba(255, 148, 174, 0.96);
+}
+
+.assistant-orbit-label {
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+@keyframes assistant-orbit-rotate-one {
+  0% {
+    transform: rotateX(35deg) rotateY(-45deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(35deg) rotateY(-45deg) rotateZ(360deg);
+  }
+}
+
+@keyframes assistant-orbit-rotate-two {
+  0% {
+    transform: rotateX(50deg) rotateY(10deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(50deg) rotateY(10deg) rotateZ(360deg);
+  }
+}
+
+@keyframes assistant-orbit-rotate-three {
+  0% {
+    transform: rotateX(35deg) rotateY(55deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(35deg) rotateY(55deg) rotateZ(360deg);
+  }
+}

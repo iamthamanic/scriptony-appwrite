@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner@2.0.3";
 
 import { apiDelete, apiGet, apiPost, apiPut, unwrapApiResult } from "../lib/api-client";
+import { notifyAiSettingsConsumers } from "../lib/ai-settings-updated";
 import { hasFunctionConfigured } from "../lib/env";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Badge } from "./ui/badge";
@@ -31,19 +32,27 @@ import { Slider } from "./ui/slider";
 import { Switch } from "./ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { FeatureModelPicker, type DiscoveredModelInfo } from "./ai/FeatureModelPicker";
+import { ProviderSelectItem } from "./ai/ProviderSelectItem";
+import { ProviderBadges } from "./ai/ProviderBadges";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { filterProvidersForFeature, isOllamaFamilyProviderId } from "../lib/ai-provider-allowlist";
+import {
+  useProviderSelection,
+  type FeatureKey,
+  type FeatureConfig,
+} from "../hooks/useProviderSelection";
+import {
+  CANONICAL_OLLAMA_PROVIDER_ID,
+  filterProvidersForFeature,
+  inferOllamaModeFromProviderId,
+  isOllamaFamilyProviderId,
+  normalizeProviderIdForUi,
+  providerIdForOllamaMode,
+  type OllamaUiMode,
+} from "../lib/ai-provider-allowlist";
 
 type CapabilityKey = "text" | "embeddings" | "image" | "audio_stt" | "audio_tts" | "video";
 
-type FeatureKey =
-  | "assistant_chat"
-  | "assistant_embeddings"
-  | "creative_gym"
-  | "image_generation"
-  | "audio_stt"
-  | "audio_tts"
-  | "video_generation";
+// FeatureKey wird aus useProviderSelection importiert
 
 interface ProviderCapabilities {
   text?: boolean;
@@ -62,13 +71,17 @@ interface AIProvider {
   capabilities: ProviderCapabilities;
 }
 
-interface FeatureConfig {
-  provider: string;
-  model: string;
-  voice?: string;
-}
+// FeatureConfig wird aus useProviderSelection importiert
 
 interface AIServiceSettingsResponse {
+  user?: {
+    ollama_base_url?: string | null;
+    settings_json_parsed?: {
+      ollama?: {
+        mode?: OllamaUiMode;
+      };
+    };
+  };
   /** Keys: `feature::provider` */
   feature_provider_keys?: Record<string, boolean>;
   /** Legacy: provider id -> has key (any feature) */
@@ -203,6 +216,85 @@ function featureProviderCacheKey(featureKey: FeatureKey, providerId: string): st
   return `${featureKey}:${providerId}`;
 }
 
+const DEFAULT_OLLAMA_LOCAL_URL = "http://127.0.0.1:11434";
+const DEFAULT_OLLAMA_CLOUD_URL = "https://ollama.com";
+const CONFIGURED_KEY_SENTINEL = "configured";
+const MASKED_API_KEY_VALUE = "••••••••••••";
+
+// Badge Styles
+const ACTIVE_BADGE_STYLE = {
+  backgroundColor: "rgba(34, 197, 94, 0.18)",
+  borderColor: "rgba(74, 222, 128, 0.45)",
+  color: "#bbf7d0",
+} as const;
+
+const KEY_SAVED_BADGE_STYLE = {
+  backgroundColor: "rgba(168, 85, 247, 0.18)",
+  borderColor: "rgba(196, 181, 253, 0.45)",
+  color: "#ddd6fe",
+} as const;
+
+function buildDefaultOllamaModes(mode: OllamaUiMode = "local"): Record<FeatureKey, OllamaUiMode> {
+  return {
+    assistant_chat: mode,
+    assistant_embeddings: mode,
+    creative_gym: mode,
+    image_generation: mode,
+    audio_stt: mode,
+    audio_tts: mode,
+    video_generation: mode,
+  };
+}
+
+function normalizeFeatureConfigsForUi(
+  features: Record<FeatureKey, FeatureConfig>,
+  defaultMode: OllamaUiMode
+): {
+  features: Record<FeatureKey, FeatureConfig>;
+  ollamaModes: Record<FeatureKey, OllamaUiMode>;
+} {
+  const normalized = {} as Record<FeatureKey, FeatureConfig>;
+  const ollamaModes = buildDefaultOllamaModes(defaultMode);
+
+  for (const [featureKey, config] of Object.entries(features) as Array<[FeatureKey, FeatureConfig]>) {
+    if (isOllamaFamilyProviderId(config.provider)) {
+      normalized[featureKey] = {
+        ...config,
+        provider: CANONICAL_OLLAMA_PROVIDER_ID,
+      };
+      ollamaModes[featureKey] = inferOllamaModeFromProviderId(config.provider);
+      continue;
+    }
+
+    normalized[featureKey] = {
+      ...config,
+      provider: normalizeProviderIdForUi(config.provider),
+    };
+  }
+
+  return { features: normalized, ollamaModes };
+}
+
+function providerDisplayName(providerById: Record<string, AIProvider>, providerId: string): string {
+  if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID) return "Ollama";
+  return providerById[providerId]?.name || providerId;
+}
+
+function hasSavedKeyForFeatureProvider(
+  featureKey: FeatureKey,
+  providerId: string,
+  featureProviderKeys: Record<string, boolean>
+): boolean {
+  if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID) {
+    return Boolean(
+      featureProviderKeys[featureProviderCacheKey(featureKey, providerIdForOllamaMode("cloud"))] ||
+        featureProviderKeys[featureProviderCacheKey(featureKey, CANONICAL_OLLAMA_PROVIDER_ID)]
+    );
+  }
+
+  return Boolean(featureProviderKeys[featureProviderCacheKey(featureKey, providerId)]);
+}
+
 export function AIIntegrationsSection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -211,10 +303,17 @@ export function AIIntegrationsSection() {
   const [providers, setProviders] = useState<AIProvider[]>([]);
   const [featureDrafts, setFeatureDrafts] = useState<Record<FeatureKey, FeatureConfig> | null>(null);
   const [savedFeatures, setSavedFeatures] = useState<Record<FeatureKey, FeatureConfig> | null>(null);
+  const [ollamaModesByFeature, setOllamaModesByFeature] = useState<Record<FeatureKey, OllamaUiMode>>(
+    buildDefaultOllamaModes()
+  );
+  const [savedOllamaModesByFeature, setSavedOllamaModesByFeature] = useState<Record<FeatureKey, OllamaUiMode>>(
+    buildDefaultOllamaModes()
+  );
   const [modelsByFeatureProvider, setModelsByFeatureProvider] = useState<Record<string, DiscoveredModelInfo[]>>(
     {}
   );
   const [discoveringFeatureKey, setDiscoveringFeatureKey] = useState<FeatureKey | null>(null);
+  const [savedOllamaLocalBaseUrl, setSavedOllamaLocalBaseUrl] = useState("");
   const [ollamaBaseUrls, setOllamaBaseUrls] = useState<Record<string, string>>({
     ollama: "http://127.0.0.1:11434",
     ollama_local: "http://127.0.0.1:11434",
@@ -225,6 +324,7 @@ export function AIIntegrationsSection() {
   const [providerKeyDrafts, setProviderKeyDrafts] = useState<Record<string, string>>({});
   const [savingKeySlot, setSavingKeySlot] = useState<string | null>(null);
   const [featureProviderKeyIndex, setFeatureProviderKeyIndex] = useState<Record<string, boolean>>({});
+  const [lastDiscoveryTime, setLastDiscoveryTime] = useState<Record<string, string>>({});
   const [savingFeatureKey, setSavingFeatureKey] = useState<FeatureKey | null>(null);
   const [advancedAiError, setAdvancedAiError] = useState<string | null>(null);
   const [savingAssistantPrefs, setSavingAssistantPrefs] = useState(false);
@@ -275,27 +375,41 @@ export function AIIntegrationsSection() {
     featureKey: FeatureKey,
     providerId: string
   ): Promise<DiscoveredModelInfo[]> => {
-    const cacheKey = featureProviderCacheKey(featureKey, providerId);
+    const effectiveProviderId = getEffectiveProviderId(featureKey, providerId);
+    const cacheKey = featureProviderCacheKey(featureKey, effectiveProviderId);
     setDiscoveringFeatureKey(featureKey);
     try {
       const body: Record<string, string> = { feature: featureKey };
-      if (isOllamaFamilyProviderId(providerId)) {
-        body.base_url =
-          ollamaBaseUrls[providerId]?.trim() ||
-          (providerId === "ollama_cloud" ? "https://ollama.com" : "http://127.0.0.1:11434");
+      if (isOllamaFamilyProviderId(effectiveProviderId)) {
+        body.base_url = getOllamaBaseUrlForMode(getOllamaModeForFeature(featureKey));
       }
-      const slot = featureProviderCacheKey(featureKey, providerId);
+      const slot = featureProviderCacheKey(featureKey, effectiveProviderId);
       const draftKey = providerKeyDrafts[slot];
       if (draftKey && draftKey !== "configured" && draftKey.trim()) {
         body.api_key = draftKey.trim();
       }
 
       const payload = unwrapApiResult(
-        await apiPost<{ models?: unknown; error?: string }>(`/providers/${providerId}/models/discover`, body)
+        await apiPost<{ models?: unknown; error?: string }>(
+          `/providers/${effectiveProviderId}/models/discover`,
+          body
+        )
       );
 
       const models = parseDiscoveredModels(payload?.models);
       setModelsByFeatureProvider((prev) => ({ ...prev, [cacheKey]: models }));
+      
+      // Speichere Zeitstempel der letzten Prüfung
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const timestamp = `${hours}:${minutes}:${seconds} - ${day}.${month}.${year}`;
+      
+      setLastDiscoveryTime((prev) => ({ ...prev, [cacheKey]: timestamp }));
       return models;
     } catch (err) {
       const message =
@@ -307,7 +421,13 @@ export function AIIntegrationsSection() {
     }
   };
 
-  const loadData = async (showRefreshState = false) => {
+  const loadData = async (
+    showRefreshState = false,
+    options?: {
+      draftOverrides?: Partial<Record<FeatureKey, FeatureConfig>>;
+      ollamaModeOverrides?: Partial<Record<FeatureKey, OllamaUiMode>>;
+    }
+  ) => {
     if (!scriptonyAiAvailable) {
       setError(
         "scriptony-ai ist nicht konfiguriert. Setze VITE_BACKEND_FUNCTION_DOMAIN_MAP (scriptony-ai) oder VITE_APPWRITE_FUNCTIONS_BASE_URL."
@@ -347,22 +467,64 @@ export function AIIntegrationsSection() {
         const settingsPayload = unwrapApiResult(
           await apiGet<AIServiceSettingsResponse>("/settings")
         );
+        const persistedOllamaLocalBaseUrl = settingsPayload.user?.ollama_base_url?.trim() || "";
+        const defaultOllamaMode =
+          settingsPayload.user?.settings_json_parsed?.ollama?.mode === "cloud" ? "cloud" : "local";
+        const normalizedSettings = normalizeFeatureConfigsForUi(
+          settingsPayload.features,
+          defaultOllamaMode
+        );
+        const normalizedOllamaModes = {
+          ...normalizedSettings.ollamaModes,
+          ...(options?.ollamaModeOverrides ?? {}),
+        };
         setProviders(settingsPayload.providers || []);
-        setSavedFeatures(settingsPayload.features);
-        setFeatureDrafts(settingsPayload.features);
+        setSavedFeatures(normalizedSettings.features);
+        setFeatureDrafts({
+          ...normalizedSettings.features,
+          ...(options?.draftOverrides ?? {}),
+        });
+        setSavedOllamaModesByFeature(normalizedSettings.ollamaModes);
+        setOllamaModesByFeature(normalizedOllamaModes);
+        setSavedOllamaLocalBaseUrl(persistedOllamaLocalBaseUrl);
+        if (persistedOllamaLocalBaseUrl) {
+          setOllamaBaseUrls((prev) => ({
+            ...prev,
+            ollama: persistedOllamaLocalBaseUrl,
+            ollama_local: persistedOllamaLocalBaseUrl,
+          }));
+        }
 
         const fp = settingsPayload.feature_provider_keys || {};
         setFeatureProviderKeyIndex(fp);
         const keyedSlots = Object.entries(fp).reduce<Record<string, string>>(
           (acc, [slot, hasKey]) => {
             if (hasKey) {
-              acc[slot] = "configured";
+              acc[slot] = CONFIGURED_KEY_SENTINEL;
             }
             return acc;
           },
           {}
         );
-        setProviderKeyDrafts((prev) => ({ ...keyedSlots, ...prev }));
+        setProviderKeyDrafts((prev) => {
+          const next = { ...prev };
+          const keyedSlotNames = new Set(Object.keys(keyedSlots));
+
+          for (const [slot, value] of Object.entries(prev)) {
+            if (!keyedSlotNames.has(slot) && value === CONFIGURED_KEY_SENTINEL) {
+              delete next[slot];
+            }
+          }
+
+          for (const slot of keyedSlotNames) {
+            const existing = prev[slot];
+            if (!existing || existing === "" || existing === CONFIGURED_KEY_SENTINEL) {
+              next[slot] = CONFIGURED_KEY_SENTINEL;
+            }
+          }
+
+          return next;
+        });
         setAdvancedAiError(null);
       } catch (advancedError) {
         const message =
@@ -398,16 +560,76 @@ export function AIIntegrationsSection() {
     [providers]
   );
 
+  const getOllamaModeForFeature = (featureKey: FeatureKey): OllamaUiMode =>
+    ollamaModesByFeature[featureKey] ?? "local";
+
+  const getEffectiveProviderId = (featureKey: FeatureKey, providerId: string): string => {
+    if (normalizeProviderIdForUi(providerId) !== CANONICAL_OLLAMA_PROVIDER_ID) return providerId;
+    return providerIdForOllamaMode(getOllamaModeForFeature(featureKey));
+  };
+
+  const getOllamaBaseUrlForMode = (mode: OllamaUiMode): string => {
+    if (mode === "cloud") return DEFAULT_OLLAMA_CLOUD_URL;
+    return (
+      ollamaBaseUrls.ollama_local?.trim() ||
+      ollamaBaseUrls.ollama?.trim() ||
+      DEFAULT_OLLAMA_LOCAL_URL
+    );
+  };
+
+  const isProviderActiveForFeature = (featureKey: FeatureKey, providerId: string): boolean => {
+    if (!featureDrafts || !savedFeatures) return false;
+    // Provider ist "active" wenn er im SAVED Features ist (also gespeichert wurde)
+    const savedProvider = savedFeatures[featureKey]?.provider;
+    const isSelected = normalizeProviderIdForUi(savedProvider || "") ===
+      normalizeProviderIdForUi(providerId);
+    if (!isSelected) return false;
+    
+    // Prüfe ob Key vorhanden oder nicht nötig
+    const hasKey = hasSavedKeyBadgeForFeature(featureKey, providerId);
+    const requiresKey = providerById[providerId]?.requiresApiKey !== false;
+    const isOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+    const ollamaMode = getOllamaModeForFeature(featureKey);
+    const canBeActive = hasKey || (!requiresKey && !isOllama) || (isOllama && ollamaMode === "local");
+    
+    return canBeActive;
+  };
+
+  const hasSavedKeyBadgeForFeature = (featureKey: FeatureKey, providerId: string): boolean => {
+    return hasSavedKeyForFeatureProvider(
+      featureKey,
+      providerId,
+      featureProviderKeyIndex
+    );
+  };
+
+  const buildFeatureSnapshot = (
+    featureKey: FeatureKey,
+    config: FeatureConfig | undefined,
+    ollamaModes: Record<FeatureKey, OllamaUiMode>
+  ): string =>
+    JSON.stringify({
+      provider: config?.provider || "",
+      model: config?.model || "",
+      voice: config?.voice || "",
+      ollamaMode:
+        normalizeProviderIdForUi(config?.provider || "") === CANONICAL_OLLAMA_PROVIDER_ID
+          ? ollamaModes[featureKey] ?? "local"
+          : "",
+    });
+
   const handleFeatureProviderChange = (feature: FeatureKey, providerId: string) => {
+    // Nur Provider auswählen, aber NICHT aktivieren (kein Key-Check nötig)
     setFeatureDrafts((prev) => {
       if (!prev) return prev;
       const current = prev[feature];
-      const sameProvider = current.provider === providerId;
+      const sameProvider =
+        normalizeProviderIdForUi(current.provider) === normalizeProviderIdForUi(providerId);
       return {
         ...prev,
         [feature]: {
           ...current,
-          provider: providerId,
+          provider: normalizeProviderIdForUi(providerId),
           model: sameProvider ? current.model : "",
         },
       };
@@ -417,19 +639,40 @@ export function AIIntegrationsSection() {
   const handleFeatureSave = async (feature: FeatureKey) => {
     if (!featureDrafts) return;
     const draft = featureDrafts[feature];
+    const effectiveProviderId = getEffectiveProviderId(feature, draft.provider);
     setSavingFeatureKey(feature);
 
     try {
+      if (normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID) {
+        const ollamaMode = getOllamaModeForFeature(feature);
+        unwrapApiResult(
+          await apiPut("/settings", {
+            settings_json: {
+              ollama: { mode: ollamaMode },
+            },
+            ...(ollamaMode === "local"
+              ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
+              : {}),
+          })
+        );
+      }
+
       unwrapApiResult(
         await apiPut(`/features/${feature}`, {
-          provider: draft.provider,
+          provider: effectiveProviderId,
           model: draft.model,
           ...(draft.voice ? { voice: draft.voice } : {}),
         })
       );
 
       setSavedFeatures((prev) => (prev ? { ...prev, [feature]: draft } : prev));
+      setSavedOllamaModesByFeature((prev) => ({
+        ...prev,
+        [feature]: getOllamaModeForFeature(feature),
+      }));
       toast.success(`${FEATURE_META[feature].label} gespeichert.`);
+      // Notify other components (e.g., ScriptonyAssistant) that settings changed
+      notifyAiSettingsConsumers();
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : "Feature-Konfiguration konnte nicht gespeichert werden.";
@@ -440,39 +683,83 @@ export function AIIntegrationsSection() {
   };
 
   const handleStoreFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
-    const slot = featureProviderCacheKey(featureKey, providerId);
-    const apiKey = providerKeyDrafts[slot]?.trim();
-    if (!isOllamaFamilyProviderId(providerId) && !apiKey) {
+    const effectiveProviderId = getEffectiveProviderId(featureKey, providerId);
+    const slot = featureProviderCacheKey(featureKey, effectiveProviderId);
+    const apiKeyDraft = providerKeyDrafts[slot];
+    const apiKey =
+      apiKeyDraft && apiKeyDraft !== CONFIGURED_KEY_SENTINEL ? apiKeyDraft.trim() : "";
+    const isCanonicalOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+    const ollamaMode = getOllamaModeForFeature(featureKey);
+    const hasStoredKey = Boolean(featureProviderKeyIndex[slot]);
+    if ((!isCanonicalOllama || ollamaMode === "cloud") && !apiKey && !hasStoredKey) {
       toast.error("Bitte zuerst einen API Key eingeben.");
       return;
     }
 
     setSavingKeySlot(slot);
     try {
+      const requestBody: Record<string, string> = {};
+      if (apiKey) requestBody.api_key = apiKey;
+      requestBody.feature = featureKey;
+      if (isOllamaFamilyProviderId(effectiveProviderId)) {
+        requestBody.base_url = getOllamaBaseUrlForMode(ollamaMode);
+      }
+
       const validationPayload = unwrapApiResult(
-        await apiPost<{ valid?: boolean; error?: string }>(`/providers/${providerId}/validate`, {
-          api_key: apiKey || "",
-        })
+        await apiPost<{ valid?: boolean; error?: string }>(
+          `/providers/${effectiveProviderId}/validate`,
+          requestBody
+        )
       );
       if (validationPayload?.valid === false) {
         throw new Error(
-          validationPayload?.error || `${providerById[providerId]?.name || providerId} konnte nicht validiert werden.`
+          validationPayload?.error ||
+            `${providerDisplayName(providerById, providerId)} konnte nicht validiert werden.`
         );
       }
 
-      if (!isOllamaFamilyProviderId(providerId)) {
+      if (isCanonicalOllama) {
         unwrapApiResult(
-          await apiPost("/api-keys", { feature: featureKey, provider: providerId, api_key: apiKey })
+          await apiPut("/settings", {
+            settings_json: {
+              ollama: { mode: ollamaMode },
+            },
+            ...(ollamaMode === "local"
+              ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
+              : {}),
+          })
+        );
+      }
+
+      if ((!isCanonicalOllama || ollamaMode === "cloud") && apiKey) {
+        unwrapApiResult(
+          await apiPost("/api-keys", {
+            feature: featureKey,
+            provider: effectiveProviderId,
+            api_key: apiKey,
+          })
         );
       }
 
       toast.success(
-        isOllamaFamilyProviderId(providerId)
-          ? `${providerById[providerId]?.name || providerId}: Verbindung geprüft.`
-          : `${providerById[providerId]?.name || providerId}: Zugang gespeichert.`
+        isCanonicalOllama
+          ? `Ollama (${ollamaMode === "cloud" ? "Cloud" : "Lokal"}): Verbindung geprueft.`
+          : `${providerDisplayName(providerById, providerId)}: Zugang gespeichert.`
       );
-      setProviderKeyDrafts((prev) => ({ ...prev, [slot]: "configured" }));
-      await loadData(true);
+      setProviderKeyDrafts((prev) => ({
+        ...prev,
+        [slot]: ollamaMode === "cloud" || !isCanonicalOllama ? CONFIGURED_KEY_SENTINEL : "",
+      }));
+      await loadData(true, {
+        draftOverrides: featureDrafts
+          ? {
+              [featureKey]: featureDrafts[featureKey],
+            }
+          : undefined,
+        ollamaModeOverrides: {
+          [featureKey]: ollamaMode,
+        },
+      });
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : "API Key konnte nicht gespeichert werden.";
@@ -483,18 +770,30 @@ export function AIIntegrationsSection() {
   };
 
   const handleDeleteFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
-    const slot = featureProviderCacheKey(featureKey, providerId);
+    const effectiveProviderId = getEffectiveProviderId(featureKey, providerId);
+    const slot = featureProviderCacheKey(featureKey, effectiveProviderId);
     setSavingKeySlot(slot);
     try {
       unwrapApiResult(
         await apiDelete(
-          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(providerId)}`
+          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(effectiveProviderId)}`
         )
       );
 
-      toast.success(`${providerById[providerId]?.name || providerId} API Key fuer dieses Feature entfernt.`);
+      toast.success(
+        `${providerDisplayName(providerById, providerId)} API Key fuer dieses Feature entfernt.`
+      );
       setProviderKeyDrafts((prev) => ({ ...prev, [slot]: "" }));
-      await loadData(true);
+      await loadData(true, {
+        draftOverrides: featureDrafts
+          ? {
+              [featureKey]: featureDrafts[featureKey],
+            }
+          : undefined,
+        ollamaModeOverrides: {
+          [featureKey]: getOllamaModeForFeature(featureKey),
+        },
+      });
     } catch (deleteError) {
       const message =
         deleteError instanceof Error ? deleteError.message : "API Key konnte nicht geloescht werden.";
@@ -592,19 +891,27 @@ export function AIIntegrationsSection() {
                       const meta = FEATURE_META[featureKey];
                       const draft = featureDrafts[featureKey];
                       const saved = savedFeatures?.[featureKey];
-                      const modelCacheKey = featureProviderCacheKey(featureKey, draft.provider);
+                      const ollamaMode = getOllamaModeForFeature(featureKey);
+                      const effectiveProviderId = getEffectiveProviderId(featureKey, draft.provider);
+                      const modelCacheKey = featureProviderCacheKey(featureKey, effectiveProviderId);
                       const models = modelsByFeatureProvider[modelCacheKey] || [];
                       const supportedProviders = filterProvidersForFeature(
                         featureKey,
                         providers.filter((provider) => provider.capabilities[meta.capability])
                       );
-                      const isDirty = JSON.stringify(draft) !== JSON.stringify(saved);
+                      const isDirty =
+                        buildFeatureSnapshot(featureKey, draft, ollamaModesByFeature) !==
+                        buildFeatureSnapshot(featureKey, saved, savedOllamaModesByFeature);
                       const Icon = meta.icon;
-                      const fpSlot = featureProviderCacheKey(featureKey, draft.provider);
-                      const hasKeyForSlot =
-                        Boolean(featureProviderKeyIndex[fpSlot]) ||
-                        providerById[draft.provider]?.requiresApiKey === false;
-                      const requiresKeyForProvider = providerById[draft.provider]?.requiresApiKey !== false;
+                      const fpSlot = featureProviderCacheKey(featureKey, effectiveProviderId);
+                      const selectedProviderLabel = providerDisplayName(providerById, draft.provider);
+                      const selectedProviderActive = isProviderActiveForFeature(featureKey, draft.provider);
+                      const selectedProviderKeySaved = hasSavedKeyBadgeForFeature(featureKey, draft.provider);
+                      const isOllamaSelected =
+                        normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID;
+                      const requiresKeyForProvider = isOllamaSelected
+                        ? ollamaMode === "cloud"
+                        : providerById[effectiveProviderId]?.requiresApiKey !== false;
 
                       return (
                         <div key={featureKey} className="rounded-lg border bg-muted/20 p-4 space-y-4">
@@ -618,20 +925,50 @@ export function AIIntegrationsSection() {
                                 <p className="text-xs text-muted-foreground">{meta.description}</p>
                               </div>
                             </div>
-                            <Badge variant={hasKeyForSlot ? "default" : "outline"}>{draft.provider}</Badge>
                           </div>
 
                           <div className="space-y-3">
                             <div className="max-w-md space-y-2">
                               <Label>Provider</Label>
-                              <Select value={draft.provider} onValueChange={(value) => handleFeatureProviderChange(featureKey, value)}>
+                              <Select
+                                value={draft.provider}
+                                onValueChange={(value) => handleFeatureProviderChange(featureKey, value)}
+                              >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Provider waehlen" />
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="truncate">{selectedProviderLabel}</span>
+                                    {selectedProviderKeySaved && (
+                                      <Badge variant="outline" style={KEY_SAVED_BADGE_STYLE}>
+                                        Key Saved
+                                      </Badge>
+                                    )}
+                                    {selectedProviderActive && (
+                                      <Badge variant="outline" style={ACTIVE_BADGE_STYLE}>
+                                        Active
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </SelectTrigger>
                                 <SelectContent>
                                   {supportedProviders.map((provider) => (
-                                    <SelectItem key={provider.id} value={provider.id}>
-                                      {provider.name}
+                                    <SelectItem
+                                      key={provider.id}
+                                      value={provider.id}
+                                      textValue={providerDisplayName(providerById, provider.id)}
+                                    >
+                                      <div className="ml-auto flex items-center gap-2">
+                                        {hasSavedKeyBadgeForFeature(featureKey, provider.id) ? (
+                                          <Badge variant="outline" style={KEY_SAVED_BADGE_STYLE}>
+                                            Key Saved
+                                          </Badge>
+                                        ) : null}
+                                        {isProviderActiveForFeature(featureKey, provider.id) ? (
+                                          <Badge variant="outline" style={ACTIVE_BADGE_STYLE}>
+                                            Active
+                                          </Badge>
+                                        ) : null}
+                                        {/* Checkbox entfernt - Aktivierung nur über "Provider speichern" mit Key-Prüfung */}
+                                      </div>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -639,24 +976,64 @@ export function AIIntegrationsSection() {
                             </div>
                             <div className="space-y-2">
                               <Label>Modell</Label>
-                              {isOllamaFamilyProviderId(draft.provider) && (
-                                <div className="space-y-1">
-                                  <Label className="text-xs text-muted-foreground">Ollama Base URL</Label>
-                                  <Input
-                                    value={ollamaBaseUrls[draft.provider] ?? ""}
-                                    onChange={(e) =>
-                                      setOllamaBaseUrls((prev) => ({
-                                        ...prev,
-                                        [draft.provider]: e.target.value,
-                                      }))
-                                    }
-                                    placeholder={
-                                      draft.provider === "ollama_cloud"
-                                        ? "https://ollama.com"
-                                        : "http://127.0.0.1:11434"
-                                    }
-                                    className="max-w-md font-mono text-xs"
-                                  />
+                              {isOllamaSelected && (
+                                <div className="space-y-3 rounded-md border border-dashed bg-background/50 p-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <Label className="text-xs">Ollama Modus</Label>
+                                      <p className="text-xs text-muted-foreground">
+                                        Schaltet zwischen lokaler Instanz und Ollama Cloud um.
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <span
+                                        className={
+                                          ollamaMode === "local"
+                                            ? "font-medium text-foreground"
+                                            : "text-muted-foreground"
+                                        }
+                                      >
+                                        Lokal
+                                      </span>
+                                      <Switch
+                                        checked={ollamaMode === "cloud"}
+                                        onCheckedChange={(checked) =>
+                                          setOllamaModesByFeature((prev) => ({
+                                            ...prev,
+                                            [featureKey]: checked ? "cloud" : "local",
+                                          }))
+                                        }
+                                      />
+                                      <span
+                                        className={
+                                          ollamaMode === "cloud"
+                                            ? "font-medium text-foreground"
+                                            : "text-muted-foreground"
+                                        }
+                                      >
+                                        Cloud
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {ollamaMode === "local" && (
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">
+                                        Ollama Base URL
+                                      </Label>
+                                      <Input
+                                        value={getOllamaBaseUrlForMode("local")}
+                                        onChange={(e) =>
+                                          setOllamaBaseUrls((prev) => ({
+                                            ...prev,
+                                            ollama: e.target.value,
+                                            ollama_local: e.target.value,
+                                          }))
+                                        }
+                                        placeholder={DEFAULT_OLLAMA_LOCAL_URL}
+                                        className="max-w-md font-mono text-xs"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               <FeatureModelPicker
@@ -680,25 +1057,39 @@ export function AIIntegrationsSection() {
                                 }}
                                 loading={discoveringFeatureKey === featureKey}
                                 showDiscoverButton={false}
+                                lastDiscoveryTime={lastDiscoveryTime[modelCacheKey]}
                               />
                             </div>
                           </div>
 
-                          {requiresKeyForProvider && (
+                          {(requiresKeyForProvider || isOllamaSelected) && (
                             <div className="space-y-2 rounded-md border border-dashed bg-background/50 p-3">
-                              <Label className="text-xs">API Key fuer dieses Feature ({draft.provider})</Label>
-                              {!isOllamaFamilyProviderId(draft.provider) && (
+                              <Label className="text-xs">
+                                {isOllamaSelected
+                                  ? ollamaMode === "cloud"
+                                    ? "Ollama Cloud API Key fuer dieses Feature"
+                                    : "Ollama Lokal Verbindung fuer dieses Feature"
+                                  : `API Key fuer dieses Feature (${selectedProviderLabel})`}
+                              </Label>
+                              {(!isOllamaSelected || ollamaMode === "cloud") && (
                                 <>
                                   <div className="relative flex items-center gap-1">
                                     <Input
                                       type={showKeyForSlot[fpSlot] ? "text" : "password"}
-                                      placeholder={`${providerById[draft.provider]?.name || draft.provider} Key`}
+                                      placeholder={`${selectedProviderLabel} Key`}
                                       className="pr-10 font-mono text-xs"
                                       value={
-                                        providerKeyDrafts[fpSlot] === "configured"
-                                          ? ""
+                                        providerKeyDrafts[fpSlot] === CONFIGURED_KEY_SENTINEL
+                                          ? MASKED_API_KEY_VALUE
                                           : providerKeyDrafts[fpSlot] || ""
                                       }
+                                      onFocus={() => {
+                                        if (providerKeyDrafts[fpSlot] !== CONFIGURED_KEY_SENTINEL) return;
+                                        setProviderKeyDrafts((prev) => ({
+                                          ...prev,
+                                          [fpSlot]: "",
+                                        }));
+                                      }}
                                       onChange={(e) =>
                                         setProviderKeyDrafts((prev) => ({
                                           ...prev,
@@ -726,6 +1117,11 @@ export function AIIntegrationsSection() {
                                       )}
                                     </Button>
                                   </div>
+                                  {featureProviderKeyIndex[fpSlot] && (
+                                    <div className="text-xs font-medium text-emerald-300">
+                                      API Key hinterlegt
+                                    </div>
+                                  )}
                                   <div className="flex flex-wrap items-center gap-2">
                                     <Button
                                       type="button"
@@ -774,7 +1170,7 @@ export function AIIntegrationsSection() {
                                       onClick={() =>
                                         setProviderKeyDrafts((prev) => ({
                                           ...prev,
-                                          [fpSlot]: featureProviderKeyIndex[fpSlot] ? "configured" : "",
+                                          [fpSlot]: featureProviderKeyIndex[fpSlot] ? CONFIGURED_KEY_SENTINEL : "",
                                         }))
                                       }
                                     >
@@ -783,7 +1179,7 @@ export function AIIntegrationsSection() {
                                   </div>
                                 </>
                               )}
-                              {isOllamaFamilyProviderId(draft.provider) && (
+                              {isOllamaSelected && ollamaMode === "local" && (
                                 <div className="flex flex-wrap items-center gap-2">
                                   <Button
                                     type="button"
@@ -926,10 +1322,8 @@ export function AIIntegrationsSection() {
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-muted-foreground">
-                              Capability: <strong>{meta.capability}</strong>
-                            </p>
+                          {/* Provider speichern Button */}
+                          <div className="mt-2">
                             <Button
                               type="button"
                               size="sm"
@@ -942,6 +1336,27 @@ export function AIIntegrationsSection() {
                                 "Provider speichern"
                               )}
                             </Button>
+                          </div>
+
+                          {/* Badges unter dem Button */}
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <Badge variant="outline">{selectedProviderLabel}</Badge>
+                            {selectedProviderKeySaved && (
+                              <Badge variant="outline" style={KEY_SAVED_BADGE_STYLE}>
+                                Key Saved
+                              </Badge>
+                            )}
+                            {selectedProviderActive && (
+                              <Badge variant="outline" style={ACTIVE_BADGE_STYLE}>
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-muted-foreground">
+                              Capability: <strong>{meta.capability}</strong>
+                            </p>
                           </div>
                         </div>
                       );

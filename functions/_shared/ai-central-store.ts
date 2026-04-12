@@ -452,6 +452,16 @@ export async function listMaskedApiKeys(
     });
 }
 
+export async function getStoredApiKey(
+  userId: string,
+  feature: CanonicalAiFeature,
+  provider: CanonicalProvider
+): Promise<string | null> {
+  const rows = await listApiKeyRows(userId);
+  const row = findApiKeyRow(rows, provider, feature);
+  return row ? normalizeApiKey(row.api_key) || null : null;
+}
+
 export async function updateApiKey(
   userId: string,
   feature: CanonicalAiFeature | "",

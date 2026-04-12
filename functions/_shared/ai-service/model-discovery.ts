@@ -5,6 +5,9 @@
 
 import type { ModelInfo } from "./config/models";
 import { getModelInfo, getModelsForProviderFeature } from "./config/models";
+import { OLLAMA_CLOUD_ORIGIN } from "../ai-feature-profile";
+import { fetchOllamaTags } from "../ollama-tags-request";
+import { fetchOllamaV1Models } from "../ollama-v1-models-request";
 
 /** Feature keys stored in feature_config (must match DEFAULT_FEATURE_CONFIG). */
 export const DISCOVERABLE_FEATURE_KEYS = [
@@ -207,15 +210,47 @@ async function fetchOpenAIModels(apiKey: string, baseUrl = "https://api.openai.c
   }));
 }
 
-async function fetchOllamaTagNames(baseUrl: string): Promise<string[]> {
-  const url = `${baseUrl.replace(/\/$/, "")}/api/tags`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    const t = await response.text();
-    throw new Error(`Ollama tags: ${response.status} ${t}`);
+async function fetchOllamaModelNames(
+  baseUrl: string,
+  opts: { apiKey?: string; cloud?: boolean } = {}
+): Promise<string[]> {
+  const headers: Record<string, string> = {};
+  if (opts.apiKey?.trim()) {
+    headers.Authorization = `Bearer ${opts.apiKey.trim()}`;
   }
-  const data = await response.json();
-  return (data.models ?? []).map((m: { name: string }) => m.name);
+
+  const modelNames = new Set<string>();
+  const errors: string[] = [];
+
+  if (opts.cloud) {
+    const v1 = await fetchOllamaV1Models(baseUrl, headers);
+    if (v1.ok) {
+      for (const row of v1.payload.data ?? []) {
+        const id = String(row.id || "").trim();
+        if (id) modelNames.add(id);
+      }
+    } else {
+      errors.push(
+        v1.status > 0 ? `Ollama Cloud /v1/models: ${v1.status} ${v1.error}` : `Ollama Cloud /v1/models: ${v1.error}`
+      );
+    }
+  }
+
+  const tags = await fetchOllamaTags(baseUrl, headers);
+  if (tags.ok) {
+    for (const row of tags.payload.models ?? []) {
+      const name = String(row.name || "").trim();
+      if (name) modelNames.add(name);
+    }
+  } else {
+    errors.push(tags.status > 0 ? `Ollama tags: ${tags.status} ${tags.error}` : `Ollama tags: ${tags.error}`);
+  }
+
+  if (modelNames.size === 0) {
+    throw new Error(errors[0] || "Ollama model discovery failed");
+  }
+
+  return Array.from(modelNames);
 }
 
 async function fetchOpenRouterModels(apiKey: string): Promise<OpenRouterRow[]> {
@@ -345,10 +380,13 @@ export async function discoverModels(
     case "ollama_cloud": {
       const defaultBase =
         providerId === "ollama_cloud"
-          ? "https://ollama.com"
+          ? OLLAMA_CLOUD_ORIGIN
           : "http://127.0.0.1:11434";
       const base = opts.baseUrl?.trim() || defaultBase;
-      const names = await fetchOllamaTagNames(base);
+      const names = await fetchOllamaModelNames(base, {
+        apiKey: opts.apiKey,
+        cloud: providerId === "ollama_cloud",
+      });
       raw = names.map((name) => ({
         id: name,
         name,

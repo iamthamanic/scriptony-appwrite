@@ -6,6 +6,8 @@
 
 import {
   getFeatureConfigMap,
+  getFeatureConfig,
+  getStoredApiKey,
   getLegacyAssistantSettings,
   getLegacyImageSettings,
   getUserSettings,
@@ -16,6 +18,7 @@ import {
   updateLegacyImageSettings,
   type CanonicalAiFeature,
 } from "../_shared/ai-central-store";
+import { getFeatureRuntimeView } from "../_shared/ai-feature-runtime-view";
 import { requireUserBootstrap } from "../_shared/auth";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import {
@@ -31,12 +34,15 @@ import {
 } from "../_shared/http";
 import { getModelsForProvider } from "../_shared/ai-service/config";
 import { discoverModels } from "../_shared/ai-service/model-discovery";
+import { OLLAMA_CLOUD_ORIGIN } from "../_shared/ai-feature-profile";
 import {
   getProvider,
   isOllamaFamilyProvider,
   PROVIDER_CAPABILITIES,
   PROVIDER_DISPLAY_NAMES,
 } from "../_shared/ai-service/providers";
+import { fetchOllamaTags } from "../_shared/ollama-tags-request";
+import { fetchOllamaV1Models } from "../_shared/ollama-v1-models-request";
 import { dispatchAssistantLegacyRoute } from "./assistant-legacy";
 
 async function ensureFetchPolyfillLoaded(): Promise<void> {
@@ -85,6 +91,15 @@ async function buildSettingsPayload(userId: string): Promise<Record<string, unkn
     return acc;
   }, {});
 
+  // Build legacy API key fields for backward compatibility
+  const legacyApiKeys: Record<string, string | null> = {};
+  for (const entry of api_keys) {
+    if (entry.feature === "global") continue;
+    // Map provider to legacy field name
+    const legacyField = `${entry.provider}_api_key`;
+    legacyApiKeys[legacyField] = entry.key_preview || "configured";
+  }
+
   return {
     user,
     features,
@@ -93,6 +108,8 @@ async function buildSettingsPayload(userId: string): Promise<Record<string, unkn
     feature_provider_keys,
     assistant,
     image,
+    // Include legacy API key fields for backward compatibility
+    ...legacyApiKeys,
     providers: Object.entries(PROVIDER_CAPABILITIES).map(([name, caps]) => ({
       id: name,
       name: PROVIDER_DISPLAY_NAMES[name] || name,
@@ -168,8 +185,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendBadRequest(res, "feature is required");
         return;
       }
+      const apiKey =
+        body.api_key?.trim() ||
+        (await getStoredApiKey(userId, body.feature as CanonicalAiFeature, provider as any)) ||
+        undefined;
       const models = await discoverModels(provider, body.feature, {
-        apiKey: body.api_key?.trim() || undefined,
+        apiKey,
         baseUrl: body.base_url?.trim() || undefined,
       });
       sendJson(res, 200, { provider, feature: body.feature, models });
@@ -184,8 +205,57 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
       await ensureFetchPolyfillLoaded();
       const provider = providerValidateMatch[1];
-      const body = await readJsonBody<{ api_key?: string; base_url?: string }>(req);
-      const apiKey = body.api_key?.trim() || "";
+      const body = await readJsonBody<{ api_key?: string; base_url?: string; feature?: CanonicalAiFeature }>(req);
+      const apiKey =
+        body.api_key?.trim() ||
+        (body.feature ? (await getStoredApiKey(userId, body.feature, provider as any)) || "" : "");
+
+      if (provider === "ollama_cloud") {
+        const base = body.base_url?.trim() || OLLAMA_CLOUD_ORIGIN;
+        const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+        const v1 = await fetchOllamaV1Models(base, headers);
+        const tags = await fetchOllamaTags(base, headers);
+        const valid = v1.ok || tags.ok;
+        sendJson(res, 200, {
+          provider,
+          valid,
+          message: valid ? "Ollama Cloud connection is valid" : "Ollama Cloud validation failed",
+          ...(valid
+            ? {}
+            : {
+                error:
+                  v1.status > 0 || tags.status > 0
+                    ? [
+                        v1.ok ? null : `v1/models: ${v1.status || 0} ${v1.error}`,
+                        tags.ok ? null : `api/tags: ${tags.status || 0} ${tags.error}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" | ")
+                    : v1.error || tags.error || "Validation failed",
+              }),
+        });
+        return;
+      }
+
+      if (provider === "ollama" || provider === "ollama_local") {
+        const base = body.base_url?.trim() || "http://127.0.0.1:11434";
+        const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+        const tags = await fetchOllamaTags(base, headers);
+        sendJson(res, 200, {
+          provider,
+          valid: tags.ok,
+          message: tags.ok ? "Ollama connection is valid" : "Ollama validation failed",
+          ...(tags.ok
+            ? {}
+            : {
+                error:
+                  tags.status > 0
+                    ? `api/tags: ${tags.status} ${tags.error}`
+                    : tags.error || "Validation failed",
+              }),
+        });
+        return;
+      }
 
       try {
         const instance = getProvider(provider, {
@@ -272,30 +342,52 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
+    const featureRuntimeMatch = pathname.match(/^\/features\/([^/]+)\/runtime$/);
+    if (featureRuntimeMatch) {
+      if (req.method !== "GET") {
+        sendMethodNotAllowed(res, ["GET"]);
+        return;
+      }
+      await ensureFetchPolyfillLoaded();
+      const feature = featureRuntimeMatch[1] as CanonicalAiFeature;
+      const includeModels = getQueryParam(req, "include_models") !== "false";
+      sendJson(res, 200, await getFeatureRuntimeView(userId, feature, { includeModels }));
+      return;
+    }
+
     const featureMatch = pathname.match(/^\/features\/([^/]+)$/);
     if (featureMatch) {
-      if (req.method !== "PUT") {
-        sendMethodNotAllowed(res, ["PUT"]);
-        return;
-      }
       const feature = featureMatch[1] as CanonicalAiFeature;
-      const body = await readJsonBody<{ provider?: string; model?: string; voice?: string }>(req);
-      if (!body.provider || !body.model) {
-        sendBadRequest(res, "provider and model are required");
+      
+      if (req.method === "GET") {
+        // Get single feature config
+        const config = await getFeatureConfig(userId, feature);
+        sendJson(res, 200, { feature, config });
         return;
       }
-      await updateFeatureConfig(userId, feature, {
-        provider: body.provider as any,
-        model: body.model,
-        ...(body.voice ? { voice: body.voice } : {}),
-      });
-      if (feature === "assistant_chat") {
-        await updateLegacyAssistantSettings(userId, {
-          active_provider: body.provider,
-          active_model: body.model,
+      
+      if (req.method === "PUT") {
+        const body = await readJsonBody<{ provider?: string; model?: string; voice?: string }>(req);
+        if (!body.provider || !body.model) {
+          sendBadRequest(res, "provider and model are required");
+          return;
+        }
+        await updateFeatureConfig(userId, feature, {
+          provider: body.provider as any,
+          model: body.model,
+          ...(body.voice ? { voice: body.voice } : {}),
         });
+        if (feature === "assistant_chat") {
+          await updateLegacyAssistantSettings(userId, {
+            active_provider: body.provider,
+            active_model: body.model,
+          });
+        }
+        sendJson(res, 200, { success: true, feature, config: await getFeatureConfigMap(userId) });
+        return;
       }
-      sendJson(res, 200, { success: true, feature, config: await getFeatureConfigMap(userId) });
+      
+      sendMethodNotAllowed(res, ["GET", "PUT"]);
       return;
     }
 

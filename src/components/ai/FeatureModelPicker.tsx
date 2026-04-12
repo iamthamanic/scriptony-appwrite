@@ -37,6 +37,8 @@ interface FeatureModelPickerProps {
   disabled?: boolean;
   /** When false, hide „Modelle prüfen“ (e.g. render it next to the API key field). Default: true. */
   showDiscoverButton?: boolean;
+  /** Zeitstempel der letzten Model-Prüfung (Format: HH:MM:SS - DD.MM.YYYY) */
+  lastDiscoveryTime?: string;
 }
 
 function formatFeatures(features: string[] | undefined): string {
@@ -78,7 +80,7 @@ function FeatureModelPickerList({
   );
 
   return (
-    <CommandList className="max-h-[min(50vh,320px)]">
+    <CommandList className="h-[200px] overflow-y-scroll" style={{ scrollbarWidth: 'thin' }}>
       <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">Kein Treffer.</CommandEmpty>
       <div
         className="grid w-full min-w-0 gap-x-3 border-b bg-muted/40 px-2 py-1.5 sm:gap-x-4"
@@ -99,8 +101,9 @@ function FeatureModelPickerList({
           key={m.id}
           className={cn(
             "w-full min-w-0 cursor-pointer rounded-none border-b px-2 py-0",
-            "data-[selected=true]:!bg-violet-500/15 data-[selected=true]:!text-foreground",
-            "dark:data-[selected=true]:!bg-violet-400/15"
+            "focus:bg-muted focus:text-foreground hover:bg-muted hover:text-foreground",
+            "data-[selected=true]:!bg-muted data-[selected=true]:!text-foreground",
+            "dark:data-[selected=true]:!bg-muted/80"
           )}
           value={`${m.name} ${m.id} ${(m.features ?? []).join(" ")}`}
           onSelect={() => {
@@ -148,11 +151,22 @@ export function FeatureModelPicker({
   loading,
   disabled,
   showDiscoverButton = true,
+  lastDiscoveryTime,
 }: FeatureModelPickerProps) {
   const [open, setOpen] = useState(false);
   const selected = models.find((m) => m.id === value);
+  const fallbackSelected = value.trim()
+    ? {
+        id: value.trim(),
+        name: value.trim(),
+        provider: "",
+        features: [],
+        contextWindow: undefined,
+      }
+    : null;
   /** Only show a model name when this id exists in the current list (any provider / feature). */
-  const hasResolvedModel = selected != null;
+  const resolvedSelected = selected ?? fallbackSelected;
+  const hasResolvedModel = resolvedSelected != null;
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -172,14 +186,18 @@ export function FeatureModelPicker({
                 !hasResolvedModel && "text-muted-foreground"
               )}
             >
-              {hasResolvedModel ? selected.name : AI_NO_MODEL_SELECTED_LABEL}
+              {hasResolvedModel
+              ? resolvedSelected.name
+              : models.length > 0
+                ? `${models.length} Modelle verfügbar - geprüft: ${lastDiscoveryTime || ""}`
+                : AI_NO_MODEL_SELECTED_LABEL}
             </span>
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="p-0 !max-w-none"
+          className="p-0 !max-w-none max-h-[220px] overflow-y-hidden"
           style={{
             width:
               "min(var(--radix-popover-trigger-width, 100%), min(calc(100vw - 2rem), 40rem))",

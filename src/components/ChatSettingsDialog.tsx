@@ -5,7 +5,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Sparkles } from "lucide-react";
-import { AISettingsForm } from "./ai/AISettingsForm";
+import { AIIntegrationsSection } from "./AIIntegrationsSection";
 
 interface ChatSettingsDialogProps {
   open: boolean;
@@ -13,10 +13,10 @@ interface ChatSettingsDialogProps {
   onUpdate?: () => void;
 }
 
-export function ChatSettingsDialog({ open, onOpenChange, onUpdate }: ChatSettingsDialogProps) {
+export function ChatSettingsDialog({ open, onOpenChange }: ChatSettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] w-[95vw] max-w-2xl flex-col md:w-auto">
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-5xl flex-col md:w-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
@@ -25,16 +25,11 @@ export function ChatSettingsDialog({ open, onOpenChange, onUpdate }: ChatSetting
           <DialogDescription>
             Dieselben Einstellungen wie{" "}
             <span className="font-medium text-foreground">Einstellungen → Integrationen</span> (KI &amp; LLM):
-            Provider, API-Keys, Modellauswahl und System-Prompt.
+            Provider, API-Keys, Modellauswahl sowie die Assistant-Parameter.
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <AISettingsForm
-            embedded={false}
-            active={open}
-            onUpdate={onUpdate}
-            onRequestClose={() => onOpenChange(false)}
-          />
+          <AIIntegrationsSection />
         </div>
       </DialogContent>
     </Dialog>

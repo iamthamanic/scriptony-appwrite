@@ -1,0 +1,20 @@
+{
+  "databaseId": "scriptony",
+  "name": "stageDocuments",
+  "attributes": [
+    { "key": "shotId", "type": "string", "required": true },
+    { "key": "userId", "type": "string", "required": true },
+    { "key": "kind", "type": "string", "required": true, "size": 50 },
+    { "key": "payload", "type": "string", "required": false, "size": 50000 },
+    { "key": "viewState", "type": "string", "required": false, "size": 5000 },
+    { "key": "selectedTakeId", "type": "string", "required": false },
+    { "key": "currentFrame", "type": "integer", "required": false },
+    { "key": "glbPreviewFileId", "type": "string", "required": false },
+    { "key": "lastSyncedAt", "type": "string", "required": false },
+    { "key": "updatedAt", "type": "string", "required": true }
+  ],
+  "indexes": [
+    { "key": "shotId_idx", "type": "key", "attributes": ["shotId"] },
+    { "key": "kind_idx", "type": "key", "attributes": ["kind"] }
+  ]
+}

@@ -26,6 +26,113 @@ import type {
   EmbeddingOptions,
   EmbeddingResponse,
 } from "./base";
+import * as http from "node:http";
+import * as https from "node:https";
+import { OLLAMA_CLOUD_ORIGIN } from "../../ai-feature-profile";
+
+function trimSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+const REQUEST_TIMEOUT_MS = 25_000;
+const USER_AGENT = "ScriptonyAppwrite/1.0";
+
+type OllamaCloudChatPayload = {
+  id?: string;
+  object?: string;
+  created?: number;
+  model?: string;
+  choices?: Array<{
+    index?: number;
+    message?: {
+      role?: string;
+      content?: string;
+      reasoning?: string;
+    };
+    finish_reason?: string;
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+};
+
+type OllamaCloudChatResult =
+  | { ok: true; status: number; payload: OllamaCloudChatPayload }
+  | { ok: false; status: number; error: string };
+
+function requestOllamaCloudChat(
+  baseUrl: string,
+  headers: Record<string, string>,
+  body: Record<string, unknown>
+): Promise<OllamaCloudChatResult> {
+  const urlStr = `${trimSlash(baseUrl)}/v1/chat/completions`;
+  let u: URL;
+  try {
+    u = new URL(urlStr);
+  } catch {
+    return Promise.resolve({ ok: false, status: 0, error: `Invalid URL: ${urlStr}` });
+  }
+
+  const lib = u.protocol === "https:" ? https : http;
+  const rawBody = JSON.stringify(body);
+  const mergedHeaders: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "Content-Length": String(Buffer.byteLength(rawBody, "utf8")),
+    "User-Agent": USER_AGENT,
+    ...headers,
+  };
+
+  return new Promise((resolve) => {
+    const req = lib.request(
+      {
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "https:" ? 443 : 80),
+        path: `${u.pathname}${u.search}`,
+        method: "POST",
+        headers: mergedHeaders,
+        timeout: REQUEST_TIMEOUT_MS,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          const raw = Buffer.concat(chunks).toString("utf8");
+          let payload: OllamaCloudChatPayload = {};
+          if (raw.trim()) {
+            try {
+              payload = JSON.parse(raw) as OllamaCloudChatPayload;
+            } catch {
+              payload = {};
+            }
+          }
+          if (status >= 200 && status < 300) {
+            resolve({ ok: true, status, payload });
+          } else {
+            resolve({
+              ok: false,
+              status,
+              error: raw.slice(0, 400) || `HTTP ${status}`,
+            });
+          }
+        });
+      }
+    );
+
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ ok: false, status: 0, error: `Provider timeout after ${Math.round(REQUEST_TIMEOUT_MS / 1000)}s` });
+    });
+    req.on("error", (err: Error) => {
+      resolve({ ok: false, status: 0, error: err.message || "Network error" });
+    });
+    req.write(rawBody);
+    req.end();
+  });
+}
 
 export class OllamaProvider implements AIProvider {
   readonly name = "ollama";
@@ -47,6 +154,10 @@ export class OllamaProvider implements AIProvider {
     this.apiKey = apiKey;
   }
 
+  private isCloudMode(): boolean {
+    return trimSlash(this.baseUrl) === OLLAMA_CLOUD_ORIGIN;
+  }
+
   private headers(): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -61,8 +172,37 @@ export class OllamaProvider implements AIProvider {
     const systemMessages = options.systemPrompt
       ? [{ role: "system" as const, content: options.systemPrompt }]
       : [];
-    
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
+
+    if (this.isCloudMode()) {
+      const result = await requestOllamaCloudChat(trimSlash(this.baseUrl), this.headers(), {
+        model: options.model || "llama3.1",
+        messages: [...systemMessages, ...messages],
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 2000,
+        top_p: options.topP,
+        stream: false,
+      });
+
+      if (!result.ok) {
+        throw new Error(`Ollama cloud chat error: ${result.status} - ${result.error}`);
+      }
+      const data = result.payload;
+      const assistantMessage = data.choices?.[0]?.message;
+      const content = assistantMessage?.content?.trim() || assistantMessage?.reasoning?.trim() || "";
+
+      return {
+        content,
+        usage: {
+          promptTokens: data.usage?.prompt_tokens ?? 0,
+          completionTokens: data.usage?.completion_tokens ?? 0,
+          totalTokens: data.usage?.total_tokens ?? 0,
+        },
+        model: data.model ?? options.model,
+        finishReason: data.choices?.[0]?.finish_reason ?? "stop",
+      };
+    }
+
+    const response = await fetch(`${trimSlash(this.baseUrl)}/api/chat`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({
@@ -76,14 +216,14 @@ export class OllamaProvider implements AIProvider {
         },
       }),
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Ollama chat error: ${response.status} - ${error}`);
     }
-    
+
     const data = await response.json();
-    
+
     return {
       content: data.message.content,
       usage: {

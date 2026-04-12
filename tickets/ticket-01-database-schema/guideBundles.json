@@ -1,0 +1,14 @@
+{
+  "databaseId": "scriptony",
+  "name": "guideBundles",
+  "attributes": [
+    { "key": "shotId", "type": "string", "required": true },
+    { "key": "userId", "type": "string", "required": true },
+    { "key": "revision", "type": "integer", "required": true },
+    { "key": "files", "type": "string", "required": true, "size": 5000 },
+    { "key": "metadata", "type": "string", "required": true, "size": 5000 }
+  ],
+  "indexes": [
+    { "key": "shotId_idx", "type": "key", "attributes": ["shotId"] }
+  ]
+}

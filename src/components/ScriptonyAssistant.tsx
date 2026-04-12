@@ -20,13 +20,8 @@ import svgPaths from "../imports/svg-s01rzl305m";
 import systemPromptSvg from "../imports/svg-moj859ikvp";
 import BxEdit from "../imports/BxEdit";
 import { ChatSettingsDialog } from "./ChatSettingsDialog";
-import { AssistantParticleLoader } from "./ai/AssistantParticleLoader";
-import { resolveModelDisplayName } from "../lib/llm-provider-registry";
+import { AssistantOrbitLoader } from "./ai/AssistantOrbitLoader";
 import { normalizeAssistantSystemPrompt } from "../../functions/_shared/default-assistant-system-prompt";
-import {
-  getEffectiveProviderForFeature,
-  type AiFeatureRoutingParsed,
-} from "../lib/ai-feature-routing";
 import { SCRIPTONY_AI_SETTINGS_UPDATED_EVENT } from "../lib/ai-settings-updated";
 
 interface Message {
@@ -180,11 +175,21 @@ interface ModelInfo {
   context_window: number;
 }
 
-type AssistantSettingsJson = {
-  feature_profiles?: Partial<Record<"assistant" | "gym" | "stage", { provider?: string; model?: string }>>;
-  provider_profiles?: Partial<Record<string, { model?: string }>>;
-  ollama?: { mode?: "local" | "cloud" };
-};
+interface AssistantRuntimeResponse {
+  feature: "assistant_chat";
+  provider: string;
+  provider_display: string;
+  model: string;
+  selected_model?: ModelInfo | null;
+  models_with_context?: ModelInfo[];
+  source?: "remote" | "registry";
+  configured?: boolean;
+  can_send?: boolean;
+  requires_api_key?: boolean;
+  has_credentials?: boolean;
+  ollama_mode?: "local" | "cloud";
+  error?: string;
+}
 
 /** Exact id match, then case-insensitive (API vs. settings often differ only by casing). */
 function findModelByIdLoose(list: ModelInfo[], id: string): ModelInfo | undefined {
@@ -196,25 +201,6 @@ function findModelByIdLoose(list: ModelInfo[], id: string): ModelInfo | undefine
   return list.find((m) => m.id.toLowerCase() === lower);
 }
 
-/**
- * If settings store a model id the API list omits (even ignoring case), prepend one row for labels/context in the assistant header.
- * Label is a normal display name — no „(gespeichert)“ suffix in the UI.
- */
-function mergeSavedModelIfMissing(
-  models: ModelInfo[],
-  preferredId: string,
-  provider: string,
-): ModelInfo[] {
-  let list = models.filter((m) => m.id);
-  const pref = preferredId.trim();
-  if (!pref || findModelByIdLoose(list, pref)) return list;
-  const baseLabel = resolveModelDisplayName(provider, pref);
-  const name = baseLabel;
-  const context_window =
-    provider === "deepseek" ? 64000 : list.length > 0 ? list[0].context_window : 128000;
-  return [{ id: pref, name, context_window }, ...list];
-}
-
 export function ScriptonyAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -222,8 +208,9 @@ export function ScriptonyAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [model, setModel] = useState("");
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
-  const [activeProvider, setActiveProvider] = useState<string>("");
-  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  const [activeProviderDisplay, setActiveProviderDisplay] = useState<string>("");
+  const [assistantReady, setAssistantReady] = useState<boolean>(false);
+  const [assistantStatusError, setAssistantStatusError] = useState<string | null>(null);
   
   // Token counter hook (context window comes from selected model via loadModels / sync effect)
   const tokenCounter = useTokenCounter({
@@ -375,239 +362,91 @@ export function ScriptonyAssistant() {
     void loadRAGDataLazy();
   }, [isRAGDatabaseOpen]);
 
-  // ✅ PERFORMANCE FIX: Cache settings to avoid repeated API calls
-  const [settingsCache, setSettingsCache] = useState<any>(null);
-  const [settingsCacheTime, setSettingsCacheTime] = useState<number>(0);
+  // ✅ PERFORMANCE FIX: Cache assistant runtime to avoid repeated model/runtime fetches
+  const [runtimeCache, setRuntimeCache] = useState<AssistantRuntimeResponse | null>(null);
+  const [runtimeCacheTime, setRuntimeCacheTime] = useState<number>(0);
   const CACHE_DURATION = 60000; // 1 minute cache
 
-  /** Bumps on each loadModels call so overlapping async runs cannot clobber UI (context flicker). */
-  const loadModelsGenRef = useRef(0);
+  /** Bumps on each runtime load so overlapping async runs cannot clobber UI. */
+  const loadRuntimeGenRef = useRef(0);
 
-  // Load models, chat history and current conversation when assistant opens
-  // Load available models function (can be called from outside)
-  const loadModels = async (forceRefresh = false) => {
-    const gen = ++loadModelsGenRef.current;
-    const isStale = () => gen !== loadModelsGenRef.current;
-
-    try {
-      // ✅ Use cached settings if available and not expired
-      const now = Date.now();
-      const cacheValid = settingsCache && !forceRefresh && (now - settingsCacheTime < CACHE_DURATION);
-      
-      let settingsData;
-      if (cacheValid) {
-        console.log('✅ Using cached settings (avoiding API call)');
-        settingsData = settingsCache;
-      } else {
-        console.log('🔄 Loading fresh settings...');
-        const settingsResult = await apiGet('/ai/settings');
-        if ('error' in settingsResult && settingsResult.error && import.meta.env.DEV) {
-          console.warn('[ScriptonyAssistant] loadModels: /ai/settings error', settingsResult.error);
+  const applyAssistantRuntime = (runtime: AssistantRuntimeResponse) => {
+    const normalizedModels = Array.isArray(runtime.models_with_context)
+      ? runtime.models_with_context
+          .filter((m) => m && typeof m.id === "string" && m.id.trim())
+          .map((m) => ({
+            id: String(m.id ?? ""),
+            name: String(m.name ?? m.id ?? ""),
+            context_window: Number(m.context_window ?? 200000),
+          }))
+      : [];
+    const selectedModel = runtime.selected_model && runtime.selected_model.id
+      ? {
+          id: String(runtime.selected_model.id),
+          name: String(runtime.selected_model.name ?? runtime.selected_model.id),
+          context_window: Number(runtime.selected_model.context_window ?? 200000),
         }
-        if (settingsResult.data?.settings) {
-          settingsData = settingsResult.data.settings;
-          setSettingsCache(settingsData);
-          setSettingsCacheTime(now);
-        }
-      }
+      : null;
+    const mergedModels =
+      selectedModel && !findModelByIdLoose(normalizedModels, selectedModel.id)
+        ? [selectedModel, ...normalizedModels]
+        : normalizedModels;
+    const nextModel = runtime.model?.trim() || selectedModel?.id || "";
+    const preferred = findModelByIdLoose(mergedModels, nextModel) || selectedModel || mergedModels[0];
 
-      if (isStale()) return;
+    setAvailableModels(mergedModels);
+    setActiveProviderDisplay(runtime.provider_display || runtime.provider || "");
+    setAssistantReady(Boolean(runtime.can_send));
+    setAssistantStatusError(runtime.error || null);
+    setModel(nextModel);
 
-      let apiKeyExists = false;
-      let assistantProvider = "";
-      let preferredAssistantModel = "";
-      let assistantOllamaMode: "local" | "cloud" | undefined;
-
-      const ollamaConfigured = (row: Record<string, unknown>): boolean => {
-        const key = typeof row.ollama_api_key === "string" ? row.ollama_api_key.trim() : "";
-        const base = typeof row.ollama_base_url === "string" ? row.ollama_base_url.trim() : "";
-        let json: { ollama?: { mode?: string } } = {};
-        const parsed = row.settings_json_parsed;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          json = parsed as typeof json;
-        } else {
-          try {
-            const raw = row.settings_json;
-            if (typeof raw === "string") json = JSON.parse(raw) as typeof json;
-            else if (raw && typeof raw === "object") json = raw as typeof json;
-          } catch {
-            /* ignore */
-          }
-        }
-        const m = json?.ollama?.mode;
-        if (m === "cloud") return Boolean(key);
-        if (m === "local") return Boolean(base);
-        if (base) return true;
-        if (key) return true;
-        return false;
-      };
-
-      const parseAssistantSettingsJson = (row: Record<string, unknown>): AssistantSettingsJson => {
-        const parsed = row.settings_json_parsed;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed as AssistantSettingsJson;
-        }
-        try {
-          const raw = row.settings_json;
-          if (typeof raw === "string") return JSON.parse(raw) as AssistantSettingsJson;
-          if (raw && typeof raw === "object") return raw as AssistantSettingsJson;
-        } catch {
-          /* ignore */
-        }
-        return {};
-      };
-
-      if (settingsData) {
-        const row = settingsData as Record<string, unknown>;
-        const active = typeof row.active_provider === "string" ? row.active_provider : "";
-        const activeModel = typeof row.active_model === "string" ? row.active_model : "";
-        const json = parseAssistantSettingsJson(row);
-        const feature = json.feature_profiles?.assistant;
-        const provider =
-          getEffectiveProviderForFeature(
-            json as AiFeatureRoutingParsed,
-            "assistant",
-            active || undefined
-          ) || active;
-        const profileModel = provider ? json.provider_profiles?.[provider]?.model : undefined;
-        const resolvedModel = feature?.model || profileModel || activeModel;
-        const om = json.ollama?.mode;
-
-        assistantProvider = provider;
-        preferredAssistantModel = resolvedModel;
-        assistantOllamaMode = om === "cloud" || om === "local" ? om : undefined;
-
-        if (provider === "openai" && settingsData.openai_api_key) {
-          apiKeyExists = true;
-        } else if (provider === "anthropic" && settingsData.anthropic_api_key) {
-          apiKeyExists = true;
-        } else if (provider === "google" && settingsData.google_api_key) {
-          apiKeyExists = true;
-        } else if (provider === "openrouter" && settingsData.openrouter_api_key) {
-          apiKeyExists = true;
-        } else if (provider === "deepseek" && settingsData.deepseek_api_key) {
-          apiKeyExists = true;
-        } else if (provider === "ollama") {
-          apiKeyExists = ollamaConfigured(settingsData as Record<string, unknown>);
-        }
-      }
-      
-      setHasApiKey(apiKeyExists);
-      
-      // Only load models if API key exists
-      if (!apiKeyExists) {
-        console.warn('No API key configured for active provider');
-        if (isStale()) return;
-        setAvailableModels([]);
-        setActiveProvider('');
-        setModel('');
-        return;
-      }
-
-      const modelsRoute =
-        assistantProvider === "ollama" && assistantOllamaMode
-          ? `/ai/models?provider=${encodeURIComponent(assistantProvider)}&ollama_mode=${encodeURIComponent(assistantOllamaMode)}`
-          : assistantProvider
-            ? `/ai/models?provider=${encodeURIComponent(assistantProvider)}`
-            : "/ai/models";
-
-      const result = await apiGet(modelsRoute);
-      if (isStale()) return;
-
-      const providerFromResponse =
-        result.data && typeof (result.data as any).provider === 'string'
-          ? (result.data as any).provider
-          : '';
-      const providerForMerge = providerFromResponse || assistantProvider || '';
-
-      if ('error' in result && result.error) {
-        if (import.meta.env.DEV) {
-          console.warn('[ScriptonyAssistant] loadModels: /ai/models error', result.error, modelsRoute);
-        }
-        const fallbackList = mergeSavedModelIfMissing(
-          [],
-          preferredAssistantModel,
-          providerForMerge,
-        );
-        if (isStale()) return;
-        setAvailableModels(fallbackList);
-        setActiveProvider(assistantProvider);
-        const pick =
-          (preferredAssistantModel.trim() &&
-            fallbackList.find((m) => m.id === preferredAssistantModel.trim())) ||
-          fallbackList[0];
-        if (pick) {
-          setModel(pick.id);
-          tokenCounter.setContextWindow(pick.context_window);
-        }
-        return;
-      }
-
-      if (result.data) {
-        const rawModelsWithContext = Array.isArray((result.data as any).models_with_context)
-          ? (result.data as any).models_with_context
-          : [];
-        const rawModelIds = Array.isArray((result.data as any).models)
-          ? (result.data as any).models
-          : [];
-
-        const normalizedModels: ModelInfo[] =
-          rawModelsWithContext.length > 0
-            ? rawModelsWithContext.map((m: any) => ({
-                id: String(m.id ?? ""),
-                name: String(m.name ?? m.id ?? ""),
-                context_window: Number(m.context_window ?? 200000),
-              }))
-            : rawModelIds.map((id: any) => ({
-                id: String(id),
-                name: String(id),
-                context_window: 200000,
-              }));
-
-        const list = mergeSavedModelIfMissing(
-          normalizedModels,
-          preferredAssistantModel,
-          providerForMerge,
-        );
-        if (isStale()) return;
-        setAvailableModels(list);
-        const providerFromModels = result.data.provider || assistantProvider || "";
-        setActiveProvider(providerFromModels);
-
-        if (import.meta.env.DEV) {
-          const pref = preferredAssistantModel.trim();
-          console.log('[ScriptonyAssistant] loadModels', {
-            modelsRoute,
-            assistantProvider,
-            preferredAssistantModel: pref,
-            mergedSavedNotInApi: Boolean(pref && !findModelByIdLoose(normalizedModels, pref)),
-            modelIds: list.map((m) => m.id),
-          });
-        }
-
-        const preferred =
-          findModelByIdLoose(list, preferredAssistantModel) ||
-          findModelByIdLoose(list, model) ||
-          list[0];
-
-        if (preferred) {
-          if (isStale()) return;
-          setModel(preferred.id);
-          tokenCounter.setContextWindow(preferred.context_window);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading models:', error);
-      if (gen !== loadModelsGenRef.current) return;
-      setHasApiKey(false);
-      setAvailableModels([]);
+    if (preferred && Number.isFinite(preferred.context_window) && preferred.context_window > 0) {
+      tokenCounter.setContextWindow(preferred.context_window);
     }
   };
 
-  const loadModelsRef = useRef(loadModels);
-  loadModelsRef.current = loadModels;
+  const loadAssistantRuntime = async (forceRefresh = false) => {
+    const gen = ++loadRuntimeGenRef.current;
+    const isStale = () => gen !== loadRuntimeGenRef.current;
 
-  /** Keep context bar aligned with the merged model row (survives races and chat history model changes). */
+    try {
+      const now = Date.now();
+      const cacheValid = runtimeCache != null && !forceRefresh && (now - runtimeCacheTime < CACHE_DURATION);
+
+      if (cacheValid && runtimeCache) {
+        if (isStale()) return;
+        applyAssistantRuntime(runtimeCache);
+        return;
+      }
+
+      const runtimeResult = await apiGet<AssistantRuntimeResponse>("/features/assistant_chat/runtime");
+      if (isStale()) return;
+
+      if ("error" in runtimeResult && runtimeResult.error) {
+        throw new Error(runtimeResult.error.message || "Assistant-Laufzeit konnte nicht geladen werden.");
+      }
+
+      if (!runtimeResult.data) {
+        throw new Error("Assistant-Laufzeit konnte nicht geladen werden.");
+      }
+
+      setRuntimeCache(runtimeResult.data);
+      setRuntimeCacheTime(now);
+      applyAssistantRuntime(runtimeResult.data);
+    } catch (error) {
+      console.error("Error loading assistant runtime:", error);
+      if (gen !== loadRuntimeGenRef.current) return;
+      setAssistantReady(false);
+      setAssistantStatusError(
+        error instanceof Error ? error.message : "Assistant-Laufzeit konnte nicht geladen werden."
+      );
+      setAvailableModels([]);
+      setActiveProviderDisplay("");
+      setModel("");
+    }
+  };
+
+  /** Keep context bar aligned with the resolved model row (survives chat history model changes). */
   useEffect(() => {
     if (!model.trim() || availableModels.length === 0) return;
     const row = findModelByIdLoose(availableModels, model);
@@ -617,26 +456,25 @@ export function ScriptonyAssistant() {
   }, [model, availableModels, tokenCounter.setContextWindow]);
 
   useEffect(() => {
-    const onAiSettingsUpdated = () => {
-      void loadModelsRef.current(true);
-    };
-    window.addEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, onAiSettingsUpdated);
-    return () => window.removeEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, onAiSettingsUpdated);
-  }, []);
-
-  useEffect(() => {
     if (isOpen) {
-      // ✅ Load models without forcing refresh (uses cache if available)
-      loadModels(false);
-      
-      // ✅ Only load conversation-specific data
+      void loadAssistantRuntime(false);
       loadCurrentConversation();
-      
-      // ✅ Lazy load: Only load when needed
-      // loadChatHistory() - loaded when chat history dialog opens
-      // loadRAGData() - loaded when user actually uses @ / # references
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleSettingsUpdated = () => {
+      console.log("🔄 Assistant runtime invalidated after settings update");
+      setRuntimeCache(null);
+      setRuntimeCacheTime(0);
+      void loadAssistantRuntime(true);
+    };
+
+    window.addEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, handleSettingsUpdated);
+    return () => {
+      window.removeEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, handleSettingsUpdated);
+    };
+  }, []);
 
   const loadChatHistory = async () => {
     try {
@@ -887,9 +725,8 @@ export function ScriptonyAssistant() {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    // Check if API key is configured
-    if (!hasApiKey) {
-      toast.error('Bitte konfiguriere zuerst einen API Key in den Chat Settings');
+    if (!assistantReady) {
+      toast.error(assistantStatusError || 'Bitte konfiguriere zuerst Provider und Modell in den Integrationen.');
       return;
     }
 
@@ -1478,20 +1315,21 @@ export function ScriptonyAssistant() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px]">Modell:</label>
-                    {activeProvider && hasApiKey && (
+                    {activeProviderDisplay && (
                       <Badge variant="outline" className="h-4 px-1 text-[8px] capitalize">
-                        {activeProvider}
+                        {activeProviderDisplay}
                       </Badge>
                     )}
                   </div>
-                  {!hasApiKey ? (
+                  {!assistantReady ? (
                     <button
                       type="button"
                       onClick={() => setIsChatSettingsOpen(true)}
                       className="h-[32px] w-full bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center hover:bg-destructive/15 dark:hover:bg-destructive/25 transition-colors"
+                      title={assistantStatusError || "Öffnet die KI-Integrationen zur Konfiguration von Provider und Modell."}
                     >
                       <span className="text-destructive text-[9px] font-medium text-center leading-tight">
-                        Configure API Key
+                        Assistant konfigurieren
                       </span>
                     </button>
                   ) : (
@@ -1514,14 +1352,15 @@ export function ScriptonyAssistant() {
                 {/* Context Window */}
                 <div>
                   <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px] mb-1 block">Context:</label>
-                  {!hasApiKey ? (
+                  {!assistantReady ? (
                     <button
                       type="button"
                       onClick={() => setIsChatSettingsOpen(true)}
                       className="h-[32px] w-full bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center hover:bg-destructive/15 dark:hover:bg-destructive/25 transition-colors"
+                      title={assistantStatusError || "Öffnet die KI-Integrationen zur Konfiguration von Provider und Modell."}
                     >
                       <span className="text-destructive text-[9px] font-medium text-center leading-tight">
-                        in Chat Settings
+                        in Integrationen
                       </span>
                     </button>
                   ) : (
@@ -1679,7 +1518,7 @@ export function ScriptonyAssistant() {
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <AssistantParticleLoader className="shadow-sm border border-white/20" />
+                      <AssistantOrbitLoader />
                     </div>
                   )}
                 </div>
@@ -1789,24 +1628,8 @@ export function ScriptonyAssistant() {
                   </div>
                 )}
 
-                {/* Textarea Field with Colored Tags */}
+                {/* Textarea Field */}
                 <div className="flex-1 relative min-w-0">
-                  {/* Colored Text Overlay */}
-                  <div 
-                    className="absolute left-0 top-2 pointer-events-none text-[14.8px] whitespace-pre-wrap select-none pr-2 max-h-[80px] overflow-hidden"
-                    aria-hidden="true"
-                  >
-                    {inputValue ? colorizeText(inputValue).map((part, index) => {
-                      if (part.type === 'character') {
-                        return <span key={index} style={{ color: 'var(--character-blue)', fontWeight: 500 }}>{part.text}</span>;
-                      } else if (part.type === 'asset') {
-                        return <span key={index} style={{ color: 'var(--asset-green)', fontWeight: 500 }}>{part.text}</span>;
-                      } else if (part.type === 'scene') {
-                        return <span key={index} style={{ color: 'var(--scene-pink)', fontWeight: 500 }}>{part.text}</span>;
-                      }
-                      return <span key={index}>{part.text}</span>;
-                    }) : null}
-                  </div>
                   <textarea
                     ref={inputRef as any}
                     value={inputValue}
@@ -1814,7 +1637,7 @@ export function ScriptonyAssistant() {
                     onKeyDown={handleKeyPress}
                     placeholder={hasRAGConnections ? "Schreibe eine Nachricht... (@ Charaktere, / Assets, # Szenen)" : "Schreibe eine Nachricht..."}
                     rows={1}
-                    className="w-full bg-transparent border-0 outline-none text-[14.8px] placeholder:text-[#9e9ea4] dark:placeholder:text-muted-foreground disabled:opacity-50 relative text-transparent caret-foreground resize-none max-h-[80px] overflow-y-auto py-2"
+                    className="w-full bg-transparent border-0 outline-none text-[14.8px] leading-[1.45] text-foreground placeholder:text-[#9e9ea4] dark:placeholder:text-muted-foreground disabled:opacity-50 resize-none max-h-[80px] overflow-y-auto py-2"
                     style={{ 
                       caretColor: 'var(--foreground)',
                       minHeight: '24px',
@@ -1835,9 +1658,9 @@ export function ScriptonyAssistant() {
                 {/* RUN Button */}
                 <button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || isLoading || !hasApiKey}
+                  disabled={!inputValue.trim() || isLoading || !assistantReady}
                   className="flex-shrink-0 h-[31px] px-4 flex items-center justify-center gap-2 rounded-[10px] bg-[#6e59a5] dark:bg-primary text-white hover:bg-[#6e59a5]/90 dark:hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title={!hasApiKey ? "Bitte konfiguriere einen API Key in den Chat Settings" : ""}
+                  title={!assistantReady ? (assistantStatusError || "Bitte konfiguriere zuerst Provider und Modell in den Integrationen.") : ""}
                 >
                   <span className="text-[14.8px] font-bold">RUN</span>
                   <div className="size-[16px] flex items-center justify-center">
@@ -2586,7 +2409,7 @@ export function ScriptonyAssistant() {
       <ChatSettingsDialog
         open={isChatSettingsOpen}
         onOpenChange={setIsChatSettingsOpen}
-        onUpdate={() => void loadModels(true)}
+        onUpdate={() => void loadAssistantRuntime(true)}
       />
     </>
   );

@@ -2,11 +2,11 @@
  * AI chat route for the Scriptony HTTP API.
  */
 
-import { generateAiResponse } from "../../_shared/ai";
-import { getLegacyAssistantSettings } from "../../_shared/ai-central-store";
+import { chat as runAiServiceChat } from "../../_shared/ai-service";
+import { resolveFeatureRuntime } from "../../_shared/ai-central-store";
+import { describeResolvedFeatureRuntime } from "../../_shared/ai-feature-runtime-view";
 import { buildRagChatContext, normalizeRagIdList } from "../../_shared/rag-chat-context";
 
-import { resolveAiFeatureProfile } from "../../_shared/ai-feature-profile";
 import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
@@ -39,6 +39,13 @@ function enrichChatMessageForApi(entry: Record<string, any>): Record<string, any
     provider: meta.provider,
     tokens_used: meta.tokens_used,
   };
+}
+
+const RAG_CONTEXT_SEPARATOR =
+  "\n\n--- Scriptony Kontext (Auszug, nur zur Orientierung) ---\n";
+
+function estimateTokens(value: string): number {
+  return value.trim() ? value.trim().split(/\s+/).length : 0;
 }
 
 async function getConversationMessages(conversationId: string): Promise<
@@ -89,19 +96,19 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const settings = await getLegacyAssistantSettings(bootstrap.user.id);
-    const resolved = resolveAiFeatureProfile(settings, "assistant");
-    if (!resolved.ok) {
-      sendBadRequest(res, "error" in resolved ? resolved.error : "Assistant is not configured");
+    const runtime = await resolveFeatureRuntime(bootstrap.user.id, "assistant_chat");
+    const runtimeStatus = describeResolvedFeatureRuntime(runtime);
+    if (!runtimeStatus.configured) {
+      sendBadRequest(res, runtimeStatus.error || "Assistant is not configured");
       return;
     }
-    const provider = resolved.settings.provider;
-    const model = resolved.settings.model;
+    const provider = runtime.config.provider;
+    const model = runtime.config.model;
 
     let conversationId = body.conversation_id ?? body.conversationId ?? null;
     const priorMessages = conversationId ? await getConversationMessages(conversationId) : [];
 
-    const useRag = settings?.use_rag !== false;
+    const useRag = runtime.userSettings.use_rag !== false;
     const projectIds = normalizeRagIdList(body.rag_project_ids ?? body.ragProjectIds);
     const worldIds = normalizeRagIdList(body.rag_world_ids ?? body.ragWorldIds);
     const characterIds = normalizeRagIdList(body.rag_character_ids ?? body.ragCharacterIds);
@@ -121,12 +128,20 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       if (block.trim()) retrievalContext = block;
     }
 
-    const generated = await generateAiResponse({
-      settings: resolved.settings,
-      conversationMessages: priorMessages,
-      latestMessage: rawMessage,
-      retrievalContext,
-    });
+    const baseSystemPrompt = runtime.userSettings.system_prompt || "";
+    const effectiveSystemPrompt =
+      retrievalContext && retrievalContext.trim()
+        ? `${baseSystemPrompt}${RAG_CONTEXT_SEPARATOR}${retrievalContext.trim()}`
+        : baseSystemPrompt;
+
+    const generated = await runAiServiceChat(
+      bootstrap.user.id,
+      [...priorMessages, { role: "user", content: rawMessage }],
+      "assistant_chat",
+      {
+        systemPrompt: effectiveSystemPrompt,
+      }
+    );
 
     // Create conversation only after successful generation to avoid empty chat rows on provider failure/timeouts.
     if (!conversationId) {
@@ -144,7 +159,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           object: {
             user_id: bootstrap.user.id,
             title: rawMessage.slice(0, 60),
-            system_prompt: settings?.system_prompt ?? null,
+            system_prompt: runtime.userSettings.system_prompt ?? null,
             message_count: 0,
           },
         }
@@ -185,7 +200,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             conversation_id: conversationId,
             role: "assistant",
             content: generated.content,
-            metadata_json: chatMessageMetadata(model, provider, generated.outputTokens),
+            metadata_json: chatMessageMetadata(
+              model,
+              provider,
+              generated.usage?.completionTokens ?? estimateTokens(generated.content)
+            ),
           },
         ],
       }
@@ -221,9 +240,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       conversation_id: conversationId,
       message: enrichChatMessageForApi(assistantMessage),
       token_details: {
-        input_tokens: generated.inputTokens,
-        output_tokens: generated.outputTokens,
-        total_tokens: generated.inputTokens + generated.outputTokens,
+        input_tokens: generated.usage?.promptTokens ?? estimateTokens(rawMessage),
+        output_tokens: generated.usage?.completionTokens ?? estimateTokens(generated.content),
+        total_tokens:
+          generated.usage?.totalTokens ??
+          (generated.usage?.promptTokens ?? estimateTokens(rawMessage)) +
+            (generated.usage?.completionTokens ?? estimateTokens(generated.content)),
       },
     });
   } catch (error) {

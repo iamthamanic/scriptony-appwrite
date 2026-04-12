@@ -1,0 +1,17 @@
+{
+  "databaseId": "scriptony",
+  "name": "styleProfiles",
+  "attributes": [
+    { "key": "userId", "type": "string", "required": true },
+    { "key": "projectId", "type": "string", "required": false },
+    { "key": "name", "type": "string", "required": true, "size": 255 },
+    { "key": "previewImageId", "type": "string", "required": false },
+    { "key": "configJson", "type": "string", "required": true, "size": 10000 },
+    { "key": "version", "type": "integer", "required": true },
+    { "key": "createdAt", "type": "string", "required": true }
+  ],
+  "indexes": [
+    { "key": "userId_idx", "type": "key", "attributes": ["userId"] },
+    { "key": "projectId_idx", "type": "key", "attributes": ["projectId"] }
+  ]
+}

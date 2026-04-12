@@ -1,0 +1,21 @@
+{
+  "databaseId": "scriptony",
+  "name": "imageTasks",
+  "attributes": [
+    { "key": "userId", "type": "string", "required": true },
+    { "key": "projectId", "type": "string", "required": false },
+    { "key": "type", "type": "string", "required": true, "size": 50 },
+    { "key": "jobClass", "type": "string", "required": true, "size": 50 },
+    { "key": "status", "type": "string", "required": true, "size": 50 },
+    { "key": "inputImageIds", "type": "string", "required": true, "array": true },
+    { "key": "prompt", "type": "string", "required": false, "size": 2000 },
+    { "key": "strength", "type": "double", "required": false },
+    { "key": "outputImageIds", "type": "string", "required": false, "array": true },
+    { "key": "createdAt", "type": "string", "required": true },
+    { "key": "completedAt", "type": "string", "required": false }
+  ],
+  "indexes": [
+    { "key": "userId_idx", "type": "key", "attributes": ["userId"] },
+    { "key": "status_idx", "type": "key", "attributes": ["status"] }
+  ]
+}

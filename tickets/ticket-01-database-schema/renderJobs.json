@@ -1,0 +1,26 @@
+{
+  "databaseId": "scriptony",
+  "name": "renderJobs",
+  "attributes": [
+    { "key": "userId", "type": "string", "required": true },
+    { "key": "projectId", "type": "string", "required": true },
+    { "key": "shotId", "type": "string", "required": true },
+    { "key": "type", "type": "string", "required": true, "size": 50 },
+    { "key": "jobClass", "type": "string", "required": true, "size": 50 },
+    { "key": "status", "type": "string", "required": true, "size": 50 },
+    { "key": "reviewStatus", "type": "string", "required": true, "size": 50 },
+    { "key": "acceptedAt", "type": "string", "required": false },
+    { "key": "acceptedBy", "type": "string", "required": false },
+    { "key": "guideBundleId", "type": "string", "required": true },
+    { "key": "styleProfileId", "type": "string", "required": true },
+    { "key": "repairConfig", "type": "string", "required": false, "size": 5000 },
+    { "key": "outputImageIds", "type": "string", "required": false, "array": true },
+    { "key": "createdAt", "type": "string", "required": true },
+    { "key": "completedAt", "type": "string", "required": false }
+  ],
+  "indexes": [
+    { "key": "shotId_idx", "type": "key", "attributes": ["shotId"] },
+    { "key": "status_idx", "type": "key", "attributes": ["status"] },
+    { "key": "reviewStatus_idx", "type": "key", "attributes": ["reviewStatus"] }
+  ]
+}
