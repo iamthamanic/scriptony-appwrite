@@ -43,7 +43,9 @@ import {
 } from "../_shared/ai-service/providers";
 import { fetchOllamaTags } from "../_shared/ollama-tags-request";
 import { fetchOllamaV1Models } from "../_shared/ollama-v1-models-request";
-import { dispatchAssistantLegacyRoute } from "./assistant-legacy";
+// Legacy assistant dispatch removed — gateway now routes /ai/chat, /ai/settings, etc.
+// directly to scriptony-assistant. See assistant-legacy.ts for history.
+// import { dispatchAssistantLegacyRoute } from "./assistant-legacy";
 
 async function ensureFetchPolyfillLoaded(): Promise<void> {
   await import("../_shared/fetch-polyfill");
@@ -134,9 +136,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    if (await dispatchAssistantLegacyRoute(req, res)) {
-      return;
-    }
+    // Legacy assistant routes (/ai/chat, /ai/settings, /ai/models, …) are now
+    // routed by the gateway directly to scriptony-assistant. No proxy needed here.
 
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -458,6 +459,53 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       sendMethodNotAllowed(res, ["GET", "PUT", "POST"]);
+      return;
+    }
+
+    // -------------------------------------------------------------------------
+    // /ai/route-request — internal routing introspection (Puppet-Layer Ticket 2)
+    // Returns which backend function the gateway would resolve a given path to.
+    // Usage: POST /ai/route-request  { "path": "/ai/style/profiles" }
+    //        → { "path": "/ai/style/profiles", "function": "scriptony-style" }
+    // -------------------------------------------------------------------------
+    if (pathname === "/ai/route-request") {
+      if (req.method !== "POST") {
+        sendMethodNotAllowed(res, ["POST"]);
+        return;
+      }
+      const body = await readJsonBody<{ path?: string }>(req);
+      if (!body.path || typeof body.path !== "string") {
+        sendBadRequest(res, "path is required (string)");
+        return;
+      }
+      // Canonical route → function mapping (mirrors ROUTE_MAP in api-gateway.ts).
+      // Must stay in sync with the gateway; if the map grows further, extract to _shared.
+      const ROUTE_PREFIXES: [string, string][] = [
+        // Puppet-Layer surfaces
+        ["/ai/image", "scriptony-image"],
+        ["/ai/jobs", "scriptony-stage"],
+        ["/ai/stage2d", "scriptony-stage2d"],
+        ["/ai/stage3d", "scriptony-stage3d"],
+        ["/ai/stage", "scriptony-stage"],
+        ["/ai/style", "scriptony-style"],
+        ["/ai/sync", "scriptony-sync"],
+        // Assistant — canonical + legacy paths
+        ["/ai/assistant", "scriptony-assistant"],
+        ["/ai/chat", "scriptony-assistant"],
+        ["/ai/conversations", "scriptony-assistant"],
+        ["/ai/rag", "scriptony-assistant"],
+        ["/ai/settings", "scriptony-assistant"],
+        ["/ai/models", "scriptony-assistant"],
+        ["/ai/validate-key", "scriptony-assistant"],
+        ["/ai/count-tokens", "scriptony-assistant"],
+        ["/ai/gym", "scriptony-assistant"],
+      ];
+      const sorted = ROUTE_PREFIXES.sort((a, b) => b[0].length - a[0].length);
+      const match = sorted.find(([prefix]) => body.path!.startsWith(prefix));
+      sendJson(res, 200, {
+        path: body.path,
+        function: match ? match[1] : "scriptony-ai",
+      });
       return;
     }
 

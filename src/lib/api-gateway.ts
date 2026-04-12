@@ -82,6 +82,16 @@ export const BACKEND_FUNCTIONS = {
   AI: 'scriptony-ai',
   ASSISTANT: 'scriptony-assistant',
   IMAGE: 'scriptony-image',
+  /** Puppet-Layer: render-job orchestrator (accept/reject/complete lifecycle). */
+  STAGE: 'scriptony-stage',
+  /** Puppet-Layer: 2D layer & repair endpoints. */
+  STAGE2D: 'scriptony-stage2d',
+  /** Puppet-Layer: 3D view-state endpoints. */
+  STAGE3D: 'scriptony-stage3d',
+  /** Puppet-Layer: style-profile CRUD + apply. */
+  STYLE: 'scriptony-style',
+  /** Puppet-Layer: Blender ingress (sync metadata only). */
+  SYNC: 'scriptony-sync',
   GYM: 'scriptony-gym',
   AUTH: 'scriptony-auth',
   SUPERADMIN: 'scriptony-superadmin',
@@ -191,16 +201,55 @@ const ROUTE_MAP: Record<string, string> = {
   // scriptony-image (must be above /ai prefix)
   '/ai/image': BACKEND_FUNCTIONS.IMAGE,
 
+  // ---------------------------------------------------------------------------
+  // Puppet-Layer surfaces (longer prefixes before shorter /ai catch-all)
+  // ---------------------------------------------------------------------------
+
+  // scriptony-stage: render-job orchestrator + repair dispatch
+  '/ai/jobs': BACKEND_FUNCTIONS.STAGE,
+  '/ai/stage': BACKEND_FUNCTIONS.STAGE,
+
+  // scriptony-stage2d: 2D document & layer endpoints
+  '/ai/stage2d': BACKEND_FUNCTIONS.STAGE2D,
+
+  // scriptony-stage3d: 3D view-state endpoints
+  '/ai/stage3d': BACKEND_FUNCTIONS.STAGE3D,
+
+  // scriptony-style: style-profile CRUD + apply
+  '/ai/style': BACKEND_FUNCTIONS.STYLE,
+
+  // scriptony-sync: Blender ingress (sync metadata only, no product decisions)
+  '/ai/sync': BACKEND_FUNCTIONS.SYNC,
+
+  // ---------------------------------------------------------------------------
+  // scriptony-assistant: canonical /ai/assistant/* + legacy /ai/{chat,settings,…}
+  // scriptony-assistant accepts both prefixes (dual-prefix normalisation).
+  // ---------------------------------------------------------------------------
+  '/ai/assistant': BACKEND_FUNCTIONS.ASSISTANT,
+
+  // Legacy assistant paths — routed directly to ASSISTANT so scriptony-ai
+  // no longer needs to proxy them via dispatchAssistantLegacyRoute().
+  '/ai/chat': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/conversations': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/rag': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/settings': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/models': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/validate-key': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/count-tokens': BACKEND_FUNCTIONS.ASSISTANT,
+  '/ai/gym': BACKEND_FUNCTIONS.ASSISTANT,
+
+  // ---------------------------------------------------------------------------
   // scriptony-ai control plane (provider registry, feature routing, key storage)
+  // ---------------------------------------------------------------------------
   '/providers': BACKEND_FUNCTIONS.AI,
   '/api-keys': BACKEND_FUNCTIONS.AI,
   '/features': BACKEND_FUNCTIONS.AI,
   '/settings': BACKEND_FUNCTIONS.AI,
 
-  // scriptony-ai unified `/ai/*` runtime (legacy assistant routes are bundled there)
+  // scriptony-ai catch-all for remaining /ai/* (route-request, future control-plane routes)
   '/ai': BACKEND_FUNCTIONS.AI,
 
-  // Remaining standalone assistant-only routes
+  // Remaining standalone assistant-only routes (legacy non-/ai paths)
   '/conversations': BACKEND_FUNCTIONS.ASSISTANT,
   '/rag': BACKEND_FUNCTIONS.ASSISTANT,
   '/mcp': BACKEND_FUNCTIONS.ASSISTANT,

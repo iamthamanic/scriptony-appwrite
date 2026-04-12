@@ -17,7 +17,7 @@ Wichtig ist die Reihenfolge: Erst wenn die Backend-Contracts stabil sind, lohnt 
 ## Aktueller Status
 
 - Ticket 1: erledigt
-- Ticket 2: teilweise
+- Ticket 2: erledigt (Gateway-Routing, /ai/route-request, /ai/assistant-Namespace, Legacy-Dispatch abgelöst)
 - Ticket 3: offen
 - Ticket 4: teilweise
 - Ticket 5: teilweise

@@ -19,13 +19,26 @@ import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
   const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  let p: string;
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      p = new URL(direct).pathname || "/";
+    } else {
+      const q = direct.indexOf("?");
+      p = q >= 0 ? direct.slice(0, q) : direct;
+    }
   } catch {
-    /* fallback */
+    const q = direct.indexOf("?");
+    p = q >= 0 ? direct.slice(0, q) : direct;
   }
-  const q = direct.indexOf("?");
-  return q >= 0 ? direct.slice(0, q) : direct;
+  // Dual-prefix: accept both /ai/assistant/* (canonical) and /ai/* (legacy).
+  // Normalise /ai/assistant/* → /ai/* so every downstream match keeps working.
+  if (p.startsWith("/ai/assistant")) {
+    p = "/ai" + p.slice("/ai/assistant".length);
+    // edge case: /ai/assistant with no trailing path → /ai
+    if (p === "/ai") p = "/ai/";
+  }
+  return p;
 }
 
 function withParams(req: RequestLike, params: Record<string, string>): RequestLike {

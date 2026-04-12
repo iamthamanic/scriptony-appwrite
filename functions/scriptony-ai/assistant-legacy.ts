@@ -1,4 +1,11 @@
 /**
+ * @deprecated — No longer called from scriptony-ai/index.ts.
+ *
+ * The gateway now routes legacy assistant paths (/ai/chat, /ai/settings, /ai/models, …)
+ * directly to scriptony-assistant, which also supports the canonical /ai/assistant/* namespace.
+ * This file is kept for reference and for the Hono `mountAssistantLegacyRoutes` helper
+ * (still used by tests or other consumers). Safe to delete once no imports remain.
+ *
  * Legacy Assistant HTTP handlers (GraphQL-backed chat, RAG, settings) mounted at `/ai/*`.
  * Logic lives in `scriptony-assistant/ai/*`; this module adapts Express-like req/res to Hono.
  *
