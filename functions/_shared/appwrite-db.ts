@@ -101,6 +101,15 @@ export const C = {
   project_inspirations: "project_inspirations",
   project_visual_style: "project_visual_style",
   project_visual_style_items: "project_visual_style_items",
+  styleProfiles: "styleProfiles",
+  /** Puppet-Layer: official render jobs with review lifecycle (Ticket 3). */
+  renderJobs: "renderJobs",
+  /** Puppet-Layer: exploratory image tasks, no review (Ticket 4). */
+  imageTasks: "imageTasks",
+  /** Puppet-Layer: guide bundles published from Blender/Bridge (Ticket 7). */
+  guideBundles: "guideBundles",
+  /** Puppet-Layer: 2D + 3D stage documents (Ticket 5/8). */
+  stageDocuments: "stageDocuments",
 } as const;
 
 export type AppwriteDoc = Record<string, unknown>;
