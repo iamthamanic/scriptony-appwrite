@@ -105,6 +105,25 @@ npm run appwrite:deploy:style
 
 This deploys the standalone `scriptony-style` function and creates the function definition automatically if it does not exist yet.
 
+
+### Deploy `scriptony-stage` (Puppet-Layer render-job orchestrator)
+
+Routes:
+- `POST /stage/render-jobs`
+- `GET /stage/render-jobs/:id`
+- `GET /stage/render-jobs?shotId=…`
+- `POST /stage/render-jobs/:id/complete`
+- `PUT /stage/render-jobs/:id/accept`
+- `PUT /stage/render-jobs/:id/reject`
+
+From the repo root:
+
+```bash
+npm run appwrite:deploy:stage
+```
+
+This deploys the standalone `scriptony-stage` function and creates the function definition automatically if it does not exist yet.
+
 ### Deploy `scriptony-audio`, `scriptony-gym`, `scriptony-video`
 
 From repo root:

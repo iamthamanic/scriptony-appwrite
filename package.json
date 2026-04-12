@@ -136,6 +136,7 @@
             "appwrite:deploy:video": "bash scripts/deploy-appwrite-function-video.sh",
             "appwrite:deploy:mcp": "bash scripts/deploy-appwrite-function-mcp-appwrite.sh",
             "appwrite:deploy:style": "bash scripts/deploy-appwrite-function-style.sh",
+            "appwrite:deploy:stage": "bash scripts/deploy-appwrite-function-stage.sh",
             "appwrite:deploy:style-guide": "bash scripts/deploy-appwrite-function-style-guide.sh",
             "appwrite:deploy:worldbuilding": "bash scripts/deploy-appwrite-function-worldbuilding.sh",
             "appwrite:provision:schema": "npm run provision-schema --prefix functions",

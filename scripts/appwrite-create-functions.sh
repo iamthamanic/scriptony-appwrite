@@ -33,6 +33,7 @@ FUNCTIONS=(
   scriptony-projects
   scriptony-shots
   scriptony-style
+  scriptony-stage
   scriptony-style-guide
   scriptony-stats
   scriptony-timeline-v2
