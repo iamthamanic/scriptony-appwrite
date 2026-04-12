@@ -86,6 +86,25 @@ npm run appwrite:deploy:image
 
 Then ensure `"scriptony-image":"https://…"` exists in `VITE_BACKEND_FUNCTION_DOMAIN_MAP` (or run `npm run appwrite:sync:function-domains`) and restart Vite.
 
+### Deploy `scriptony-style` (Puppet-Layer style profiles)
+
+Routes:
+- `GET /ai/style/profiles`
+- `POST /ai/style/profiles`
+- `GET /ai/style/profiles/:id`
+- `PUT /ai/style/profiles/:id`
+- `DELETE /ai/style/profiles/:id`
+- `POST /ai/style/apply`
+- `GET /ai/style/shot/:shotId/profile`
+
+From the repo root:
+
+```bash
+npm run appwrite:deploy:style
+```
+
+This deploys the standalone `scriptony-style` function and creates the function definition automatically if it does not exist yet.
+
 ### Deploy `scriptony-audio`, `scriptony-gym`, `scriptony-video`
 
 From repo root:

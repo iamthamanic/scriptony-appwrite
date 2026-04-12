@@ -23,6 +23,7 @@
     - `blenderSourceVersion`
     - `blenderSyncRevision`
     - `guideBundleRevision`
+    - `styleProfileId`
     - `styleProfileRevision`
     - `renderRevision`
     - `lastBlenderSyncAt`

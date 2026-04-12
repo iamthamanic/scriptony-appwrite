@@ -37,6 +37,7 @@ const shotsAttributes = [
   { key: "blenderSourceVersion", type: "string", required: false, size: 255 },
   { key: "blenderSyncRevision", type: "integer", required: false },
   { key: "guideBundleRevision", type: "integer", required: false },
+  { key: "styleProfileId", type: "string", required: false, size: 255 },
   { key: "styleProfileRevision", type: "integer", required: false },
   { key: "renderRevision", type: "integer", required: false },
   { key: "lastBlenderSyncAt", type: "string", required: false, size: 255 },

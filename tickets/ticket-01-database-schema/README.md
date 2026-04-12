@@ -15,6 +15,7 @@ It also extends the existing `shots` collection with:
 - `blenderSourceVersion`
 - `blenderSyncRevision`
 - `guideBundleRevision`
+- `styleProfileId`
 - `styleProfileRevision`
 - `renderRevision`
 - `lastBlenderSyncAt`

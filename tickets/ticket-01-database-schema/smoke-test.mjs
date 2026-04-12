@@ -37,6 +37,7 @@ const shotsExpected = [
   { key: "blenderSourceVersion", type: "string" },
   { key: "blenderSyncRevision", type: "integer" },
   { key: "guideBundleRevision", type: "integer" },
+  { key: "styleProfileId", type: "string" },
   { key: "styleProfileRevision", type: "integer" },
   { key: "renderRevision", type: "integer" },
   { key: "lastBlenderSyncAt", type: "string" },

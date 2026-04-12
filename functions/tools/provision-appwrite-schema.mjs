@@ -157,6 +157,9 @@ const SCHEMA = {
     storyboard_url: U(),
     reference_image_url: U(),
     user_id: S(64),
+    /** Puppet-layer style assignment. */
+    styleProfileId: S(255),
+    styleProfileRevision: I(),
     dialogue: XL(32000),
     // Legacy payload key still sent by some clients.
     dialog: XL(32000),
