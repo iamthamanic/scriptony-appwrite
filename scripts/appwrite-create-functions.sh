@@ -34,6 +34,7 @@ FUNCTIONS=(
   scriptony-shots
   scriptony-style
   scriptony-stage
+  scriptony-stage2d
   scriptony-style-guide
   scriptony-stats
   scriptony-timeline-v2
