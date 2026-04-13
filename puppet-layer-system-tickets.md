@@ -187,7 +187,7 @@ Required features:
 
 ---
 
-## TICKET 11: Freshness Model
+## TICKET 11: Freshness Model ✅
 
 Rules:
 - guides stale: guideBundleRevision < blenderSyncRevision

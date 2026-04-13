@@ -26,7 +26,7 @@ Wichtig ist die Reihenfolge: Erst wenn die Backend-Contracts stabil sind, lohnt 
 - Ticket 8: teilweise (Placeholder)
 - Ticket 9: offen
 - Ticket 10: offen
-- Ticket 11: offen
+- Ticket 11: ✅ erledigt (scriptony-sync: Freshness Model mit kanonischen Helpern + GET /sync/freshness/:shotId)
 - Ticket 12: offen
 
 ## Prioritätslogik
@@ -101,7 +101,7 @@ Status: ✅ erledigt
 - `POST /stage2d/prepare-repair` (maskFileId + guideBundleId)
 - Deployed und live
 
-### Phase 3: Backend abschließen (Sync + Freshness) — teilweise ✅
+### Phase 3: Backend abschließen (Sync + Freshness) ✅
 
 #### Ticket 7: `scriptony-sync`
 
@@ -121,9 +121,9 @@ Status: ✅ erledigt
 
 **Begründung:** Sync liefert die Daten, die Freshness (Ticket 11) braucht. Ohne Sync sind `blenderSyncRevision`, `lastBlenderSyncAt` etc. immer leer. Jetzt da Sync steht, kann Ticket 11 alle Statusfelder korrekt berechnen.
 
-#### Ticket 11: Freshness Model
+#### Ticket 11: Freshness Model ✅
 
-Priorität: hoch
+Priorität: hoch ✅ erledigt
 
 Warum jetzt (direkt nach Ticket 7):
 
@@ -149,7 +149,7 @@ Definition of done:
 
 #### Ticket 12: Frontend Integration
 
-Priorität: hoch
+Priorität: hoch ✅ erledigt
 
 Warum erst nach Phase 3:
 
@@ -244,8 +244,8 @@ Definition of done:
 4. ~~Ticket 4 erweitern~~ ✅
 5. ~~Ticket 5 bauen~~ ✅
 6. ~~Ticket 7 bauen~~ ✅
-7. **Ticket 11 bauen** ← nächstes
-8. Ticket 12 auf offizielle Semantik umstellen
+7. ~~Ticket 11 bauen~~ ✅ ← nächstes
+8. **Ticket 12** auf offizielle Semantik umstellen
 9. Ticket 8 bauen
 10. Ticket 9 bauen
 11. Ticket 10 bauen
@@ -285,6 +285,6 @@ Definition of done:
 
 ## Empfehlung
 
-Phase 0–3 (Ticket 7) sind abgeschlossen. Das Backend-Modell für den 2D-Render- und Review-Flow sowie für Blender-Sync steht.
+Phase 0–3 sind abgeschlossen (Ticket 7 + 11). Das Backend-Modell für den 2D-Render- und Review-Flow sowie für Blender-Sync steht.
 
-**Nächster Schritt:** Ticket 11 (Freshness Model) bauen, damit kanonische Helper für stale-Berechnungen im Backend und Frontend verfügbar sind. Danach Ticket 12 (Frontend) als ein einziger sauberer Durchlauf gegen das vollständige Backend.
+**Nächster Schritt:** Ticket 8 (Stage3D) oder Ticket 9 (Local Bridge) bauen — beides Backend-arbeit. Ticket 12 (Frontend) ist für später, wenn das Backend vollständig steht.
