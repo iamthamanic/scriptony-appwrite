@@ -26,7 +26,7 @@ Neue Felder:
 
 ---
 
-## TICKET 2: scriptony-ai (Central Hub)
+## TICKET 2: scriptony-ai (Central Hub) ✅
 
 Responsibility: Routing, Provider Config
 
@@ -44,7 +44,7 @@ Public API:
 
 ---
 
-## TICKET 3: scriptony-stage (Orchestrator)
+## TICKET 3: scriptony-stage (Orchestrator) ✅
 
 Job Lifecycle:
 
@@ -74,7 +74,7 @@ Job Lifecycle:
 
 ---
 
-## TICKET 4: scriptony-image (Execution)
+## TICKET 4: scriptony-image (Execution) ✅
 
 Exploratory (NO reviewStatus):
 - POST /image/drawtoai
@@ -88,21 +88,21 @@ Official (internal):
 
 ---
 
-## TICKET 5: scriptony-stage2d
+## TICKET 5: scriptony-stage2d ✅
 
 Endpoints:
 - GET /stage2d/documents/:shotId
 - PUT /stage2d/documents/:shotId
 - POST /stage2d/layers
 - PUT /stage2d/layers/:layerId
-- DELETE /stage2d/layers/:layerId
+- DELETE /stage2d/layers/:layerId?shotId=
 - POST /stage2d/prepare-repair
   Returns: { maskFileId, guideBundleId }
   NO jobId! Frontend calls /ai/stage/repair after
 
 ---
 
-## TICKET 6: scriptony-style
+## TICKET 6: scriptony-style ✅
 
 Endpoints:
 - GET /style/profiles
@@ -115,7 +115,7 @@ Endpoints:
 
 ---
 
-## TICKET 7: scriptony-sync (Blender Ingress)
+## TICKET 7: scriptony-sync (Blender Ingress) ✅
 
 Allowed: sync-related metadata
 - blenderSourceVersion
@@ -134,9 +134,22 @@ Forbidden: product decisions
 
 Endpoints:
 - POST /sync/shot-state
+  Body: { shotId, blenderSourceVersion?, blenderSyncRevision? }
+  Sets: blenderSourceVersion, blenderSyncRevision (monotonic max), lastBlenderSyncAt
+
 - POST /sync/guides
+  Body: { shotId, guideBundleRevision?, files?, metadata? }
+  Creates guideBundle document + sets: guideBundleRevision, latestGuideBundleId, lastBlenderSyncAt
+
 - POST /sync/preview
+  Body: { shotId, lastPreviewAt? }
+  Sets: lastPreviewAt (defaults to now)
+
 - POST /sync/glb-preview
+  Body: { shotId, glbPreviewFileId? }
+  Sets: glbPreviewFileId
+
+Guard rule: assertNoForbiddenFields() rejects any patch containing product-decision fields.
 
 ---
 

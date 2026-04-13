@@ -22,7 +22,7 @@ Wichtig ist die Reihenfolge: Erst wenn die Backend-Contracts stabil sind, lohnt 
 - Ticket 4: ✅ erledigt (scriptony-image: imageTasks + execute-render)
 - Ticket 5: ✅ erledigt (scriptony-stage2d: Document + Layer CRUD, prepare-repair)
 - Ticket 6: ✅ erledigt (scriptony-style: CRUD + Apply + Shot-Resolution)
-- Ticket 7: offen
+- Ticket 7: ✅ erledigt (scriptony-sync: shot-state, guides, preview, glb-preview)
 - Ticket 8: teilweise (Placeholder)
 - Ticket 9: offen
 - Ticket 10: offen
@@ -35,8 +35,8 @@ Die eigentlichen Blocker sind nicht 3D oder Blender, sondern:
 
 - fehlender offizieller Render-Job-Lifecycle → ✅ gelöst (Ticket 3)
 - fehlender offizieller Style-Profile-Service → ✅ gelöst (Ticket 6)
-- fehlende kanonische Stage2D- und Sync-Endpoints → teilweise gelöst (Stage2D ✅, Sync offen)
-- fehlende Freshness-Logik → offen
+- fehlende kanonische Stage2D- und Sync-Endpoints → ✅ gelöst (Stage2D ✅, Sync ✅)
+- fehlende Freshness-Logik → offen (nächstes Ticket 11)
 
 Deshalb sollte die Umsetzung nicht nach UI-Fläche, sondern nach Abhängigkeiten erfolgen.
 
@@ -101,46 +101,34 @@ Status: ✅ erledigt
 - `POST /stage2d/prepare-repair` (maskFileId + guideBundleId)
 - Deployed und live
 
-### Phase 3: Backend abschließen (Sync + Freshness)
-
-**Begründung:** Bevor das Frontend auf die neuen Backend-Services umgestellt wird, sollten Sync und Freshness stehen. Sonst muss das Frontend zweimal angefasst werden — einmal ohne Sync/Freshness-Daten und einmal mit. Wenn Sync und Freshness zuerst fertig sind, kann Ticket 12 (Frontend) einmal sauber durchgezogen werden gegen das komplette Backend-Modell.
+### Phase 3: Backend abschließen (Sync + Freshness) — teilweise ✅
 
 #### Ticket 7: `scriptony-sync`
 
-Priorität: hoch
+Status: ✅ erledigt
 
-Warum jetzt (vor Frontend):
+- `POST /sync/shot-state` — Blender publiziert Version + Revision
+- `POST /sync/guides` — Bridge publiziert Guide Bundle
+- `POST /sync/preview` — Bridge publiziert 2D Preview
+- `POST /sync/glb-preview` — Bridge publiziert GLB Preview
+- Strenge Guard-Rule: keine Produktentscheidungen (`acceptedRenderJobId`, `renderRevision`, `reviewStatus`, `styleProfileRevision` sind forbidden)
+- `guideBundleRevision` + `latestGuideBundleId` werden über `/sync/guides` gesetzt
+- `blenderSyncRevision` + `lastBlenderSyncAt` werden über `/sync/shot-state` gesetzt
+- `lastPreviewAt` wird über `/sync/preview` gesetzt
+- `glbPreviewFileId` wird über `/sync/glb-preview` gesetzt
+- Deploy-Script und npm-Skript (`npm run appwrite:deploy:sync`) vorhanden
+- Esbuild-Bundle erfolgreich
 
-- Sync-Endpunkte liefern die Daten, die Freshness (Ticket 11) braucht
-- Freshness-Helper im Frontend brauchen `blenderSyncRevision`, `lastBlenderSyncAt` etc. — ohne Sync sind diese Felder immer leer
-- Wenn Sync zuerst steht, kann Ticket 12 alle Statusfelder korrekt darstellen, statt sie nachträglich zu ergänzen
-
-Was konkret gebaut werden sollte:
-
-- `POST /sync/shot-state`
-- `POST /sync/guides`
-- `POST /sync/preview`
-- `POST /sync/glb-preview`
-
-Wichtige Regel:
-
-- `scriptony-sync` darf nur Sync-Metadaten ändern
-- keine Produktentscheidung, kein `acceptedRenderJobId`, kein `reviewStatus`
-
-Definition of done:
-
-- Blender/Bridge können Zustände publizieren
-- Review-Entscheidungen bleiben vollständig außerhalb von `sync`
-- Alle Sync-Felder auf `shots` werden beschreibbar
+**Begründung:** Sync liefert die Daten, die Freshness (Ticket 11) braucht. Ohne Sync sind `blenderSyncRevision`, `lastBlenderSyncAt` etc. immer leer. Jetzt da Sync steht, kann Ticket 11 alle Statusfelder korrekt berechnen.
 
 #### Ticket 11: Freshness Model
 
 Priorität: hoch
 
-Warum direkt nach Ticket 7:
+Warum jetzt (direkt nach Ticket 7):
 
 - die Regeln hängen an `guideBundleRevision`, `blenderSyncRevision`, `renderRevision`, `styleProfileRevision`, `lastPreviewAt`
-- ohne `sync` fehlen dafür die Inputs
+- Sync (Ticket 7) liefert jetzt die Inputs
 - Freshness-Helper werden sowohl im Backend (für Shot-Status) als auch im Frontend (für UI-Indikatoren) gebraucht
 
 Was konkret gebaut werden sollte:
@@ -255,8 +243,8 @@ Definition of done:
 3. ~~Ticket 3 bauen~~ ✅
 4. ~~Ticket 4 erweitern~~ ✅
 5. ~~Ticket 5 bauen~~ ✅
-6. **Ticket 7 bauen** ← nächstes
-7. **Ticket 11 bauen**
+6. ~~Ticket 7 bauen~~ ✅
+7. **Ticket 11 bauen** ← nächstes
 8. Ticket 12 auf offizielle Semantik umstellen
 9. Ticket 8 bauen
 10. Ticket 9 bauen
@@ -268,7 +256,7 @@ Definition of done:
 
 - Ticket 2, 6, 3, 4, 5 — alle deployed und live
 
-### PR 6: Blender Sync
+### PR 6: Blender Sync ✅
 
 - Ticket 7
 - Sync-Endpunkte, Shot-Feld-Updates, strikte Trennung von Produktentscheidungen
@@ -297,6 +285,6 @@ Definition of done:
 
 ## Empfehlung
 
-Phase 0–2 sind abgeschlossen. Das Backend-Modell für den 2D-Render- und Review-Flow steht.
+Phase 0–3 (Ticket 7) sind abgeschlossen. Das Backend-Modell für den 2D-Render- und Review-Flow sowie für Blender-Sync steht.
 
-**Nächster Schritt:** Ticket 7 (`scriptony-sync`) bauen, damit Sync- und Freshness-Daten verfügbar sind, bevor das Frontend umgestellt wird. Danach Ticket 11 (Freshness), dann Ticket 12 (Frontend) als ein einziger sauberer Durchlauf gegen das vollständige Backend.
+**Nächster Schritt:** Ticket 11 (Freshness Model) bauen, damit kanonische Helper für stale-Berechnungen im Backend und Frontend verfügbar sind. Danach Ticket 12 (Frontend) als ein einziger sauberer Durchlauf gegen das vollständige Backend.
