@@ -1,7 +1,7 @@
 /**
  * Appwrite function entrypoint: scriptony-sync.
  *
- * Puppet-Layer Sync service (Ticket 7 — Blender Ingress).
+ * Puppet-Layer Sync service (Ticket 7 — Blender Ingress + Ticket 11 — Freshness).
  *
  * This service is a STRICT sync surface: it only updates sync-metadata
  * fields on `shots`. It must NEVER touch product-decision fields
@@ -12,6 +12,7 @@
  *   POST /sync/guides        — Bridge publishes guide bundle
  *   POST /sync/preview       — Bridge publishes 2D preview timestamp
  *   POST /sync/glb-preview   — Bridge publishes GLB preview file ID
+ *   GET  /sync/freshness/:shotId — compute freshness status for a shot
  */
 
 import { requireUserBootstrap } from "../_shared/auth";
@@ -34,6 +35,7 @@ import {
   syncPreview,
   syncShotState,
   userCanAccessShot,
+  getShotFreshness,
 } from "./sync-service";
 
 function getPathname(req: RequestLike): string {
@@ -72,6 +74,31 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     }
     const userId = bootstrap.user.id;
     const organizationIds = await getUserOrganizationIds(userId);
+
+    // -------------------------------------------------------------------------
+    // GET /sync/freshness/:shotId — compute freshness status (Ticket 11)
+    // -------------------------------------------------------------------------
+    const freshnessMatch = pathname.match(/^\/sync\/freshness\/([^/]+)$/);
+    if (freshnessMatch) {
+      if (req.method !== "GET") {
+        sendMethodNotAllowed(res, ["GET"]);
+        return;
+      }
+      const shotId = freshnessMatch[1];
+
+      if (!(await userCanAccessShot(shotId, userId, organizationIds))) {
+        sendNotFound(res, "Shot not found");
+        return;
+      }
+
+      try {
+        const freshness = await getShotFreshness(shotId, userId, organizationIds);
+        sendJson(res, 200, { shotId, freshness });
+      } catch (error) {
+        sendServerError(res, error);
+      }
+      return;
+    }
 
     // -------------------------------------------------------------------------
     // POST /sync/shot-state — Blender publishes version + revision
@@ -219,7 +246,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       if (!(await userCanAccessShot(body.shotId, userId, organizationIds))) {
-        sendNotFound(res, "Shot not found");
+        sendNotFound(res, "NotFound");
         return;
       }
 

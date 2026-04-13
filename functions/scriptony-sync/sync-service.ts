@@ -27,6 +27,7 @@ import {
   updateDocument,
 } from "../_shared/appwrite-db";
 import { getAccessibleProject } from "../_shared/scriptony";
+import { computeFreshness, type ShotFreshnessInput, type ShotFreshnessResult } from "../_shared/freshness";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,6 +119,37 @@ export async function userCanAccessShot(
   const projectId = toString(shot.project_id ?? shot.projectId);
   if (!projectId) return false;
   return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
+}
+
+// ---------------------------------------------------------------------------
+// Freshness: compute stale status for a shot
+// ---------------------------------------------------------------------------
+
+export async function getShotFreshness(
+  shotId: string,
+  userId: string,
+  organizationIds: string[]
+): Promise<ShotFreshnessResult> {
+  const shot = await getDocument(C.shots, shotId);
+  if (!shot) {
+    throw new Error(`Shot not found: ${shotId}`);
+  }
+
+  const projectId = toString(shot.project_id ?? shot.projectId);
+  if (!projectId || !(await getAccessibleProject(projectId, userId, organizationIds))) {
+    throw new Error("Shot not found or access denied");
+  }
+
+  const input: ShotFreshnessInput = {
+    blenderSyncRevision: shot.blenderSyncRevision,
+    guideBundleRevision: shot.guideBundleRevision,
+    styleProfileRevision: shot.styleProfileRevision,
+    renderRevision: shot.renderRevision,
+    lastBlenderSyncAt: shot.lastBlenderSyncAt,
+    lastPreviewAt: shot.lastPreviewAt,
+  };
+
+  return computeFreshness(input);
 }
 
 // ---------------------------------------------------------------------------
