@@ -1,11 +1,10 @@
 /**
  * POST /ai/gym/generate-starter — Creative Gym starter text (one-shot completion).
+ * Uses the central ai-service chat() function with feature "creative_gym".
  * Location: functions/scriptony-assistant/ai/gym-generate-starter.ts
  */
 
-import { generateAiResponse } from "../../_shared/ai";
-import { getLegacyAssistantSettings } from "../../_shared/ai-central-store";
-import { resolveAiFeatureProfile } from "../../_shared/ai-feature-profile";
+import { chat } from "../../_shared/ai-service/services/text";
 import { requireUserBootstrap } from "../../_shared/auth";
 import { getCharactersByProject, getProjectIfAccessible } from "../../_shared/timeline";
 import {
@@ -101,13 +100,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const row = await getLegacyAssistantSettings(bootstrap.user.id);
-    const resolved = resolveAiFeatureProfile(row, "gym");
-    if (!resolved.ok) {
-      sendBadRequest(res, "error" in resolved ? resolved.error : "Gym is not configured");
-      return;
-    }
-
     let projectContext = "";
     const projectId = typeof body.source_project_id === "string" ? body.source_project_id.trim() : "";
     if (projectId) {
@@ -130,7 +122,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       }
     }
 
-    const lang = languageBlock(resolved.json, body.ui_language);
+    const lang = languageBlock({}, body.ui_language);
 
     const userPrompt = [
       `Challenge: ${tpl.title}`,
@@ -147,19 +139,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       .filter(Boolean)
       .join("\n");
 
-    const generated = await generateAiResponse({
-      settings: resolved.settings,
-      conversationMessages: [],
-      latestMessage: userPrompt,
+    const result = await chat(bootstrap.user.id, [{ role: "user", content: userPrompt }], "creative_gym", {
+      temperature: 0.8,
     });
 
     sendJson(res, 200, {
-      text: generated.content,
+      text: result.content,
       challenge_template_id: challengeId,
       medium,
       token_details: {
-        input_tokens: generated.inputTokens,
-        output_tokens: generated.outputTokens,
+        input_tokens: result.usage?.promptTokens ?? 0,
+        output_tokens: result.usage?.completionTokens ?? 0,
       },
     });
   } catch (error) {

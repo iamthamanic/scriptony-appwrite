@@ -1,8 +1,12 @@
 /**
- * Dedicated image settings route backed by central `scriptony_ai`.
+ * Dedicated image settings route backed by central ai-service settings.
+ * GET returns the user's feature config for image_generation.
+ * PUT updates the feature config.
+ *
+ * Location: functions/scriptony-image/ai/image-settings.ts
  */
 
-import { getLegacyImageSettings, updateLegacyImageSettings } from "../../_shared/ai-central-store";
+import { getAISettings, updateFeatureConfig } from "../../_shared/ai-service/config/settings";
 import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
@@ -14,18 +18,6 @@ import {
   type ResponseLike,
 } from "../../_shared/http";
 
-function buildFallbackImageSettings(userId: string) {
-  return {
-    id: `fallback-image-settings:${userId}`,
-    user_id: userId,
-    settings_json: "{}",
-    settings_json_parsed: {},
-    image_provider: "ollama" as const,
-    ollama_image_api_key: "",
-    openrouter_image_api_key: "",
-  };
-}
-
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
     const user = await requireAuthenticatedUser(req);
@@ -35,23 +27,21 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      let settings;
-      try {
-        settings = await getLegacyImageSettings(user.id);
-      } catch (error) {
-        console.warn("[scriptony-image] image settings fallback", {
-          userId: user.id,
-          message: error instanceof Error ? error.message : String(error),
-        });
-        settings = buildFallbackImageSettings(user.id);
-      }
+      const settings = await getAISettings(user.id);
       sendJson(res, 200, { settings });
       return;
     }
 
     if (req.method === "PUT" || req.method === "POST") {
-      const body = await readJsonBody<Record<string, unknown>>(req);
-      const settings = await updateLegacyImageSettings(user.id, body);
+      const body = await readJsonBody<{ provider?: string; model?: string; voice?: string }>(req);
+      if (body.provider || body.model) {
+        await updateFeatureConfig(user.id, "image_generation", {
+          provider: body.provider || "",
+          model: body.model || "",
+          voice: body.voice || "",
+        });
+      }
+      const settings = await getAISettings(user.id);
       sendJson(res, 200, { settings });
       return;
     }

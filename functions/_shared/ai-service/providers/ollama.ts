@@ -62,12 +62,17 @@ type OllamaCloudChatResult =
   | { ok: true; status: number; payload: OllamaCloudChatPayload }
   | { ok: false; status: number; error: string };
 
-function requestOllamaCloudChat(
+type OllamaCloudImageResult =
+  | { ok: true; status: number; payload: unknown }
+  | { ok: false; status: number; error: string };
+
+function requestOllamaCloud(
+  path: string,
   baseUrl: string,
   headers: Record<string, string>,
   body: Record<string, unknown>
-): Promise<OllamaCloudChatResult> {
-  const urlStr = `${trimSlash(baseUrl)}/v1/chat/completions`;
+): Promise<OllamaCloudImageResult> {
+  const urlStr = `${trimSlash(baseUrl)}${path}`;
   let u: URL;
   try {
     u = new URL(urlStr);
@@ -101,10 +106,10 @@ function requestOllamaCloudChat(
         res.on("end", () => {
           const status = res.statusCode ?? 0;
           const raw = Buffer.concat(chunks).toString("utf8");
-          let payload: OllamaCloudChatPayload = {};
+          let payload: unknown = {};
           if (raw.trim()) {
             try {
-              payload = JSON.parse(raw) as OllamaCloudChatPayload;
+              payload = JSON.parse(raw);
             } catch {
               payload = {};
             }
@@ -131,6 +136,17 @@ function requestOllamaCloudChat(
     });
     req.write(rawBody);
     req.end();
+  });
+}
+
+function requestOllamaCloudChat(
+  baseUrl: string,
+  headers: Record<string, string>,
+  body: Record<string, unknown>
+): Promise<OllamaCloudChatResult> {
+  return requestOllamaCloud("/v1/chat/completions", baseUrl, headers, body).then((r) => {
+    if (!r.ok) return r;
+    return { ok: true, status: r.status, payload: r.payload as OllamaCloudChatPayload };
   });
 }
 
@@ -294,23 +310,53 @@ export class OllamaProvider implements AIProvider {
   }
   
   async generateImage(prompt: string, options: ImageOptions): Promise<ImageResponse> {
-    // Use stable-diffusion or similar model
-    const response = await fetch(`${this.baseUrl}/api/generate`, {
+    const model = options.model || "stable-diffusion";
+
+    if (this.isCloudMode()) {
+      // Ollama Cloud: use native /api/generate for x/ models, /v1/images/generations otherwise
+      const useNative = model.startsWith("x/");
+      const path = useNative ? "/api/generate" : "/v1/images/generations";
+      const body: Record<string, unknown> = useNative
+        ? { model, prompt, stream: false }
+        : { model, prompt, size: options.size || "800x1200", response_format: "b64_json" };
+
+      const result = await requestOllamaCloud(path, trimSlash(this.baseUrl), this.headers(), body);
+      if (!result.ok) {
+        throw new Error(`Ollama cloud image error: ${result.status} - ${result.error}`);
+      }
+
+      const data = result.payload as Record<string, unknown>;
+      // /v1/images/generations → data[0].b64_json
+      if (Array.isArray(data?.data) && data.data[0]?.b64_json) {
+        return { b64Json: data.data[0].b64_json as string };
+      }
+      // /api/generate → images[0] or response
+      if (Array.isArray(data?.images) && typeof data.images[0] === "string") {
+        return { b64Json: data.images[0] as string };
+      }
+      if (typeof data?.response === "string") {
+        return { b64Json: data.response };
+      }
+      throw new Error("Ollama cloud image: no image data in response");
+    }
+
+    // Local Ollama: /api/generate
+    const response = await fetch(`${trimSlash(this.baseUrl)}/api/generate`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({
-        model: options.model || "stable-diffusion",
+        model,
         prompt,
         stream: false,
       }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Ollama image error: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
+
     return {
       b64Json: data.response,
     };

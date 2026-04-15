@@ -82,6 +82,12 @@ export interface ImageOptions {
   negative_prompt?: string;
   style_preset?: string;
   responseFormat?: "url" | "b64_json";
+  /** Provider-specific modalities (e.g. OpenRouter ["image","text"]). */
+  modalities?: string[];
+  /** Provider-specific image config (e.g. OpenRouter { aspect_ratio: "2:3" }). */
+  imageConfig?: Record<string, unknown>;
+  /** Max tokens for image generation (OpenRouter bills against completion ceiling). */
+  maxTokens?: number;
 }
 
 export interface ImageResponse {

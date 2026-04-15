@@ -1,34 +1,55 @@
 /**
- * Fetches unified model list with capabilities; provides legacy rows for existing callers.
+ * Dynamic model discovery — thin wrapper around ai-service model-discovery.
  * Location: functions/scriptony-assistant/ai/fetch-dynamic-models.ts
  */
 
-import { fetchUnifiedModels, toLegacyModelRows, type UnifiedModelRow } from "../../_shared/model-capabilities";
-import { getProviderModels } from "./settings";
+import { discoverModels, type ModelInfo } from "../../_shared/ai-service/model-discovery";
+import { getModelsForProvider } from "../../_shared/ai-service/config/models";
+
+type LegacyModelRow = { id: string; name: string; context_window: number };
+
+function modelInfoToLegacy(models: ModelInfo[]): LegacyModelRow[] {
+  return models.map((m) => ({
+    id: m.id,
+    name: m.name,
+    context_window: m.contextWindow ?? 8192,
+  }));
+}
 
 export async function listRemoteModels(
   provider: string,
   opts: { apiKey?: string; ollamaBaseUrl?: string; ollamaMode?: "local" | "cloud" }
-): Promise<{ models: Array<{ id: string; name: string; context_window: number }>; source: "remote" | "registry" }> {
-  const fallback = getProviderModels(provider);
-  const unified = await fetchUnifiedModels({
-    provider,
-    apiKey: opts.apiKey,
-    ollamaBaseUrl: opts.ollamaBaseUrl,
-    ollamaMode: opts.ollamaMode,
-  });
-  const models = unified.models.length ? toLegacyModelRows(unified.models) : fallback;
-  return { models, source: unified.models.length ? "remote" : "registry" };
+): Promise<{ models: LegacyModelRow[]; source: "remote" | "registry" }> {
+  const fallback = modelInfoToLegacy(getModelsForProvider(provider));
+  try {
+    const discovered = await discoverModels(provider, "assistant_chat", {
+      apiKey: opts.apiKey,
+      baseUrl: opts.ollamaBaseUrl,
+    });
+    if (discovered.length) {
+      return { models: modelInfoToLegacy(discovered), source: "remote" };
+    }
+  } catch {
+    // fall through to registry
+  }
+  return { models: fallback, source: "registry" };
 }
 
 export async function listRemoteModelsWithCapabilities(
   provider: string,
   opts: { apiKey?: string; ollamaBaseUrl?: string; ollamaMode?: "local" | "cloud" }
-): Promise<{ models: UnifiedModelRow[]; source: "remote" | "registry" }> {
-  return fetchUnifiedModels({
-    provider,
-    apiKey: opts.apiKey,
-    ollamaBaseUrl: opts.ollamaBaseUrl,
-    ollamaMode: opts.ollamaMode,
-  });
+): Promise<{ models: ModelInfo[]; source: "remote" | "registry" }> {
+  try {
+    const discovered = await discoverModels(provider, "assistant_chat", {
+      apiKey: opts.apiKey,
+      baseUrl: opts.ollamaBaseUrl,
+    });
+    if (discovered.length) {
+      return { models: discovered, source: "remote" };
+    }
+  } catch {
+    // fall through
+  }
+  const fallback = getModelsForProvider(provider);
+  return { models: fallback, source: "registry" };
 }

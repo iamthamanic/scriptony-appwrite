@@ -1,5 +1,6 @@
 /**
  * AI models route: lists models per provider (dynamic from vendor APIs when possible).
+ * Uses central ai-service for discovery and registry.
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
@@ -12,10 +13,8 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../_shared/http";
-import { getLegacyAssistantSettings } from "../../_shared/ai-central-store";
-import { inferOllamaMode, parseSettingsJsonField } from "../../_shared/ai-feature-profile";
+import { getModelsForProvider } from "../../_shared/ai-service/config/models";
 import { listRemoteModels, listRemoteModelsWithCapabilities } from "./fetch-dynamic-models";
-import { getProviderModels } from "./settings-models";
 
 function providerFromRequest(req: RequestLike, fallback: string): string {
   const q = getQuery(req, "provider")?.trim().toLowerCase();
@@ -44,44 +43,22 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const row = await getLegacyAssistantSettings(bootstrap.user.id);
-    const active = (typeof row.active_provider === "string" && row.active_provider) || "openai";
-    const provider = providerFromRequest(req, active);
-
-    const str = (k: string) => (typeof row[k] === "string" ? (row[k] as string).trim() : "");
-
-    let apiKey = "";
-    if (provider === "openai") apiKey = str("openai_api_key");
-    else if (provider === "anthropic") apiKey = str("anthropic_api_key");
-    else if (provider === "google") apiKey = str("google_api_key");
-    else if (provider === "openrouter") apiKey = str("openrouter_api_key");
-    else if (provider === "deepseek") apiKey = str("deepseek_api_key");
-    else if (provider === "ollama") apiKey = str("ollama_api_key");
-
-    const json = parseSettingsJsonField(row.settings_json);
-    const inferredOllamaMode = inferOllamaMode(row, json);
-    const qMode = getQuery(req, "ollama_mode")?.trim().toLowerCase();
-    const ollamaMode =
-      provider === "ollama" && (qMode === "cloud" || qMode === "local") ? qMode : inferredOllamaMode;
-
-    const baseOverride = getQuery(req, "ollama_base_url")?.trim().replace(/\/$/, "") || "";
-    const ollamaBaseUrl =
-      provider === "ollama" && ollamaMode === "local"
-        ? baseOverride || str("ollama_base_url").replace(/\/$/, "")
-        : "";
+    const provider = providerFromRequest(req, "openai");
+    const ollamaMode = getQuery(req, "ollama_mode")?.trim().toLowerCase();
+    const ollamaBaseUrl = getQuery(req, "ollama_base_url")?.trim().replace(/\/$/, "") || "";
 
     const { models, source } = await listRemoteModels(provider, {
-      apiKey,
-      ollamaBaseUrl: provider === "ollama" ? ollamaBaseUrl : undefined,
-      ollamaMode: provider === "ollama" ? ollamaMode : undefined,
+      apiKey: "",
+      ollamaBaseUrl: provider.startsWith("ollama") ? ollamaBaseUrl : undefined,
+      ollamaMode: provider.startsWith("ollama") ? (ollamaMode === "cloud" ? "cloud" : "local") : undefined,
     });
     const withCaps = await listRemoteModelsWithCapabilities(provider, {
-      apiKey,
-      ollamaBaseUrl: provider === "ollama" ? ollamaBaseUrl : undefined,
-      ollamaMode: provider === "ollama" ? ollamaMode : undefined,
+      apiKey: "",
+      ollamaBaseUrl: provider.startsWith("ollama") ? ollamaBaseUrl : undefined,
+      ollamaMode: provider.startsWith("ollama") ? (ollamaMode === "cloud" ? "cloud" : "local") : undefined,
     });
 
-    const fallbackModels = getProviderModels(provider);
+    const fallbackModels = getModelsForProvider(provider);
     const finalModels = models.length > 0 ? models : fallbackModels;
     sendJson(res, 200, {
       provider,
@@ -90,7 +67,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       models_with_capabilities: withCaps.models,
       source,
       registry_fallback: models.length === 0 || source === "registry",
-      ...(provider === "ollama" ? { ollama_mode: ollamaMode } : {}),
+      ...(provider.startsWith("ollama") ? { ollama_mode: ollamaMode || "local" } : {}),
     });
   } catch (error) {
     sendServerError(res, error);

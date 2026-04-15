@@ -133,10 +133,11 @@ app.post("/generate", async (c) => {
   }
   
   const body = await c.req.json();
-  const { 
+  const {
     prompt,
-    provider = "openrouter",
-    model = "runway-gen3",
+    // NOTE: provider and model are ignored by generateVideo() — resolved from feature config
+    provider: _provider = "openrouter",
+    model: _model = "runway-gen3",
     duration = 5,
     aspect_ratio = "16:9",
     fps = 24,
@@ -155,8 +156,7 @@ app.post("/generate", async (c) => {
     const { generateVideo } = await import("../_shared/ai-service");
     
     const result = await generateVideo(userId, prompt, {
-      provider,
-      model,
+      // NOTE: provider/model resolved from feature config, not request body
       duration,
       aspect_ratio: aspect_ratio as "16:9" | "9:16" | "1:1",
       fps,
@@ -175,8 +175,7 @@ app.post("/generate", async (c) => {
           {
             user_id: userId,
             prompt,
-            provider,
-            model,
+            // Provider/model come from feature config, not request body
             video_id: result.id,
             status: result.status,
             created_at: new Date().toISOString(),
@@ -186,15 +185,13 @@ app.post("/generate", async (c) => {
         console.log("Could not save to history:", e);
       }
     }
-    
+
     return c.json({
       success: true,
       video: {
         id: result.id,
         status: result.status,
         estimated_time: result.estimated_time,
-        model,
-        provider,
       },
     });
   } catch (error: any) {
@@ -215,7 +212,7 @@ app.post("/generate/short", async (c) => {
   }
   
   const body = await c.req.json();
-  const { prompt, provider = "openrouter", model = "pika-v1", aspect_ratio = "9:16" } = body;
+  const { prompt, provider: _provider2 = "openrouter", model: _model2 = "pika-v1", aspect_ratio = "9:16" } = body;
   
   if (!prompt) {
     return c.json({ error: "Prompt required" }, 400);
@@ -225,8 +222,7 @@ app.post("/generate/short", async (c) => {
     const { generateShortVideo } = await import("../_shared/ai-service");
     
     const result = await generateShortVideo(userId, prompt, {
-      provider,
-      model,
+      // NOTE: provider/model resolved from feature config
       aspect_ratio: aspect_ratio as "16:9" | "9:16" | "1:1",
     });
     
@@ -252,7 +248,7 @@ app.post("/generate/landscape", async (c) => {
   }
   
   const body = await c.req.json();
-  const { prompt, provider = "openrouter", model = "runway-gen3", duration = 10 } = body;
+  const { prompt, provider: _provider3 = "openrouter", model: _model3 = "runway-gen3", duration = 10 } = body;
   
   if (!prompt) {
     return c.json({ error: "Prompt required" }, 400);
@@ -262,8 +258,7 @@ app.post("/generate/landscape", async (c) => {
     const { generateVideoLandscape } = await import("../_shared/ai-service");
     
     const result = await generateVideoLandscape(userId, prompt, {
-      provider,
-      model,
+      // NOTE: provider/model resolved from feature config
       duration,
     });
     
@@ -289,11 +284,12 @@ app.post("/generate/from-image", async (c) => {
   }
   
   const body = await c.req.json();
-  const { 
-    image_url, 
-    prompt, 
-    provider = "runway",
-    model = "runway-gen3",
+  const {
+    image_url,
+    prompt,
+    // NOTE: provider/model resolved from feature config
+    provider: _provider4 = "runway",
+    model: _model4 = "runway-gen3",
     duration = 5,
   } = body;
   

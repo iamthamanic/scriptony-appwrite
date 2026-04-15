@@ -101,37 +101,51 @@ export class OpenRouterProvider implements AIProvider {
   }
   
   async generateImage(prompt: string, options: ImageOptions): Promise<ImageResponse> {
-    // OpenRouter uses chat completions for image generation
-    // Models like dall-e-3 are accessed via special routing
-    
+    const body: Record<string, unknown> = {
+      model: options.model || "openai/dall-e-3",
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
+    };
+
+    // OpenRouter image generation uses modalities + chat/completions for image-capable models
+    if (options.modalities?.length) {
+      body.modalities = options.modalities;
+      body.max_tokens = options.maxTokens ?? 1024;
+      if (options.imageConfig) {
+        body.image_config = options.imageConfig;
+      }
+    }
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({
-        model: options.model || "openai/dall-e-3",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      }),
+      body: JSON.stringify(body),
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`OpenRouter image error: ${response.status} - ${error}`);
     }
-    
+
     const data = await response.json();
-    
-    // Image models return URL in the response
+
+    // With modalities, image comes back in choices[0].message.images[].image_url.url (data-URL or HTTP URL)
+    if (options.modalities?.includes("image")) {
+      const imageUrl: string | undefined =
+        data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      if (imageUrl) {
+        // Data-URL → extract base64; HTTP URL → pass through
+        const b64Match = /^data:image\/[^;]+;base64,(.+)$/is.exec(imageUrl.trim());
+        if (b64Match) {
+          return { b64Json: b64Match[1].trim(), revisedPrompt: prompt };
+        }
+        return { url: imageUrl, revisedPrompt: prompt };
+      }
+    }
+
+    // Fallback: text content may contain URL
     const imageUrl = data.choices[0]?.message?.content;
-    
-    return {
-      url: imageUrl,
-      revisedPrompt: prompt,
-    };
+    return { url: imageUrl, revisedPrompt: prompt };
   }
   
   async createEmbedding(text: string, options: EmbeddingOptions): Promise<EmbeddingResponse> {

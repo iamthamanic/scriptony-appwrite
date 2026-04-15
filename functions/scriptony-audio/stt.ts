@@ -132,8 +132,8 @@ app.post("/transcribe", async (c) => {
   if (contentType.includes("multipart/form-data")) {
     const formData = await c.req.formData();
     const audioFile = formData.get("audio") as File;
-    const provider = formData.get("provider")?.toString() || "openai";
-    const model = formData.get("model")?.toString() || "whisper-1";
+    const provider = formData.get("provider")?.toString() || "openai"; // NOTE: ignored by transcribe() — resolved from feature config
+    const model = formData.get("model")?.toString() || "whisper-1";   // NOTE: ignored by transcribe() — resolved from feature config
     const language = formData.get("language")?.toString();
     const timestamps = formData.get("timestamps") === "true";
     
@@ -200,8 +200,8 @@ app.post("/transcribe", async (c) => {
   const body = await c.req.json();
   const { 
     audio_url,
-    provider = "openai",
-    model = "whisper-1",
+    provider = "openai", // NOTE: ignored by transcribe() — resolved from feature config
+    model = "whisper-1", // NOTE: ignored by transcribe() — resolved from feature config
     language,
     timestamps = false,
   } = body;
@@ -250,8 +250,8 @@ app.post("/transcribe/url", async (c) => {
   const body = await c.req.json();
   const { 
     audio_url,
-    provider = "openai",
-    model = "whisper-1",
+    provider = "openai", // NOTE: ignored by transcribe() — resolved from feature config
+    model = "whisper-1", // NOTE: ignored by transcribe() — resolved from feature config
     language,
     timestamps = false,
   } = body;

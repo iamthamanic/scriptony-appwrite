@@ -1,8 +1,12 @@
 /**
- * AI settings routes for the Scriptony HTTP API.
+ * AI settings routes using the central ai-service.
+ * GET returns settings; PUT updates feature config for assistant_chat.
+ *
+ * Location: functions/scriptony-assistant/ai/settings.ts
  */
 
-import { getLegacyAssistantSettings, updateLegacyAssistantSettings } from "../../_shared/ai-central-store";
+import { getAISettings, updateFeatureConfig } from "../../_shared/ai-service/config/settings";
+import { getModelsForProvider } from "../../_shared/ai-service/config/models";
 import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
@@ -13,29 +17,6 @@ import {
   type RequestLike,
   type ResponseLike,
 } from "../../_shared/http";
-import { getProviderModels } from "./settings-models";
-
-function buildFallbackAssistantSettings(userId: string) {
-  return {
-    id: `fallback-assistant-settings:${userId}`,
-    user_id: userId,
-    openai_api_key: null,
-    anthropic_api_key: null,
-    google_api_key: null,
-    openrouter_api_key: null,
-    deepseek_api_key: null,
-    ollama_api_key: null,
-    ollama_base_url: null,
-    active_provider: "openai" as const,
-    active_model: "gpt-4o-mini",
-    system_prompt: "",
-    temperature: 0.7,
-    max_tokens: 2000,
-    use_rag: true,
-    settings_json: "{}",
-    settings_json_parsed: {},
-  };
-}
 
 export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
   try {
@@ -46,27 +27,25 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      let settings;
-      try {
-        settings = await getLegacyAssistantSettings(user.id);
-      } catch (error) {
-        console.warn("[scriptony-assistant] assistant settings fallback", {
-          userId: user.id,
-          message: error instanceof Error ? error.message : String(error),
-        });
-        settings = buildFallbackAssistantSettings(user.id);
-      }
+      const settings = await getAISettings(user.id);
       sendJson(res, 200, { settings });
       return;
     }
 
     if (req.method === "PUT" || req.method === "POST") {
-      const body = await readJsonBody<Record<string, unknown>>(req);
-      const settings = await updateLegacyAssistantSettings(user.id, body);
-      const providerModels = getProviderModels(String(settings.active_provider || "openai"));
+      const body = await readJsonBody<{ provider?: string; model?: string; voice?: string }>(req);
+      if (body.provider || body.model) {
+        await updateFeatureConfig(user.id, "assistant_chat", {
+          provider: body.provider || "",
+          model: body.model || "",
+          voice: body.voice || "",
+        });
+      }
+      const settings = await getAISettings(user.id);
+      const providerModels = getModelsForProvider(body.provider || "openai");
       sendJson(res, 200, {
         settings,
-        available_models: providerModels.map((entry) => entry.id),
+        available_models: providerModels.map((m) => m.id),
         models_with_context: providerModels,
       });
       return;
@@ -78,4 +57,4 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   }
 }
 
-export { getProviderModels } from "./settings-models";
+export { getModelsForProvider } from "../../_shared/ai-service/config/models";

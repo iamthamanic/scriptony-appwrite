@@ -126,7 +126,7 @@ app.get("/voices", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
   
-  const provider = c.req.query("provider") || "openai";
+  const provider = c.req.query("provider") || "openai"; // NOTE: ignored by synthesize() — resolved from feature config
   
   try {
     const { getVoices } = await import("../_shared/ai-service");
@@ -183,8 +183,8 @@ app.post("/synthesize", async (c) => {
   const body = await c.req.json();
   const { 
     text,
-    provider = "openai",
-    model = "tts-1",
+    provider = "openai", // NOTE: ignored by synthesize() — resolved from feature config
+    model = "tts-1",     // NOTE: ignored by synthesize() — resolved from feature config
     voice = "alloy",
     speed = 1.0,
     format = "mp3",
@@ -269,8 +269,8 @@ app.post("/synthesize/stream", async (c) => {
   const body = await c.req.json();
   const { 
     text_chunks,
-    provider = "openai",
-    model = "tts-1",
+    provider = "openai", // NOTE: ignored by synthesize() — resolved from feature config
+    model = "tts-1",     // NOTE: ignored by synthesize() — resolved from feature config
     voice = "alloy",
     format = "mp3",
   } = body;
