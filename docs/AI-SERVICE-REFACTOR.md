@@ -1028,29 +1028,29 @@ Deno.test("Text service uses correct provider", async () => {
 
 - [x] `scriptony-ai/` erstellen
 - [x] `scriptony-gym/` erstellen
-- [ ] `scriptony-image/` erstellen
-- [ ] `scriptony-video/` erstellen
-- [ ] `scriptony-assistant/` refactor
-- [ ] `scriptony-audio/` refactor
+- [x] `scriptony-image/` erstellen
+- [x] `scriptony-video/` erstellen
+- [x] `scriptony-assistant/` refactor
+- [x] `scriptony-audio/` refactor
 
 ### Phase 3: Datenbank
 
-- [ ] Appwrite Collections erstellen
-- [ ] Migration Script für API-Keys
-- [ ] Default Settings für User
+- [x] Appwrite Collections erstellen (`scriptony_ai` DB existiert)
+- [x] Migration Script für API-Keys (`migrate-ollama-provider-ids.mjs`)
+- [x] Default Settings für User (über `scriptony-ai` Control Plane)
 
 ### Phase 4: Frontend
 
-- [ ] Settings UI: Tab 1 (API Keys)
-- [ ] Settings UI: Tab 2 (Feature Config)
-- [ ] Provider-Auswahl pro Feature
-- [ ] Model-Auswahl pro Feature
-- [ ] Validierung (Key → Provider aktivieren)
+- [x] Settings UI: Tab 1 (API Keys) — `AIIntegrationsSection` + `FeatureProviderCard`
+- [x] Settings UI: Tab 2 (Feature Config) — Feature-Drafts in `AIIntegrationsSection`
+- [x] Provider-Auswahl pro Feature — Ollama-Collapse + Mode-Toggle
+- [x] Model-Auswahl pro Feature — `FeatureModelPicker` mit Discovery
+- [x] Validierung (Key → Provider aktivieren) — Key-Management in `FeatureProviderCard`
 
 ### Phase 5: Testing & Docs
 
-- [ ] Unit Tests für Provider
-- [ ] Integration Tests für Services
+- [x] Unit Tests für Provider (110 Vitest-Tests, siehe `src/lib/__tests__/`)
+- [x] Integration Tests für Services (Integration-Smoke-Tests für alle 7 Feature-Bereiche)
 - [ ] API Documentation
 - [ ] User Guide für Settings
 
@@ -1058,11 +1058,9 @@ Deno.test("Text service uses correct provider", async () => {
 
 ## Nächste Schritte
 
-1. **`scriptony-image/` und `scriptony-video/` erstellen**
-2. **`scriptony-assistant/` refactor** - AI-Endpunkte nutzen neuen Service
-3. **`scriptony-audio/` refactor** - STT/TTS nutzen neuen Service
-4. **Appwrite Collections anlegen**
-5. **Frontend Settings Page bauen**
+1. **API Documentation** — Endpunkte und Provider-Vertrag dokumentieren
+2. **User Guide für Settings** — How-to für KI-Einstellungen
+3. **`model-discovery.test.ts`** von Deno nach Vitest migrieren
 
 ---
 

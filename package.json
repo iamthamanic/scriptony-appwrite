@@ -123,7 +123,7 @@
     "verify:parity": "node scripts/verify-appwrite-parity.mjs",
     "smoke:user-flows": "node scripts/smoke-user-flows.mjs",
     "smoke:feature-auth-rollout": "node scripts/smoke-feature-auth-rollout.mjs",
-    "test:model-discovery": "deno test --no-check --sloppy-imports --allow-read functions/_shared/ai-service/model-discovery.test.ts",
+    "test:model-discovery": "vitest run functions/_shared/ai-service/model-discovery.test.ts",
     "appwrite:env:generate": "node scripts/generate-infra-appwrite-env.mjs",
     "appwrite:functions:create": "bash scripts/appwrite-create-functions.sh",
     "appwrite:setup:assistant": "bash scripts/setup-appwrite-assistant.sh",
