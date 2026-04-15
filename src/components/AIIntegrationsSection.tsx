@@ -43,6 +43,7 @@ import {
 import {
   CANONICAL_OLLAMA_PROVIDER_ID,
   filterProvidersForFeature,
+  inferOllamaModeForFeature,
   inferOllamaModeFromProviderId,
   isOllamaFamilyProviderId,
   normalizeProviderIdForUi,
@@ -248,7 +249,8 @@ function buildDefaultOllamaModes(mode: OllamaUiMode = "local"): Record<FeatureKe
 
 function normalizeFeatureConfigsForUi(
   features: Record<FeatureKey, FeatureConfig>,
-  defaultMode: OllamaUiMode
+  defaultMode: OllamaUiMode,
+  featureProviderKeyIndex: Record<string, boolean> = {}
 ): {
   features: Record<FeatureKey, FeatureConfig>;
   ollamaModes: Record<FeatureKey, OllamaUiMode>;
@@ -262,7 +264,9 @@ function normalizeFeatureConfigsForUi(
         ...config,
         provider: CANONICAL_OLLAMA_PROVIDER_ID,
       };
-      ollamaModes[featureKey] = inferOllamaModeFromProviderId(config.provider);
+      // For explicit ollama_cloud/ollama_local, infer from provider ID.
+      // For plain "ollama", check if a cloud key exists for this feature.
+      ollamaModes[featureKey] = inferOllamaModeForFeature(config.provider, featureKey, featureProviderKeyIndex);
       continue;
     }
 
@@ -472,7 +476,8 @@ export function AIIntegrationsSection() {
           settingsPayload.user?.settings_json_parsed?.ollama?.mode === "cloud" ? "cloud" : "local";
         const normalizedSettings = normalizeFeatureConfigsForUi(
           settingsPayload.features,
-          defaultOllamaMode
+          defaultOllamaMode,
+          featureProviderKeyIndex
         );
         const normalizedOllamaModes = {
           ...normalizedSettings.ollamaModes,

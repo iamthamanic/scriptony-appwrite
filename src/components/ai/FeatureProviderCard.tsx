@@ -1,6 +1,7 @@
-import { Check } from "lucide-react";
+import { Check, Eye, EyeOff } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Switch } from "../ui/switch";
@@ -9,6 +10,7 @@ import { FeatureModelPicker, type DiscoveredModelInfo } from "./FeatureModelPick
 import { useProviderSelection } from "../../hooks/useProviderSelection";
 import {
   CANONICAL_OLLAMA_PROVIDER_ID,
+  isOllamaFamilyProviderId,
   normalizeProviderIdForUi,
   providerIdForOllamaMode,
 } from "../../lib/ai-provider-allowlist";
@@ -71,11 +73,17 @@ interface FeatureProviderCardProps {
   setSavedOllamaModesByFeature: React.Dispatch<React.SetStateAction<Record<FeatureKey, OllamaUiMode>>>;
   savingFeatureKey: FeatureKey | null;
   setSavingFeatureKey: React.Dispatch<React.SetStateAction<FeatureKey | null>>;
+  savingKeySlot: string | null;
+  setSavingKeySlot: React.Dispatch<React.SetStateAction<string | null>>;
+  showKeyForSlot: Record<string, boolean>;
+  setShowKeyForSlot: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   lastDiscoveryTime: Record<string, string>;
   setLastDiscoveryTime: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onDiscoverModels: (featureKey: FeatureKey, providerId: string) => Promise<DiscoveredModelInfo[]>;
   onLoadData: (showRefreshState?: boolean, options?: any) => Promise<void>;
   apiPost: any;
+  apiPut: any;
+  apiDelete: any;
   unwrapApiResult: any;
   toast: any;
 }
@@ -144,11 +152,17 @@ export function FeatureProviderCard({
   setSavedOllamaModesByFeature,
   savingFeatureKey,
   setSavingFeatureKey,
+  savingKeySlot,
+  setSavingKeySlot,
+  showKeyForSlot,
+  setShowKeyForSlot,
   lastDiscoveryTime,
   setLastDiscoveryTime,
   onDiscoverModels,
   onLoadData,
   apiPost,
+  apiPut,
+  apiDelete,
   unwrapApiResult,
   toast,
 }: FeatureProviderCardProps) {
@@ -232,7 +246,7 @@ export function FeatureProviderCard({
       if (normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID) {
         const ollamaMode = ollamaModesByFeature[feature] ?? "local";
         unwrapApiResult(
-          await apiPost("/settings", {
+          await apiPut("/settings", {
             settings_json: {
               ollama: { mode: ollamaMode },
             },
@@ -244,7 +258,7 @@ export function FeatureProviderCard({
       }
 
       unwrapApiResult(
-        await apiPost(`/features/${feature}`, {
+        await apiPut(`/features/${feature}`, {
           provider: effectiveProviderId,
           model: draft.model,
           ...(draft.voice ? { voice: draft.voice } : {}),
@@ -263,6 +277,115 @@ export function FeatureProviderCard({
       toast.error(message);
     } finally {
       setSavingFeatureKey(null);
+    }
+  };
+
+  const handleStoreFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
+    const effectivePId = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
+      ? providerIdForOllamaMode(ollamaModesByFeature[featureKey] ?? "local")
+      : providerId;
+    const slot = featureProviderCacheKey(featureKey, effectivePId);
+    const apiKeyDraft = providerKeyDrafts[slot];
+    const apiKey = apiKeyDraft && apiKeyDraft !== CONFIGURED_KEY_SENTINEL ? apiKeyDraft.trim() : "";
+    const isCanonicalOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+    const ollamaMode = ollamaModesByFeature[featureKey] ?? "local";
+    const hasStoredKey = Boolean(featureProviderKeyIndex[slot]);
+
+    if ((!isCanonicalOllama || ollamaMode === "cloud") && !apiKey && !hasStoredKey) {
+      toast.error("Bitte zuerst einen API Key eingeben.");
+      return;
+    }
+
+    setSavingKeySlot(slot);
+    try {
+      const requestBody: Record<string, string> = {};
+      if (apiKey) requestBody.api_key = apiKey;
+      requestBody.feature = featureKey;
+      if (isOllamaFamilyProviderId(effectivePId)) {
+        requestBody.base_url = getOllamaBaseUrlForMode(ollamaMode);
+      }
+
+      const validationPayload = unwrapApiResult(
+        await apiPost(`/providers/${effectivePId}/validate`, requestBody)
+      ) as { valid?: boolean; error?: string } | null;
+      if (validationPayload?.valid === false) {
+        throw new Error(
+          validationPayload?.error ||
+            `${providerDisplayName(providerById, providerId)} konnte nicht validiert werden.`
+        );
+      }
+
+      if (isCanonicalOllama) {
+        unwrapApiResult(
+          await apiPut("/settings", {
+            settings_json: {
+              ollama: { mode: ollamaMode },
+            },
+            ...(ollamaMode === "local"
+              ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
+              : {}),
+          })
+        );
+      }
+
+      if ((!isCanonicalOllama || ollamaMode === "cloud") && apiKey) {
+        unwrapApiResult(
+          await apiPost("/api-keys", {
+            feature: featureKey,
+            provider: effectivePId,
+            api_key: apiKey,
+          })
+        );
+      }
+
+      toast.success(
+        isCanonicalOllama
+          ? `Ollama (${ollamaMode === "cloud" ? "Cloud" : "Lokal"}): Verbindung geprueft.`
+          : `${providerDisplayName(providerById, providerId)}: Zugang gespeichert.`
+      );
+      setProviderKeyDrafts((prev) => ({
+        ...prev,
+        [slot]: ollamaMode === "cloud" || !isCanonicalOllama ? CONFIGURED_KEY_SENTINEL : "",
+      }));
+      await onLoadData(true, {
+        draftOverrides: featureDrafts
+          ? { [featureKey]: featureDrafts[featureKey] }
+          : undefined,
+        ollamaModeOverrides: { [featureKey]: ollamaMode },
+      });
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "API Key konnte nicht gespeichert werden.";
+      toast.error(message);
+    } finally {
+      setSavingKeySlot(null);
+    }
+  };
+
+  const handleDeleteFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
+    const effectivePId = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
+      ? providerIdForOllamaMode(ollamaModesByFeature[featureKey] ?? "local")
+      : providerId;
+    const slot = featureProviderCacheKey(featureKey, effectivePId);
+    setSavingKeySlot(slot);
+    try {
+      unwrapApiResult(
+        await apiDelete(
+          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(effectivePId)}`
+        )
+      );
+      toast.success(`${providerDisplayName(providerById, providerId)} API Key fuer dieses Feature entfernt.`);
+      setProviderKeyDrafts((prev) => ({ ...prev, [slot]: "" }));
+      await onLoadData(true, {
+        draftOverrides: featureDrafts
+          ? { [featureKey]: featureDrafts[featureKey] }
+          : undefined,
+        ollamaModeOverrides: { [featureKey]: ollamaModesByFeature[featureKey] ?? "local" },
+      });
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : "API Key konnte nicht geloescht werden.";
+      toast.error(message);
+    } finally {
+      setSavingKeySlot(null);
     }
   };
 
@@ -448,6 +571,134 @@ export function FeatureProviderCard({
           />
         </div>
       </div>
+
+      {/* Key Management */}
+      {(requiresKeyForProvider || isOllamaSelected) && (
+        <div className="space-y-2 rounded-md border border-dashed bg-background/50 p-3">
+          <Label className="text-xs">
+            {isOllamaSelected
+              ? ollamaMode === "cloud"
+                ? "Ollama Cloud API Key fuer dieses Feature"
+                : "Ollama Lokal Verbindung fuer dieses Feature"
+              : `API Key fuer dieses Feature (${selectedProviderLabel})`}
+          </Label>
+          {(!isOllamaSelected || ollamaMode === "cloud") && (
+            <>
+              <div className="relative flex items-center gap-1">
+                <Input
+                  type={showKeyForSlot[fpSlot] ? "text" : "password"}
+                  placeholder={`${selectedProviderLabel} Key`}
+                  className="pr-10 font-mono text-xs"
+                  value={
+                    providerKeyDrafts[fpSlot] === CONFIGURED_KEY_SENTINEL
+                      ? MASKED_API_KEY_VALUE
+                      : providerKeyDrafts[fpSlot] || ""
+                  }
+                  onFocus={() => {
+                    if (providerKeyDrafts[fpSlot] !== CONFIGURED_KEY_SENTINEL) return;
+                    setProviderKeyDrafts((prev) => ({ ...prev, [fpSlot]: "" }));
+                  }}
+                  onChange={(e) =>
+                    setProviderKeyDrafts((prev) => ({ ...prev, [fpSlot]: e.target.value }))
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 size-9 shrink-0"
+                  onClick={() =>
+                    setShowKeyForSlot((prev) => ({ ...prev, [fpSlot]: !prev[fpSlot] }))
+                  }
+                  aria-label={showKeyForSlot[fpSlot] ? "Key verbergen" : "Key anzeigen"}
+                >
+                  {showKeyForSlot[fpSlot] ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </Button>
+              </div>
+              {featureProviderKeyIndex[fpSlot] && (
+                <div className="text-xs font-medium text-emerald-300">API Key hinterlegt</div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={discoveringFeatureKey === featureKey}
+                  onClick={() => void onDiscoverModels(featureKey, draft.provider)}
+                >
+                  {discoveringFeatureKey === featureKey ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4" />
+                  )}
+                  Modelle pruefen
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void handleStoreFeatureProviderKey(featureKey, draft.provider)}
+                  disabled={savingKeySlot === fpSlot}
+                >
+                  {savingKeySlot === fpSlot ? <Loader2 className="size-4 animate-spin" /> : "Key speichern"}
+                </Button>
+                {featureProviderKeyIndex[fpSlot] && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleDeleteFeatureProviderKey(featureKey, draft.provider)}
+                    disabled={savingKeySlot === fpSlot}
+                  >
+                    Entfernen
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setProviderKeyDrafts((prev) => ({
+                      ...prev,
+                      [fpSlot]: featureProviderKeyIndex[fpSlot] ? CONFIGURED_KEY_SENTINEL : "",
+                    }))
+                  }
+                >
+                  Abbrechen
+                </Button>
+              </div>
+            </>
+          )}
+          {isOllamaSelected && ollamaMode === "local" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                disabled={discoveringFeatureKey === featureKey}
+                onClick={() => void onDiscoverModels(featureKey, draft.provider)}
+              >
+                {discoveringFeatureKey === featureKey ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                Modelle pruefen
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void handleStoreFeatureProviderKey(featureKey, draft.provider)}
+                disabled={savingKeySlot === fpSlot}
+              >
+                {savingKeySlot === fpSlot ? <Loader2 className="size-4 animate-spin" /> : "Verbindung pruefen"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Capability Info */}
       <div className="flex items-center justify-between gap-3">

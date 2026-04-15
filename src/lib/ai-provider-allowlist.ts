@@ -32,6 +32,28 @@ export function inferOllamaModeFromProviderId(id: string): OllamaUiMode {
   return id === "ollama_cloud" ? "cloud" : "local";
 }
 
+/**
+ * Infer Ollama mode for a feature, considering stored cloud keys.
+ * For explicit provider IDs (ollama_cloud/ollama_local), returns the corresponding mode.
+ * For plain "ollama", checks whether a cloud key exists for this feature — if so, defaults to "cloud".
+ * This prevents users with stored cloud keys from seeing "local" mode by default.
+ */
+export function inferOllamaModeForFeature(
+  providerId: string,
+  featureKey: string,
+  featureProviderKeyIndex: Record<string, boolean>
+): OllamaUiMode {
+  if (providerId === "ollama_cloud") return "cloud";
+  if (providerId === "ollama_local") return "local";
+  // For plain "ollama", check if a cloud key exists
+  const cloudKeySlot = `${featureKey}:ollama_cloud`;
+  const canonicalKeySlot = `${featureKey}:ollama`;
+  if (featureProviderKeyIndex[cloudKeySlot] || featureProviderKeyIndex[canonicalKeySlot]) {
+    return "cloud";
+  }
+  return "local";
+}
+
 export function providerIdForOllamaMode(mode: OllamaUiMode): "ollama_local" | "ollama_cloud" {
   return mode === "cloud" ? "ollama_cloud" : "ollama_local";
 }
@@ -63,6 +85,10 @@ export function collapseProvidersForFeature<T extends { id: string; name?: strin
 /**
  * Which providers appear in the dropdown per feature.
  * The UI collapses all Ollama runtime variants into a single canonical `ollama` choice.
+ *
+ * NOTE: "ollama_local" and "ollama_cloud" are legacy runtime IDs kept here for backward
+ * compatibility with existing feature_config rows. Once the migration in
+ * functions/scriptony-ai/migrate-ollama-provider-ids.mjs has been run, these can be removed.
  */
 export const AI_FEATURE_PROVIDER_ALLOWLIST: Record<AiFeatureKey, readonly string[]> = {
   assistant_chat: [
