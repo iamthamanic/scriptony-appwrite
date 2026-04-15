@@ -20,9 +20,17 @@ functions/scriptony-ai/index.js
 .appwrite-deploy/
 functions/.deploy-staging/
 starter-for-react/
+deno.lock
 functions/deno.lock
 repo-visualization*.html
 
 # OS
 .DS_Store
 .vercel
+
+# shimwrappercheck
+.shimwrapper/
+.shim/
+
+# LightRAG index data (local only)
+.rag/

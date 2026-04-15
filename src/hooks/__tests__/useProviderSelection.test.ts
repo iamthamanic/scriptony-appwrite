@@ -108,7 +108,7 @@ describe("useProviderSelection (Ollama normalization logic)", () => {
   });
 
   it("Ollama cloud mode canActivate only with key", () => {
-    const mode = "cloud";
+    const mode: string = "cloud";
     const hasKey = false;
     const canActivate = mode === "local" ? true : hasKey;
     expect(canActivate).toBe(false);
@@ -122,9 +122,9 @@ describe("useProviderSelection (Ollama normalization logic)", () => {
 describe("useProviderSelection (featureDrafts update logic)", () => {
   // Test the activateProvider logic (setFeatureDrafts callback) in isolation
   it("switching provider clears model when provider changes", () => {
-    const prev: Record<FeatureKey, FeatureConfig> = {
+    const prev = {
       assistant_chat: { provider: "openai", model: "gpt-4o" },
-    };
+    } as Record<FeatureKey, FeatureConfig>;
     const newProvider = "anthropic";
     const sameProvider = false; // different provider
     const updated = {
@@ -140,9 +140,9 @@ describe("useProviderSelection (featureDrafts update logic)", () => {
   });
 
   it("switching to same provider preserves model", () => {
-    const prev: Record<FeatureKey, FeatureConfig> = {
+    const prev = {
       assistant_chat: { provider: "openai", model: "gpt-4o" },
-    };
+    } as Record<FeatureKey, FeatureConfig>;
     const sameProvider = true;
     const updated = {
       ...prev,
@@ -156,9 +156,9 @@ describe("useProviderSelection (featureDrafts update logic)", () => {
   });
 
   it("switching from ollama_local to ollama_cloud keeps model (same canonical)", () => {
-    const prev: Record<FeatureKey, FeatureConfig> = {
+    const prev = {
       assistant_chat: { provider: "ollama_local", model: "llama3.2" },
-    };
+    } as Record<FeatureKey, FeatureConfig>;
     // Both normalize to "ollama" — same provider
     const currentCanonical = "ollama";
     const newCanonical = "ollama";
