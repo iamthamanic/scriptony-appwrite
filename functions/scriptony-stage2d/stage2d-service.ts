@@ -18,6 +18,13 @@ import {
 import { getAccessibleProject } from "../_shared/scriptony";
 import { uploadFileToStorage } from "../_shared/storage";
 import { getStorageBucketId } from "../_shared/env";
+import {
+  toString,
+  toStringOrNull,
+  toIntegerOrNull,
+  toBoolean,
+  userCanAccessShot,
+} from "../_shared/puppet-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,31 +63,6 @@ export type LayerApi = {
 // Row → API
 // ---------------------------------------------------------------------------
 
-function toString(value: unknown, fallback = ""): string {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return fallback;
-}
-
-function toStringOrNull(value: unknown): string | null {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return null;
-}
-
-function toIntegerOrNull(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
-  if (typeof value === "string" && value.trim()) {
-    const n = Number(value);
-    if (Number.isFinite(n)) return Math.trunc(n);
-  }
-  return null;
-}
-
-function toBoolean(value: unknown, fallback = false): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") return value.toLowerCase() === "true";
-  return fallback;
-}
-
 export function stageDocumentRowToApi(row: StageDocumentRow): StageDocumentApi {
   return {
     id: String(row.id ?? row.$id ?? ""),
@@ -95,22 +77,6 @@ export function stageDocumentRowToApi(row: StageDocumentRow): StageDocumentApi {
     lastSyncedAt: toStringOrNull(row.lastSyncedAt),
     updatedAt: toString(row.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Access helpers
-// ---------------------------------------------------------------------------
-
-export async function userCanAccessShot(
-  shotId: string,
-  userId: string,
-  organizationIds: string[]
-): Promise<boolean> {
-  const shot = await getDocument(C.shots, shotId);
-  if (!shot) return false;
-  const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId) return false;
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
 }
 
 // ---------------------------------------------------------------------------

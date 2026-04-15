@@ -28,6 +28,7 @@ import {
 } from "../_shared/appwrite-db";
 import { getAccessibleProject } from "../_shared/scriptony";
 import { computeFreshness, type ShotFreshnessInput, type ShotFreshnessResult } from "../_shared/freshness";
+import { toString, toInteger, userCanAccessShot } from "../_shared/puppet-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,24 +66,6 @@ export type SyncResult = {
 };
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function toString(value: unknown, fallback = ""): string {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return fallback;
-}
-
-function toInteger(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
-  if (typeof value === "string" && value.trim()) {
-    const n = Number(value);
-    if (Number.isFinite(n)) return Math.trunc(n);
-  }
-  return 0;
-}
-
-// ---------------------------------------------------------------------------
 // Forbidden field guard
 // ---------------------------------------------------------------------------
 
@@ -103,22 +86,6 @@ function assertNoForbiddenFields(patch: Record<string, unknown>): void {
       );
     }
   }
-}
-
-// ---------------------------------------------------------------------------
-// Access check
-// ---------------------------------------------------------------------------
-
-export async function userCanAccessShot(
-  shotId: string,
-  userId: string,
-  organizationIds: string[]
-): Promise<boolean> {
-  const shot = await getDocument(C.shots, shotId);
-  if (!shot) return false;
-  const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId) return false;
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
 }
 
 // ---------------------------------------------------------------------------

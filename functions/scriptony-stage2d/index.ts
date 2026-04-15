@@ -36,8 +36,8 @@ import {
   stageDocumentRowToApi,
   updateLayer,
   updateStageDocument,
-  userCanAccessShot,
 } from "./stage2d-service";
+import { userCanAccessShot } from "../_shared/puppet-helpers";
 
 function getPathname(req: RequestLike): string {
   const direct =

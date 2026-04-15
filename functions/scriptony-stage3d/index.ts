@@ -13,6 +13,7 @@
 import { requireUserBootstrap } from "../_shared/auth";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { getUserOrganizationIds } from "../_shared/scriptony";
+import { userCanAccessShot } from "../_shared/puppet-helpers";
 import {
   readJsonBody,
   sendBadRequest,
@@ -29,7 +30,7 @@ import {
   getStage3dDocument,
   stage3dDocumentRowToApi,
   updateStage3dViewState,
-  userCanAccessShot,
+  updateViewStateBodySchema,
 } from "./stage3d-service";
 
 function getPathname(req: RequestLike): string {
@@ -85,17 +86,24 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         return;
       }
 
-      const body = await readJsonBody<{
-        viewState?: string | null;
-      }>(req);
+      const rawBody = await readJsonBody(req);
+      const parsed = updateViewStateBodySchema.safeParse(rawBody);
+      if (!parsed.success) {
+        sendBadRequest(res, parsed.error.flatten().formErrors.join("; ") || "Invalid viewState");
+        return;
+      }
 
       try {
         const doc = await updateStage3dViewState(shotId, {
-          viewState: body.viewState,
+          viewState: parsed.data.viewState,
         });
         sendJson(res, 200, { document: doc });
       } catch (error) {
-        sendBadRequest(res, error instanceof Error ? error.message : "Update failed");
+        if (error instanceof Error && error.message.includes("not found")) {
+          sendNotFound(res, "Stage3D document not found — call GET /stage3d/documents/:shotId first");
+          return;
+        }
+        throw error;
       }
       return;
     }

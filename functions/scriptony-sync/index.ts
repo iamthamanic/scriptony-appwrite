@@ -34,9 +34,9 @@ import {
   syncGuides,
   syncPreview,
   syncShotState,
-  userCanAccessShot,
   getShotFreshness,
 } from "./sync-service";
+import { userCanAccessShot } from "../_shared/puppet-helpers";
 
 function getPathname(req: RequestLike): string {
   const direct =
