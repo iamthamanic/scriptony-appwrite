@@ -4,13 +4,13 @@ Stand: 2026-04-11
 
 ## Aktueller Status
 
-- Ticket 01: im Code umgesetzt
-- Ticket 02: im Code umgesetzt
-- Ticket 03: im Code umgesetzt
-- Ticket 04: im Code umgesetzt
-- Ticket 05: im Code teilweise umgesetzt
-- Ticket 06: im Code teilweise umgesetzt
-- Ticket 07: offen
+- Ticket 01: erledigt
+- Ticket 02: erledigt
+- Ticket 03: erledigt
+- Ticket 04: erledigt
+- Ticket 05: erledigt — Key-Management in FeatureProviderCard, Validate/Discovery via ai-service
+- Ticket 06: erledigt — `inferOllamaModeForFeature()`, Migration-Script `migrate-ollama-provider-ids.mjs`
+- Ticket 07: erledigt — 117 Vitest-Tests (Allowlist + Hook + Card + Smoke + Backend-Normalisierung + Model-Discovery)
 
 ## Zielbild
 
@@ -226,10 +226,10 @@ Intern darf waehrend der Migration weiter auf bestehende Runtime-Pfade gemappt w
 
 **Akzeptanzkriterien**
 
-- Save funktioniert fuer `Ollama Cloud` mit Key pro Feature.
-- Save funktioniert fuer `Ollama Lokal` ohne Cloud-Key.
-- Validate und Model Discovery verwenden den gewaehlten Modus korrekt.
-- Die bisherige Funktionalitaet fuer andere Provider bleibt unveraendert.
+- [x] Save funktioniert fuer `Ollama Cloud` mit Key pro Feature.
+- [x] Save funktioniert fuer `Ollama Lokal` ohne Cloud-Key.
+- [x] Validate und Model Discovery verwenden den gewaehlten Modus korrekt.
+- [x] Die bisherige Funktionalitaet fuer andere Provider bleibt unveraendert.
 
 ---
 
@@ -262,9 +262,9 @@ Beim Speichern bleibt waehrend der Migration Backend-Kompatibilitaet erhalten.
 
 **Akzeptanzkriterien**
 
-- Bestehende Ollama-Konfigurationen werden ohne Datenverlust geladen.
-- Alte gespeicherte Werte fuehren nicht zu einem leeren oder kaputten Dropdown.
-- Der Nutzer kann alte Konfigurationen direkt weiterbearbeiten.
+- [x] Bestehende Ollama-Konfigurationen werden ohne Datenverlust geladen.
+- [x] Alte gespeicherte Werte fuehren nicht zu einem leeren oder kaputten Dropdown.
+- [x] Der Nutzer kann alte Konfigurationen direkt weiterbearbeiten.
 
 ---
 
@@ -306,7 +306,7 @@ Zu pruefen:
 
 **Akzeptanzkriterien**
 
-- Alle fuenf Feature-Bereiche verwenden denselben Ollama-UX-Flow.
-- Keine doppelten Ollama-Eintraege mehr im Dropdown.
-- Active-Badges verhalten sich konsistent.
-- Keine Regression bei OpenAI, OpenRouter, Anthropic, Google, DeepSeek, ElevenLabs oder HuggingFace.
+- [x] Alle fuenf Feature-Bereiche verwenden denselben Ollama-UX-Flow.
+- [x] Keine doppelten Ollama-Eintraege mehr im Dropdown.
+- [x] Active-Badges verhalten sich konsistent.
+- [x] Keine Regression bei OpenAI, OpenRouter, Anthropic, Google, DeepSeek, ElevenLabs oder HuggingFace.
