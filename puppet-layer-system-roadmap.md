@@ -23,7 +23,7 @@ Wichtig ist die Reihenfolge: Erst wenn die Backend-Contracts stabil sind, lohnt 
 - Ticket 5: ✅ erledigt (scriptony-stage2d: Document + Layer CRUD, prepare-repair)
 - Ticket 6: ✅ erledigt (scriptony-style: CRUD + Apply + Shot-Resolution)
 - Ticket 7: ✅ erledigt (scriptony-sync: shot-state, guides, preview, glb-preview)
-- Ticket 8: teilweise (Placeholder)
+- Ticket 8: teilweise erledigt (Placeholder — nur View-State, kein vollständiger Service)
 - Ticket 9: offen
 - Ticket 10: offen
 - Ticket 11: ✅ erledigt (scriptony-sync: Freshness Model mit kanonischen Helpern + GET /sync/freshness/:shotId)
@@ -149,7 +149,7 @@ Definition of done:
 
 #### Ticket 12: Frontend Integration
 
-Priorität: hoch ✅ erledigt
+Priorität: hoch — offen
 
 Warum erst nach Phase 3:
 
