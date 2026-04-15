@@ -1051,8 +1051,8 @@ Deno.test("Text service uses correct provider", async () => {
 
 - [x] Unit Tests für Provider (110 Vitest-Tests, siehe `src/lib/__tests__/`)
 - [x] Integration Tests für Services (Integration-Smoke-Tests für alle 7 Feature-Bereiche)
-- [ ] API Documentation
-- [ ] User Guide für Settings
+- [x] API Documentation (`docs/AI-SERVICE-API.md`)
+- [x] User Guide für Settings (`docs/AI-SETTINGS-USER-GUIDE.md`)
 
 ---
 
