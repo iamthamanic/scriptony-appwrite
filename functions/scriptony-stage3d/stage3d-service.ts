@@ -134,6 +134,17 @@ export async function getOrCreateStage3dDocument(
   }
 }
 
+/**
+ * Optimistic-lock error: another request wrote to the same document
+ * between our read and our write.
+ */
+export class ConflictError extends Error {
+  constructor(message = "Document was modified by a concurrent request — retry") {
+    super(message);
+    this.name = "ConflictError";
+  }
+}
+
 export async function updateStage3dViewState(
   shotId: string,
   patch: {
@@ -145,11 +156,21 @@ export async function updateStage3dViewState(
     throw new Error("Stage3D document not found for shot — call GET /stage3d/documents/:shotId first");
   }
 
-  const update: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+  const writeTimestamp = new Date().toISOString();
+  const update: Record<string, unknown> = { updatedAt: writeTimestamp };
   if (patch.viewState !== undefined) update.viewState = patch.viewState;
 
-  const updated = await updateDocument(C.stageDocuments, String(doc.id ?? doc.$id), update);
-  return stage3dDocumentRowToApi(updated);
+  await updateDocument(C.stageDocuments, String(doc.id ?? doc.$id), update);
+
+  // Optimistic lock verification: re-read and confirm our write stuck.
+  // If another request overwrote it, the updatedAt won't match.
+  const verify = await getStage3dDocument(shotId);
+  if (verify && String(verify.updatedAt ?? verify.updated_at) !== writeTimestamp) {
+    throw new ConflictError();
+  }
+
+  // Return the verified (or latest) document
+  return stage3dDocumentRowToApi(verify ?? doc);
 }
 
 // ---------------------------------------------------------------------------

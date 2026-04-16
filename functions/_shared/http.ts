@@ -89,6 +89,10 @@ export function sendBadRequest(res: ResponseLike, message: string): void {
   sendJson(res, 400, { error: message });
 }
 
+export function sendConflict(res: ResponseLike, message = "Conflict"): void {
+  sendJson(res, 409, { error: message });
+}
+
 type ClassifiedServerError = {
   code: string;
   message: string;

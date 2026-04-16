@@ -17,6 +17,7 @@ import { userCanAccessShot } from "../_shared/puppet-helpers";
 import {
   readJsonBody,
   sendBadRequest,
+  sendConflict,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
@@ -26,6 +27,7 @@ import {
   type ResponseLike,
 } from "../_shared/http";
 import {
+  ConflictError,
   getOrCreateStage3dDocument,
   getStage3dDocument,
   stage3dDocumentRowToApi,
@@ -99,6 +101,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         });
         sendJson(res, 200, { document: doc });
       } catch (error) {
+        if (error instanceof ConflictError) {
+          sendConflict(res, "Document was modified concurrently — retry the request");
+          return;
+        }
         if (error instanceof Error && error.message.includes("not found")) {
           sendNotFound(res, "Stage3D document not found — call GET /stage3d/documents/:shotId first");
           return;

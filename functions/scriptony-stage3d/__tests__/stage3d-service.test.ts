@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import {
+  ConflictError,
   stage3dDocumentRowToApi,
   updateViewStateBodySchema,
 } from "../stage3d-service";
@@ -260,12 +261,31 @@ describe("getOrCreateStage3dDocument idempotency", () => {
 // Error handling: updateStage3dViewState
 // ---------------------------------------------------------------------------
 
-describe("updateStage3dViewState error message", () => {
+describe("updateStage3dViewState error handling", () => {
   it("throws descriptive error when document not found", () => {
-    // The error message includes a hint to call GET first
     const error = new Error("Stage3D document not found for shot — call GET /stage3d/documents/:shotId first");
     expect(error.message).toContain("not found");
     expect(error.message).toContain("GET");
+  });
+
+  it("ConflictError has correct name and default message", () => {
+    const err = new ConflictError();
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(ConflictError);
+    expect(err.name).toBe("ConflictError");
+    expect(err.message).toContain("concurrent request");
+  });
+
+  it("ConflictError accepts custom message", () => {
+    const err = new ConflictError("custom conflict");
+    expect(err.message).toBe("custom conflict");
+  });
+
+  it("ConflictError is distinguishable from generic Error", () => {
+    const generic = new Error("something broke");
+    const conflict = new ConflictError();
+    expect(conflict instanceof ConflictError).toBe(true);
+    expect(generic instanceof ConflictError).toBe(false);
   });
 });
 
