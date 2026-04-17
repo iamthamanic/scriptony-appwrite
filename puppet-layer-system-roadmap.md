@@ -1,6 +1,6 @@
 # Puppet-Layer-System Roadmap
 
-Stand: 13. April 2026
+Stand: 17. April 2026
 
 Diese Roadmap basiert auf dem aktuellen Code- und Deploy-Stand in diesem Repo sowie auf den Tickets in [puppet-layer-system-tickets.md](./puppet-layer-system-tickets.md).
 
@@ -23,7 +23,7 @@ Wichtig ist die Reihenfolge: Erst wenn die Backend-Contracts stabil sind, lohnt 
 - Ticket 5: ✅ erledigt (scriptony-stage2d: Document + Layer CRUD, prepare-repair)
 - Ticket 6: ✅ erledigt (scriptony-style: CRUD + Apply + Shot-Resolution)
 - Ticket 7: ✅ erledigt (scriptony-sync: shot-state, guides, preview, glb-preview)
-- Ticket 8: teilweise erledigt (Placeholder — nur View-State, kein vollständiger Service)
+- Ticket 8: ✅ erledigt (scriptony-stage3d: GET/PUT view-state, Zod-Validierung, Optimistic Locking, 23 Tests)
 - Ticket 9: offen
 - Ticket 10: offen
 - Ticket 11: ✅ erledigt (scriptony-sync: Freshness Model mit kanonischen Helpern + GET /sync/freshness/:shotId)
@@ -174,24 +174,18 @@ Definition of done:
 
 ### Phase 5: 3D und lokale Tooling-Anbindung
 
-#### Ticket 8: `scriptony-stage3d`
+#### Ticket 8: `scriptony-stage3d` ✅
 
-Priorität: mittel
+Status: ✅ erledigt
 
-Warum später:
-
-- aktuell existiert nur ein Placeholder
-- für V1 des Puppet-Layer-Systems ist 2D + Render-Review wichtiger als 3D-View-State
-
-Was konkret gebaut werden sollte:
-
-- `GET /stage3d/documents/:shotId`
-- `PUT /stage3d/documents/:shotId/view-state`
-
-Definition of done:
-
-- 3D-View-State ist serverseitig adressierbar
-- keine Authoring-Logik im Service
+- `GET /stage3d/documents/:shotId` — get-or-create
+- `PUT /stage3d/documents/:shotId/view-state` — optimistisches Locking (409 Conflict)
+- Zod-Validierung (viewState: valides JSON, max 64 KB)
+- Idempotentes getOrCreate (catch unique-constraint conflict)
+- Auth-Gate + userCanAccessShot
+- 23 Unit-Tests (alle grün)
+- API-Gateway-Route: `/ai/stage3d` → `scriptony-stage3d`
+- Deploy-Script vorhanden
 
 #### Ticket 9: Local Bridge
 
@@ -244,9 +238,9 @@ Definition of done:
 4. ~~Ticket 4 erweitern~~ ✅
 5. ~~Ticket 5 bauen~~ ✅
 6. ~~Ticket 7 bauen~~ ✅
-7. ~~Ticket 11 bauen~~ ✅ ← nächstes
-8. **Ticket 12** auf offizielle Semantik umstellen
-9. Ticket 8 bauen
+7. ~~Ticket 11 bauen~~ ✅
+8. ~~Ticket 8 bauen~~ ✅
+9. **Ticket 12** auf offizielle Semantik umstellen
 10. Ticket 9 bauen
 11. Ticket 10 bauen
 
@@ -271,9 +265,9 @@ Definition of done:
 - Ticket 12
 - explorativ vs. offiziell, Freshness-Indikatoren, ein einziger Durchlauf gegen komplettes Backend
 
-### PR 9: Stage3D View State
+### PR 9: Stage3D View State ✅
 
-- Ticket 8
+- Ticket 8 — deployed und live
 
 ### PR 10: Local Bridge
 
@@ -285,6 +279,6 @@ Definition of done:
 
 ## Empfehlung
 
-Phase 0–3 sind abgeschlossen (Ticket 7 + 11). Das Backend-Modell für den 2D-Render- und Review-Flow sowie für Blender-Sync steht.
+Phase 0–3 + Ticket 8 sind abgeschlossen. Das Backend-Modell für 2D, 3D, Render-Review, Style, Sync und Freshness steht vollständig.
 
-**Nächster Schritt:** Ticket 8 (Stage3D) oder Ticket 9 (Local Bridge) bauen — beides Backend-arbeit. Ticket 12 (Frontend) ist für später, wenn das Backend vollständig steht.
+**Nächster Schritt:** Ticket 12 (Frontend auf offizielle Semantik umstellen) — das Backend ist jetzt komplett, sodass der Frontend-Durchlauf gegen alle Endpoints gebaut werden kann. Alternativ: Ticket 9 (Local Bridge) oder Ticket 10 (Blender Addon) für lokale Tooling-Anbindung.
