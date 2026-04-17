@@ -24,7 +24,7 @@ Wichtig ist die Reihenfolge: Erst wenn die Backend-Contracts stabil sind, lohnt 
 - Ticket 6: ✅ erledigt (scriptony-style: CRUD + Apply + Shot-Resolution)
 - Ticket 7: ✅ erledigt (scriptony-sync: shot-state, guides, preview, glb-preview)
 - Ticket 8: ✅ erledigt (scriptony-stage3d: GET/PUT view-state, Zod-Validierung, Optimistic Locking, 23 Tests)
-- Ticket 9: offen
+- Ticket 9: ✅ erledigt (Local Bridge: Workflow-Resolver, Input-Resolver, DB-Direct Callbacks, WS+Polling, 29 Tests)
 - Ticket 10: offen
 - Ticket 11: ✅ erledigt (scriptony-sync: Freshness Model mit kanonischen Helpern + GET /sync/freshness/:shotId)
 - Ticket 12: offen
@@ -187,26 +187,20 @@ Status: ✅ erledigt
 - API-Gateway-Route: `/ai/stage3d` → `scriptony-stage3d`
 - Deploy-Script vorhanden
 
-#### Ticket 9: Local Bridge
+#### Ticket 9: Local Bridge ✅
 
-Priorität: mittel
+Status: ✅ erledigt
 
-Warum später:
-
-- der Bridge-Daemon sollte auf stabilen Sync-/Stage-/Image-Verträgen aufsetzen
-
-Was konkret gebaut werden sollte:
-
-- Node.js-Daemon
-- WebSocket/Appwrite- oder Polling-Verbindung
-- HTTP zu ComfyUI
-- HTTP zu Blender
-- Callbacks zurück an Stage/Sync
-
-Definition of done:
-
-- Bridge trifft keine Produktentscheidungen
-- Bridge ist rein Transport- und Integrationsschicht
+- Workflow-Resolver: JSON-Templates in `local-bridge/workflows/` (txt2img, img2img, inpaint)
+- Input-Resolver: Guide-Bundle/Mask-Download aus Appwrite Storage + Upload zu ComfyUI
+- DB-Direct Callbacks: Complete/Fail direkt via Appwrite SDK (kein HTTP, kein Auth-Token nötig)
+- WS+Polling Race: ComfyUI WebSocket-Completion resolved aktiv Job-Promise, Polling als Fallback
+- DB-Retry: Exponentieller Backoff bei transienten Fehlern (429, 503, ECONNRESET)
+- Realtime-Reconnection: Exponential Backoff (5s→60s), isConnected() für Health-Endpoint
+- Sync-Handler: DB-direct mit Forbidden-Field-Guard (gleiche Regeln wie scriptony-sync)
+- Health-Server: Port 9877, Reports Appwrite Realtime + ComfyUI + Blender + Active Jobs
+- Dockerfile + .env.example
+- 29 Unit-Tests (alle grün), TypeCheck sauber, Build erfolgreich
 
 #### Ticket 10: Blender Addon
 
@@ -241,7 +235,7 @@ Definition of done:
 7. ~~Ticket 11 bauen~~ ✅
 8. ~~Ticket 8 bauen~~ ✅
 9. **Ticket 12** auf offizielle Semantik umstellen
-10. Ticket 9 bauen
+10. ~~Ticket 9 bauen~~ ✅
 11. Ticket 10 bauen
 
 ## Empfohlene PR-Slices
@@ -269,9 +263,9 @@ Definition of done:
 
 - Ticket 8 — deployed und live
 
-### PR 10: Local Bridge
+### PR 10: Local Bridge ✅
 
-- Ticket 9
+- Ticket 9 — workflow-resolver, input-resolver, DB-direct, 29 Tests
 
 ### PR 11: Blender Addon
 
@@ -279,6 +273,6 @@ Definition of done:
 
 ## Empfehlung
 
-Phase 0–3 + Ticket 8 sind abgeschlossen. Das Backend-Modell für 2D, 3D, Render-Review, Style, Sync und Freshness steht vollständig.
+Phase 0–3 + Tickets 8 und 9 sind abgeschlossen. Das Backend-Modell und die Bridge-Infrastruktur stehen vollständig.
 
-**Nächster Schritt:** Ticket 12 (Frontend auf offizielle Semantik umstellen) — das Backend ist jetzt komplett, sodass der Frontend-Durchlauf gegen alle Endpoints gebaut werden kann. Alternativ: Ticket 9 (Local Bridge) oder Ticket 10 (Blender Addon) für lokale Tooling-Anbindung.
+**Nächster Schritt:** Ticket 12 (Frontend auf offizielle Semantik umstellen) oder Ticket 10 (Blender Addon). Das Backend und die lokale Bridge sind komplett.
