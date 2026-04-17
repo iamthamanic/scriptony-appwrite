@@ -43,7 +43,7 @@ export async function uploadImageToStorage(
     bucketId,
     ID.unique(),
     inputFile,
-    [Permission.read(Role.any())],
+    [Permission.read(Role.users())],
   );
 
   log.info("storage", "Upload complete", { fileId: result.$id, filename });

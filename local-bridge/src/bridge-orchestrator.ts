@@ -7,15 +7,18 @@
  *   3. Subscribe to Appwrite Realtime for renderJobs
  *   4. Start health check server
  *
- * Event flow:
- *   Realtime event → handleRenderJob → ComfyUI → Storage → Callback
+ * On shutdown:
+ *   1. Stop accepting new jobs (unsubscribe Realtime)
+ *   2. Disconnect ComfyUI WebSocket
+ *   3. Drain in-flight jobs (with timeout)
+ *   4. Stop health check server
  */
 
 import { loadConfig, getConfig } from "./config.js";
 import { setLogLevel, log } from "./logger.js";
 import { subscribeRenderJobs, unsubscribeRenderJobs } from "./realtime-subscriber.js";
 import { connectWebSocket, disconnectWebSocket } from "./comfyui-client.js";
-import { handleRenderJob, resolveWsCompletion } from "./render-job-handler.js";
+import { handleRenderJob, drainJobs, resolveWsCompletion } from "./render-job-handler.js";
 import { startHealthServer, stopHealthServer } from "./health.js";
 import type { RealtimeEvent } from "./types.js";
 
@@ -23,10 +26,6 @@ import type { RealtimeEvent } from "./types.js";
 // Startup reconciliation
 // ---------------------------------------------------------------------------
 
-/**
- * On startup, query Appwrite DB for any render jobs with status "executing"
- * that may have been submitted before the bridge went down.
- */
 async function reconcileInProgressJobs(): Promise<void> {
   const { Query } = await import("node-appwrite");
   const { getDatabases, Collections } = await import("./appwrite-client.js");
@@ -36,29 +35,34 @@ async function reconcileInProgressJobs(): Promise<void> {
 
   try {
     const db = getDatabases();
-    const response = await db.listDocuments(
-      config.BRIDGE_APPWRITE_DATABASE_ID,
-      Collections.renderJobs,
-      [Query.equal("status", "executing"), Query.limit(50)],
-    );
+    // Paginate through all in-progress jobs (not just first 50)
+    let offset = 0;
+    const limit = 50;
+    let totalProcessed = 0;
 
-    const jobs = response.documents;
-    if (jobs.length === 0) {
-      log.info("orchestrator", "No in-progress jobs found");
-      return;
+    while (true) {
+      const response = await db.listDocuments(
+        config.BRIDGE_APPWRITE_DATABASE_ID,
+        Collections.renderJobs,
+        [Query.equal("status", "executing"), Query.limit(limit), Query.offset(offset)],
+      );
+
+      const jobs = response.documents;
+      if (jobs.length === 0) break;
+
+      for (const job of jobs) {
+        handleRenderJob(job.$id);
+        totalProcessed++;
+      }
+
+      if (jobs.length < limit) break;
+      offset += limit;
     }
 
-    log.info("orchestrator", `Found ${jobs.length} in-progress job(s), re-processing`, {
-      jobIds: jobs.map((d: { $id: string }) => d.$id),
-    });
-
-    for (const job of jobs) {
-      handleRenderJob(job.$id).catch((err) => {
-        log.error("orchestrator", "Reconciliation: failed to process job", {
-          jobId: job.$id,
-          err: err instanceof Error ? err.message : String(err),
-        });
-      });
+    if (totalProcessed === 0) {
+      log.info("orchestrator", "No in-progress jobs found");
+    } else {
+      log.info("orchestrator", `Reconciled ${totalProcessed} in-progress job(s)`);
     }
   } catch (err) {
     log.error("orchestrator", "Reconciliation query failed", {
@@ -76,17 +80,11 @@ function onRenderJobEvent(event: RealtimeEvent): void {
   const jobId = String(payload.$id ?? payload.id ?? "");
 
   if (!jobId) {
-    log.warn("orchestrator", "Received event without job ID", { payload });
+    log.warn("orchestrator", "Received event without job ID");
     return;
   }
 
-  log.info("orchestrator", "Dispatching render job", { jobId });
-  handleRenderJob(jobId).catch((err) => {
-    log.error("orchestrator", "Unhandled error in render job handler", {
-      jobId,
-      err: err instanceof Error ? err.message : String(err),
-    });
-  });
+  handleRenderJob(jobId);
 }
 
 // ---------------------------------------------------------------------------
@@ -119,7 +117,6 @@ export async function start(): Promise<void> {
           promptId,
           outputNodes: Object.keys(outputs),
         });
-        // Resolve the WS promise so the job handler can skip polling
         resolveWsCompletion(promptId, outputs);
       },
     );
@@ -141,11 +138,19 @@ export async function start(): Promise<void> {
   log.info("orchestrator", "Local Bridge is running");
 }
 
-export function stop(): void {
+export async function stop(): Promise<void> {
   log.info("orchestrator", "Shutting down Local Bridge");
 
+  // 1. Stop accepting new events
   unsubscribeRenderJobs();
+
+  // 2. Disconnect ComfyUI WebSocket (also rejects pending WS resolvers)
   disconnectWebSocket();
+
+  // 3. Drain in-flight jobs (wait up to 30s, then mark remaining as failed)
+  await drainJobs(30_000);
+
+  // 4. Stop health check server
   stopHealthServer();
 
   log.info("orchestrator", "Local Bridge stopped");

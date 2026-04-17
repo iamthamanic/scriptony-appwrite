@@ -3,11 +3,12 @@
  *
  * Connects to a local ComfyUI instance (default http://127.0.0.1:8188).
  *
- * API surface:
- *   POST /prompt         — submit a workflow for execution
- *   GET  /history/:id   — get execution status
- *   GET  /view           — retrieve an output image
- *   WS   /ws            — real-time execution progress and completion
+ * Hardening:
+ *   - Request timeouts on all HTTP calls (30s)
+ *   - WS reconnect with exponential backoff
+ *   - WS shutdown flag prevents reconnect during intentional disconnect
+ *   - Binary frame check in WS message handler
+ *   - Null history fallback (call onCompletion with empty outputs)
  */
 
 import { getConfig } from "./config.js";
@@ -21,6 +22,8 @@ import type {
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
+
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function getBaseUrl(): string {
   return getConfig().BRIDGE_COMFYUI_URL.replace(/\/+$/, "");
@@ -43,6 +46,7 @@ export async function submitPrompt(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -68,7 +72,9 @@ export async function getHistory(
   promptId: string,
 ): Promise<ComfyUIHistoryEntry | null> {
   const url = `${getBaseUrl()}/history/${promptId}`;
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
 
   if (!res.ok) {
     if (res.status === 404) return null;
@@ -88,14 +94,19 @@ export async function getImage(
   subfolder: string,
   type: string,
 ): Promise<Buffer> {
-  const params = new URLSearchParams({
-    filename,
-    subfolder,
-    type,
-  });
+  // Sanitize inputs — reject path traversal
+  for (const param of [filename, subfolder, type]) {
+    if (param.includes("..") || param.includes("\0")) {
+      throw new Error(`Invalid ComfyUI image parameter: path traversal detected`);
+    }
+  }
+
+  const params = new URLSearchParams({ filename, subfolder, type });
   const url = `${getBaseUrl()}/view?${params.toString()}`;
 
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
   if (!res.ok) {
     throw new Error(
       `ComfyUI /view returned ${res.status} for ${filename}`,
@@ -127,6 +138,7 @@ export async function uploadImage(
   const res = await fetch(url, {
     method: "POST",
     body: formData,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -165,12 +177,17 @@ export type CompletionCallback = (promptId: string, outputs: Record<string, unkn
 
 let _ws: WebSocket | null = null;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let _reconnectAttempts = 0;
+let _shuttingDown = false;
+
+const RECONNECT_BASE_MS = 5_000;
+const RECONNECT_MAX_MS = 60_000;
 
 /**
  * Connect to ComfyUI WebSocket for execution progress.
  *
  * Emits progress updates and completion events.
- * Automatically reconnects on disconnect.
+ * Reconnects with exponential backoff on disconnect.
  */
 export function connectWebSocket(
   onProgress: ProgressCallback,
@@ -181,19 +198,31 @@ export function connectWebSocket(
 
   log.info("comfyui-ws", "Connecting to ComfyUI WebSocket", { wsUrl });
 
+  // Clean up old WS if present
+  if (_ws) {
+    _ws.removeAllListeners?.();
+    try { _ws.close(); } catch { /* ignore */ }
+    _ws = null;
+  }
+
+  _shuttingDown = false;
+
   const ws = new WebSocket(wsUrl);
 
   ws.addEventListener("open", () => {
     log.info("comfyui-ws", "Connected");
+    _reconnectAttempts = 0;
   });
 
   ws.addEventListener("message", (event) => {
+    // Ignore binary frames
+    if (typeof event.data !== "string") return;
+
     try {
-      const data = JSON.parse(event.data as string) as Record<string, unknown>;
+      const data = JSON.parse(event.data) as Record<string, unknown>;
       const type = data.type as string | undefined;
 
       if (type === "execution_start" || type === "execution_cached") {
-        // Progress preamble — ignore
         return;
       }
 
@@ -209,17 +238,19 @@ export function connectWebSocket(
       if (type === "executing") {
         const nodeId = String(data.node ?? data.node_id ?? "");
         if (nodeId === "") {
-          // Execution completed for this prompt
           const promptId = String(data.prompt_id ?? "");
           if (promptId) {
             log.info("comfyui-ws", "Execution completed", { promptId });
-            // Fetch outputs from history
             getHistory(promptId).then((entry) => {
-              if (entry) {
-                onCompletion(promptId, entry.outputs ?? {});
-              }
+              // Call onCompletion even if entry is null (with empty outputs)
+              // so the WS promise resolves and doesn't hang
+              onCompletion(promptId, entry?.outputs ?? {});
             }).catch((err) => {
-              log.error("comfyui-ws", "Failed to fetch history after completion", err);
+              log.error("comfyui-ws", "Failed to fetch history after completion", {
+                promptId, err: err instanceof Error ? err.message : String(err),
+              });
+              // Still call onCompletion with empty outputs to unblock the job
+              onCompletion(promptId, {});
             });
           }
         }
@@ -228,39 +259,60 @@ export function connectWebSocket(
 
       if (type === "execution_error") {
         const promptId = String(data.prompt_id ?? "");
-        log.error("comfyui-ws", "Execution error", { promptId, data });
+        const msg = String(data.exception_message ?? data.message ?? "unknown");
+        log.error("comfyui-ws", "Execution error", { promptId, error: msg });
         return;
       }
     } catch {
-      // Non-JSON message — ignore
+      // Malformed JSON — ignore
     }
   });
 
   ws.addEventListener("close", () => {
-    log.warn("comfyui-ws", "WebSocket closed, reconnecting in 5s");
+    if (_shuttingDown) {
+      log.info("comfyui-ws", "WebSocket closed (intentional shutdown)");
+      return;
+    }
+
+    _reconnectAttempts++;
+    const delay = Math.min(
+      RECONNECT_BASE_MS * Math.pow(2, _reconnectAttempts - 1),
+      RECONNECT_MAX_MS,
+    );
+
+    log.warn("comfyui-ws", `WebSocket closed, reconnecting in ${delay}ms (attempt ${_reconnectAttempts})`);
+
     _reconnectTimer = setTimeout(
-      () => connectWebSocket(onProgress, onCompletion),
-      5_000,
+      () => {
+        if (_shuttingDown) return;
+        connectWebSocket(onProgress, onCompletion);
+      },
+      delay,
     );
   });
 
   ws.addEventListener("error", (event) => {
-    log.error("comfyui-ws", "WebSocket error", event);
+    log.error("comfyui-ws", "WebSocket error", { type: typeof event });
   });
 
   _ws = ws;
 }
 
 /**
- * Disconnect the ComfyUI WebSocket.
+ * Disconnect the ComfyUI WebSocket and prevent reconnection.
  */
 export function disconnectWebSocket(): void {
+  _shuttingDown = true;
+
   if (_reconnectTimer) {
     clearTimeout(_reconnectTimer);
     _reconnectTimer = null;
   }
   if (_ws) {
+    _ws.removeAllListeners?.();
     _ws.close();
     _ws = null;
   }
+
+  _reconnectAttempts = 0;
 }

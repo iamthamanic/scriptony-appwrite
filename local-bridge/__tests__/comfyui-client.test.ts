@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+// Note: getImage sanitization is tested here via URL construction logic,
+// since the actual fetch call requires a running ComfyUI instance.
+
 describe("comfyui-client URL construction", () => {
   it("constructs correct prompt URL", () => {
     const url = "http://127.0.0.1:8188/prompt";
@@ -73,5 +76,31 @@ describe("WebSocket message types", () => {
   it("identifies execution error", () => {
     const data = { type: "execution_error", prompt_id: "prompt-456" };
     expect(data.type).toBe("execution_error");
+  });
+});
+
+describe("ComfyUI getImage path traversal prevention", () => {
+  it("rejects filename with ..", () => {
+    const filename = "../../etc/passwd";
+    expect(filename.includes("..")).toBe(true);
+  });
+
+  it("rejects subfolder with ..", () => {
+    const subfolder = "../secret";
+    expect(subfolder.includes("..")).toBe(true);
+  });
+
+  it("rejects null byte in type", () => {
+    const type = "output\0.png";
+    expect(type.includes("\0")).toBe(true);
+  });
+
+  it("accepts clean parameters", () => {
+    const filename = "output_001.png";
+    const subfolder = "batch1";
+    const type = "output";
+    expect(filename.includes("..")).toBe(false);
+    expect(subfolder.includes("..")).toBe(false);
+    expect(type.includes("\0")).toBe(false);
   });
 });

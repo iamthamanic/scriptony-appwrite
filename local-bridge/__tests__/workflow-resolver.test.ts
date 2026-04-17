@@ -117,4 +117,30 @@ describe("resolveWorkflow", () => {
     const pos = workflow["6"] as { inputs: Record<string, unknown> };
     expect(pos.inputs.text).toBe("professional render, high quality");
   });
+
+  it("rejects path traversal in job type", () => {
+    const job = { ...baseJob, type: "../../etc/passwd" };
+    expect(() => resolveWorkflow(job)).toThrow();
+  });
+
+  it("rejects types with special characters", () => {
+    const job = { ...baseJob, type: "txt2img; rm -rf /" };
+    expect(() => resolveWorkflow(job)).toThrow();
+  });
+
+  it("accepts types with dashes and underscores", () => {
+    const job = { ...baseJob, type: "txt2img_v2" };
+    // This type doesn't have a template, but should not be rejected by the safety check
+    expect(() => resolveWorkflow(job)).toThrow('No workflow template found');
+  });
+
+  it("preserves numeric types from single-placeholder interpolation", () => {
+    const job = { ...baseJob, type: "txt2img" };
+    const workflow = resolveWorkflow(job);
+
+    const sampler = workflow["3"] as { inputs: Record<string, unknown> };
+    expect(typeof sampler.inputs.steps).toBe("number");
+    expect(typeof sampler.inputs.cfg).toBe("number");
+    expect(typeof sampler.inputs.seed).toBe("number");
+  });
 });

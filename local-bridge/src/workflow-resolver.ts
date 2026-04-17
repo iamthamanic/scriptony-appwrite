@@ -65,9 +65,18 @@ function getWorkflowsDir(): string {
   }
 }
 
+// Only allow safe type names: alphanumeric, dash, underscore
+const SAFE_TYPE_RE = /^[a-zA-Z0-9_-]+$/;
+
 function loadTemplate(type: string): WorkflowTemplate | null {
   if (templateCache.has(type)) {
     return templateCache.get(type)!;
+  }
+
+  // Prevent path traversal via job.type
+  if (!SAFE_TYPE_RE.test(type)) {
+    log.warn("workflow-resolver", `Invalid job type "${type}" — rejected for safety`);
+    return null;
   }
 
   const dir = getWorkflowsDir();
