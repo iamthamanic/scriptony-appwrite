@@ -5,25 +5,20 @@
  * Filters for status changes to "executing" and emits events
  * to the orchestrator.
  *
- * Includes exponential backoff reconnection and connection
- * status tracking for the health endpoint.
+ * Uses ReconnectManager for exponential backoff reconnection.
  */
 
 import { Client } from "node-appwrite";
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
+import { ReconnectManager } from "./backoff.js";
 import type { RealtimeEvent } from "./types.js";
 
 export type RealtimeEventHandler = (event: RealtimeEvent) => void;
 
-const RECONNECT_DELAY_MS = 5_000;
-const MAX_RECONNECT_DELAY_MS = 60_000;
-
 let _client: Client | null = null;
 let _unsubscribe: (() => void) | null = null;
-let _reconnectAttempts = 0;
-let _shuttingDown = false;
-let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+const _reconnect = new ReconnectManager({ baseDelayMs: 5_000, maxDelayMs: 60_000, context: "realtime" });
 let _connected = false;
 
 function createRealtimeClient(): Client {
@@ -36,11 +31,6 @@ function createRealtimeClient(): Client {
 
 /**
  * Subscribe to renderJobs collection changes.
- *
- * The channel pattern for Appwrite Realtime is:
- *   `databases.<databaseId>.collections.<collectionId>.documents`
- *
- * The bridge only reacts to documents where status becomes "executing".
  */
 export function subscribeRenderJobs(
   handler: RealtimeEventHandler,
@@ -48,7 +38,10 @@ export function subscribeRenderJobs(
   const config = getConfig();
   const channel = `databases.${config.BRIDGE_APPWRITE_DATABASE_ID}.collections.renderJobs.documents`;
 
-  _shuttingDown = false;
+  // Reset shutdown state for fresh subscription
+  _reconnect.shutdown(); // clear any prior state
+  const reconnect = new ReconnectManager({ baseDelayMs: 5_000, maxDelayMs: 60_000, context: "realtime" });
+
   _client = createRealtimeClient();
 
   log.info("realtime", "Subscribing to renderJobs channel", { channel });
@@ -56,14 +49,12 @@ export function subscribeRenderJobs(
   try {
     // @ts-expect-error node-appwrite v22: subscribe exists at runtime but not in types
     _unsubscribe = _client.subscribe(channel, (event: RealtimeEvent) => {
-      // Mark as connected on first event
       if (!_connected) {
         _connected = true;
-        _reconnectAttempts = 0;
+        reconnect.reset();
         log.info("realtime", "Connection confirmed");
       }
 
-      // Filter: only react to create/update events where status is "executing"
       const isRelevant =
         event.events?.some(
           (e) => e.includes(".create") || e.includes(".update"),
@@ -86,44 +77,18 @@ export function subscribeRenderJobs(
     log.info("realtime", "Subscription active");
   } catch (err) {
     log.error("realtime", "Subscription failed, scheduling reconnect", {
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
-    scheduleReconnect(handler);
+    reconnect.schedule(() => subscribeRenderJobs(handler));
   }
-}
-
-/**
- * Schedule a reconnection attempt with exponential backoff.
- */
-function scheduleReconnect(handler: RealtimeEventHandler): void {
-  if (_shuttingDown) return;
-
-  _reconnectAttempts++;
-  const delay = Math.min(
-    RECONNECT_DELAY_MS * Math.pow(2, _reconnectAttempts - 1),
-    MAX_RECONNECT_DELAY_MS,
-  );
-
-  log.warn("realtime", `Reconnecting in ${delay}ms (attempt ${_reconnectAttempts})`);
-
-  _reconnectTimer = setTimeout(() => {
-    if (_shuttingDown) return;
-    log.info("realtime", "Reconnecting...");
-    subscribeRenderJobs(handler);
-  }, delay);
 }
 
 /**
  * Unsubscribe from Realtime and clean up.
  */
 export function unsubscribeRenderJobs(): void {
-  _shuttingDown = true;
+  _reconnect.shutdown();
   _connected = false;
-
-  if (_reconnectTimer) {
-    clearTimeout(_reconnectTimer);
-    _reconnectTimer = null;
-  }
 
   if (_unsubscribe) {
     _unsubscribe();
@@ -140,15 +105,8 @@ export function isRealtimeConnected(): boolean {
 }
 
 /**
- * Reset reconnection counter (called on successful connection).
- */
-export function resetReconnectAttempts(): void {
-  _reconnectAttempts = 0;
-}
-
-/**
  * Get the number of reconnection attempts (for monitoring).
  */
 export function getReconnectAttempts(): number {
-  return _reconnectAttempts;
+  return _reconnect.attempts;
 }

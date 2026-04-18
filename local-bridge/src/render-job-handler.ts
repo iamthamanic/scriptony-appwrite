@@ -12,15 +12,13 @@
  *   8. Upload images to Appwrite Storage
  *   9. Mark job completed/failed directly in Appwrite DB
  *
- * Hardening:
- *   - Bounded concurrency (max 3 parallel jobs)
- *   - Job deduplication (skip if already active)
- *   - AbortController for cancelling polling when WS resolves
- *   - Reject pending WS resolvers on shutdown
- *   - Structured logging with job type/shotId context
+ * Design:
+ *   - Single `jobContexts` Map replaces 3 parallel Maps (KISS)
+ *   - Bounded concurrency (max 3 parallel jobs) with queue + dedup
+ *   - WS completion resolves the single JobContext.completion promise
+ *   - Polling uses AbortController, cancelled on WS resolve
  */
 
-import { Databases } from "node-appwrite";
 import { getDatabases, Collections } from "./appwrite-client.js";
 import { submitPrompt, getHistory } from "./comfyui-client.js";
 import { uploadAllOutputs } from "./storage-upload.js";
@@ -28,9 +26,9 @@ import { resolveWorkflowAsync } from "./workflow-resolver.js";
 import { resolveInputs } from "./input-resolver.js";
 import { retryDbOperation } from "./db-callback.js";
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
 import type {
-  ActiveJob,
+  JobContext,
   BridgeJobState,
   RenderJobDocument,
 } from "./types.js";
@@ -69,22 +67,13 @@ function runJob(jobId: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory job tracking
+// Single job-context map (replaces 3 parallel Maps)
 // ---------------------------------------------------------------------------
 
-const activeJobs = new Map<string, ActiveJob>();
+const jobContexts = new Map<string, JobContext>();
 
-/** WebSocket completion resolvers — keyed by promptId. */
-const wsCompletionResolvers = new Map<string, {
-  resolve: (outputs: Record<string, unknown>) => void;
-  reject: (error: Error) => void;
-}>();
-
-/** AbortControllers for cancelling polling when WS resolves. */
-const pollAbortControllers = new Map<string, AbortController>();
-
-export function getActiveJobs(): Map<string, ActiveJob> {
-  return activeJobs;
+export function getActiveJobs(): Map<string, JobContext> {
+  return jobContexts;
 }
 
 export function getQueueLength(): number {
@@ -97,37 +86,32 @@ export function getRunningCount(): number {
 
 /**
  * Called by the ComfyUI WebSocket listener when an execution completes.
- * Resolves the matching job promise and cancels the polling loop.
+ * Resolves the matching job's completion promise and cancels polling.
  */
 export function resolveWsCompletion(
   promptId: string,
   outputs: Record<string, unknown>,
 ): void {
-  // Cancel polling for this prompt
-  const ac = pollAbortControllers.get(promptId);
-  if (ac) {
-    ac.abort();
-    pollAbortControllers.delete(promptId);
-  }
-
-  const resolvers = wsCompletionResolvers.get(promptId);
-  if (resolvers) {
-    resolvers.resolve(outputs);
-    wsCompletionResolvers.delete(promptId);
+  for (const [, ctx] of jobContexts) {
+    if (ctx.promptId === promptId && !ctx.settled) {
+      ctx.pollAbort.abort();
+      ctx.settled = true;
+      ctx.completion.resolve(outputs);
+      return;
+    }
   }
 }
 
 /**
- * Reject all pending WS completion resolvers (called on shutdown).
+ * Reject all pending completion promises (called on shutdown).
  */
 export function rejectAllPendingResolvers(reason: string): void {
-  for (const [promptId, resolvers] of wsCompletionResolvers) {
-    resolvers.reject(new Error(reason));
-    wsCompletionResolvers.delete(promptId);
-  }
-  for (const [promptId, ac] of pollAbortControllers) {
-    ac.abort();
-    pollAbortControllers.delete(promptId);
+  for (const [, ctx] of jobContexts) {
+    if (!ctx.settled) {
+      ctx.pollAbort.abort();
+      ctx.settled = true;
+      ctx.completion.reject(new Error(reason));
+    }
   }
 }
 
@@ -136,12 +120,10 @@ export function rejectAllPendingResolvers(reason: string): void {
 // ---------------------------------------------------------------------------
 
 export function handleRenderJob(jobId: string): void {
-  // Dedup: skip if already being processed
-  if (activeJobs.has(jobId)) {
+  if (jobContexts.has(jobId)) {
     log.info("handler", "Job already active, skipping duplicate", { jobId });
     return;
   }
-
   enqueueJob(jobId);
 }
 
@@ -160,7 +142,6 @@ async function fetchRenderJob(jobId: string): Promise<RenderJobDocument | null> 
         Collections.renderJobs,
         jobId,
       );
-      // Map Appwrite document fields to RenderJobDocument
       return {
         id: String(doc.$id ?? doc.id ?? ""),
         $id: String(doc.$id),
@@ -180,7 +161,7 @@ async function fetchRenderJob(jobId: string): Promise<RenderJobDocument | null> 
       } as RenderJobDocument;
     });
   } catch (err) {
-    log.error("handler", "Failed to fetch render job", { jobId, err: err instanceof Error ? err.message : String(err) });
+    log.error("handler", "Failed to fetch render job", { jobId, err: formatError(err) });
     return null;
   }
 }
@@ -209,7 +190,6 @@ async function markJobCompleted(
     );
   });
 
-  // Shot update is idempotent — retry independently
   try {
     await retryDbOperation(async () => {
       await db.updateDocument(
@@ -221,7 +201,7 @@ async function markJobCompleted(
     });
   } catch (err) {
     log.warn("handler", "Failed to update shot latestRenderJobId (non-critical)", {
-      jobId, shotId, err: err instanceof Error ? err.message : String(err),
+      jobId, shotId, err: formatError(err),
     });
   }
 
@@ -250,63 +230,53 @@ async function markJobFailed(
 }
 
 // ---------------------------------------------------------------------------
-// Wait for completion: WS + Polling race
+// Wait for completion: WS + Polling race (bug-fixed)
 // ---------------------------------------------------------------------------
 
 const POLL_INTERVAL_MS = 2_000;
-const MAX_POLL_ATTEMPTS = 300;
-const POLL_BACKOFF_MAX_MS = 30_000;
+const MAX_POLL_DURATION_MS = 600_000; // 10 min hard cap
 
-async function waitForCompletion(
-  promptId: string,
-): Promise<Record<string, unknown> | null> {
-  const abortController = new AbortController();
-  pollAbortControllers.set(promptId, abortController);
-
-  const wsPromise = new Promise<Record<string, unknown> | null>((resolve, reject) => {
-    wsCompletionResolvers.set(promptId, {
-      resolve: (outputs) => resolve(outputs),
-      reject,
-    });
-
-    setTimeout(() => {
-      wsCompletionResolvers.delete(promptId);
-      reject(new Error("WS completion timeout"));
-    }, MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS);
+async function waitForCompletion(ctx: JobContext): Promise<Record<string, unknown>> {
+  // Start polling in the background — resolves ctx.completion if WS never fires
+  pollForCompletion(ctx).catch((err) => {
+    // Poll errored — reject if not yet settled
+    if (!ctx.settled) {
+      ctx.settled = true;
+      ctx.completion.reject(err);
+    }
   });
 
-  const pollPromise = pollForCompletion(promptId, abortController.signal);
+  // Set a hard timeout
+  const timeout = setTimeout(() => {
+    if (!ctx.settled) {
+      ctx.settled = true;
+      ctx.completion.reject(new Error(`ComfyUI execution timed out after ${MAX_POLL_DURATION_MS / 1000}s`));
+    }
+  }, MAX_POLL_DURATION_MS);
 
   try {
-    const result = await Promise.race([wsPromise, pollPromise]);
-    wsCompletionResolvers.delete(promptId);
-    pollAbortControllers.delete(promptId);
-    return result;
-  } catch {
-    wsCompletionResolvers.delete(promptId);
-    pollAbortControllers.delete(promptId);
-    // Poll promise is still running — race again (it will resolve or the abort will cancel it)
-    return pollForCompletion(promptId, abortController.signal);
+    return await ctx.completion.promise;
+  } finally {
+    clearTimeout(timeout);
+    ctx.pollAbort.abort();
   }
 }
 
-async function pollForCompletion(
-  promptId: string,
-  signal?: AbortSignal,
-): Promise<Record<string, unknown> | null> {
-  let consecutiveNulls = 0;
+async function pollForCompletion(ctx: JobContext): Promise<void> {
   let interval = POLL_INTERVAL_MS;
+  let consecutiveNulls = 0;
+  const promptId = ctx.promptId!;
 
-  for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
-    if (signal?.aborted) {
-      throw new Error("Polling aborted (WS resolved or shutdown)");
-    }
-
+  while (!ctx.pollAbort.signal.aborted) {
     const entry = await getHistory(promptId);
     if (entry) {
       consecutiveNulls = 0;
       if (entry.status?.statusStr === "success" || entry.status?.completed) {
-        return entry.outputs ?? {};
+        if (!ctx.settled) {
+          ctx.settled = true;
+          ctx.completion.resolve(entry.outputs ?? {});
+        }
+        return;
       }
       if (entry.status?.statusStr === "error") {
         throw new Error(
@@ -320,11 +290,16 @@ async function pollForCompletion(
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    // Backoff: double interval up to max
-    interval = Math.min(interval * 2, POLL_BACKOFF_MAX_MS);
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, interval);
+      ctx.pollAbort.signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        resolve(undefined);
+      }, { once: true });
+    });
+
+    interval = Math.min(interval * 2, 30_000);
   }
-  throw new Error(`ComfyUI execution timed out after ${MAX_POLL_ATTEMPTS * POLL_INTERVAL_MS / 1000}s`);
 }
 
 // ---------------------------------------------------------------------------
@@ -332,20 +307,22 @@ async function pollForCompletion(
 // ---------------------------------------------------------------------------
 
 async function handleRenderJobInner(jobId: string): Promise<void> {
-  const jobState: ActiveJob = {
+  const ctx: JobContext = {
     jobId,
     promptId: null,
     state: "pending",
     startedAt: new Date(),
+    settled: false,
+    completion: Promise.withResolvers<Record<string, unknown>>(),
+    pollAbort: new AbortController(),
   };
-  activeJobs.set(jobId, jobState);
+  jobContexts.set(jobId, ctx);
 
   let jobType = "unknown";
   let shotId = "unknown";
 
   try {
-    // 1. Fetch the full job document
-    updateState(jobId, "pending");
+    updateState(ctx, "pending");
     const job = await fetchRenderJob(jobId);
     if (!job) {
       throw new Error(`Render job ${jobId} not found in database`);
@@ -358,67 +335,61 @@ async function handleRenderJobInner(jobId: string): Promise<void> {
       jobId, shotId, type: jobType, jobClass: job.jobClass,
     });
 
-    // 2. Resolve input images (download from Storage, upload to ComfyUI)
-    updateState(jobId, "submitting");
+    // Resolve inputs + build workflow
+    updateState(ctx, "submitting");
     const inputs = await resolveInputs(job);
-
-    // 3. Build ComfyUI workflow from template + inputs
     const workflow = await resolveWorkflowAsync(job, { inputs });
     const clientId = `bridge-${jobId}`;
 
-    // 4. Submit to ComfyUI
+    // Submit to ComfyUI
     const result = await submitPrompt(workflow, clientId);
-    jobState.promptId = result.promptId;
+    ctx.promptId = result.promptId;
 
     log.info("handler", "Submitted to ComfyUI", {
       jobId, promptId: result.promptId, type: jobType,
     });
 
-    // 5. Wait for completion (WS + polling race)
-    updateState(jobId, "executing");
-    const outputs = await waitForCompletion(result.promptId);
+    // Wait for completion
+    updateState(ctx, "executing");
+    const outputs = await waitForCompletion(ctx);
 
-    // 6. Download and upload output images
+    // Download and upload output images
     if (outputs && Object.keys(outputs).length > 0) {
-      updateState(jobId, "downloading");
-      updateState(jobId, "uploading");
+      updateState(ctx, "downloading");
+      updateState(ctx, "uploading");
       const outputImageIds = await uploadAllOutputs(outputs);
 
-      // 7. Mark job as complete in DB
-      updateState(jobId, "callback");
+      updateState(ctx, "callback");
       await markJobCompleted(jobId, job.shotId, outputImageIds);
     } else {
       log.warn("handler", "ComfyUI returned zero outputs", { jobId, type: jobType });
-      updateState(jobId, "callback");
+      updateState(ctx, "callback");
       await markJobCompleted(jobId, job.shotId, []);
     }
 
-    updateState(jobId, "completed");
+    updateState(ctx, "completed");
     log.info("handler", "Render job completed", { jobId, type: jobType, shotId });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    updateState(jobId, "failed", message);
+    const message = formatError(err);
+    updateState(ctx, "failed", message);
     log.error("handler", "Render job failed", { jobId, type: jobType, shotId, error: message });
 
     try {
       await markJobFailed(jobId, message);
     } catch (callbackErr) {
       log.error("handler", "Failed to mark job as failed in DB", {
-        jobId, callbackErr: callbackErr instanceof Error ? callbackErr.message : String(callbackErr),
+        jobId, callbackErr: formatError(callbackErr),
       });
     }
   } finally {
-    setTimeout(() => activeJobs.delete(jobId), 60_000);
+    setTimeout(() => jobContexts.delete(jobId), 60_000);
   }
 }
 
-function updateState(jobId: string, state: BridgeJobState, error?: string): void {
-  const job = activeJobs.get(jobId);
-  if (job) {
-    job.state = state;
-    if (error) job.error = error;
-  }
-  log.info("handler", `Job state: ${state}`, { jobId });
+function updateState(ctx: JobContext, state: BridgeJobState, error?: string): void {
+  ctx.state = state;
+  if (error) ctx.error = error;
+  log.info("handler", `Job state: ${state}`, { jobId: ctx.jobId });
 }
 
 // ---------------------------------------------------------------------------
@@ -427,30 +398,25 @@ function updateState(jobId: string, state: BridgeJobState, error?: string): void
 
 export async function drainJobs(timeoutMs = 30_000): Promise<void> {
   log.info("handler", "Draining in-flight jobs", {
-    active: activeJobs.size,
+    active: jobContexts.size,
     queued: _queue.length,
     running: _running,
   });
 
-  // Clear the queue — queued jobs will not be started
   _queue.length = 0;
-
-  // Reject all pending WS completion resolvers
   rejectAllPendingResolvers("Bridge shutting down");
 
-  // Wait for active jobs to complete (with timeout)
   const start = Date.now();
-  while (activeJobs.size > 0 && Date.now() - start < timeoutMs) {
+  while (jobContexts.size > 0 && Date.now() - start < timeoutMs) {
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
 
-  if (activeJobs.size > 0) {
+  if (jobContexts.size > 0) {
     log.warn("handler", "Timeout draining jobs, marking remaining as failed", {
-      remaining: Array.from(activeJobs.keys()),
+      remaining: Array.from(jobContexts.keys()),
     });
-    // Mark remaining active jobs as failed in DB
-    for (const [jobId, job] of activeJobs) {
-      if (job.state !== "completed" && job.state !== "failed") {
+    for (const [jobId, ctx] of jobContexts) {
+      if (ctx.state !== "completed" && ctx.state !== "failed") {
         try {
           await markJobFailed(jobId, "Bridge shutdown — job interrupted");
         } catch {

@@ -14,7 +14,7 @@ import { join, resolve } from "node:path";
 import { Databases, Query } from "node-appwrite";
 import { getDatabases, Collections } from "./appwrite-client.js";
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
 import type { RenderJobDocument } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ async function fetchStyleProfile(
   } catch (err) {
     log.warn("workflow-resolver", "Failed to fetch style profile", {
       styleProfileId,
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
     return null;
   }

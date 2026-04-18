@@ -12,7 +12,7 @@ import { Databases, Storage } from "node-appwrite";
 import { getDatabases, getStorage, Collections } from "./appwrite-client.js";
 import { uploadImage } from "./comfyui-client.js";
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
 import type { RenderJobDocument } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ async function resolveGuideBundleInputs(
   } catch (err) {
     log.warn("input-resolver", "Failed to resolve guide bundle", {
       guideBundleId,
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
   }
 

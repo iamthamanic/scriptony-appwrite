@@ -4,24 +4,27 @@
  * The Blender Addon will expose a local HTTP server that the bridge
  * can notify about render events. Full implementation depends on
  * Ticket 10 (Blender Addon).
- *
- * Current responsibilities:
- *   - Health check (is Blender addon reachable?)
- *   - Notify Blender when a render is accepted or rejected
  */
 
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
 
 function getBaseUrl(): string {
   return getConfig().BRIDGE_BLENDER_URL.replace(/\/+$/, "");
 }
 
-export async function notifyRenderAccepted(
+/**
+ * Send a notification to the Blender addon.
+ *
+ * DRY: single function replaces near-identical notifyRenderAccepted
+ * and notifyRenderRejected.
+ */
+async function notifyBlender(
+  endpoint: string,
   shotId: string,
   jobId: string,
 ): Promise<boolean> {
-  const url = `${getBaseUrl()}/bridge/render-accepted`;
+  const url = `${getBaseUrl()}/bridge/${endpoint}`;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -30,52 +33,26 @@ export async function notifyRenderAccepted(
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) {
-      log.warn("blender", "Render-accepted notification failed", {
-        shotId,
-        jobId,
-        status: res.status,
+      log.warn("blender", `Notification to /${endpoint} failed`, {
+        shotId, jobId, status: res.status,
       });
       return false;
     }
-    log.info("blender", "Render-accepted notification sent", { shotId, jobId });
+    log.info("blender", `Notification sent to /${endpoint}`, { shotId, jobId });
     return true;
   } catch (err) {
     log.warn("blender", "Blender addon not reachable", {
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
     return false;
   }
 }
 
-export async function notifyRenderRejected(
-  shotId: string,
-  jobId: string,
-): Promise<boolean> {
-  const url = `${getBaseUrl()}/bridge/render-rejected`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shotId, jobId }),
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!res.ok) {
-      log.warn("blender", "Render-rejected notification failed", {
-        shotId,
-        jobId,
-        status: res.status,
-      });
-      return false;
-    }
-    log.info("blender", "Render-rejected notification sent", { shotId, jobId });
-    return true;
-  } catch (err) {
-    log.warn("blender", "Blender addon not reachable", {
-      err: err instanceof Error ? err.message : String(err),
-    });
-    return false;
-  }
-}
+export const notifyRenderAccepted = (shotId: string, jobId: string) =>
+  notifyBlender("render-accepted", shotId, jobId);
+
+export const notifyRenderRejected = (shotId: string, jobId: string) =>
+  notifyBlender("render-rejected", shotId, jobId);
 
 export async function healthCheck(): Promise<boolean> {
   try {

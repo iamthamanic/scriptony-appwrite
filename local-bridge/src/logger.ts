@@ -43,3 +43,14 @@ export const log = {
     if (shouldLog("error")) console.error(formatMessage("error", context, message), data ?? "");
   },
 };
+
+/** Safely extract a string message from an unknown error value. */
+export function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}

@@ -5,14 +5,15 @@
  *
  * Hardening:
  *   - Request timeouts on all HTTP calls (30s)
- *   - WS reconnect with exponential backoff
+ *   - WS reconnect via ReconnectManager (exponential backoff)
  *   - WS shutdown flag prevents reconnect during intentional disconnect
  *   - Binary frame check in WS message handler
  *   - Null history fallback (call onCompletion with empty outputs)
  */
 
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
+import { ReconnectManager } from "./backoff.js";
 import type {
   ComfyUIPromptResult,
   ComfyUIHistoryEntry,
@@ -154,14 +155,20 @@ export async function uploadImage(
 }
 
 // ---------------------------------------------------------------------------
-// Health check
+// Health check (DRY: shared pattern with blender-client)
 // ---------------------------------------------------------------------------
 
 export async function healthCheck(): Promise<boolean> {
+  return tryHead(`${getBaseUrl()}/system_stats`);
+}
+
+// ---------------------------------------------------------------------------
+// Shared health-check helper
+// ---------------------------------------------------------------------------
+
+async function tryHead(url: string): Promise<boolean> {
   try {
-    const res = await fetch(`${getBaseUrl()}/system_stats`, {
-      signal: AbortSignal.timeout(5_000),
-    });
+    const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
     return res.ok;
   } catch {
     return false;
@@ -169,19 +176,14 @@ export async function healthCheck(): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
-// WebSocket progress listener
+// WebSocket progress listener (uses ReconnectManager)
 // ---------------------------------------------------------------------------
 
 export type ProgressCallback = (progress: ComfyUIExecutionProgress) => void;
 export type CompletionCallback = (promptId: string, outputs: Record<string, unknown>) => void;
 
 let _ws: WebSocket | null = null;
-let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-let _reconnectAttempts = 0;
-let _shuttingDown = false;
-
-const RECONNECT_BASE_MS = 5_000;
-const RECONNECT_MAX_MS = 60_000;
+const _reconnect = new ReconnectManager({ baseDelayMs: 5_000, maxDelayMs: 60_000, context: "comfyui-ws" });
 
 /**
  * Connect to ComfyUI WebSocket for execution progress.
@@ -200,31 +202,30 @@ export function connectWebSocket(
 
   // Clean up old WS if present
   if (_ws) {
-    _ws.removeAllListeners?.();
+    try { (_ws as unknown as { removeAllListeners?: () => void }).removeAllListeners?.(); } catch { /* ignore */ }
     try { _ws.close(); } catch { /* ignore */ }
     _ws = null;
   }
 
-  _shuttingDown = false;
+  _reconnect.shutdown(); // reset any prior shutdown
+  // Re-create to reset state after shutdown
+  const reconnect = new ReconnectManager({ baseDelayMs: 5_000, maxDelayMs: 60_000, context: "comfyui-ws" });
 
   const ws = new WebSocket(wsUrl);
 
   ws.addEventListener("open", () => {
     log.info("comfyui-ws", "Connected");
-    _reconnectAttempts = 0;
+    reconnect.reset();
   });
 
   ws.addEventListener("message", (event) => {
-    // Ignore binary frames
     if (typeof event.data !== "string") return;
 
     try {
       const data = JSON.parse(event.data) as Record<string, unknown>;
       const type = data.type as string | undefined;
 
-      if (type === "execution_start" || type === "execution_cached") {
-        return;
-      }
+      if (type === "execution_start" || type === "execution_cached") return;
 
       if (type === "progress") {
         onProgress({
@@ -242,14 +243,11 @@ export function connectWebSocket(
           if (promptId) {
             log.info("comfyui-ws", "Execution completed", { promptId });
             getHistory(promptId).then((entry) => {
-              // Call onCompletion even if entry is null (with empty outputs)
-              // so the WS promise resolves and doesn't hang
               onCompletion(promptId, entry?.outputs ?? {});
             }).catch((err) => {
               log.error("comfyui-ws", "Failed to fetch history after completion", {
-                promptId, err: err instanceof Error ? err.message : String(err),
+                promptId, err: formatError(err),
               });
-              // Still call onCompletion with empty outputs to unblock the job
               onCompletion(promptId, {});
             });
           }
@@ -269,30 +267,16 @@ export function connectWebSocket(
   });
 
   ws.addEventListener("close", () => {
-    if (_shuttingDown) {
+    if (reconnect.shuttingDown) {
       log.info("comfyui-ws", "WebSocket closed (intentional shutdown)");
       return;
     }
 
-    _reconnectAttempts++;
-    const delay = Math.min(
-      RECONNECT_BASE_MS * Math.pow(2, _reconnectAttempts - 1),
-      RECONNECT_MAX_MS,
-    );
-
-    log.warn("comfyui-ws", `WebSocket closed, reconnecting in ${delay}ms (attempt ${_reconnectAttempts})`);
-
-    _reconnectTimer = setTimeout(
-      () => {
-        if (_shuttingDown) return;
-        connectWebSocket(onProgress, onCompletion);
-      },
-      delay,
-    );
+    reconnect.schedule(() => connectWebSocket(onProgress, onCompletion));
   });
 
-  ws.addEventListener("error", (event) => {
-    log.error("comfyui-ws", "WebSocket error", { type: typeof event });
+  ws.addEventListener("error", () => {
+    log.error("comfyui-ws", "WebSocket error");
   });
 
   _ws = ws;
@@ -302,17 +286,11 @@ export function connectWebSocket(
  * Disconnect the ComfyUI WebSocket and prevent reconnection.
  */
 export function disconnectWebSocket(): void {
-  _shuttingDown = true;
+  _reconnect.shutdown();
 
-  if (_reconnectTimer) {
-    clearTimeout(_reconnectTimer);
-    _reconnectTimer = null;
-  }
   if (_ws) {
-    _ws.removeAllListeners?.();
-    _ws.close();
+    try { (_ws as unknown as { removeAllListeners?: () => void }).removeAllListeners?.(); } catch { /* ignore */ }
+    try { _ws.close(); } catch { /* ignore */ }
     _ws = null;
   }
-
-  _reconnectAttempts = 0;
 }

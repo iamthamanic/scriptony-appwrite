@@ -15,7 +15,7 @@
  */
 
 import { loadConfig, getConfig } from "./config.js";
-import { setLogLevel, log } from "./logger.js";
+import { setLogLevel, log, formatError } from "./logger.js";
 import { subscribeRenderJobs, unsubscribeRenderJobs } from "./realtime-subscriber.js";
 import { connectWebSocket, disconnectWebSocket } from "./comfyui-client.js";
 import { handleRenderJob, drainJobs, resolveWsCompletion } from "./render-job-handler.js";
@@ -66,7 +66,7 @@ async function reconcileInProgressJobs(): Promise<void> {
     }
   } catch (err) {
     log.error("orchestrator", "Reconciliation query failed", {
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
   }
 }
@@ -122,7 +122,7 @@ export async function start(): Promise<void> {
     );
   } catch (err) {
     log.warn("orchestrator", "ComfyUI WebSocket not available, will use polling", {
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
   }
 

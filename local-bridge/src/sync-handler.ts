@@ -14,7 +14,7 @@
 import { Databases } from "node-appwrite";
 import { getDatabases, Collections } from "./appwrite-client.js";
 import { getConfig } from "./config.js";
-import { log } from "./logger.js";
+import { log, formatError } from "./logger.js";
 import type { ShotStatePayload, PreviewPayload, GlbPreviewPayload } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ export async function syncShotState(payload: ShotStatePayload): Promise<boolean>
   } catch (err) {
     log.error("sync", "Shot state sync failed", {
       shotId: payload.shotId,
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
     return false;
   }
@@ -101,7 +101,7 @@ export async function syncPreview(payload: PreviewPayload): Promise<boolean> {
   } catch (err) {
     log.error("sync", "Preview sync failed", {
       shotId: payload.shotId,
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
     return false;
   }
@@ -135,7 +135,7 @@ export async function syncGlbPreview(payload: GlbPreviewPayload): Promise<boolea
   } catch (err) {
     log.error("sync", "GLB preview sync failed", {
       shotId: payload.shotId,
-      err: err instanceof Error ? err.message : String(err),
+      err: formatError(err),
     });
     return false;
   }

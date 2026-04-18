@@ -92,6 +92,16 @@ export interface ActiveJob {
   error?: string;
 }
 
+/** Single context object per in-flight job — replaces 3 parallel Maps. */
+export interface JobContext extends ActiveJob {
+  /** Resolves when ComfyUI execution completes (WS or poll). */
+  completion: PromiseWithResolvers<Record<string, unknown>>;
+  /** AbortController to cancel polling when WS resolves. */
+  pollAbort: AbortController;
+  /** Whether the completion has been settled (resolved or rejected). */
+  settled: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Sync
 // ---------------------------------------------------------------------------
