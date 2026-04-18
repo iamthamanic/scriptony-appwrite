@@ -8,23 +8,28 @@ import {
 } from "./lib/capacitor/platform";
 import { client } from "./lib/appwrite/appwrite";
 
-async function bootstrap() {
-  await hydrateNativeSessionStorage();
-  await installCapacitorUrlListener();
+// Render immediately — never block on async setup
+createRoot(document.getElementById("root")!).render(<App />);
 
-  void client
-    .ping()
-    .then(() => {
-      console.log("[Appwrite] ping OK — SDK reachability check passed.");
-    })
-    .catch((err: unknown) => {
-      console.warn(
-        "[Appwrite] ping failed (check endpoint / CORS / network):",
-        err,
-      );
-    });
+// Run non-critical async setup in the background
+void (async () => {
+  try {
+    await hydrateNativeSessionStorage();
+    await installCapacitorUrlListener();
+  } catch {
+    // Non-critical — app works without these
+  }
+})();
 
-  createRoot(document.getElementById("root")!).render(<App />);
-}
-
-void bootstrap();
+// Health check: fire and forget, never blocks rendering
+client
+  .ping()
+  .then(() => {
+    console.log("[Appwrite] ping OK — SDK reachability check passed.");
+  })
+  .catch((err: unknown) => {
+    console.warn(
+      "[Appwrite] ping failed (check endpoint / CORS / network):",
+      err,
+    );
+  });

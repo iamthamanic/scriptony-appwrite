@@ -2,18 +2,40 @@ import { useAuth } from "../hooks/useAuth";
 import { useRouter, normalizePage } from "../hooks/useRouter";
 import { useTheme } from "../hooks/useTheme";
 import { useIsMobile } from "../components/ui/use-mobile";
-import { Navigation } from "../components/Navigation";
-import { HomePage } from "../components/pages/HomePage";
-import { AuthPage } from "../components/pages/AuthPage";
-import { ResetPasswordPage } from "../components/pages/ResetPasswordPage";
 import { Toaster } from "../components/ui/sonner";
-import { ServerStatusBanner } from "../components/ServerStatusBanner";
-import { ConnectionStatusIndicator } from "../components/ConnectionStatusIndicator";
-import { BackendNotConfiguredBanner } from "../components/BackendNotConfiguredBanner";
 import { isBackendConfigured } from "../lib/env";
 import { setupUndoKeyboardShortcuts } from "../lib/undo-manager";
 import scriptonyLogo from "../assets/scriptony-logo.png";
 import { Suspense, lazy, useCallback, useEffect } from "react";
+
+// Eager: only lightweight helpers needed for routing/auth decision
+import { ResetPasswordPage } from "../components/pages/ResetPasswordPage";
+import { BackendNotConfiguredBanner } from "../components/BackendNotConfiguredBanner";
+
+// Lazy: all heavy UI components deferred after first paint
+const Navigation = lazy(() =>
+  import("../components/Navigation").then((m) => ({ default: m.Navigation })),
+);
+const HomePage = lazy(() =>
+  import("../components/pages/HomePage").then((m) => ({
+    default: m.HomePage,
+  })),
+);
+const AuthPage = lazy(() =>
+  import("../components/pages/AuthPage").then((m) => ({
+    default: m.AuthPage,
+  })),
+);
+const ServerStatusBanner = lazy(() =>
+  import("../components/ServerStatusBanner").then((m) => ({
+    default: m.ServerStatusBanner,
+  })),
+);
+const ConnectionStatusIndicator = lazy(() =>
+  import("../components/ConnectionStatusIndicator").then((m) => ({
+    default: m.ConnectionStatusIndicator,
+  })),
+);
 
 const ProjectsPage = lazy(() =>
   import("../components/pages/ProjectsPage").then((module) => ({
@@ -134,7 +156,11 @@ export function AppContent() {
 
   // Show auth page if not logged in
   if (!user) {
-    return <AuthPage />;
+    return (
+      <Suspense fallback={<AppSectionFallback />}>
+        <AuthPage />
+      </Suspense>
+    );
   }
 
   const renderPage = () => {
@@ -190,15 +216,19 @@ export function AppContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation
-        currentPage={router.page}
-        onNavigate={onNavigate}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        userRole={user.role}
-        currentProjectId={router.id || null}
-      />
-      <ServerStatusBanner />
+      <Suspense fallback={null}>
+        <Navigation
+          currentPage={router.page}
+          onNavigate={onNavigate}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          userRole={user.role}
+          currentProjectId={router.id || null}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ServerStatusBanner />
+      </Suspense>
       {!isBackendConfigured() &&
         typeof window !== "undefined" &&
         window.location.hostname !== "localhost" &&
@@ -220,7 +250,9 @@ export function AppContent() {
       <Suspense fallback={null}>
         <ScriptonyAssistant />
       </Suspense>
-      <ConnectionStatusIndicator />
+      <Suspense fallback={null}>
+        <ConnectionStatusIndicator />
+      </Suspense>
       <Suspense fallback={null}>
         <PerformanceDashboard />
       </Suspense>
