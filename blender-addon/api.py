@@ -203,3 +203,21 @@ def health_check(base_url: str, token: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def discover_bridge_config() -> dict | None:
+    """Query the local bridge for Appwrite endpoint + project ID.
+
+    Returns None if the bridge is unreachable (e.g. not running yet).
+    """
+    url = f"http://{C.BRIDGE_HEALTH_HOST}:{C.BRIDGE_HEALTH_PORT}/bridge/config"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            raw = resp.read().decode("utf-8")
+            data = json.loads(raw)
+            if "appwriteEndpoint" in data and "appwriteProjectId" in data:
+                return data
+    except Exception:
+        pass
+    return None

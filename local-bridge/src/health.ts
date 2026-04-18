@@ -1,11 +1,8 @@
 /**
- * Health check HTTP server for the Local Bridge.
+ * HTTP server for the Local Bridge.
  *
- * GET /health — status report:
- *   - Appwrite Realtime connection status
- *   - ComfyUI reachability
- *   - Active job count + concurrency info
- *   - Blender addon reachability
+ * GET /health         — status report (connections, jobs, concurrency)
+ * GET /bridge/config  — Appwrite endpoint + project ID (for addon auto-discovery)
  *
  * All other paths/methods → 404
  */
@@ -16,18 +13,11 @@ import { getActiveJobs, getQueueLength, getRunningCount } from "./render-job-han
 import { healthCheck as comfyuiHealth } from "./comfyui-client.js";
 import { healthCheck as blenderHealth } from "./blender-client.js";
 import { isRealtimeConnected, getReconnectAttempts } from "./realtime-subscriber.js";
+import { getConfig } from "./config.js";
 
 let _server: Server | null = null;
 
-export function startHealthServer(port: number): void {
-  _server = createServer(async (req, res) => {
-    // Only respond to GET /health
-    if (req.method !== "GET" || req.url !== "/health") {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not found" }));
-      return;
-    }
-
+async function handleHealth(_req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse): Promise<void> {
     const activeJobs = getActiveJobs();
     const jobCount = activeJobs.size;
 
@@ -65,6 +55,33 @@ export function startHealthServer(port: number): void {
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(status, null, 2));
+}
+
+function handleBridgeConfig(res: import("node:http").ServerResponse): void {
+  const config = getConfig();
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({
+    appwriteEndpoint: config.BRIDGE_APPWRITE_ENDPOINT,
+    appwriteProjectId: config.BRIDGE_APPWRITE_PROJECT_ID,
+  }));
+}
+
+export function startHealthServer(port: number): void {
+  _server = createServer(async (req, res) => {
+    const url = new URL(req.url ?? "/", `http://localhost:${port}`);
+
+    if (req.method === "GET" && url.pathname === "/health") {
+      await handleHealth(req, res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/bridge/config") {
+      handleBridgeConfig(res);
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Not found" }));
   });
 
   _server.listen(port, () => {

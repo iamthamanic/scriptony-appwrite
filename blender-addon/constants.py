@@ -12,6 +12,10 @@ EP_VIEW_STATE = "/stage3d/documents"
 BRIDGE_HOST = "127.0.0.1"
 BRIDGE_PORT = 9876
 
+# Bridge health + config endpoint (runs in Docker, exposed on host)
+BRIDGE_HEALTH_HOST = "127.0.0.1"
+BRIDGE_HEALTH_PORT = 9877
+
 # HTTP client defaults
 REQUEST_TIMEOUT_SEC = 10
 MAX_RETRIES = 3

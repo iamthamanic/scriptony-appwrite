@@ -20,3 +20,47 @@ name: scriptony
 
 include:
   - path: infra/appwrite/docker-compose.yml
+
+services:
+  # ── Scriptony Local Bridge ──────────────────────────────────────────────
+  bridge:
+    build:
+      context: ./local-bridge
+      dockerfile: Dockerfile
+    container_name: scriptony-bridge
+    restart: unless-stopped
+    ports:
+      - "9877:9877"
+    environment:
+      BRIDGE_APPWRITE_ENDPOINT: "http://appwrite:80/v1"
+      BRIDGE_APPWRITE_PROJECT_ID: ${BRIDGE_APPWRITE_PROJECT_ID:-scriptony}
+      BRIDGE_APPWRITE_API_KEY: ${BRIDGE_APPWRITE_API_KEY:?Set BRIDGE_APPWRITE_API_KEY in .env}
+      BRIDGE_APPWRITE_DATABASE_ID: ${BRIDGE_APPWRITE_DATABASE_ID:-scriptony}
+      BRIDGE_COMFYUI_URL: "http://host.docker.internal:8188"
+      BRIDGE_BLENDER_URL: "http://host.docker.internal:9876"
+      BRIDGE_HEALTH_PORT: "9877"
+      BRIDGE_LOG_LEVEL: ${BRIDGE_LOG_LEVEL:-info}
+    networks:
+      - appwrite
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - appwrite
+
+  # ── Scriptony Frontend (Vite SPA via nginx) ─────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: scriptony-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - appwrite
+    depends_on:
+      - bridge
+
+networks:
+  appwrite:
+    external: true

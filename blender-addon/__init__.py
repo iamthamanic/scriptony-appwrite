@@ -34,7 +34,7 @@ class ScriptonyPreferences(AddonPreferences):
 
     cloud_base_url: StringProperty(
         name="Cloud Base URL",
-        description="Base URL for Scriptony cloud functions",
+        description="Appwrite endpoint URL (auto-detected from bridge if left empty)",
         default="",
     )
 
@@ -50,6 +50,7 @@ class ScriptonyPreferences(AddonPreferences):
         layout.prop(self, "cloud_base_url")
         layout.prop(self, "integration_token")
         layout.separator()
+        layout.label(text="Cloud Base URL is auto-detected from the Local Bridge.")
         layout.label(text="Shot binding is set per-scene in the 3D viewport sidebar.")
 
 
@@ -100,6 +101,13 @@ def _health_check_callback():
 
     base_url = prefs.cloud_base_url.strip()
     token = prefs.integration_token.strip()
+
+    # Auto-discover Appwrite config from bridge if base URL not set
+    if not base_url:
+        bridge_config = api.discover_bridge_config()
+        if bridge_config:
+            prefs.cloud_base_url = bridge_config["appwriteEndpoint"]
+            base_url = prefs.cloud_base_url.strip()
 
     if not base_url or not token:
         status.connected = False

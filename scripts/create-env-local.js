@@ -4,7 +4,7 @@
  *
  * Usage:
  *   node scripts/create-env-local.js <VITE_APPWRITE_ENDPOINT> <VITE_APPWRITE_PROJECT_ID> [VITE_BACKEND_API_BASE_URL]
- *   npm run env:local -- https://cloud.appwrite.io/v1 YOUR_PROJECT_ID https://your-functions-host/.../v1
+ *   npm run env:local -- http://localhost:8080/v1 YOUR_PROJECT_ID https://your-functions-host/.../v1
  */
 const fs = require("fs");
 const path = require("path");

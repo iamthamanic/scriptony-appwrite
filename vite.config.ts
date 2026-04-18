@@ -170,6 +170,19 @@ export default defineConfig(({ mode }) => {
     };
   }
 
+  // Bridge proxy for System Status page (works in dev; production uses nginx)
+  const bridgeTarget = env.VITE_BRIDGE_URL?.trim() || "http://127.0.0.1:9877";
+  proxy["/bridge/health"] = {
+    target: bridgeTarget,
+    changeOrigin: true,
+    secure: false,
+  };
+  proxy["/bridge/config"] = {
+    target: bridgeTarget,
+    changeOrigin: true,
+    secure: false,
+  };
+
   return {
     plugins: [react(), wasm(), topLevelAwait(), scriptonyDebugIngestPlugin],
     resolve: {
