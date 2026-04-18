@@ -1,12 +1,12 @@
 /**
  * 🎤 SCRIPTONY AUDIO STT - Speech-to-Text Edge Function
- * 
+ *
  * Transcription Service for Scriptony:
  * - Transcribe audio files
  * - Multiple providers: OpenAI Whisper, Google STT, HuggingFace
  * - Timestamps support
  * - Multiple languages
- * 
+ *
  * Uses centralized AI service from _shared/ai-service/
  */
 
@@ -14,8 +14,9 @@ import "../_shared/fetch-polyfill";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Client, Databases, Query } from "node-appwrite";
-import { requireAuthenticatedUser, type AuthSource } from "../_shared/auth";
+import { type AuthSource, requireAuthenticatedUser } from "../_shared/auth";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
+import process from "node:process";
 
 // =============================================================================
 // SETUP
@@ -25,8 +26,16 @@ export const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
-  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
+  .setEndpoint(
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+      process.env.APPWRITE_ENDPOINT ||
+      "",
+  )
+  .setProject(
+    process.env.APPWRITE_FUNCTION_PROJECT_ID ||
+      process.env.APPWRITE_PROJECT_ID ||
+      "",
+  );
 
 const databases = new Databases(client);
 
@@ -38,16 +47,21 @@ const TRANSCRIPTIONS_COLLECTION = "transcriptions";
 // MIDDLEWARE
 // =============================================================================
 
-app.use("*", cors({
-  origin: "*",
-  allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  exposeHeaders: ["Content-Length"],
-  maxAge: 600,
-}));
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+  }),
+);
 
 // Auth middleware
-async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null> {
+async function getUserIdFromAuth(
+  authSource: AuthSource,
+): Promise<string | null> {
   const user = await requireAuthenticatedUser(authSource);
   return user?.id || null;
 }
@@ -57,8 +71,8 @@ async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null>
 // =============================================================================
 
 app.get("/", (c) => {
-  return c.json({ 
-    status: "ok", 
+  return c.json({
+    status: "ok",
     function: "scriptony-audio-stt",
     version: "1.0.0",
     message: "Scriptony Speech-to-Text Service",
@@ -86,16 +100,18 @@ app.get("/health", (c) => {
  * List all STT-capable providers
  */
 app.get("/providers", async (c) => {
-  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../_shared/ai-service/providers");
-  
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import(
+    "../_shared/ai-service/providers"
+  );
+
   const sttProviders = Object.entries(PROVIDER_CAPABILITIES)
-    .filter(([name, caps]) => caps.audio_stt)
+    .filter(([_name, caps]) => caps.audio_stt)
     .map(([name, caps]) => ({
       id: name,
       name: PROVIDER_DISPLAY_NAMES[name] || name,
       capabilities: caps,
     }));
-  
+
   return c.json({ providers: sttProviders });
 });
 
@@ -105,9 +121,9 @@ app.get("/providers", async (c) => {
  */
 app.get("/models", async (c) => {
   const { getModelsForFeature } = await import("../_shared/ai-service/config");
-  
+
   const models = getModelsForFeature("audio_stt");
-  
+
   return c.json({ models });
 });
 
@@ -121,45 +137,47 @@ app.get("/models", async (c) => {
  */
 app.post("/transcribe", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const contentType = c.req.header("Content-Type") || "";
-  
+
   // Handle multipart/form-data
   if (contentType.includes("multipart/form-data")) {
     const formData = await c.req.formData();
     const audioFile = formData.get("audio") as File;
     const provider = formData.get("provider")?.toString() || "openai"; // NOTE: ignored by transcribe() — resolved from feature config
-    const model = formData.get("model")?.toString() || "whisper-1";   // NOTE: ignored by transcribe() — resolved from feature config
+    const model = formData.get("model")?.toString() || "whisper-1"; // NOTE: ignored by transcribe() — resolved from feature config
     const language = formData.get("language")?.toString();
     const timestamps = formData.get("timestamps") === "true";
-    
+
     if (!audioFile) {
       return c.json({ error: "Audio file required" }, 400);
     }
-    
+
     try {
       // Convert file to buffer
       const audioBuffer = await audioFile.arrayBuffer();
-      
+
       // Create a URL for the audio (in production, upload to storage first)
-      const audioUrl = URL.createObjectURL(new Blob([audioBuffer], { type: audioFile.type }));
-      
+      const audioUrl = URL.createObjectURL(
+        new Blob([audioBuffer], { type: audioFile.type }),
+      );
+
       const { transcribe } = await import("../_shared/ai-service");
-      
+
       const result = await transcribe(userId, audioUrl, {
         provider,
         model,
         language,
         timestamps,
       });
-      
+
       // Revoke the object URL
       URL.revokeObjectURL(audioUrl);
-      
+
       // Save transcription to history
       try {
         await databases.createDocument(
@@ -175,12 +193,12 @@ app.post("/transcribe", async (c) => {
             text: result.text,
             duration: result.duration,
             created_at: new Date().toISOString(),
-          }
+          },
         );
       } catch (e) {
         console.log("Could not save transcription:", e);
       }
-      
+
       return c.json({
         success: true,
         transcription: {
@@ -195,31 +213,31 @@ app.post("/transcribe", async (c) => {
       return c.json({ error: error.message }, 500);
     }
   }
-  
+
   // Handle JSON body
   const body = await c.req.json();
-  const { 
+  const {
     audio_url,
     provider = "openai", // NOTE: ignored by transcribe() — resolved from feature config
     model = "whisper-1", // NOTE: ignored by transcribe() — resolved from feature config
     language,
     timestamps = false,
   } = body;
-  
+
   if (!audio_url) {
     return c.json({ error: "audio_url required" }, 400);
   }
-  
+
   try {
     const { transcribe } = await import("../_shared/ai-service");
-    
+
     const result = await transcribe(userId, audio_url, {
       provider,
       model,
       language,
       timestamps,
     });
-    
+
     return c.json({
       success: true,
       transcription: {
@@ -242,34 +260,34 @@ app.post("/transcribe", async (c) => {
 app.post("/transcribe/url", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
-  const { 
+  const {
     audio_url,
     provider = "openai", // NOTE: ignored by transcribe() — resolved from feature config
     model = "whisper-1", // NOTE: ignored by transcribe() — resolved from feature config
     language,
     timestamps = false,
   } = body;
-  
+
   if (!audio_url) {
     return c.json({ error: "audio_url required" }, 400);
   }
-  
+
   try {
     const { transcribe } = await import("../_shared/ai-service");
-    
+
     const result = await transcribe(userId, audio_url, {
       provider,
       model,
       language,
       timestamps,
     });
-    
+
     return c.json({
       success: true,
       transcription: {
@@ -292,25 +310,30 @@ app.post("/transcribe/url", async (c) => {
 app.post("/transcribe/batch", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
-  const { audio_urls, provider = "openai", model = "whisper-1", ...options } = body;
-  
+  const {
+    audio_urls,
+    provider = "openai",
+    model = "whisper-1",
+    ...options
+  } = body;
+
   if (!audio_urls || !Array.isArray(audio_urls) || audio_urls.length === 0) {
     return c.json({ error: "audio_urls array required" }, 400);
   }
-  
+
   if (audio_urls.length > 10) {
     return c.json({ error: "Maximum 10 files per batch" }, 400);
   }
-  
+
   try {
     const { transcribe } = await import("../_shared/ai-service");
-    
+
     const results = await Promise.all(
       audio_urls.map(async (audio_url: string) => {
         try {
@@ -323,12 +346,12 @@ app.post("/transcribe/batch", async (c) => {
         } catch (error: any) {
           return { audio_url, success: false, error: error.message };
         }
-      })
+      }),
     );
-    
+
     const successful = results.filter((r: any) => r.success);
     const failed = results.filter((r: any) => !r.success);
-    
+
     return c.json({
       success: true,
       total: audio_urls.length,
@@ -354,14 +377,14 @@ app.post("/transcribe/batch", async (c) => {
 app.get("/history", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const limit = parseInt(c.req.query("limit") || "50");
   const offset = parseInt(c.req.query("offset") || "0");
-  
+
   try {
     const response = await databases.listDocuments(
       AUDIO_DB_ID,
@@ -371,14 +394,14 @@ app.get("/history", async (c) => {
         Query.orderDesc("created_at"),
         Query.limit(limit),
         Query.offset(offset),
-      ]
+      ],
     );
-    
+
     return c.json({
       transcriptions: response.documents,
       total: response.total,
     });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Return empty history if DB doesn't exist
     return c.json({ transcriptions: [], total: 0 });
   }

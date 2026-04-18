@@ -63,12 +63,16 @@ function toStringOrNull(value: unknown): string | null {
 }
 
 function toStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === "string");
+  }
   return [];
 }
 
 function toInteger(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
   if (typeof value === "string" && value.trim()) {
     const n = Number(value);
     if (Number.isFinite(n)) return Math.trunc(n);
@@ -104,12 +108,16 @@ export function renderJobRowToApi(row: RenderJobRow): RenderJobApi {
 export async function userCanAccessProject(
   projectId: string,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<boolean> {
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
+  return Boolean(
+    await getAccessibleProject(projectId, userId, organizationIds),
+  );
 }
 
-export async function getShotById(shotId: string): Promise<RenderJobRow | null> {
+export async function getShotById(
+  shotId: string,
+): Promise<RenderJobRow | null> {
   return getDocument(C.shots, shotId);
 }
 
@@ -148,11 +156,15 @@ export async function createRenderJob(input: {
   return renderJobRowToApi(row);
 }
 
-export async function getRenderJobById(jobId: string): Promise<RenderJobRow | null> {
+export async function getRenderJobById(
+  jobId: string,
+): Promise<RenderJobRow | null> {
   return getDocument(C.renderJobs, jobId);
 }
 
-export async function listRenderJobsForShot(shotId: string): Promise<RenderJobApi[]> {
+export async function listRenderJobsForShot(
+  shotId: string,
+): Promise<RenderJobApi[]> {
   const rows = await listDocumentsFull(C.renderJobs, [
     Query.equal("shotId", shotId),
     Query.orderDesc("createdAt"),
@@ -166,7 +178,7 @@ export async function listRenderJobsForShot(shotId: string): Promise<RenderJobAp
 
 export async function completeRenderJob(
   row: RenderJobRow,
-  outputImageIds?: string[]
+  outputImageIds?: string[],
 ): Promise<RenderJobApi> {
   const current = toString(row.status);
   if (current !== "queued" && current !== "executing") {
@@ -186,7 +198,7 @@ export async function completeRenderJob(
 
 export async function acceptRenderJob(
   row: RenderJobRow,
-  userId: string
+  userId: string,
 ): Promise<RenderJobApi> {
   const current = toString(row.reviewStatus);
   if (current === "accepted") {
@@ -222,9 +234,30 @@ export async function acceptRenderJob(
   return renderJobRowToApi(updated);
 }
 
+export async function failRenderJob(
+  row: RenderJobRow,
+  errorMessage?: string,
+): Promise<RenderJobApi> {
+  const current = toString(row.status);
+  if (current !== "queued" && current !== "executing") {
+    throw new Error(`Cannot fail job in status "${current}"`);
+  }
+  const update: Record<string, unknown> = {
+    status: "failed",
+    completedAt: new Date().toISOString(),
+  };
+  if (errorMessage) {
+    update.repairConfig =
+      (toString(row.repairConfig) ? toString(row.repairConfig) + " | " : "") +
+      `[error] ${errorMessage}`.slice(0, 2000);
+  }
+  const updated = await updateDocument(C.renderJobs, String(row.id), update);
+  return renderJobRowToApi(updated);
+}
+
 export async function rejectRenderJob(
   row: RenderJobRow,
-  userId: string
+  _userId: string,
 ): Promise<RenderJobApi> {
   const current = toString(row.reviewStatus);
   if (current === "rejected") {
@@ -235,7 +268,6 @@ export async function rejectRenderJob(
     throw new Error("Only completed jobs can be rejected");
   }
 
-  const now = new Date().toISOString();
   const jobId = String(row.id);
   const shotId = toString(row.shotId);
 

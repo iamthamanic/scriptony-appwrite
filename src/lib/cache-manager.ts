@@ -1,12 +1,12 @@
 /**
  * 🚀 SCRIPTONY CACHE MANAGER
- * 
+ *
  * Aggressive caching with IndexedDB + localStorage + memory
  * Stale-While-Revalidate pattern for instant loads
  * Triple-layer caching: Memory → IndexedDB → localStorage
  */
 
-import { perfMonitor, type SLACategory } from './performance-monitor';
+import { perfMonitor, type SLACategory } from "./performance-monitor";
 
 // =============================================================================
 // INDEXEDDB SETUP
@@ -17,15 +17,15 @@ let idbPromise: Promise<IDBDatabase> | null = null;
 function getIDB(): Promise<IDBDatabase> {
   if (!idbPromise) {
     idbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open('scriptony-cache', 1);
-      
+      const request = indexedDB.open("scriptony-cache", 1);
+
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
-      
+
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains('cache')) {
-          db.createObjectStore('cache', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains("cache")) {
+          db.createObjectStore("cache", { keyPath: "key" });
         }
       };
     });
@@ -44,17 +44,17 @@ interface CacheEntry<T> {
 }
 
 interface CacheConfig {
-  ttl?: number;           // Time to live in ms (default: 5 minutes)
-  staleTime?: number;     // Time before considering stale (default: 30 seconds)
-  version?: string;       // Cache version for invalidation
+  ttl?: number; // Time to live in ms (default: 5 minutes)
+  staleTime?: number; // Time before considering stale (default: 30 seconds)
+  version?: string; // Cache version for invalidation
   slaCategory?: SLACategory; // Performance tracking category
 }
 
 const DEFAULT_CONFIG: Required<CacheConfig> = {
-  ttl: 5 * 60 * 1000,      // 5 minutes
-  staleTime: 30 * 1000,    // 30 seconds
-  version: '1.0',
-  slaCategory: 'CACHE_READ',
+  ttl: 5 * 60 * 1000, // 5 minutes
+  staleTime: 30 * 1000, // 30 seconds
+  version: "1.0",
+  slaCategory: "CACHE_READ",
 };
 
 // =============================================================================
@@ -64,15 +64,19 @@ const DEFAULT_CONFIG: Required<CacheConfig> = {
 class CacheManager {
   private memoryCache = new Map<string, CacheEntry<any>>();
   private pendingRevalidations = new Map<string, Promise<any>>();
-  
+
   /**
    * Get from cache (memory → IndexedDB → localStorage)
    * Returns { data, isStale } - data might be stale but valid
    */
   async getAsync<T>(
     key: string,
-    config: CacheConfig = {}
-  ): Promise<{ data: T | null; isStale: boolean; source: 'memory' | 'indexeddb' | 'localstorage' | 'miss' }> {
+    config: CacheConfig = {},
+  ): Promise<{
+    data: T | null;
+    isStale: boolean;
+    source: "memory" | "indexeddb" | "localstorage" | "miss";
+  }> {
     const perfId = `cache-get-async-${key}`;
     perfMonitor.start(perfId);
 
@@ -87,11 +91,16 @@ class CacheManager {
       const isStale = age > fullConfig.staleTime;
 
       if (!isExpired && memEntry.version === fullConfig.version) {
-        perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (memory): ${key}`, {
-          age,
-          isStale,
-        });
-        return { data: memEntry.data, isStale, source: 'memory' };
+        perfMonitor.end(
+          perfId,
+          fullConfig.slaCategory,
+          `Cache GET (memory): ${key}`,
+          {
+            age,
+            isStale,
+          },
+        );
+        return { data: memEntry.data, isStale, source: "memory" };
       }
 
       // Expired or wrong version - remove
@@ -103,14 +112,15 @@ class CacheManager {
     // 2. Try IndexedDB (persistent, survives refreshes!)
     try {
       const db = await getIDB();
-      const transaction = db.transaction(['cache'], 'readonly');
-      const store = transaction.objectStore('cache');
+      const transaction = db.transaction(["cache"], "readonly");
+      const store = transaction.objectStore("cache");
       const request = store.get(key);
 
-      const idbEntry: (CacheEntry<T> & { key: string }) | undefined = await new Promise((resolve, reject) => {
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
+      const idbEntry: (CacheEntry<T> & { key: string }) | undefined =
+        await new Promise((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
 
       if (idbEntry) {
         const age = now - idbEntry.timestamp;
@@ -121,21 +131,26 @@ class CacheManager {
           // Promote to memory cache
           this.memoryCache.set(key, idbEntry);
 
-          perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (IndexedDB): ${key}`, {
-            age,
-            isStale,
-          });
-          return { data: idbEntry.data, isStale, source: 'indexeddb' };
+          perfMonitor.end(
+            perfId,
+            fullConfig.slaCategory,
+            `Cache GET (IndexedDB): ${key}`,
+            {
+              age,
+              isStale,
+            },
+          );
+          return { data: idbEntry.data, isStale, source: "indexeddb" };
         }
 
         // Expired or wrong version - remove
         if (isExpired || idbEntry.version !== fullConfig.version) {
-          const deleteTransaction = db.transaction(['cache'], 'readwrite');
-          deleteTransaction.objectStore('cache').delete(key);
+          const deleteTransaction = db.transaction(["cache"], "readwrite");
+          deleteTransaction.objectStore("cache").delete(key);
         }
       }
     } catch (error) {
-      console.warn('[Cache] Error reading from IndexedDB:', error);
+      console.warn("[Cache] Error reading from IndexedDB:", error);
     }
 
     // 3. Try localStorage (fallback)
@@ -152,11 +167,16 @@ class CacheManager {
           this.memoryCache.set(key, entry);
           this.setIndexedDB(key, entry).catch(console.warn);
 
-          perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (localStorage): ${key}`, {
-            age,
-            isStale,
-          });
-          return { data: entry.data, isStale, source: 'localstorage' };
+          perfMonitor.end(
+            perfId,
+            fullConfig.slaCategory,
+            `Cache GET (localStorage): ${key}`,
+            {
+              age,
+              isStale,
+            },
+          );
+          return { data: entry.data, isStale, source: "localstorage" };
         }
 
         // Expired or wrong version - remove
@@ -165,11 +185,11 @@ class CacheManager {
         }
       }
     } catch (error) {
-      console.warn('[Cache] Error reading from localStorage:', error);
+      console.warn("[Cache] Error reading from localStorage:", error);
     }
 
     perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (miss): ${key}`);
-    return { data: null, isStale: false, source: 'miss' };
+    return { data: null, isStale: false, source: "miss" };
   }
 
   /**
@@ -178,7 +198,7 @@ class CacheManager {
    */
   get<T>(
     key: string,
-    config: CacheConfig = {}
+    config: CacheConfig = {},
   ): { data: T | null; isStale: boolean; fromMemory: boolean } {
     const perfId = `cache-get-${key}`;
     perfMonitor.start(perfId);
@@ -194,10 +214,15 @@ class CacheManager {
       const isStale = age > fullConfig.staleTime;
 
       if (!isExpired && memEntry.version === fullConfig.version) {
-        perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (memory): ${key}`, {
-          age,
-          isStale,
-        });
+        perfMonitor.end(
+          perfId,
+          fullConfig.slaCategory,
+          `Cache GET (memory): ${key}`,
+          {
+            age,
+            isStale,
+          },
+        );
         return { data: memEntry.data, isStale, fromMemory: true };
       }
 
@@ -220,10 +245,15 @@ class CacheManager {
           // Promote to memory cache
           this.memoryCache.set(key, entry);
 
-          perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (localStorage): ${key}`, {
-            age,
-            isStale,
-          });
+          perfMonitor.end(
+            perfId,
+            fullConfig.slaCategory,
+            `Cache GET (localStorage): ${key}`,
+            {
+              age,
+              isStale,
+            },
+          );
           return { data: entry.data, isStale, fromMemory: false };
         }
 
@@ -233,7 +263,7 @@ class CacheManager {
         }
       }
     } catch (error) {
-      console.warn('[Cache] Error reading from localStorage:', error);
+      console.warn("[Cache] Error reading from localStorage:", error);
     }
 
     perfMonitor.end(perfId, fullConfig.slaCategory, `Cache GET (miss): ${key}`);
@@ -243,11 +273,7 @@ class CacheManager {
   /**
    * Set cache (memory + localStorage + IndexedDB)
    */
-  set<T>(
-    key: string,
-    data: T,
-    config: CacheConfig = {}
-  ): void {
+  set<T>(key: string, data: T, config: CacheConfig = {}): void {
     const perfId = `cache-set-${key}`;
     perfMonitor.start(perfId);
 
@@ -263,19 +289,19 @@ class CacheManager {
 
     // 2. Set in IndexedDB (async, non-blocking, survives refresh!)
     this.setIndexedDB(key, entry).catch((error) => {
-      console.warn('[Cache] Error writing to IndexedDB:', error);
+      console.warn("[Cache] Error writing to IndexedDB:", error);
     });
 
     // 3. Set in localStorage (fallback, async, non-blocking)
     try {
       localStorage.setItem(this.getStorageKey(key), JSON.stringify(entry));
     } catch (error) {
-      console.warn('[Cache] Error writing to localStorage:', error);
+      console.warn("[Cache] Error writing to localStorage:", error);
       // If quota exceeded, clear old entries
       this.clearOldEntries();
     }
 
-    perfMonitor.end(perfId, 'CACHE_WRITE', `Cache SET: ${key}`, {
+    perfMonitor.end(perfId, "CACHE_WRITE", `Cache SET: ${key}`, {
       size: JSON.stringify(data).length,
     });
   }
@@ -285,24 +311,20 @@ class CacheManager {
    */
   private async setIndexedDB<T>(
     key: string,
-    entry: CacheEntry<T>
+    entry: CacheEntry<T>,
   ): Promise<void> {
-    try {
-      const db = await getIDB();
-      const transaction = db.transaction(['cache'], 'readwrite');
-      const store = transaction.objectStore('cache');
-      
-      // Store with key included in the entry
-      const dataWithKey = { ...entry, key };
-      const request = store.put(dataWithKey);
+    const db = await getIDB();
+    const transaction = db.transaction(["cache"], "readwrite");
+    const store = transaction.objectStore("cache");
 
-      await new Promise((resolve, reject) => {
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    } catch (error) {
-      throw error;
-    }
+    // Store with key included in the entry
+    const dataWithKey = { ...entry, key };
+    const request = store.put(dataWithKey);
+
+    await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
@@ -313,7 +335,7 @@ class CacheManager {
     try {
       localStorage.removeItem(this.getStorageKey(key));
     } catch (error) {
-      console.warn('[Cache] Error removing from localStorage:', error);
+      console.warn("[Cache] Error removing from localStorage:", error);
     }
     console.log(`[Cache] Invalidated: ${key}`);
   }
@@ -333,7 +355,7 @@ class CacheManager {
     try {
       const storagePrefix = this.getStorageKey(prefix);
       const keysToRemove: string[] = [];
-      
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith(storagePrefix)) {
@@ -341,10 +363,12 @@ class CacheManager {
         }
       }
 
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log(`[Cache] Invalidated ${keysToRemove.length} entries with prefix: ${prefix}`);
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
+      console.log(
+        `[Cache] Invalidated ${keysToRemove.length} entries with prefix: ${prefix}`,
+      );
     } catch (error) {
-      console.warn('[Cache] Error invalidating by prefix:', error);
+      console.warn("[Cache] Error invalidating by prefix:", error);
     }
   }
 
@@ -354,19 +378,19 @@ class CacheManager {
   clear(): void {
     this.memoryCache.clear();
     this.pendingRevalidations.clear();
-    
+
     try {
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('scriptony:cache:')) {
+        if (key && key.startsWith("scriptony:cache:")) {
           keysToRemove.push(key);
         }
       }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
       console.log(`[Cache] Cleared ${keysToRemove.length} cache entries`);
     } catch (error) {
-      console.warn('[Cache] Error clearing localStorage:', error);
+      console.warn("[Cache] Error clearing localStorage:", error);
     }
   }
 
@@ -377,7 +401,7 @@ class CacheManager {
   async getWithRevalidate<T>(
     key: string,
     fetcher: () => Promise<T>,
-    config: CacheConfig = {}
+    config: CacheConfig = {},
   ): Promise<T> {
     const fullConfig = { ...DEFAULT_CONFIG, ...config };
     const cached = this.get<T>(key, config);
@@ -395,17 +419,19 @@ class CacheManager {
         this.pendingRevalidations.set(key, revalidation);
         revalidation.finally(() => this.pendingRevalidations.delete(key));
       }
-      
-      console.log(`[Cache] Returning stale data for ${key}, revalidating in background...`);
+
+      console.log(
+        `[Cache] Returning stale data for ${key}, revalidating in background...`,
+      );
       return cached.data;
     }
 
     // No cached data, fetch fresh
     const data = await perfMonitor.measure(
       `cache-fetch-${key}`,
-      fullConfig.slaCategory || 'API_STANDARD',
+      fullConfig.slaCategory || "API_STANDARD",
       `Cache FETCH: ${key}`,
-      fetcher
+      fetcher,
     );
 
     this.set(key, data, config);
@@ -418,7 +444,7 @@ class CacheManager {
   private async revalidate<T>(
     key: string,
     fetcher: () => Promise<T>,
-    config: CacheConfig = {}
+    config: CacheConfig = {},
   ): Promise<void> {
     try {
       const data = await fetcher();
@@ -435,7 +461,7 @@ class CacheManager {
   async prefetch<T>(
     key: string,
     fetcher: () => Promise<T>,
-    config: CacheConfig = {}
+    config: CacheConfig = {},
   ): Promise<void> {
     // Skip if already cached and fresh
     const cached = this.get<T>(key, config);
@@ -448,9 +474,9 @@ class CacheManager {
     try {
       const data = await perfMonitor.measure(
         `cache-prefetch-${key}`,
-        'PREFETCH',
+        "PREFETCH",
         `Cache PREFETCH: ${key}`,
-        fetcher
+        fetcher,
       );
       this.set(key, data, config);
     } catch (error) {
@@ -472,7 +498,7 @@ class CacheManager {
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('scriptony:cache:')) {
+        if (key && key.startsWith("scriptony:cache:")) {
           localStorageEntries++;
           const value = localStorage.getItem(key);
           if (value) {
@@ -481,7 +507,7 @@ class CacheManager {
         }
       }
     } catch (error) {
-      console.warn('[Cache] Error getting stats:', error);
+      console.warn("[Cache] Error getting stats:", error);
     }
 
     return {
@@ -500,7 +526,7 @@ class CacheManager {
 
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('scriptony:cache:')) {
+        if (key && key.startsWith("scriptony:cache:")) {
           const value = localStorage.getItem(key);
           if (value) {
             try {
@@ -525,7 +551,7 @@ class CacheManager {
 
       console.log(`[Cache] Cleared ${removeCount} old entries due to quota`);
     } catch (error) {
-      console.warn('[Cache] Error clearing old entries:', error);
+      console.warn("[Cache] Error clearing old entries:", error);
     }
   }
 
@@ -544,7 +570,7 @@ class CacheManager {
 export const cacheManager = new CacheManager();
 
 // Expose to window for debugging
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as any).scriptonyCache = {
     manager: cacheManager,
     get: (key: string) => cacheManager.get(key),
@@ -554,10 +580,13 @@ if (typeof window !== 'undefined') {
     clear: () => cacheManager.clear(),
     stats: () => cacheManager.getStats(),
   };
-  
+
   console.log(
-    '%c💾 SCRIPTONY CACHE MANAGER ACTIVE',
-    'color: #6E59A5; font-weight: bold; font-size: 14px;'
+    "%c💾 SCRIPTONY CACHE MANAGER ACTIVE",
+    "color: #6E59A5; font-weight: bold; font-size: 14px;",
   );
-  console.log('%cUse window.scriptonyCache.stats() to see cache stats', 'color: #888;');
+  console.log(
+    "%cUse window.scriptonyCache.stats() to see cache stats",
+    "color: #888;",
+  );
 }

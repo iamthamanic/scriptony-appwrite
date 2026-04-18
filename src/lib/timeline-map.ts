@@ -12,7 +12,7 @@ import type { Clip, Shot } from "./types";
 import * as ClipsAPI from "./api/clips-api";
 
 export function ultraBatchToTimelineData(
-  ultra: Awaited<ReturnType<typeof TimelineAPIV2.ultraBatchLoadProject>>
+  ultra: Awaited<ReturnType<typeof TimelineAPIV2.ultraBatchLoadProject>>,
 ): TimelineData {
   return {
     acts: (ultra.timeline.acts || []).map(nodeToAct),
@@ -26,7 +26,7 @@ export function ultraBatchToTimelineData(
 export function batchTimelineToTimelineData(
   batch: Awaited<ReturnType<typeof TimelineAPIV2.batchLoadTimeline>>,
   shots: unknown[],
-  clips: Clip[] = []
+  clips: Clip[] = [],
 ): TimelineData {
   return {
     acts: (batch.acts || []).map(nodeToAct),
@@ -55,9 +55,14 @@ function extractTextFromTiptap(node: unknown): string {
 }
 
 /** Derive word counts for book timeline (same rules as VideoEditorTimeline). */
-export function enrichBookTimelineData(base: BookTimelineData): BookTimelineData {
+export function enrichBookTimelineData(
+  base: BookTimelineData,
+): BookTimelineData {
   const parsedScenes = base.scenes.map((scene) => {
-    if (scene.metadata?.wordCount !== undefined && scene.metadata?.wordCount !== null) {
+    if (
+      scene.metadata?.wordCount !== undefined &&
+      scene.metadata?.wordCount !== null
+    ) {
       return { ...scene, wordCount: scene.metadata.wordCount };
     }
     const contentSource = scene.content || scene.metadata?.content;
@@ -66,13 +71,20 @@ export function enrichBookTimelineData(base: BookTimelineData): BookTimelineData
         const parsed = JSON.parse(contentSource) as unknown;
         const textContent = extractTextFromTiptap(parsed);
         const wordCount = textContent.trim()
-          ? textContent.trim().split(/\s+/).filter((w) => w.length > 0).length
+          ? textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0).length
           : 0;
         return { ...scene, content: parsed, wordCount };
       } catch {
-        const textContent = typeof contentSource === "string" ? contentSource : "";
+        const textContent =
+          typeof contentSource === "string" ? contentSource : "";
         const wordCount = textContent.trim()
-          ? textContent.trim().split(/\s+/).filter((w) => w.length > 0).length
+          ? textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0).length
           : 0;
         return { ...scene, wordCount };
       }
@@ -85,8 +97,13 @@ export function enrichBookTimelineData(base: BookTimelineData): BookTimelineData
     if (dbWordCount !== undefined && dbWordCount !== null) {
       return { ...seq, wordCount: dbWordCount };
     }
-    const sequenceScenes = parsedScenes.filter((sc) => sc.sequenceId === seq.id);
-    const totalWords = sequenceScenes.reduce((sum, sc) => sum + (sc.wordCount || 0), 0);
+    const sequenceScenes = parsedScenes.filter(
+      (sc) => sc.sequenceId === seq.id,
+    );
+    const totalWords = sequenceScenes.reduce(
+      (sum, sc) => sum + (sc.wordCount || 0),
+      0,
+    );
     return { ...seq, wordCount: totalWords };
   });
 
@@ -95,8 +112,13 @@ export function enrichBookTimelineData(base: BookTimelineData): BookTimelineData
     if (dbWordCount !== undefined && dbWordCount !== null) {
       return { ...act, wordCount: dbWordCount };
     }
-    const actSequences = sequencesWithWordCounts.filter((s) => s.actId === act.id);
-    const totalWords = actSequences.reduce((sum, s) => sum + (s.wordCount || 0), 0);
+    const actSequences = sequencesWithWordCounts.filter(
+      (s) => s.actId === act.id,
+    );
+    const totalWords = actSequences.reduce(
+      (sum, s) => sum + (s.wordCount || 0),
+      0,
+    );
     return { ...act, wordCount: totalWords };
   });
 
@@ -114,19 +136,23 @@ export function enrichBookTimelineData(base: BookTimelineData): BookTimelineData
 export async function loadProjectTimelineBundle(
   projectId: string,
   token: string,
-  isBook: boolean
+  isBook: boolean,
 ): Promise<TimelineData | BookTimelineData> {
-  let loadedActs: ReturnType<typeof nodeToAct>[] = [];
-  let allSequences: ReturnType<typeof nodeToSequence>[] = [];
-  let allScenes: ReturnType<typeof nodeToScene>[] = [];
-  let allShots: Shot[] = [];
-  let allClips: Clip[] = [];
+  let loadedActs: ReturnType<typeof nodeToAct>[];
+  let allSequences: ReturnType<typeof nodeToSequence>[];
+  let allScenes: ReturnType<typeof nodeToScene>[];
+  let allShots: Shot[];
+  let allClips: Clip[];
 
   try {
-    const ultraData = await TimelineAPIV2.ultraBatchLoadProject(projectId, token, {
-      includeShots: true,
-      excludeContent: true,
-    });
+    const ultraData = await TimelineAPIV2.ultraBatchLoadProject(
+      projectId,
+      token,
+      {
+        includeShots: true,
+        excludeContent: true,
+      },
+    );
     const film = ultraBatchToTimelineData(ultraData);
     loadedActs = film.acts;
     allSequences = film.sequences;
@@ -142,7 +168,7 @@ export async function loadProjectTimelineBundle(
       scenes: [],
       stats: { totalNodes: 0, acts: 0, sequences: 0, scenes: 0 },
     }));
-    let fallbackShots: unknown[] = [];
+    let fallbackShots: unknown[];
     try {
       fallbackShots = await ShotsAPI.getAllShotsByProject(projectId, token);
     } catch {

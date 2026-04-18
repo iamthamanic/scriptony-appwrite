@@ -1,10 +1,8 @@
 /**
  * AI Model Registry
- * 
+ *
  * Lists all available models per provider and feature.
  */
-
-import { PROVIDER_CAPABILITIES } from "../providers/base";
 
 /**
  * Model information
@@ -204,7 +202,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0.13, output: 0 },
     },
   ],
-  
+
   anthropic: [
     {
       id: "claude-sonnet-4-20250514",
@@ -252,7 +250,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0.25, output: 1.25 },
     },
   ],
-  
+
   google: [
     {
       id: "gemini-2.0-flash-exp",
@@ -287,7 +285,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0.0, output: 0 },
     },
   ],
-  
+
   deepseek: [
     {
       id: "deepseek-chat",
@@ -308,7 +306,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0.14, output: 0.28 },
     },
   ],
-  
+
   openrouter: [
     // OpenRouter aggregates models from multiple providers
     {
@@ -344,7 +342,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0.14, output: 0.28 },
     },
   ],
-  
+
   elevenlabs: [
     {
       id: "eleven_multilingual_v2",
@@ -361,7 +359,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0.015, output: 0 },
     },
   ],
-  
+
   ollama: [
     {
       id: "llama3.1",
@@ -387,7 +385,7 @@ export const MODELS: Record<string, ModelInfo[]> = {
       pricing: { input: 0, output: 0 },
     },
   ],
-  
+
   huggingface: [
     {
       id: "meta-llama/Llama-3.2-3B-Instruct",
@@ -410,10 +408,11 @@ export const MODELS: Record<string, ModelInfo[]> = {
  * Get all models for a provider
  */
 export function getModelsForProvider(provider: string): ModelInfo[] {
-  const key =
-    provider === "ollama_local" || provider === "ollama_cloud" || provider === "ollama"
-      ? "ollama"
-      : provider;
+  const key = provider === "ollama_local" ||
+      provider === "ollama_cloud" ||
+      provider === "ollama"
+    ? "ollama"
+    : provider;
   const rows = MODELS[key] || [];
   if (provider === "ollama_local" || provider === "ollama_cloud") {
     return rows.map((m) => ({ ...m, provider }));
@@ -427,24 +426,32 @@ export function getModelsForProvider(provider: string): ModelInfo[] {
 export function getModelsForFeature(feature: string): ModelInfo[] {
   return Object.values(MODELS)
     .flat()
-    .filter(model => model.features.includes(feature));
+    .filter((model) => model.features.includes(feature));
 }
 
 /**
  * Get all models for a provider and feature
  */
-export function getModelsForProviderFeature(provider: string, feature: string): ModelInfo[] {
-  return getModelsForProvider(provider).filter(model => model.features.includes(feature));
+export function getModelsForProviderFeature(
+  provider: string,
+  feature: string,
+): ModelInfo[] {
+  return getModelsForProvider(provider).filter((model) =>
+    model.features.includes(feature)
+  );
 }
 
 /**
  * Check if a model supports a feature
  */
-export function modelSupportsFeature(modelId: string, feature: string): boolean {
+export function modelSupportsFeature(
+  modelId: string,
+  feature: string,
+): boolean {
   const model = Object.values(MODELS)
     .flat()
-    .find(m => m.id === modelId);
-  
+    .find((m) => m.id === modelId);
+
   return model?.features.includes(feature) ?? false;
 }
 
@@ -454,5 +461,5 @@ export function modelSupportsFeature(modelId: string, feature: string): boolean 
 export function getModelInfo(modelId: string): ModelInfo | undefined {
   return Object.values(MODELS)
     .flat()
-    .find(m => m.id === modelId);
+    .find((m) => m.id === modelId);
 }

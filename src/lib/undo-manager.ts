@@ -1,6 +1,6 @@
 /**
  * 🔄 UNDO MANAGER - Global Undo/Redo System
- * 
+ *
  * Provides app-wide undo/redo functionality with CMD+Z / CTRL+Z
  * - Tracks all create, update, delete operations
  * - Maintains undo/redo history
@@ -8,10 +8,20 @@
  * - Keyboard shortcuts integration
  */
 
+import { toast } from "sonner";
+
 export interface UndoAction {
-  type: 'create' | 'update' | 'delete';
+  type: "create" | "update" | "delete";
   /** `feature` = generische Einträge über pushAppUndoAction (beliebige Features) */
-  entity: 'act' | 'sequence' | 'scene' | 'shot' | 'character' | 'inspiration' | 'project' | 'feature';
+  entity:
+    | "act"
+    | "sequence"
+    | "scene"
+    | "shot"
+    | "character"
+    | "inspiration"
+    | "project"
+    | "feature";
   id: string;
   data?: any; // For rollback
   previousData?: any; // For undo
@@ -54,15 +64,15 @@ class UndoManager {
    */
   push(action: UndoAction): void {
     this.history.push(action);
-    
+
     // Clear redo stack when new action is performed
     this.redoStack = [];
-    
+
     // Limit history size
     if (this.history.length > this.maxHistorySize) {
       this.history.shift();
     }
-    
+
     this.notify();
   }
 
@@ -79,11 +89,11 @@ class UndoManager {
   async undo(): Promise<boolean> {
     const action = this.history.pop();
     if (!action) {
-      console.log('[Undo Manager] Nothing to undo');
+      console.log("[Undo Manager] Nothing to undo");
       return false;
     }
 
-    console.log('[Undo Manager] Undoing action:', action);
+    console.log("[Undo Manager] Undoing action:", action);
 
     try {
       // Get callback for this action
@@ -96,11 +106,11 @@ class UndoManager {
         this.notify();
         return true;
       } else {
-        console.warn('[Undo Manager] No callback registered for:', callbackKey);
+        console.warn("[Undo Manager] No callback registered for:", callbackKey);
         return false;
       }
     } catch (error) {
-      console.error('[Undo Manager] Error during undo:', error);
+      console.error("[Undo Manager] Error during undo:", error);
       // Restore action to history on failure
       this.history.push(action);
       this.notify();
@@ -114,11 +124,11 @@ class UndoManager {
   async redo(): Promise<boolean> {
     const action = this.redoStack.pop();
     if (!action) {
-      console.log('[Undo Manager] Nothing to redo');
+      console.log("[Undo Manager] Nothing to redo");
       return false;
     }
 
-    console.log('[Undo Manager] Redoing action:', action);
+    console.log("[Undo Manager] Redoing action:", action);
 
     try {
       const callbackKey = this.getRedoCallbackKey(action);
@@ -130,11 +140,14 @@ class UndoManager {
         this.notify();
         return true;
       } else {
-        console.warn('[Undo Manager] No redo callback registered for:', callbackKey);
+        console.warn(
+          "[Undo Manager] No redo callback registered for:",
+          callbackKey,
+        );
         return false;
       }
     } catch (error) {
-      console.error('[Undo Manager] Error during redo:', error);
+      console.error("[Undo Manager] Error during redo:", error);
       // Restore action to redo stack on failure
       this.redoStack.push(action);
       this.notify();
@@ -217,8 +230,8 @@ export function pushAppUndoAction(options: {
     });
   }
   undoManager.push({
-    type: 'update',
-    entity: 'feature',
+    type: "update",
+    entity: "feature",
     id,
     timestamp: new Date(),
     description: options.description,
@@ -229,7 +242,7 @@ export function pushAppUndoAction(options: {
 function isEditableUndoTarget(target: EventTarget | null): boolean {
   if (!target || !(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
   if (target.isContentEditable) return true;
   return false;
 }
@@ -256,36 +269,36 @@ export function setupUndoKeyboardShortcuts(): () => void {
       return;
     }
 
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
     const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
 
     // CMD+Z / CTRL+Z - Undo
-    if (ctrlOrCmd && event.key === 'z' && !event.shiftKey) {
+    if (ctrlOrCmd && event.key === "z" && !event.shiftKey) {
       event.preventDefault();
       const success = await undoManager.undo();
       if (success) {
-        const toast = await import('sonner');
-        toast.toast.success('Rückgängig gemacht');
+        toast.success("Rückgängig gemacht");
       }
     }
 
     // CMD+SHIFT+Z / CTRL+Y - Redo
-    if ((ctrlOrCmd && event.shiftKey && event.key === 'z') || 
-        (ctrlOrCmd && event.key === 'y')) {
+    if (
+      (ctrlOrCmd && event.shiftKey && event.key === "z") ||
+      (ctrlOrCmd && event.key === "y")
+    ) {
       event.preventDefault();
       const success = await undoManager.redo();
       if (success) {
-        const toast = await import('sonner');
-        toast.toast.success('Wiederherstellt');
+        toast.success("Wiederherstellt");
       }
     }
   };
 
-  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener("keydown", handleKeyDown);
 
   // Return cleanup function
   return () => {
-    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener("keydown", handleKeyDown);
   };
 }
 

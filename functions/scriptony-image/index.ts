@@ -23,35 +23,31 @@ import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { getUserOrganizationIds } from "../_shared/scriptony";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import {
-  completeImageTask,
   createImageTask,
-  failImageTask,
   getImageTaskById,
   imageTaskRowToApi,
   listImageTasksForUser,
-  notifyStageRenderComplete,
   userCanAccessProject,
 } from "./image-task-service";
-import { getDocument, C } from "../_shared/appwrite-db";
+import { C, getDocument } from "../_shared/appwrite-db";
 
 function getPathname(req: RequestLike): string {
-  const direct =
-    (typeof req?.path === "string" && req.path) ||
+  const direct = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://"))
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
       return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -61,13 +57,14 @@ function getPathname(req: RequestLike): string {
 
 function getQueryParam(req: RequestLike, key: string): string {
   const fromQuery = req?.query?.[key];
-  if (typeof fromQuery === "string" && fromQuery.trim()) return fromQuery.trim();
+  if (typeof fromQuery === "string" && fromQuery.trim()) {
+    return fromQuery.trim();
+  }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url =
-      raw.startsWith("http://") || raw.startsWith("https://")
-        ? new URL(raw)
-        : new URL(raw, "http://local");
+    const url = raw.startsWith("http://") || raw.startsWith("https://")
+      ? new URL(raw)
+      : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
@@ -131,12 +128,19 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       strength?: number;
     }>(req);
 
-    if (!body.inputImageIds || !Array.isArray(body.inputImageIds) || body.inputImageIds.length === 0) {
+    if (
+      !body.inputImageIds ||
+      !Array.isArray(body.inputImageIds) ||
+      body.inputImageIds.length === 0
+    ) {
       sendBadRequest(res, "inputImageIds is required (non-empty array)");
       return;
     }
 
-    if (body.projectId && !(await userCanAccessProject(body.projectId, userId, organizationIds))) {
+    if (
+      body.projectId &&
+      !(await userCanAccessProject(body.projectId, userId, organizationIds))
+    ) {
       sendNotFound(res, "Project not found");
       return;
     }
@@ -166,12 +170,19 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       prompt?: string;
     }>(req);
 
-    if (!body.inputImageIds || !Array.isArray(body.inputImageIds) || body.inputImageIds.length === 0) {
+    if (
+      !body.inputImageIds ||
+      !Array.isArray(body.inputImageIds) ||
+      body.inputImageIds.length === 0
+    ) {
       sendBadRequest(res, "inputImageIds is required (non-empty array)");
       return;
     }
 
-    if (body.projectId && !(await userCanAccessProject(body.projectId, userId, organizationIds))) {
+    if (
+      body.projectId &&
+      !(await userCanAccessProject(body.projectId, userId, organizationIds))
+    ) {
       sendNotFound(res, "Project not found");
       return;
     }
@@ -195,7 +206,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
     const projectId = getQueryParam(req, "projectId") || null;
-    sendJson(res, 200, { tasks: await listImageTasksForUser(userId, projectId) });
+    sendJson(res, 200, {
+      tasks: await listImageTasksForUser(userId, projectId),
+    });
     return;
   }
 
@@ -240,14 +253,21 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     }
 
     // Verify user has access to the job's project
-    const jobProjectId = typeof renderJob.projectId === "string" ? renderJob.projectId.trim() : "";
-    if (jobProjectId && !(await userCanAccessProject(jobProjectId, userId, organizationIds))) {
+    const jobProjectId = typeof renderJob.projectId === "string"
+      ? renderJob.projectId.trim()
+      : "";
+    if (
+      jobProjectId &&
+      !(await userCanAccessProject(jobProjectId, userId, organizationIds))
+    ) {
       sendNotFound(res, "Render job not found");
       return;
     }
 
     // Update render job status to executing
-    const { updateDocument: updateDoc } = await import("../_shared/appwrite-db");
+    const { updateDocument: updateDoc } = await import(
+      "../_shared/appwrite-db"
+    );
     await updateDoc(C.renderJobs, body.jobId, { status: "executing" });
 
     // In a real implementation, this is where the actual image generation happens.
@@ -257,7 +277,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     sendJson(res, 200, {
       jobId: body.jobId,
       status: "executing",
-      message: "Render job is now executing. Callback will be sent to stage on completion.",
+      message:
+        "Render job is now executing. Callback will be sent to stage on completion.",
       callbackBaseUrl: body.callbackBaseUrl || null,
     });
     return;

@@ -1,15 +1,20 @@
-import { useEffect, useState, useCallback } from 'react';
-import { getActs, getAllSequencesByProject, getAllScenesByProject, updateScene } from '../lib/api/timeline-api';
-import { useAuth } from '../hooks/useAuth';
-import type { TimelineData } from './FilmDropdown';
-import { EditableParagraph } from './EditableParagraph';
-import { toast } from 'sonner@2.0.3';
-import scriptonyLogo from '../assets/scriptony-logo.png';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useCallback } from "react";
+import {
+  getActs,
+  getAllSequencesByProject,
+  getAllScenesByProject,
+  updateScene,
+} from "../lib/api/timeline-api";
+import { useAuth } from "../hooks/useAuth";
+import type { TimelineData } from "./FilmDropdown";
+import { EditableParagraph } from "./EditableParagraph";
+import { toast } from "sonner@2.0.3";
+import scriptonyLogo from "../assets/scriptony-logo.png";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
  * 📖 NATIVE BOOK VIEW
- * 
+ *
  * Zeigt das Buch-Projekt im professionellen Buchformat nach Industrie-Standard:
  * - Times New Roman / Serif Font
  * - Seitenlayout mit Seitenzahlen
@@ -17,17 +22,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
  * - 1.5 Zeilenabstand für Lesbarkeit
  * - Absätze mit Einzug
  * - Seitenumbrüche bei Kapiteln
- * 
+ *
  * Two View Modes:
  * - SIDES: Editable manuscript view with all chapters
  * - BOOK: Paginated reader view with page-by-page navigation
- * 
+ *
  * Standards basierend auf:
  * - Manuscript formatting guidelines (William Shunn standard)
  * - Traditional book publishing format
  */
 
-type ViewMode = 'sides' | 'book';
+type ViewMode = "sides" | "book";
 
 interface NativeBookViewProps {
   projectId: string;
@@ -50,32 +55,36 @@ interface Section {
 
 // Helper to extract text from TipTap JSON
 const extractTextFromTiptap = (node: any): string => {
-  let text = '';
-  
+  let text = "";
+
   if (node.text) {
     text += node.text;
   }
-  
+
   if (node.content && Array.isArray(node.content)) {
     for (const child of node.content) {
       text += extractTextFromTiptap(child);
       // Add paragraph breaks
-      if (child.type === 'paragraph') {
-        text += '\n\n';
+      if (child.type === "paragraph") {
+        text += "\n\n";
       }
     }
   }
-  
+
   return text;
 };
 
-export function NativeBookView({ projectId, projectType, initialData }: NativeBookViewProps) {
+export function NativeBookView({
+  projectId,
+  projectType,
+  initialData,
+}: NativeBookViewProps) {
   const { getAccessToken } = useAuth();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bookTitle, setBookTitle] = useState('');
+  const [bookTitle, setBookTitle] = useState("");
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('sides');
+  const [viewMode, setViewMode] = useState<ViewMode>("sides");
   const [currentPage, setCurrentPage] = useState(1);
   const [pages, setPages] = useState<string[][]>([]);
 
@@ -86,52 +95,61 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
   const loadBookData = async () => {
     try {
       setLoading(true);
-      
+
       const token = await getAccessToken();
       if (!token) {
-        console.error('[NativeBookView] No auth token');
+        console.error("[NativeBookView] No auth token");
         return;
       }
 
       // Load Acts
       const loadedActs = await getActs(projectId, token);
-      
+
       // Load all sequences and scenes in parallel
       const [allSequences, allScenes] = await Promise.all([
         getAllSequencesByProject(projectId, token).catch(() => []),
         getAllScenesByProject(projectId, token).catch(() => []),
       ]);
-      
+
       // Build chapters structure
       // For books: Act = Act, Sequence = Chapter, Scene = Section
       const chaptersData: Chapter[] = [];
-      
-      loadedActs?.forEach(act => {
-        const actChapters = allSequences?.filter(seq => seq.actId === act.id) || [];
-        
-        actChapters.forEach(chapter => {
-          const chapterSections = allScenes?.filter(scene => scene.sequenceId === chapter.id) || [];
-          
-          const sections: Section[] = chapterSections.map(section => {
-            const content = section.content || section.metadata?.content || section.description || '';
-            
+
+      loadedActs?.forEach((act) => {
+        const actChapters =
+          allSequences?.filter((seq) => seq.actId === act.id) || [];
+
+        actChapters.forEach((chapter) => {
+          const chapterSections =
+            allScenes?.filter((scene) => scene.sequenceId === chapter.id) || [];
+
+          const sections: Section[] = chapterSections.map((section) => {
+            const content =
+              section.content ||
+              section.metadata?.content ||
+              section.description ||
+              "";
+
             // Extract text from TipTap JSON if needed
-            let textContent = '';
+            let textContent: string;
             try {
-              const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
+              const contentObj =
+                typeof content === "string" ? JSON.parse(content) : content;
               textContent = extractTextFromTiptap(contentObj);
             } catch (e) {
-              textContent = typeof content === 'string' ? content : '';
+              textContent = typeof content === "string" ? content : "";
             }
-            
+
             // Split into paragraphs
-            const paragraphs = textContent.split(/\n\n+/).filter(p => p.trim());
-            
+            const paragraphs = textContent
+              .split(/\n\n+/)
+              .filter((p) => p.trim());
+
             // 🎯 If no paragraphs, add one empty paragraph for editing
             if (paragraphs.length === 0) {
-              paragraphs.push('');
+              paragraphs.push("");
             }
-            
+
             return {
               id: section.id,
               title: section.title,
@@ -139,89 +157,105 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
               paragraphs,
             };
           });
-          
+
           chaptersData.push({
             id: chapter.id,
-            title: chapter.title ?? '',
+            title: chapter.title ?? "",
             sections,
           });
         });
       });
-      
+
       setChapters(chaptersData);
     } catch (error) {
-      console.error('[NativeBookView] Error:', error);
+      console.error("[NativeBookView] Error:", error);
     } finally {
       setLoading(false);
     }
   };
 
   // 💾 Save paragraph changes
-  const handleParagraphSave = useCallback(async (sectionId: string, paragraphIndex: number, newContent: string) => {
-    try {
-      setSaving(true);
-      
-      // Find the section and update the paragraph
-      const updatedChapters = chapters.map(chapter => ({
-        ...chapter,
-        sections: chapter.sections.map(section => {
-          if (section.id === sectionId) {
-            const newParagraphs = [...section.paragraphs];
-            newParagraphs[paragraphIndex] = newContent;
-            
-            // Join paragraphs back into full content
-            const fullContent = newParagraphs.join('\n\n');
-            
-            return {
-              ...section,
-              paragraphs: newParagraphs,
-              content: fullContent,
-            };
+  const handleParagraphSave = useCallback(
+    async (sectionId: string, paragraphIndex: number, newContent: string) => {
+      try {
+        setSaving(true);
+
+        // Find the section and update the paragraph
+        const updatedChapters = chapters.map((chapter) => ({
+          ...chapter,
+          sections: chapter.sections.map((section) => {
+            if (section.id === sectionId) {
+              const newParagraphs = [...section.paragraphs];
+              newParagraphs[paragraphIndex] = newContent;
+
+              // Join paragraphs back into full content
+              const fullContent = newParagraphs.join("\n\n");
+
+              return {
+                ...section,
+                paragraphs: newParagraphs,
+                content: fullContent,
+              };
+            }
+            return section;
+          }),
+        }));
+
+        setChapters(updatedChapters);
+
+        // Find the updated section to save to API
+        const updatedSection = updatedChapters
+          .flatMap((c) => c.sections)
+          .find((s) => s.id === sectionId);
+
+        if (updatedSection) {
+          const token = await getAccessToken();
+          if (!token) {
+            toast.error("Nicht authentifiziert");
+            return;
           }
-          return section;
-        }),
-      }));
-      
-      setChapters(updatedChapters);
-      
-      // Find the updated section to save to API
-      const updatedSection = updatedChapters
-        .flatMap(c => c.sections)
-        .find(s => s.id === sectionId);
-      
-      if (updatedSection) {
-        const token = await getAccessToken();
-        if (!token) {
-          toast.error('Nicht authentifiziert');
-          return;
+
+          // 📊 CALCULATE WORD COUNT from content
+          let wordCount = 0;
+          try {
+            const parsed =
+              typeof updatedSection.content === "string"
+                ? JSON.parse(updatedSection.content)
+                : updatedSection.content;
+            const textContent = extractTextFromTiptap(parsed);
+            wordCount = textContent.trim()
+              ? textContent
+                  .trim()
+                  .split(/\s+/)
+                  .filter((w) => w.length > 0).length
+              : 0;
+            console.log(
+              `[NativeBookView] 💾 Saving section with ${wordCount} words`,
+            );
+          } catch (e) {
+            console.warn(
+              "[NativeBookView] Could not parse content for word count:",
+              e,
+            );
+          }
+
+          // Save to API with word count
+          await updateScene(
+            sectionId,
+            { content: updatedSection.content, wordCount },
+            token,
+          );
+          toast.success("Gespeichert", { duration: 1000 });
         }
-        
-        // 📊 CALCULATE WORD COUNT from content
-        let wordCount = 0;
-        try {
-          const parsed = typeof updatedSection.content === 'string' 
-            ? JSON.parse(updatedSection.content) 
-            : updatedSection.content;
-          const textContent = extractTextFromTiptap(parsed);
-          wordCount = textContent.trim() 
-            ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
-            : 0;
-          console.log(`[NativeBookView] 💾 Saving section with ${wordCount} words`);
-        } catch (e) {
-          console.warn('[NativeBookView] Could not parse content for word count:', e);
-        }
-        
-        // Save to API with word count
-        await updateScene(sectionId, { content: updatedSection.content, wordCount }, token);
-        toast.success('Gespeichert', { duration: 1000 });
+      } catch (error) {
+        console.error("[NativeBookView] Save error:", error);
+        toast.error("Fehler beim Speichern");
+      } finally {
+        setSaving(false);
       }
-    } catch (error) {
-      console.error('[NativeBookView] Save error:', error);
-      toast.error('Fehler beim Speichern');
-    } finally {
-      setSaving(false);
-    }
-  }, [chapters, getAccessToken]);
+    },
+    [chapters, getAccessToken],
+  );
 
   if (loading) {
     return (
@@ -239,13 +273,13 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
           <div className="flex items-center justify-center mb-3 relative">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <span className="italic">written in Scriptony</span>
-              <img 
-                src={scriptonyLogo} 
-                alt="Scriptony" 
+              <img
+                src={scriptonyLogo}
+                alt="Scriptony"
                 className="h-5 md:h-6 w-auto object-contain"
               />
             </div>
-            
+
             {saving && (
               <div className="absolute right-0 text-xs text-primary animate-pulse">
                 Speichert...
@@ -256,28 +290,28 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
           {/* View Mode Tabs */}
           <div className="flex gap-1 md:gap-2 border-b border-border">
             <button
-              onClick={() => setViewMode('sides')}
+              onClick={() => setViewMode("sides")}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm transition-colors relative ${
-                viewMode === 'sides'
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                viewMode === "sides"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Sites
-              {viewMode === 'sides' && (
+              {viewMode === "sides" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
               )}
             </button>
             <button
-              onClick={() => setViewMode('book')}
+              onClick={() => setViewMode("book")}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm transition-colors relative ${
-                viewMode === 'book'
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                viewMode === "book"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Book
-              {viewMode === 'book' && (
+              {viewMode === "book" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
               )}
             </button>
@@ -406,14 +440,18 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
 
         <div className="native-book-content">
           {/* Title Page would go here */}
-          
+
           {chapters.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p className="mb-4">Noch keine Kapitel vorhanden.</p>
-              <p className="text-sm">Erstelle Akte, Kapitel und Abschnitte im Dropdown-View,</p>
-              <p className="text-sm">um sie hier im professionellen Buchformat zu sehen.</p>
+              <p className="text-sm">
+                Erstelle Akte, Kapitel und Abschnitte im Dropdown-View,
+              </p>
+              <p className="text-sm">
+                um sie hier im professionellen Buchformat zu sehen.
+              </p>
             </div>
-          ) : viewMode === 'sides' ? (
+          ) : viewMode === "sides" ? (
             // 📄 SIDES VIEW: Editable manuscript view with all chapters
             chapters.map((chapter, chapterIndex) => (
               <div key={chapter.id} className="native-book-chapter">
@@ -428,8 +466,10 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
                 {chapter.sections.map((section) => (
                   <div key={section.id} className="native-book-section">
                     {/* Section Title (optional - can be removed for cleaner look) */}
-                    {section.title && section.title !== 'Untitled Section' && (
-                      <h3 className="native-book-section-title">{section.title}</h3>
+                    {section.title && section.title !== "Untitled Section" && (
+                      <h3 className="native-book-section-title">
+                        {section.title}
+                      </h3>
                     )}
 
                     {/* Editable Paragraphs */}
@@ -437,7 +477,9 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
                       <EditableParagraph
                         key={`${section.id}-${idx}`}
                         content={paragraph}
-                        onSave={(newContent) => handleParagraphSave(section.id, idx, newContent)}
+                        onSave={(newContent) =>
+                          handleParagraphSave(section.id, idx, newContent)
+                        }
                         isFirstParagraph={idx === 0}
                       />
                     ))}
@@ -447,8 +489,8 @@ export function NativeBookView({ projectId, projectType, initialData }: NativeBo
             ))
           ) : (
             // 📖 BOOK VIEW: Paginated reader view
-            <BookReaderView 
-              chapters={chapters} 
+            <BookReaderView
+              chapters={chapters}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />
@@ -466,10 +508,18 @@ interface BookReaderViewProps {
   onPageChange: (page: number) => void;
 }
 
-function BookReaderView({ chapters, currentPage, onPageChange }: BookReaderViewProps) {
+function BookReaderView({
+  chapters,
+  currentPage,
+  onPageChange,
+}: BookReaderViewProps) {
   // Split content into pages (approximate ~500 words per page)
-  const allParagraphs: { chapterIndex: number; chapterTitle: string; content: string }[] = [];
-  
+  const allParagraphs: {
+    chapterIndex: number;
+    chapterTitle: string;
+    content: string;
+  }[] = [];
+
   chapters.forEach((chapter, chapterIndex) => {
     // Add chapter title as first "paragraph"
     allParagraphs.push({
@@ -477,10 +527,10 @@ function BookReaderView({ chapters, currentPage, onPageChange }: BookReaderViewP
       chapterTitle: chapter.title,
       content: `__CHAPTER_TITLE__${chapterIndex}__${chapter.title}`,
     });
-    
+
     // Add all section paragraphs
-    chapter.sections.forEach(section => {
-      section.paragraphs.forEach(paragraph => {
+    chapter.sections.forEach((section) => {
+      section.paragraphs.forEach((paragraph) => {
         if (paragraph.trim()) {
           allParagraphs.push({
             chapterIndex,
@@ -491,29 +541,35 @@ function BookReaderView({ chapters, currentPage, onPageChange }: BookReaderViewP
       });
     });
   });
-  
+
   // Simple pagination: ~6-8 paragraphs per page
   const paragraphsPerPage = 8;
-  const totalPages = Math.max(1, Math.ceil(allParagraphs.length / paragraphsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(allParagraphs.length / paragraphsPerPage),
+  );
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
-  
+
   const startIdx = (safePage - 1) * paragraphsPerPage;
   const endIdx = Math.min(startIdx + paragraphsPerPage, allParagraphs.length);
   const pageParagraphs = allParagraphs.slice(startIdx, endIdx);
-  
+
   return (
     <div className="relative min-h-[700px]">
       {/* Page Content */}
       <div className="space-y-4">
         {pageParagraphs.map((item, idx) => {
           // Check if it's a chapter title
-          if (item.content.startsWith('__CHAPTER_TITLE__')) {
-            const parts = item.content.split('__');
+          if (item.content.startsWith("__CHAPTER_TITLE__")) {
+            const parts = item.content.split("__");
             const chapterNum = parseInt(parts[2]) + 1;
             const title = parts[3];
-            
+
             return (
-              <div key={`chapter-${startIdx + idx}`} className="text-center my-12">
+              <div
+                key={`chapter-${startIdx + idx}`}
+                className="text-center my-12"
+              >
                 <h2 className="native-book-chapter-title">
                   Kapitel {chapterNum}
                   <br />
@@ -522,20 +578,20 @@ function BookReaderView({ chapters, currentPage, onPageChange }: BookReaderViewP
               </div>
             );
           }
-          
+
           // Regular paragraph
           return (
-            <p 
+            <p
               key={`para-${startIdx + idx}`}
-              className={`native-book-paragraph ${idx === 0 && !item.content.startsWith('__CHAPTER') ? '' : ''}`}
-              style={{ cursor: 'default' }}
+              className={`native-book-paragraph ${idx === 0 && !item.content.startsWith("__CHAPTER") ? "" : ""}`}
+              style={{ cursor: "default" }}
             >
               {item.content}
             </p>
           );
         })}
       </div>
-      
+
       {/* Page Navigation */}
       <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-white/95 backdrop-blur-sm border border-border rounded-full px-4 md:px-6 py-2 md:py-3 shadow-lg z-50">
         <button
@@ -545,11 +601,11 @@ function BookReaderView({ chapters, currentPage, onPageChange }: BookReaderViewP
         >
           <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
         </button>
-        
+
         <div className="text-xs md:text-sm min-w-[80px] md:min-w-[100px] text-center">
           Seite {safePage} / {totalPages}
         </div>
-        
+
         <button
           onClick={() => onPageChange(safePage + 1)}
           disabled={safePage >= totalPages}

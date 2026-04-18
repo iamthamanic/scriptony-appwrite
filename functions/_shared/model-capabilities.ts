@@ -7,7 +7,10 @@
 import { OLLAMA_CLOUD_ORIGIN } from "./ai-feature-profile";
 import { fetchOllamaTags } from "./ollama-tags-request";
 import { fetchOllamaV1Models } from "./ollama-v1-models-request";
-import { contextLengthFromShowPayload, fetchOllamaShow } from "./ollama-show-request";
+import {
+  contextLengthFromShowPayload,
+  fetchOllamaShow,
+} from "./ollama-show-request";
 import type { OllamaShowPayload } from "./ollama-show-request";
 
 export type CapabilityState = "true" | "false" | "unknown";
@@ -48,7 +51,11 @@ function dedupe(rows: UnifiedModelRow[]): UnifiedModelRow[] {
   return out;
 }
 
-function baseRow(provider: string, id: string, displayName?: string): UnifiedModelRow {
+function baseRow(
+  provider: string,
+  id: string,
+  displayName?: string,
+): UnifiedModelRow {
   return {
     model_id: id,
     display_name: displayName || id,
@@ -78,7 +85,12 @@ function isLikelyImageModel(id: string): boolean {
 
 function isLikelyVisionModel(id: string): boolean {
   const x = id.toLowerCase();
-  return x.includes("vision") || x.includes("vl") || x.includes("omni") || x.includes("multimodal");
+  return (
+    x.includes("vision") ||
+    x.includes("vl") ||
+    x.includes("omni") ||
+    x.includes("multimodal")
+  );
 }
 
 function isLikelyToolsModel(id: string): boolean {
@@ -88,19 +100,33 @@ function isLikelyToolsModel(id: string): boolean {
 
 function isLikelyThinkingModel(id: string): boolean {
   const x = id.toLowerCase();
-  return x.includes("reason") || x.includes("think") || x.includes("r1") || /^o\d/.test(x);
+  return (
+    x.includes("reason") ||
+    x.includes("think") ||
+    x.includes("r1") ||
+    /^o\d/.test(x)
+  );
 }
 
 function isLikelyVideoModel(id: string): boolean {
   const x = id.toLowerCase();
-  return x.includes("video") || x.includes("wan") || x.includes("ltx") || x.includes("sora") || x.includes("veo");
+  return (
+    x.includes("video") ||
+    x.includes("wan") ||
+    x.includes("ltx") ||
+    x.includes("sora") ||
+    x.includes("veo")
+  );
 }
 
 function boolToCap(v: boolean): CapabilityState {
   return v ? TRUE : FALSE;
 }
 
-function mergeCapability(current: CapabilityState, inferred: CapabilityState): CapabilityState {
+function mergeCapability(
+  current: CapabilityState,
+  inferred: CapabilityState,
+): CapabilityState {
   if (current === TRUE || current === FALSE) return current;
   return inferred;
 }
@@ -108,8 +134,12 @@ function mergeCapability(current: CapabilityState, inferred: CapabilityState): C
 function textFromUnknown(value: unknown): string {
   if (value == null) return "";
   if (typeof value === "string") return value.toLowerCase();
-  if (typeof value === "number" || typeof value === "boolean") return String(value).toLowerCase();
-  if (Array.isArray(value)) return value.map((v) => textFromUnknown(v)).join(" ");
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).toLowerCase();
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => textFromUnknown(v)).join(" ");
+  }
   if (typeof value === "object") {
     try {
       return JSON.stringify(value).toLowerCase();
@@ -120,7 +150,10 @@ function textFromUnknown(value: unknown): string {
   return "";
 }
 
-function inferFromText(id: string, text: string): {
+function inferFromText(
+  id: string,
+  text: string,
+): {
   image_gen: CapabilityState;
   vision: CapabilityState;
   tools: CapabilityState;
@@ -132,19 +165,59 @@ function inferFromText(id: string, text: string): {
 
   return {
     image_gen: boolToCap(
-      has("image generation", "text-to-image", "flux", "sdxl", "stable diffusion", "dall-e", "dall", "z-image") ||
-        isLikelyImageModel(id)
+      has(
+        "image generation",
+        "text-to-image",
+        "flux",
+        "sdxl",
+        "stable diffusion",
+        "dall-e",
+        "dall",
+        "z-image",
+      ) || isLikelyImageModel(id),
     ),
-    vision: boolToCap(has("vision", "multimodal", "image input", "image understanding", "vl", "omni") || isLikelyVisionModel(id)),
+    vision: boolToCap(
+      has(
+        "vision",
+        "multimodal",
+        "image input",
+        "image understanding",
+        "vl",
+        "omni",
+      ) || isLikelyVisionModel(id),
+    ),
     tools: boolToCap(
-      has("function calling", "tool use", "tool-calling", "tools", "function_calling", "agent") || isLikelyToolsModel(id)
+      has(
+        "function calling",
+        "tool use",
+        "tool-calling",
+        "tools",
+        "function_calling",
+        "agent",
+      ) || isLikelyToolsModel(id),
     ),
-    thinking: boolToCap(has("reasoning", "chain-of-thought", "thinking", "reasoner") || isLikelyThinkingModel(id)),
-    video_gen: boolToCap(has("video generation", "text-to-video", "video model", "wan", "ltx", "sora", "veo") || isLikelyVideoModel(id)),
+    thinking: boolToCap(
+      has("reasoning", "chain-of-thought", "thinking", "reasoner") ||
+        isLikelyThinkingModel(id),
+    ),
+    video_gen: boolToCap(
+      has(
+        "video generation",
+        "text-to-video",
+        "video model",
+        "wan",
+        "ltx",
+        "sora",
+        "veo",
+      ) || isLikelyVideoModel(id),
+    ),
   };
 }
 
-function applyInferred(row: UnifiedModelRow, inferred: ReturnType<typeof inferFromText>): void {
+function applyInferred(
+  row: UnifiedModelRow,
+  inferred: ReturnType<typeof inferFromText>,
+): void {
   row.image_gen = mergeCapability(row.image_gen, inferred.image_gen);
   row.vision = mergeCapability(row.vision, inferred.vision);
   row.tools = mergeCapability(row.tools, inferred.tools);
@@ -152,7 +225,10 @@ function applyInferred(row: UnifiedModelRow, inferred: ReturnType<typeof inferFr
   row.video_gen = mergeCapability(row.video_gen, inferred.video_gen);
 }
 
-function inferFromOllamaShowPayload(id: string, payload: OllamaShowPayload): ReturnType<typeof inferFromText> {
+function inferFromOllamaShowPayload(
+  id: string,
+  payload: OllamaShowPayload,
+): ReturnType<typeof inferFromText> {
   const text = [
     textFromUnknown(payload.model_info),
     textFromUnknown(payload.details),
@@ -181,22 +257,32 @@ function inferFromOpenrouterModel(model: {
   return inferFromText(String(model.id || ""), text);
 }
 
-function toLegacy(rows: UnifiedModelRow[]): Array<{ id: string; name: string; context_window: number }> {
+function toLegacy(
+  rows: UnifiedModelRow[],
+): Array<{ id: string; name: string; context_window: number }> {
   return rows.map((r) => ({
     id: r.model_id,
     name: r.display_name || r.model_id,
-    context_window: typeof r.context_window === "number" && r.context_window > 0 ? r.context_window : 8192,
+    context_window: typeof r.context_window === "number" && r.context_window > 0
+      ? r.context_window
+      : 8192,
   }));
 }
 
-async function fetchOllamaUnified(opts: UnifiedFetchOpts): Promise<UnifiedModelRow[]> {
+async function fetchOllamaUnified(
+  opts: UnifiedFetchOpts,
+): Promise<UnifiedModelRow[]> {
   const cloud = opts.ollamaMode !== "local";
-  const base = (cloud ? OLLAMA_CLOUD_ORIGIN : opts.ollamaBaseUrl || "").trim().replace(/\/$/, "");
+  const base = (cloud ? OLLAMA_CLOUD_ORIGIN : opts.ollamaBaseUrl || "")
+    .trim()
+    .replace(/\/$/, "");
   if (!base) return [];
   const headers: Record<string, string> = {};
-  const apiKey = opts.apiKey?.trim() || "";
+  const _apiKey = opts.apiKey?.trim() || "";
   if (cloud && apiKey) headers.Authorization = `Bearer ${apiKey}`;
-  if (!cloud && apiKey && apiKey !== "__ollama_local__") headers.Authorization = `Bearer ${apiKey}`;
+  if (!cloud && apiKey && apiKey !== "__ollama_local__") {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
 
   const rows: UnifiedModelRow[] = [];
   const tags = await fetchOllamaTags(base, headers);
@@ -235,14 +321,19 @@ async function fetchOllamaUnified(opts: UnifiedFetchOpts): Promise<UnifiedModelR
     if (show.ok) {
       const ctx = contextLengthFromShowPayload(show.payload);
       if (typeof ctx === "number" && ctx > 0) row.context_window = ctx;
-      applyInferred(row, inferFromOllamaShowPayload(row.model_id, show.payload));
+      applyInferred(
+        row,
+        inferFromOllamaShowPayload(row.model_id, show.payload),
+      );
     }
   }
   return deduped;
 }
 
-async function fetchOpenrouterUnified(opts: UnifiedFetchOpts): Promise<UnifiedModelRow[]> {
-  const apiKey = opts.apiKey?.trim() || "";
+async function fetchOpenrouterUnified(
+  opts: UnifiedFetchOpts,
+): Promise<UnifiedModelRow[]> {
+  const _apiKey = opts.apiKey?.trim() || "";
   const res = await fetch("https://openrouter.ai/api/v1/models");
   if (!res.ok) return [];
   const payload = (await res.json().catch(() => ({}))) as {
@@ -259,7 +350,9 @@ async function fetchOpenrouterUnified(opts: UnifiedFetchOpts): Promise<UnifiedMo
     const id = String(m.id || "").trim();
     if (!id) continue;
     const row = baseRow("openrouter", id, String(m.name || id));
-    row.context_window = typeof m.context_length === "number" ? m.context_length : null;
+    row.context_window = typeof m.context_length === "number"
+      ? m.context_length
+      : null;
     applyInferred(row, inferFromOpenrouterModel(m));
     rows.push(row);
   }
@@ -267,14 +360,27 @@ async function fetchOpenrouterUnified(opts: UnifiedFetchOpts): Promise<UnifiedMo
   return rows;
 }
 
-async function fetchGenericUnified(provider: string, apiKey: string): Promise<UnifiedModelRow[]> {
-  if (!apiKey && (provider === "openai" || provider === "anthropic" || provider === "google" || provider === "deepseek")) {
+async function fetchGenericUnified(
+  provider: string,
+  apiKey: string,
+): Promise<UnifiedModelRow[]> {
+  if (
+    !apiKey &&
+    (provider === "openai" ||
+      provider === "anthropic" ||
+      provider === "google" ||
+      provider === "deepseek")
+  ) {
     return [];
   }
   if (provider === "openai") {
-    const res = await fetch("https://api.openai.com/v1/models", { headers: { Authorization: `Bearer ${apiKey}` } });
+    const res = await fetch("https://api.openai.com/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
     if (!res.ok) return [];
-    const payload = (await res.json().catch(() => ({}))) as { data?: Array<{ id?: string }> };
+    const payload = (await res.json().catch(() => ({}))) as {
+      data?: Array<{ id?: string }>;
+    };
     return dedupe(
       (payload.data ?? [])
         .map((m) => String(m.id || "").trim())
@@ -282,20 +388,24 @@ async function fetchGenericUnified(provider: string, apiKey: string): Promise<Un
         .map((id) => {
           const r = baseRow("openai", id);
           r.context_window = 128000;
-          r.image_gen = id.includes("image") || id.includes("dall") ? TRUE : FALSE;
-          r.vision = id.includes("vision") || id.includes("gpt-4o") ? TRUE : UNKNOWN;
+          r.image_gen = id.includes("image") || id.includes("dall")
+            ? TRUE
+            : FALSE;
+          r.vision = id.includes("vision") || id.includes("gpt-4o")
+            ? TRUE
+            : UNKNOWN;
           r.tools = TRUE;
           r.thinking = /^o\d/.test(id) ? TRUE : UNKNOWN;
           r.video_gen = FALSE;
           return r;
-        })
+        }),
     );
   }
   return [];
 }
 
 export async function fetchUnifiedModels(
-  opts: UnifiedFetchOpts
+  opts: UnifiedFetchOpts,
 ): Promise<{ models: UnifiedModelRow[]; source: "remote" | "registry" }> {
   const provider = (opts.provider || "").trim().toLowerCase();
   const apiKey = opts.apiKey?.trim() || "";
@@ -310,15 +420,17 @@ export async function fetchUnifiedModels(
     }
 
     const finalRows = dedupe(rows);
-    return { models: finalRows, source: finalRows.length ? "remote" : "registry" };
+    return {
+      models: finalRows,
+      source: finalRows.length ? "remote" : "registry",
+    };
   } catch {
     return { models: [], source: "registry" };
   }
 }
 
 export function toLegacyModelRows(
-  rows: UnifiedModelRow[]
+  rows: UnifiedModelRow[],
 ): Array<{ id: string; name: string; context_window: number }> {
   return toLegacy(rows);
 }
-

@@ -6,23 +6,33 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { C, deleteDocument, getDocument, updateDocument } from "../../_shared/appwrite-db";
+import {
+  C,
+  deleteDocument,
+  getDocument,
+  updateDocument,
+} from "../../_shared/appwrite-db";
 import { mapClip } from "../../_shared/clips-map";
-import { getShotById } from "../../_shared/timeline";
-import { getAccessibleProject, getUserOrganizationIds } from "../../_shared/scriptony";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../_shared/scriptony";
 
 const MIN_CLIP_DURATION_SEC = 1;
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -45,7 +55,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const projectId = String(row.project_id || "");
-    const project = await getAccessibleProject(projectId, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      projectId,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Project not found");
       return;
@@ -80,20 +94,36 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
       if (body.lane_index !== undefined || body.laneIndex !== undefined) {
         const v = body.lane_index ?? body.laneIndex;
-        updates.lane_index = typeof v === "number" ? v : parseInt(String(v), 10) || 0;
+        updates.lane_index = typeof v === "number"
+          ? v
+          : parseInt(String(v), 10) || 0;
       }
       if (body.order_index !== undefined || body.orderIndex !== undefined) {
         const v = body.order_index ?? body.orderIndex;
-        updates.order_index = typeof v === "number" ? v : parseInt(String(v), 10) || 0;
+        updates.order_index = typeof v === "number"
+          ? v
+          : parseInt(String(v), 10) || 0;
       }
       const si = body.source_in_sec ?? body.sourceInSec;
       const so = body.source_out_sec ?? body.sourceOutSec;
-      if (si !== undefined) updates.source_in_sec = si === null ? null : Number(si);
-      if (so !== undefined) updates.source_out_sec = so === null ? null : Number(so);
+      if (si !== undefined) {
+        updates.source_in_sec = si === null ? null : Number(si);
+      }
+      if (so !== undefined) {
+        updates.source_out_sec = so === null ? null : Number(so);
+      }
 
-      const nextStart = updates.start_sec !== undefined ? Number(updates.start_sec) : Number(row.start_sec);
-      const nextEnd = updates.end_sec !== undefined ? Number(updates.end_sec) : Number(row.end_sec);
-      if (!Number.isFinite(nextStart) || !Number.isFinite(nextEnd) || nextEnd - nextStart < MIN_CLIP_DURATION_SEC) {
+      const nextStart = updates.start_sec !== undefined
+        ? Number(updates.start_sec)
+        : Number(row.start_sec);
+      const nextEnd = updates.end_sec !== undefined
+        ? Number(updates.end_sec)
+        : Number(row.end_sec);
+      if (
+        !Number.isFinite(nextStart) ||
+        !Number.isFinite(nextEnd) ||
+        nextEnd - nextStart < MIN_CLIP_DURATION_SEC
+      ) {
         sendBadRequest(res, "Invalid start_sec/end_sec");
         return;
       }

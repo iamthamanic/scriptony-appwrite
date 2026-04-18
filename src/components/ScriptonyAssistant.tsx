@@ -1,13 +1,44 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { MessageCircle, X, Mic, Search, Calendar, Plus, Upload, FileText, Image as ImageIcon, CheckSquare, Square, ChevronDown } from "lucide-react";
+import {
+  MessageCircle,
+  X,
+  Mic,
+  Search,
+  Calendar,
+  Plus,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  CheckSquare,
+  Square,
+  ChevronDown,
+} from "lucide-react";
 import { useColoredTags } from "./hooks/useColoredTags";
 import { useTokenCounter } from "./hooks/useTokenCounter";
-import { projectsApi, charactersApi, scenesApi, worldsApi, itemsApi } from "../utils/api";
+import {
+  projectsApi,
+  charactersApi,
+  scenesApi,
+  worldsApi,
+  itemsApi,
+} from "../utils/api";
 import { apiGet, apiPost, apiDelete, apiPut } from "../lib/api-client";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "./ui/sheet";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -87,83 +118,199 @@ interface RAGScene {
 // SVG Icon Components from Figma
 function SendIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 19 19">
-      <path d={svgPaths.p29fb5a00} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 19 19"
+    >
+      <path
+        d={svgPaths.p29fb5a00}
+        stroke="white"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
     </svg>
   );
 }
 
 function AttachIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 21 21">
-      <path d={svgPaths.p5e3af20} stroke="#6E59A5" strokeLinecap="square" strokeWidth="2" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 21 21"
+    >
+      <path
+        d={svgPaths.p5e3af20}
+        stroke="#6E59A5"
+        strokeLinecap="square"
+        strokeWidth="2"
+      />
     </svg>
   );
 }
 
 function ChatHistoryIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 18 16">
-      <path d={svgPaths.p2f824c80} fill="currentColor" className="dark:fill-foreground" />
-      <path d={svgPaths.p27403cf0} fill="currentColor" className="dark:fill-foreground" />
-      <path d={svgPaths.p30020200} fill="currentColor" className="dark:fill-foreground" />
-      <path d={svgPaths.p25d05e00} fill="currentColor" className="dark:fill-foreground" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 18 16"
+    >
+      <path
+        d={svgPaths.p2f824c80}
+        fill="currentColor"
+        className="dark:fill-foreground"
+      />
+      <path
+        d={svgPaths.p27403cf0}
+        fill="currentColor"
+        className="dark:fill-foreground"
+      />
+      <path
+        d={svgPaths.p30020200}
+        fill="currentColor"
+        className="dark:fill-foreground"
+      />
+      <path
+        d={svgPaths.p25d05e00}
+        fill="currentColor"
+        className="dark:fill-foreground"
+      />
     </svg>
   );
 }
 
 function DatabaseIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-      <path d={svgPaths.p33389e00} fill="currentColor" className="dark:fill-foreground" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d={svgPaths.p33389e00}
+        fill="currentColor"
+        className="dark:fill-foreground"
+      />
     </svg>
   );
 }
 
 function SystemPromptIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 16">
-      <path d={systemPromptSvg.p2512f580} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="none"
+      viewBox="0 0 18 16"
+    >
+      <path
+        d={systemPromptSvg.p2512f580}
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
     </svg>
   );
 }
 
 function ExportIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 15 15">
-      <path d={svgPaths.p21a92570} fill="currentColor" className="dark:fill-foreground" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 15 15"
+    >
+      <path
+        d={svgPaths.p21a92570}
+        fill="currentColor"
+        className="dark:fill-foreground"
+      />
     </svg>
   );
 }
 
 function SettingsIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 18 18">
-      <path d={svgPaths.p4914e80} stroke="currentColor" className="dark:stroke-foreground" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-      <path d={svgPaths.p18657f00} stroke="currentColor" className="dark:stroke-foreground" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 18 18"
+    >
+      <path
+        d={svgPaths.p4914e80}
+        stroke="currentColor"
+        className="dark:stroke-foreground"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d={svgPaths.p18657f00}
+        stroke="currentColor"
+        className="dark:stroke-foreground"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
     </svg>
   );
 }
 
 function AssistantIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 20 20">
-      <path d={svgPaths.p1541e700} fill="#6E59A5" className="dark:fill-primary" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 20 20"
+    >
+      <path
+        d={svgPaths.p1541e700}
+        fill="#6E59A5"
+        className="dark:fill-primary"
+      />
     </svg>
   );
 }
 
 function EmptyChatIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 73 73">
-      <path d={svgPaths.p1a6d7c00} stroke="#9D9DA5" className="dark:stroke-muted-foreground" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 73 73"
+    >
+      <path
+        d={svgPaths.p1a6d7c00}
+        stroke="#9D9DA5"
+        className="dark:stroke-muted-foreground"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
     </svg>
   );
 }
 
 function CloseIcon() {
   return (
-    <svg className="block size-full" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 14 14">
+    <svg
+      className="block size-full"
+      fill="none"
+      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 14 14"
+    >
       <path d={svgPaths.p2aa77200} fill="white" />
     </svg>
   );
@@ -192,7 +339,10 @@ interface AssistantRuntimeResponse {
 }
 
 /** Exact id match, then case-insensitive (API vs. settings often differ only by casing). */
-function findModelByIdLoose(list: ModelInfo[], id: string): ModelInfo | undefined {
+function findModelByIdLoose(
+  list: ModelInfo[],
+  id: string,
+): ModelInfo | undefined {
   const t = id.trim();
   if (!t) return undefined;
   const exact = list.find((m) => m.id === t);
@@ -208,10 +358,13 @@ export function ScriptonyAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [model, setModel] = useState("");
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
-  const [activeProviderDisplay, setActiveProviderDisplay] = useState<string>("");
+  const [activeProviderDisplay, setActiveProviderDisplay] =
+    useState<string>("");
   const [assistantReady, setAssistantReady] = useState<boolean>(false);
-  const [assistantStatusError, setAssistantStatusError] = useState<string | null>(null);
-  
+  const [assistantStatusError, setAssistantStatusError] = useState<
+    string | null
+  >(null);
+
   // Token counter hook (context window comes from selected model via loadModels / sync effect)
   const tokenCounter = useTokenCounter({
     model: model,
@@ -221,7 +374,9 @@ export function ScriptonyAssistant() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [lastEditedDate, setLastEditedDate] = useState<Date | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"pdf" | "json" | "md">("json");
+  const [exportFormat, setExportFormat] = useState<"pdf" | "json" | "md">(
+    "json",
+  );
   const [exportFileName, setExportFileName] = useState("scriptony-chat");
   const [chatTitle, setChatTitle] = useState(() => {
     const now = new Date();
@@ -231,27 +386,37 @@ export function ScriptonyAssistant() {
   const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
   const [isChatSettingsOpen, setIsChatSettingsOpen] = useState(false);
   const [isRAGDatabaseOpen, setIsRAGDatabaseOpen] = useState(false);
-  const [ragActiveTab, setRagActiveTab] = useState<"projects" | "worlds" | "characters" | "custom">("projects");
+  const [ragActiveTab, setRagActiveTab] = useState<
+    "projects" | "worlds" | "characters" | "custom"
+  >("projects");
   const [ragSearch, setRagSearch] = useState("");
   const [selectedRAGProjects, setSelectedRAGProjects] = useState<string[]>([]);
   const [selectedRAGWorlds, setSelectedRAGWorlds] = useState<string[]>([]);
-  const [selectedRAGCharacters, setSelectedRAGCharacters] = useState<string[]>([]);
-  const [selectedRAGCustomFiles, setSelectedRAGCustomFiles] = useState<string[]>([]);
+  const [selectedRAGCharacters, setSelectedRAGCharacters] = useState<string[]>(
+    [],
+  );
+  const [selectedRAGCustomFiles, setSelectedRAGCustomFiles] = useState<
+    string[]
+  >([]);
   const [previewFile, setPreviewFile] = useState<RAGCustomFile | null>(null);
   const [chatHistorySearch, setChatHistorySearch] = useState("");
   const [dateFilterFrom, setDateFilterFrom] = useState<Date | undefined>();
   const [dateFilterTo, setDateFilterTo] = useState<Date | undefined>();
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
+
   // Autocomplete states
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestionsType, setSuggestionsType] = useState<"@" | "/" | "#" | null>(null);
+  const [suggestionsType, setSuggestionsType] = useState<
+    "@" | "/" | "#" | null
+  >(null);
   const [suggestionSearch, setSuggestionSearch] = useState("");
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
-  
+
   // RAG Data - loaded from API
   const [ragProjects, setRagProjects] = useState<RAGProject[]>([]);
   const [ragWorlds, setRagWorlds] = useState<RAGWorld[]>([]);
@@ -259,100 +424,110 @@ export function ScriptonyAssistant() {
   const [ragWorldAssets, setRagWorldAssets] = useState<RAGWorldAsset[]>([]);
   const [ragScenes, setRagScenes] = useState<RAGScene[]>([]);
   const [ragCustomFiles, setRagCustomFiles] = useState<RAGCustomFile[]>([]);
-  
+
   // ✅ PERFORMANCE FIX: Track if RAG data has been loaded
   const [ragDataLoaded, setRagDataLoaded] = useState(false);
 
   // ✅ PERFORMANCE FIX: Load RAG data lazily (only when user uses @ / # references)
   const loadRAGDataLazy = async () => {
     if (ragDataLoaded) {
-      console.log('✅ RAG data already loaded (skipping)');
+      console.log("✅ RAG data already loaded (skipping)");
       return;
     }
 
     try {
-      console.log('🔄 Loading RAG data...');
-      
+      console.log("🔄 Loading RAG data...");
+
       // Load projects
       const projectsData = await projectsApi.getAll();
-      setRagProjects(projectsData.map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        type: p.type || "Movie",
-        lastEdited: new Date(p.lastEdited)
-      })));
+      setRagProjects(
+        projectsData.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          type: p.type || "Movie",
+          lastEdited: new Date(p.lastEdited),
+        })),
+      );
 
       // Load worlds
       const worldsData = await worldsApi.getAll();
-      setRagWorlds(worldsData.map((w: any) => ({
+      setRagWorlds(
+        worldsData.map((w: any) => ({
           id: w.id,
           name: w.name,
           category: w.description || "Worldbuilding",
-          lastEdited: new Date(w.lastEdited)
-        })));
+          lastEdited: new Date(w.lastEdited),
+        })),
+      );
 
-        // Load characters from all projects
-        const allCharacters: RAGCharacter[] = [];
-        for (const project of projectsData) {
-          try {
-            const chars = await charactersApi.getAll(project.id);
-            chars.forEach((char: any) => {
-              allCharacters.push({
-                id: char.id,
-                name: char.name,
-                project: project.title,
-                lastEdited: new Date(char.lastEdited || project.lastEdited)
-              });
+      // Load characters from all projects
+      const allCharacters: RAGCharacter[] = [];
+      for (const project of projectsData) {
+        try {
+          const chars = await charactersApi.getAll(project.id);
+          chars.forEach((char: any) => {
+            allCharacters.push({
+              id: char.id,
+              name: char.name,
+              project: project.title,
+              lastEdited: new Date(char.lastEdited || project.lastEdited),
             });
-          } catch (error) {
-            console.error(`Error loading characters for project ${project.id}:`, error);
-          }
+          });
+        } catch (error) {
+          console.error(
+            `Error loading characters for project ${project.id}:`,
+            error,
+          );
         }
-        setRagCharacters(allCharacters);
+      }
+      setRagCharacters(allCharacters);
 
-        // Load scenes from all projects
-        const allScenes: RAGScene[] = [];
-        for (const project of projectsData) {
-          try {
-            const scenes = await scenesApi.getAll(project.id);
-            scenes.forEach((scene: any) => {
-              allScenes.push({
-                id: scene.id,
-                name: scene.title || scene.name,
-                project: project.title,
-                lastEdited: new Date(scene.lastEdited || project.lastEdited)
-              });
+      // Load scenes from all projects
+      const allScenes: RAGScene[] = [];
+      for (const project of projectsData) {
+        try {
+          const scenes = await scenesApi.getAll(project.id);
+          scenes.forEach((scene: any) => {
+            allScenes.push({
+              id: scene.id,
+              name: scene.title || scene.name,
+              project: project.title,
+              lastEdited: new Date(scene.lastEdited || project.lastEdited),
             });
-          } catch (error) {
-            console.error(`Error loading scenes for project ${project.id}:`, error);
-          }
+          });
+        } catch (error) {
+          console.error(
+            `Error loading scenes for project ${project.id}:`,
+            error,
+          );
         }
-        setRagScenes(allScenes);
+      }
+      setRagScenes(allScenes);
 
-        // Load world assets (items) from all worlds
-        const allAssets: RAGWorldAsset[] = [];
-        for (const world of worldsData) {
-          try {
-            const items = await itemsApi.getAllForWorld(world.id);
-            items.forEach((item: any) => {
-              allAssets.push({
-                id: item.id,
-                name: item.title || item.name,
-                category: item.categoryId || "General",
-                world: world.name,
-                lastEdited: new Date(item.lastEdited || world.lastEdited)
-              });
+      // Load world assets (items) from all worlds
+      const allAssets: RAGWorldAsset[] = [];
+      for (const world of worldsData) {
+        try {
+          const items = await itemsApi.getAllForWorld(world.id);
+          items.forEach((item: any) => {
+            allAssets.push({
+              id: item.id,
+              name: item.title || item.name,
+              category: item.categoryId || "General",
+              world: world.name,
+              lastEdited: new Date(item.lastEdited || world.lastEdited),
             });
-          } catch (error) {
-            console.error(`Error loading items for world ${world.id}:`, error);
-          }
+          });
+        } catch (error) {
+          console.error(`Error loading items for world ${world.id}:`, error);
         }
-        setRagWorldAssets(allAssets);
+      }
+      setRagWorldAssets(allAssets);
 
       setRagDataLoaded(true);
-      console.log('✅ RAG data loaded');
+      console.log("✅ RAG data loaded");
     } catch (error) {
-      console.error('Failed to load RAG data:', error);
+      console.error("Failed to load RAG data:", error);
     }
   };
 
@@ -363,7 +538,8 @@ export function ScriptonyAssistant() {
   }, [isRAGDatabaseOpen]);
 
   // ✅ PERFORMANCE FIX: Cache assistant runtime to avoid repeated model/runtime fetches
-  const [runtimeCache, setRuntimeCache] = useState<AssistantRuntimeResponse | null>(null);
+  const [runtimeCache, setRuntimeCache] =
+    useState<AssistantRuntimeResponse | null>(null);
   const [runtimeCacheTime, setRuntimeCacheTime] = useState<number>(0);
   const CACHE_DURATION = 60000; // 1 minute cache
 
@@ -380,27 +556,41 @@ export function ScriptonyAssistant() {
             context_window: Number(m.context_window ?? 200000),
           }))
       : [];
-    const selectedModel = runtime.selected_model && runtime.selected_model.id
-      ? {
-          id: String(runtime.selected_model.id),
-          name: String(runtime.selected_model.name ?? runtime.selected_model.id),
-          context_window: Number(runtime.selected_model.context_window ?? 200000),
-        }
-      : null;
+    const selectedModel =
+      runtime.selected_model && runtime.selected_model.id
+        ? {
+            id: String(runtime.selected_model.id),
+            name: String(
+              runtime.selected_model.name ?? runtime.selected_model.id,
+            ),
+            context_window: Number(
+              runtime.selected_model.context_window ?? 200000,
+            ),
+          }
+        : null;
     const mergedModels =
       selectedModel && !findModelByIdLoose(normalizedModels, selectedModel.id)
         ? [selectedModel, ...normalizedModels]
         : normalizedModels;
     const nextModel = runtime.model?.trim() || selectedModel?.id || "";
-    const preferred = findModelByIdLoose(mergedModels, nextModel) || selectedModel || mergedModels[0];
+    const preferred =
+      findModelByIdLoose(mergedModels, nextModel) ||
+      selectedModel ||
+      mergedModels[0];
 
     setAvailableModels(mergedModels);
-    setActiveProviderDisplay(runtime.provider_display || runtime.provider || "");
+    setActiveProviderDisplay(
+      runtime.provider_display || runtime.provider || "",
+    );
     setAssistantReady(Boolean(runtime.can_send));
     setAssistantStatusError(runtime.error || null);
     setModel(nextModel);
 
-    if (preferred && Number.isFinite(preferred.context_window) && preferred.context_window > 0) {
+    if (
+      preferred &&
+      Number.isFinite(preferred.context_window) &&
+      preferred.context_window > 0
+    ) {
       tokenCounter.setContextWindow(preferred.context_window);
     }
   };
@@ -411,7 +601,10 @@ export function ScriptonyAssistant() {
 
     try {
       const now = Date.now();
-      const cacheValid = runtimeCache != null && !forceRefresh && (now - runtimeCacheTime < CACHE_DURATION);
+      const cacheValid =
+        runtimeCache != null &&
+        !forceRefresh &&
+        now - runtimeCacheTime < CACHE_DURATION;
 
       if (cacheValid && runtimeCache) {
         if (isStale()) return;
@@ -419,11 +612,16 @@ export function ScriptonyAssistant() {
         return;
       }
 
-      const runtimeResult = await apiGet<AssistantRuntimeResponse>("/features/assistant_chat/runtime");
+      const runtimeResult = await apiGet<AssistantRuntimeResponse>(
+        "/features/assistant_chat/runtime",
+      );
       if (isStale()) return;
 
       if ("error" in runtimeResult && runtimeResult.error) {
-        throw new Error(runtimeResult.error.message || "Assistant-Laufzeit konnte nicht geladen werden.");
+        throw new Error(
+          runtimeResult.error.message ||
+            "Assistant-Laufzeit konnte nicht geladen werden.",
+        );
       }
 
       if (!runtimeResult.data) {
@@ -438,7 +636,9 @@ export function ScriptonyAssistant() {
       if (gen !== loadRuntimeGenRef.current) return;
       setAssistantReady(false);
       setAssistantStatusError(
-        error instanceof Error ? error.message : "Assistant-Laufzeit konnte nicht geladen werden."
+        error instanceof Error
+          ? error.message
+          : "Assistant-Laufzeit konnte nicht geladen werden.",
       );
       setAvailableModels([]);
       setActiveProviderDisplay("");
@@ -470,9 +670,15 @@ export function ScriptonyAssistant() {
       void loadAssistantRuntime(true);
     };
 
-    window.addEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, handleSettingsUpdated);
+    window.addEventListener(
+      SCRIPTONY_AI_SETTINGS_UPDATED_EVENT,
+      handleSettingsUpdated,
+    );
     return () => {
-      window.removeEventListener(SCRIPTONY_AI_SETTINGS_UPDATED_EVENT, handleSettingsUpdated);
+      window.removeEventListener(
+        SCRIPTONY_AI_SETTINGS_UPDATED_EVENT,
+        handleSettingsUpdated,
+      );
     };
   }, []);
 
@@ -481,16 +687,18 @@ export function ScriptonyAssistant() {
       const result = await apiGet("/ai/conversations");
       if (result.data) {
         const conversations = result.data.conversations || [];
-        setChatHistory(conversations.map((conv: any) => ({
-          id: conv.id,
-          title: conv.title,
-          lastEdited: new Date(conv.last_message_at || conv.updated_at),
-          model: model, // We don't store model in DB yet, use current
-          messages: [], // Messages loaded separately when needed
-        })));
+        setChatHistory(
+          conversations.map((conv: any) => ({
+            id: conv.id,
+            title: conv.title,
+            lastEdited: new Date(conv.last_message_at || conv.updated_at),
+            model: model, // We don't store model in DB yet, use current
+            messages: [], // Messages loaded separately when needed
+          })),
+        );
       }
     } catch (error: any) {
-      console.error('Failed to load chat history:', error);
+      console.error("Failed to load chat history:", error);
     }
   };
 
@@ -498,18 +706,22 @@ export function ScriptonyAssistant() {
     // If there's a current conversation ID, load its messages
     if (currentConversationId) {
       try {
-        const result = await apiGet(`/ai/conversations/${currentConversationId}/messages`);
+        const result = await apiGet(
+          `/ai/conversations/${currentConversationId}/messages`,
+        );
         if (result.data) {
           const msgs = result.data.messages || [];
-          setMessages(msgs.map((msg: any) => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            timestamp: new Date(msg.created_at),
-          })));
+          setMessages(
+            msgs.map((msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: new Date(msg.created_at),
+            })),
+          );
         }
       } catch (error: any) {
-        console.error('Failed to load messages:', error);
+        console.error("Failed to load messages:", error);
       }
     }
   };
@@ -519,15 +731,17 @@ export function ScriptonyAssistant() {
     async function loadSystemPrompt() {
       try {
         // Load global system prompt
-        const settingsResult = await apiGet('/ai/settings');
+        const settingsResult = await apiGet("/ai/settings");
         if (settingsResult.data?.settings) {
           const raw = settingsResult.data.settings.system_prompt;
           setSystemPrompt(
-            normalizeAssistantSystemPrompt(typeof raw === "string" ? raw : null)
+            normalizeAssistantSystemPrompt(
+              typeof raw === "string" ? raw : null,
+            ),
           );
         }
       } catch (error) {
-        console.error('Failed to load system prompt:', error);
+        console.error("Failed to load system prompt:", error);
       }
     }
 
@@ -535,7 +749,7 @@ export function ScriptonyAssistant() {
       loadSystemPrompt();
     }
   }, [isSystemPromptOpen]);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -546,95 +760,113 @@ export function ScriptonyAssistant() {
 
   // Get characters from connected projects and worlds
   const availableCharacters = useMemo(() => {
-    const connectedProjects = ragProjects.filter(p => selectedRAGProjects.includes(p.id));
-    const connectedWorlds = ragWorlds.filter(w => selectedRAGWorlds.includes(w.id));
-    
-    return ragCharacters.filter(char => {
+    const connectedProjects = ragProjects.filter((p) =>
+      selectedRAGProjects.includes(p.id),
+    );
+    const connectedWorlds = ragWorlds.filter((w) =>
+      selectedRAGWorlds.includes(w.id),
+    );
+
+    return ragCharacters.filter((char) => {
       if (char.project) {
-        return connectedProjects.some(p => p.title === char.project);
+        return connectedProjects.some((p) => p.title === char.project);
       }
       if (char.world) {
-        return connectedWorlds.some(w => w.name === char.world);
+        return connectedWorlds.some((w) => w.name === char.world);
       }
       return false;
     });
-  }, [ragProjects, ragWorlds, ragCharacters, selectedRAGProjects, selectedRAGWorlds]);
+  }, [
+    ragProjects,
+    ragWorlds,
+    ragCharacters,
+    selectedRAGProjects,
+    selectedRAGWorlds,
+  ]);
 
   // Get assets from connected worlds
   const availableAssets = useMemo(() => {
-    const connectedWorlds = ragWorlds.filter(w => selectedRAGWorlds.includes(w.id));
-    
-    return ragWorldAssets.filter(asset => {
-      return connectedWorlds.some(w => w.name === asset.world);
+    const connectedWorlds = ragWorlds.filter((w) =>
+      selectedRAGWorlds.includes(w.id),
+    );
+
+    return ragWorldAssets.filter((asset) => {
+      return connectedWorlds.some((w) => w.name === asset.world);
     });
   }, [ragWorlds, ragWorldAssets, selectedRAGWorlds]);
 
   // Get scenes from connected projects
   const availableScenes = useMemo(() => {
-    const connectedProjects = ragProjects.filter(p => selectedRAGProjects.includes(p.id));
-    
-    return ragScenes.filter(scene => {
-      return connectedProjects.some(p => p.title === scene.project);
+    const connectedProjects = ragProjects.filter((p) =>
+      selectedRAGProjects.includes(p.id),
+    );
+
+    return ragScenes.filter((scene) => {
+      return connectedProjects.some((p) => p.title === scene.project);
     });
   }, [ragProjects, ragScenes, selectedRAGProjects]);
 
   // Filter suggestions based on search
   const filteredSuggestions = useMemo(() => {
     if (suggestionsType === "@") {
-      return availableCharacters.filter(char => 
-        char.name.toLowerCase().includes(suggestionSearch.toLowerCase())
+      return availableCharacters.filter((char) =>
+        char.name.toLowerCase().includes(suggestionSearch.toLowerCase()),
       );
     } else if (suggestionsType === "/") {
-      return availableAssets.filter(asset => 
-        asset.name.toLowerCase().includes(suggestionSearch.toLowerCase())
+      return availableAssets.filter((asset) =>
+        asset.name.toLowerCase().includes(suggestionSearch.toLowerCase()),
       );
     } else if (suggestionsType === "#") {
-      return availableScenes.filter(scene => 
-        scene.name.toLowerCase().includes(suggestionSearch.toLowerCase())
+      return availableScenes.filter((scene) =>
+        scene.name.toLowerCase().includes(suggestionSearch.toLowerCase()),
       );
     }
     return [];
-  }, [suggestionsType, suggestionSearch, availableCharacters, availableAssets, availableScenes]);
+  }, [
+    suggestionsType,
+    suggestionSearch,
+    availableCharacters,
+    availableAssets,
+    availableScenes,
+  ]);
 
   // Use the colored tags hook
   const { colorizeText } = useColoredTags({
     characters: availableCharacters,
     assets: availableAssets,
-    scenes: availableScenes
+    scenes: availableScenes,
   });
-
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    
+
     // Auto-resize textarea
     const textarea = e.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
-    
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight, 80) + "px";
+
     // Token estimation while typing
     tokenCounter.estimateInput(newValue);
-    
+
     // Backend accurate count (debounced)
     tokenCounter.countInputAccurate(newValue);
-    
+
     // Check for autocomplete trigger characters
     const lastChar = newValue.slice(-1);
     const cursorPosition = e.target.selectionStart || 0;
     const textBeforeCursor = newValue.slice(0, cursorPosition);
-    
+
     // Find the most recent trigger character (@, /, #)
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
     const lastSlashIndex = textBeforeCursor.lastIndexOf("/");
     const lastHashIndex = textBeforeCursor.lastIndexOf("#");
     const maxIndex = Math.max(lastAtIndex, lastSlashIndex, lastHashIndex);
-    
+
     let shouldShowSuggestions = false;
     let triggerType: "@" | "/" | "#" | null = null;
     let searchText = "";
-    
+
     if (maxIndex !== -1) {
       if (maxIndex === lastAtIndex) {
         // @ is most recent
@@ -659,13 +891,13 @@ export function ScriptonyAssistant() {
         }
       }
     }
-    
+
     if (shouldShowSuggestions && triggerType) {
       // ✅ PERFORMANCE FIX: Load RAG data only when user actually uses references
       if (!ragDataLoaded) {
         loadRAGDataLazy();
       }
-      
+
       setSuggestionsType(triggerType);
       setSuggestionSearch(searchText);
       setShowSuggestions(true);
@@ -679,45 +911,51 @@ export function ScriptonyAssistant() {
 
   const insertSuggestion = (name: string) => {
     if (!inputRef.current) return;
-    
+
     const cursorPosition = inputRef.current.selectionStart || 0;
     const textBeforeCursor = inputValue.slice(0, cursorPosition);
     const textAfterCursor = inputValue.slice(cursorPosition);
-    
+
     // Find the trigger position
     const triggerChar = suggestionsType;
     const lastTriggerIndex = textBeforeCursor.lastIndexOf(triggerChar || "");
-    
+
     if (lastTriggerIndex === -1 || triggerChar == null) return;
-    
+
     // Replace from trigger to cursor with the selected name
-    const newValue = 
-      textBeforeCursor.slice(0, lastTriggerIndex) + 
-      triggerChar + name + " " + 
+    const newValue =
+      textBeforeCursor.slice(0, lastTriggerIndex) +
+      triggerChar +
+      name +
+      " " +
       textAfterCursor;
-    
+
     setInputValue(newValue);
     setShowSuggestions(false);
     setSuggestionsType(null);
     setSuggestionSearch("");
-    
+
     // Reset textarea height
     if (inputRef.current) {
       setTimeout(() => {
         const textarea = inputRef.current as unknown as HTMLTextAreaElement;
         if (textarea) {
-          textarea.style.height = 'auto';
-          textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
+          textarea.style.height = "auto";
+          textarea.style.height = Math.min(textarea.scrollHeight, 80) + "px";
         }
       }, 0);
     }
-    
+
     // Set focus back to input
     setTimeout(() => {
       if (inputRef.current) {
-        const newCursorPosition = lastTriggerIndex + triggerChar.length + name.length + 1;
+        const newCursorPosition =
+          lastTriggerIndex + triggerChar.length + name.length + 1;
         inputRef.current.focus();
-        inputRef.current.setSelectionRange(newCursorPosition, newCursorPosition);
+        inputRef.current.setSelectionRange(
+          newCursorPosition,
+          newCursorPosition,
+        );
       }
     }, 0);
   };
@@ -726,7 +964,10 @@ export function ScriptonyAssistant() {
     if (!inputValue.trim() || isLoading) return;
 
     if (!assistantReady) {
-      toast.error(assistantStatusError || 'Bitte konfiguriere zuerst Provider und Modell in den Integrationen.');
+      toast.error(
+        assistantStatusError ||
+          "Bitte konfiguriere zuerst Provider und Modell in den Integrationen.",
+      );
       return;
     }
 
@@ -744,11 +985,11 @@ export function ScriptonyAssistant() {
     setSuggestionsType(null);
     setSuggestionSearch("");
     setIsLoading(true);
-    
+
     // Reset textarea height
     if (inputRef.current) {
       const textarea = inputRef.current as unknown as HTMLTextAreaElement;
-      textarea.style.height = 'auto';
+      textarea.style.height = "auto";
     }
 
     try {
@@ -763,14 +1004,23 @@ export function ScriptonyAssistant() {
       });
 
       if (result.data) {
-        const { conversation_id, message: assistantMessage, token_details } = result.data;
+        const {
+          conversation_id,
+          message: assistantMessage,
+          token_details,
+        } = result.data;
 
         // Validate assistantMessage exists
         if (!assistantMessage || !assistantMessage.content) {
-          console.error('Invalid AI response - no message content:', result.data);
-          toast.error('AI-Antwort ungültig. Bitte prüfe deine API Key Konfiguration.');
+          console.error(
+            "Invalid AI response - no message content:",
+            result.data,
+          );
+          toast.error(
+            "AI-Antwort ungültig. Bitte prüfe deine API Key Konfiguration.",
+          );
           // Remove user message on error
-          setMessages((prev) => prev.filter(m => m.id !== userMessage.id));
+          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
           return;
         }
 
@@ -779,7 +1029,9 @@ export function ScriptonyAssistant() {
           setCurrentConversationId(conversation_id);
           // Update title from first message
           if (!currentConversationId && messages.length === 0) {
-            const shortTitle = messageContent.slice(0, 50) + (messageContent.length > 50 ? '...' : '');
+            const shortTitle =
+              messageContent.slice(0, 50) +
+              (messageContent.length > 50 ? "..." : "");
             setChatTitle(shortTitle);
           }
           // Reload chat history to show new conversation
@@ -805,35 +1057,43 @@ export function ScriptonyAssistant() {
         }
 
         // If this was an immediate response (background tools), poll for follow-up message
-        const isBackgroundToolResponse = aiMsg.content.includes('⏳ Dies kann einige Sekunden dauern');
-        
+        const isBackgroundToolResponse = aiMsg.content.includes(
+          "⏳ Dies kann einige Sekunden dauern",
+        );
+
         if (isBackgroundToolResponse) {
-          console.log('⏳ Background tools detected - polling for follow-up message...');
-          
+          console.log(
+            "⏳ Background tools detected - polling for follow-up message...",
+          );
+
           // Poll every 2 seconds for up to 60 seconds
           let pollCount = 0;
           const maxPolls = 30;
           const pollInterval = setInterval(async () => {
             pollCount++;
-            
+
             try {
-              const pollResult = await apiGet(`/ai/conversations/${conversation_id}/messages`);
+              const pollResult = await apiGet(
+                `/ai/conversations/${conversation_id}/messages`,
+              );
               if (pollResult.data) {
                 const newMessages = pollResult.data.messages || [];
-                
+
                 // Find messages newer than our immediate response
                 const newerMessages = newMessages.filter((msg: any) => {
                   const msgTime = new Date(msg.created_at).getTime();
                   const ourTime = aiMsg.timestamp.getTime();
                   return msgTime > ourTime && msg.id !== aiMsg.id;
                 });
-                
+
                 if (newerMessages.length > 0) {
-                  console.log(`✅ Found ${newerMessages.length} new message(s) - updating chat`);
-                  
+                  console.log(
+                    `✅ Found ${newerMessages.length} new message(s) - updating chat`,
+                  );
+
                   // Add new messages to state (avoid duplicates)
                   setMessages((prev) => {
-                    const existingIds = new Set(prev.map(m => m.id));
+                    const existingIds = new Set(prev.map((m) => m.id));
                     const newMsgs = newerMessages
                       .filter((msg: any) => !existingIds.has(msg.id))
                       .map((msg: any) => ({
@@ -842,49 +1102,51 @@ export function ScriptonyAssistant() {
                         content: msg.content,
                         timestamp: new Date(msg.created_at),
                       }));
-                    
+
                     return [...prev, ...newMsgs];
                   });
-                  
+
                   clearInterval(pollInterval);
-                  toast.success('Aktionen abgeschlossen!');
+                  toast.success("Aktionen abgeschlossen!");
                 }
               }
             } catch (error) {
-              console.error('Polling error:', error);
+              console.error("Polling error:", error);
             }
-            
+
             // Stop polling after max attempts
             if (pollCount >= maxPolls) {
-              console.log('⏰ Polling timeout - stopping');
+              console.log("⏰ Polling timeout - stopping");
               clearInterval(pollInterval);
             }
           }, 2000);
         }
       } else {
-        console.error('No data in AI response:', result);
-        toast.error('Keine Antwort von der AI erhalten. Bitte prüfe deine Einstellungen.');
+        console.error("No data in AI response:", result);
+        toast.error(
+          "Keine Antwort von der AI erhalten. Bitte prüfe deine Einstellungen.",
+        );
         // Remove user message on error
-        setMessages((prev) => prev.filter(m => m.id !== userMessage.id));
+        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
       }
     } catch (error: any) {
-      console.error('Failed to send message:', error);
-      
+      console.error("Failed to send message:", error);
+
       // Better error messages
-      let errorMessage = 'Fehler beim Senden der Nachricht';
-      
-      if (error.message?.includes('No API key')) {
-        errorMessage = 'Bitte konfiguriere einen API Key in den Chat Settings';
-      } else if (error.message?.includes('Unauthorized')) {
-        errorMessage = 'Nicht autorisiert. Bitte neu einloggen.';
+      let errorMessage = "Fehler beim Senden der Nachricht";
+
+      if (error.message?.includes("No API key")) {
+        errorMessage = "Bitte konfiguriere einen API Key in den Chat Settings";
+      } else if (error.message?.includes("Unauthorized")) {
+        errorMessage = "Nicht autorisiert. Bitte neu einloggen.";
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorMessage);
-      
+
       // Remove user message on error
-      setMessages((prev) => prev.filter(m => m.id !== userMessage.id));
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
@@ -895,14 +1157,14 @@ export function ScriptonyAssistant() {
     if (showSuggestions && filteredSuggestions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedSuggestionIndex(prev => 
-          prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+        setSelectedSuggestionIndex((prev) =>
+          prev < filteredSuggestions.length - 1 ? prev + 1 : prev,
         );
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : prev);
+        setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
         return;
       }
       if (e.key === "Enter") {
@@ -919,7 +1181,7 @@ export function ScriptonyAssistant() {
         return;
       }
     }
-    
+
     // Normal message sending
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -936,7 +1198,7 @@ export function ScriptonyAssistant() {
     const files = e.target.files;
     if (files && files.length > 0) {
       const newFiles = Array.from(files);
-      setUploadedFiles(prev => [...prev, ...newFiles]);
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
       toast.success(`${newFiles.length} Datei(en) hochgeladen`);
     }
   };
@@ -955,7 +1217,7 @@ export function ScriptonyAssistant() {
         toast.success("System-Prompt für diesen Chat gespeichert");
       } else {
         // Save as global default
-        await apiPut('/ai/settings', {
+        await apiPut("/ai/settings", {
           system_prompt: systemPrompt,
         });
         toast.success("Globaler System-Prompt gespeichert");
@@ -963,8 +1225,8 @@ export function ScriptonyAssistant() {
       setLastEditedDate(new Date());
       setIsSystemPromptOpen(false);
     } catch (error: any) {
-      console.error('Failed to save system prompt:', error);
-      toast.error('Fehler beim Speichern des System-Prompts');
+      console.error("Failed to save system prompt:", error);
+      toast.error("Fehler beim Speichern des System-Prompts");
     }
   };
 
@@ -977,7 +1239,9 @@ export function ScriptonyAssistant() {
     setIsEditingTitle(false);
     if (!chatTitle.trim()) {
       const now = new Date();
-      setChatTitle(`Scriptony Assistant Chat - ${now.toLocaleDateString("de-DE")} - ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`);
+      setChatTitle(
+        `Scriptony Assistant Chat - ${now.toLocaleDateString("de-DE")} - ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`,
+      );
     }
   };
 
@@ -992,19 +1256,31 @@ export function ScriptonyAssistant() {
 
   // Filter and search chat history
   const filteredChatHistory = useMemo(() => {
-    return chatHistory.filter(chat => {
-      // Text search - searches through title only (messages not loaded in list)
-      const searchLower = chatHistorySearch.toLowerCase();
-      const matchesSearch = !chatHistorySearch || 
-        chat.title.toLowerCase().includes(searchLower);
+    return chatHistory
+      .filter((chat) => {
+        // Text search - searches through title only (messages not loaded in list)
+        const searchLower = chatHistorySearch.toLowerCase();
+        const matchesSearch =
+          !chatHistorySearch || chat.title.toLowerCase().includes(searchLower);
 
-      // Date filter
-      const chatDate = chat.lastEdited;
-      const matchesDateFrom = !dateFilterFrom || chatDate >= dateFilterFrom;
-      const matchesDateTo = !dateFilterTo || chatDate <= new Date(dateFilterTo.getFullYear(), dateFilterTo.getMonth(), dateFilterTo.getDate(), 23, 59, 59);
+        // Date filter
+        const chatDate = chat.lastEdited;
+        const matchesDateFrom = !dateFilterFrom || chatDate >= dateFilterFrom;
+        const matchesDateTo =
+          !dateFilterTo ||
+          chatDate <=
+            new Date(
+              dateFilterTo.getFullYear(),
+              dateFilterTo.getMonth(),
+              dateFilterTo.getDate(),
+              23,
+              59,
+              59,
+            );
 
-      return matchesSearch && matchesDateFrom && matchesDateTo;
-    }).sort((a, b) => b.lastEdited.getTime() - a.lastEdited.getTime());
+        return matchesSearch && matchesDateFrom && matchesDateTo;
+      })
+      .sort((a, b) => b.lastEdited.getTime() - a.lastEdited.getTime());
   }, [chatHistory, chatHistorySearch, dateFilterFrom, dateFilterTo]);
 
   const handleLoadChat = async (chat: ChatHistory) => {
@@ -1013,22 +1289,24 @@ export function ScriptonyAssistant() {
       const result = await apiGet(`/ai/conversations/${chat.id}/messages`);
       if (result.data) {
         const msgs = result.data.messages || [];
-        setMessages(msgs.map((msg: any) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.created_at),
-        })));
+        setMessages(
+          msgs.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
+          })),
+        );
       }
-      
+
       setChatTitle(chat.title);
       setModel(chat.model);
       setCurrentConversationId(chat.id);
       setIsChatHistoryOpen(false);
       toast.success(`Chat "${chat.title}" geladen`);
     } catch (error: any) {
-      console.error('Failed to load chat:', error);
-      toast.error('Fehler beim Laden des Chats');
+      console.error("Failed to load chat:", error);
+      toast.error("Fehler beim Laden des Chats");
     }
   };
 
@@ -1036,40 +1314,42 @@ export function ScriptonyAssistant() {
     // Current chat is automatically saved in backend
     // Just reset local state for new conversation
     const now = new Date();
-    setChatTitle(`Scriptony Assistant Chat - ${now.toLocaleDateString("de-DE")} - ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`);
+    setChatTitle(
+      `Scriptony Assistant Chat - ${now.toLocaleDateString("de-DE")} - ${now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`,
+    );
     setMessages([]);
     setCurrentConversationId(null);
     tokenCounter.reset();
     setIsChatHistoryOpen(false);
-    
+
     // Reload chat history to include the old chat
     loadChatHistory();
-    
+
     toast.success("Neuer Chat gestartet");
   };
 
   // RAG Database handlers
   const toggleRAGProject = (id: string) => {
-    setSelectedRAGProjects(prev => 
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    setSelectedRAGProjects((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
     );
   };
 
   const toggleRAGWorld = (id: string) => {
-    setSelectedRAGWorlds(prev => 
-      prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id]
+    setSelectedRAGWorlds((prev) =>
+      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id],
     );
   };
 
   const toggleRAGCharacter = (id: string) => {
-    setSelectedRAGCharacters(prev => 
-      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    setSelectedRAGCharacters((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
     );
   };
 
   const toggleRAGCustomFile = (id: string) => {
-    setSelectedRAGCustomFiles(prev => 
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    setSelectedRAGCustomFiles((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id],
     );
   };
 
@@ -1079,34 +1359,40 @@ export function ScriptonyAssistant() {
       const newFiles = Array.from(files).map((file) => ({
         id: `f-${Date.now()}-${Math.random()}`,
         name: file.name,
-        type: file.name.split('.').pop() || 'unknown',
+        type: file.name.split(".").pop() || "unknown",
         size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
         uploadedAt: new Date(),
       }));
-      setRagCustomFiles(prev => [...prev, ...newFiles]);
-      toast.success(`${newFiles.length} Datei(en) zur RAG-Datenbank hinzugefügt`);
+      setRagCustomFiles((prev) => [...prev, ...newFiles]);
+      toast.success(
+        `${newFiles.length} Datei(en) zur RAG-Datenbank hinzugefügt`,
+      );
     }
   };
 
   const filteredRAGItems = useMemo(() => {
     const searchLower = ragSearch.toLowerCase();
-    
+
     return {
-      projects: ragProjects.filter(p => 
-        p.title.toLowerCase().includes(searchLower) || 
-        p.type.toLowerCase().includes(searchLower)
+      projects: ragProjects.filter(
+        (p) =>
+          p.title.toLowerCase().includes(searchLower) ||
+          p.type.toLowerCase().includes(searchLower),
       ),
-      worlds: ragWorlds.filter(w => 
-        w.name.toLowerCase().includes(searchLower) || 
-        w.category.toLowerCase().includes(searchLower)
+      worlds: ragWorlds.filter(
+        (w) =>
+          w.name.toLowerCase().includes(searchLower) ||
+          w.category.toLowerCase().includes(searchLower),
       ),
-      characters: ragCharacters.filter(c => 
-        c.name.toLowerCase().includes(searchLower) || 
-        (c.project?.toLowerCase().includes(searchLower) ?? false)
+      characters: ragCharacters.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchLower) ||
+          (c.project?.toLowerCase().includes(searchLower) ?? false),
       ),
-      customFiles: ragCustomFiles.filter(f => 
-        f.name.toLowerCase().includes(searchLower) || 
-        f.type.toLowerCase().includes(searchLower)
+      customFiles: ragCustomFiles.filter(
+        (f) =>
+          f.name.toLowerCase().includes(searchLower) ||
+          f.type.toLowerCase().includes(searchLower),
       ),
     };
   }, [ragSearch, ragProjects, ragWorlds, ragCharacters, ragCustomFiles]);
@@ -1126,7 +1412,7 @@ export function ScriptonyAssistant() {
         content = JSON.stringify(messages, null, 2);
         mimeType = "application/json";
         break;
-      
+
       case "md":
         content = `# ${exportFileName}\n\n`;
         content += `**Exportiert am:** ${new Date().toLocaleString("de-DE")}\n\n`;
@@ -1142,8 +1428,8 @@ export function ScriptonyAssistant() {
         });
         mimeType = "text/markdown";
         break;
-      
-      case "pdf":
+
+      case "pdf": {
         // For PDF, we'll create a simple HTML representation and use browser print
         const htmlContent = `
           <!DOCTYPE html>
@@ -1168,17 +1454,21 @@ export function ScriptonyAssistant() {
               <p><strong>Exportiert am:</strong> ${new Date().toLocaleString("de-DE")}</p>
               <p><strong>Modell:</strong> ${model}</p>
             </div>
-            ${messages.map(msg => `
+            ${messages
+              .map(
+                (msg) => `
               <div class="message ${msg.role}">
                 <div class="role">${msg.role === "user" ? "👤 User" : "🤖 Assistant"}</div>
                 <div class="time">${msg.timestamp.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</div>
                 <p>${msg.content}</p>
               </div>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </body>
           </html>
         `;
-        
+
         const printWindow = window.open("", "_blank");
         if (printWindow) {
           printWindow.document.write(htmlContent);
@@ -1191,6 +1481,7 @@ export function ScriptonyAssistant() {
         setIsExportDialogOpen(false);
         toast.success("PDF-Druckvorschau geöffnet");
         return;
+      }
     }
 
     // Create and download file for JSON and MD
@@ -1216,7 +1507,11 @@ export function ScriptonyAssistant() {
         onClick={() => setIsOpen((prev) => !prev)}
         className="fixed bottom-20 right-4 z-[60] flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-0 shadow-lg transition-all hover:scale-110 hover:shadow-xl hover:brightness-105 active:scale-95"
         style={{ backgroundColor: "rgba(142, 117, 209, 1)" }}
-        aria-label={isOpen ? "Scriptony Assistant schließen" : "Scriptony Assistant öffnen"}
+        aria-label={
+          isOpen
+            ? "Scriptony Assistant schließen"
+            : "Scriptony Assistant öffnen"
+        }
         aria-expanded={isOpen}
       >
         {isOpen ? (
@@ -1248,7 +1543,9 @@ export function ScriptonyAssistant() {
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Scriptony Assistant</SheetTitle>
-            <SheetDescription>AI-gestützter Assistent für deine Drehbuch-Projekte</SheetDescription>
+            <SheetDescription>
+              AI-gestützter Assistent für deine Drehbuch-Projekte
+            </SheetDescription>
           </SheetHeader>
 
           <div className="relative h-full w-full flex flex-col overflow-hidden">
@@ -1278,7 +1575,9 @@ export function ScriptonyAssistant() {
                 <div className="size-[20px] flex items-center justify-center">
                   <AssistantIcon />
                 </div>
-                <h3 className="text-[#6e59a5] dark:text-primary text-[15.4px] font-semibold">Scriptony Assistant</h3>
+                <h3 className="text-[#6e59a5] dark:text-primary text-[15.4px] font-semibold">
+                  Scriptony Assistant
+                </h3>
               </div>
 
               {/* Editable Chat Title */}
@@ -1314,9 +1613,14 @@ export function ScriptonyAssistant() {
                 {/* Model Selection */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px]">Modell:</label>
+                    <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px]">
+                      Modell:
+                    </label>
                     {activeProviderDisplay && (
-                      <Badge variant="outline" className="h-4 px-1 text-[8px] capitalize">
+                      <Badge
+                        variant="outline"
+                        className="h-4 px-1 text-[8px] capitalize"
+                      >
                         {activeProviderDisplay}
                       </Badge>
                     )}
@@ -1326,7 +1630,10 @@ export function ScriptonyAssistant() {
                       type="button"
                       onClick={() => setIsChatSettingsOpen(true)}
                       className="h-[32px] w-full bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center hover:bg-destructive/15 dark:hover:bg-destructive/25 transition-colors"
-                      title={assistantStatusError || "Öffnet die KI-Integrationen zur Konfiguration von Provider und Modell."}
+                      title={
+                        assistantStatusError ||
+                        "Öffnet die KI-Integrationen zur Konfiguration von Provider und Modell."
+                      }
                     >
                       <span className="text-destructive text-[9px] font-medium text-center leading-tight">
                         Assistant konfigurieren
@@ -1344,20 +1651,28 @@ export function ScriptonyAssistant() {
                         {availableModels.find((m) => m.id === model)?.name ??
                           (model ? model : "Modell wählen…")}
                       </span>
-                      <ChevronDown className="size-4 shrink-0 opacity-50 pointer-events-none" aria-hidden />
+                      <ChevronDown
+                        className="size-4 shrink-0 opacity-50 pointer-events-none"
+                        aria-hidden
+                      />
                     </button>
                   )}
                 </div>
 
                 {/* Context Window */}
                 <div>
-                  <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px] mb-1 block">Context:</label>
+                  <label className="text-[#a1a1a7] dark:text-muted-foreground text-[10px] mb-1 block">
+                    Context:
+                  </label>
                   {!assistantReady ? (
                     <button
                       type="button"
                       onClick={() => setIsChatSettingsOpen(true)}
                       className="h-[32px] w-full bg-destructive/10 dark:bg-destructive/20 border border-destructive/50 rounded-[10px] px-2 flex items-center justify-center hover:bg-destructive/15 dark:hover:bg-destructive/25 transition-colors"
-                      title={assistantStatusError || "Öffnet die KI-Integrationen zur Konfiguration von Provider und Modell."}
+                      title={
+                        assistantStatusError ||
+                        "Öffnet die KI-Integrationen zur Konfiguration von Provider und Modell."
+                      }
                     >
                       <span className="text-destructive text-[9px] font-medium text-center leading-tight">
                         in Integrationen
@@ -1366,17 +1681,26 @@ export function ScriptonyAssistant() {
                   ) : (
                     <div className="bg-[#e4e6ea] dark:bg-muted rounded-[10px] px-3 py-2 h-[32px] flex items-center justify-between">
                       <span className="text-[#727375] dark:text-muted-foreground text-[10px]">
-                        {tokenCounter.formatted.total} / {tokenCounter.formatted.contextWindow}
-                        {tokenCounter.isEstimating && <span className="text-[9px] ml-0.5 opacity-60">~</span>}
+                        {tokenCounter.formatted.total} /{" "}
+                        {tokenCounter.formatted.contextWindow}
+                        {tokenCounter.isEstimating && (
+                          <span className="text-[9px] ml-0.5 opacity-60">
+                            ~
+                          </span>
+                        )}
                       </span>
                       <div className="w-12 bg-[#d4d6da] dark:bg-background rounded-full h-1 overflow-hidden ml-2">
-                        <div 
+                        <div
                           className={`h-full transition-all ${
-                            tokenCounter.isOverLimit ? 'bg-destructive' : 
-                            tokenCounter.isNearLimit ? 'bg-orange-500' : 
-                            'bg-[#6e59a5] dark:bg-primary'
+                            tokenCounter.isOverLimit
+                              ? "bg-destructive"
+                              : tokenCounter.isNearLimit
+                                ? "bg-orange-500"
+                                : "bg-[#6e59a5] dark:bg-primary"
                           }`}
-                          style={{ width: `${Math.min(tokenCounter.usagePercent, 100)}%` }}
+                          style={{
+                            width: `${Math.min(tokenCounter.usagePercent, 100)}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -1393,40 +1717,55 @@ export function ScriptonyAssistant() {
                   <div className="size-[20px] flex items-center justify-center text-white">
                     <ChatHistoryIcon />
                   </div>
-                  <span className="text-white text-[7px] leading-tight text-center">Chat-History</span>
+                  <span className="text-white text-[7px] leading-tight text-center">
+                    Chat-History
+                  </span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => setIsRAGDatabaseOpen(true)}
                   className="bg-primary rounded-[10px] p-2 flex flex-col items-center justify-center gap-1 hover:bg-primary/90 transition-colors active:scale-95 min-h-[64px] relative"
                 >
-                  {(selectedRAGProjects.length > 0 || selectedRAGWorlds.length > 0 || selectedRAGCharacters.length > 0 || selectedRAGCustomFiles.length > 0) && (
+                  {(selectedRAGProjects.length > 0 ||
+                    selectedRAGWorlds.length > 0 ||
+                    selectedRAGCharacters.length > 0 ||
+                    selectedRAGCustomFiles.length > 0) && (
                     <div className="absolute top-1 left-1 size-3 bg-green-500 rounded-sm flex items-center justify-center">
-                      <CheckSquare className="size-2 text-white" strokeWidth={3} />
+                      <CheckSquare
+                        className="size-2 text-white"
+                        strokeWidth={3}
+                      />
                     </div>
                   )}
                   <div className="size-[20px] flex items-center justify-center text-white">
                     <DatabaseIcon />
                   </div>
-                  <span className="text-white text-[7px] leading-tight text-center">RAG-Datenbank</span>
+                  <span className="text-white text-[7px] leading-tight text-center">
+                    RAG-Datenbank
+                  </span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => setIsSystemPromptOpen(true)}
                   className="bg-primary rounded-[10px] p-2 flex flex-col items-center justify-center gap-1 hover:bg-primary/90 transition-colors active:scale-95 min-h-[64px] relative"
                 >
                   {systemPrompt.trim() && lastEditedDate && (
                     <div className="absolute top-1 left-1 size-3 bg-green-500 rounded-sm flex items-center justify-center">
-                      <CheckSquare className="size-2 text-white" strokeWidth={3} />
+                      <CheckSquare
+                        className="size-2 text-white"
+                        strokeWidth={3}
+                      />
                     </div>
                   )}
                   <div className="size-[20px] flex items-center justify-center text-white">
                     <SystemPromptIcon />
                   </div>
-                  <span className="text-white text-[7px] leading-tight text-center">System-Prompt</span>
+                  <span className="text-white text-[7px] leading-tight text-center">
+                    System-Prompt
+                  </span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
                     setExportFileName(chatTitle);
                     setIsExportDialogOpen(true);
@@ -1436,17 +1775,21 @@ export function ScriptonyAssistant() {
                   <div className="size-[20px] flex items-center justify-center text-white">
                     <ExportIcon />
                   </div>
-                  <span className="text-white text-[7px] leading-tight text-center">Export Chat</span>
+                  <span className="text-white text-[7px] leading-tight text-center">
+                    Export Chat
+                  </span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => setIsChatSettingsOpen(true)}
                   className="bg-primary rounded-[10px] p-2 flex flex-col items-center justify-center gap-1 hover:bg-primary/90 transition-colors active:scale-95 min-h-[64px]"
                 >
                   <div className="size-[20px] flex items-center justify-center text-white">
                     <SettingsIcon />
                   </div>
-                  <span className="text-white text-[7px] leading-tight text-center">Chat Settings</span>
+                  <span className="text-white text-[7px] leading-tight text-center">
+                    Chat Settings
+                  </span>
                 </button>
               </div>
             </div>
@@ -1454,75 +1797,118 @@ export function ScriptonyAssistant() {
             {/* Chat Messages Area - Fixed Height with Scroll */}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ScrollArea className="h-full px-4">
-              {messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center">
-                  <div className="text-center px-4 mt-8">
-                    <div className="size-[73px] mx-auto mb-6 flex items-center justify-center">
-                      <EmptyChatIcon />
-                    </div>
-                    <h3 className="text-[20px] text-[#9d9da5] mb-4">Starte eine Konversation</h3>
-                    <p className="text-[14.8px] text-[#9d9da5] leading-[20.122px]">
-                      Frage mich zu aktuellen Projekten,<br />
-                      erstelle neue Projekte oder Welten
-                    </p>
-                    <div className="mt-6 flex gap-4 justify-center text-xs flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <span className="bg-character-blue-light px-1.5 py-0.5 rounded font-medium text-character-blue">@</span>
-                        <span className="text-character-blue">Charaktere</span>
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="text-center px-4 mt-8">
+                      <div className="size-[73px] mx-auto mb-6 flex items-center justify-center">
+                        <EmptyChatIcon />
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="bg-asset-green-light px-1.5 py-0.5 rounded font-medium text-asset-green">/</span>
-                        <span className="text-asset-green">Assets</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="bg-scene-pink-light px-1.5 py-0.5 rounded font-medium text-scene-pink">#</span>
-                        <span className="text-scene-pink">Szenen</span>
+                      <h3 className="text-[20px] text-[#9d9da5] mb-4">
+                        Starte eine Konversation
+                      </h3>
+                      <p className="text-[14.8px] text-[#9d9da5] leading-[20.122px]">
+                        Frage mich zu aktuellen Projekten,
+                        <br />
+                        erstelle neue Projekte oder Welten
+                      </p>
+                      <div className="mt-6 flex gap-4 justify-center text-xs flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <span className="bg-character-blue-light px-1.5 py-0.5 rounded font-medium text-character-blue">
+                            @
+                          </span>
+                          <span className="text-character-blue">
+                            Charaktere
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="bg-asset-green-light px-1.5 py-0.5 rounded font-medium text-asset-green">
+                            /
+                          </span>
+                          <span className="text-asset-green">Assets</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="bg-scene-pink-light px-1.5 py-0.5 rounded font-medium text-scene-pink">
+                            #
+                          </span>
+                          <span className="text-scene-pink">Szenen</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4 py-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
+                ) : (
+                  <div className="space-y-4 py-4">
+                    {messages.map((message) => (
                       <div
-                        className={`max-w-[85%] rounded-xl px-4 py-3 ${
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-white dark:bg-card border border-border"
-                        }`}
+                        key={message.id}
+                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
-                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                          {colorizeText(message.content).map((part, index) => {
-                            if (part.type === 'character') {
-                              return <span key={index} style={{ color: 'var(--character-blue)', fontWeight: 500 }}>{part.text}</span>;
-                            } else if (part.type === 'asset') {
-                              return <span key={index} style={{ color: 'var(--asset-green)', fontWeight: 500 }}>{part.text}</span>;
-                            } else if (part.type === 'scene') {
-                              return <span key={index} style={{ color: 'var(--scene-pink)', fontWeight: 500 }}>{part.text}</span>;
-                            }
-                            return <span key={index}>{part.text}</span>;
-                          })}
-                        </p>
-                        <span className="text-xs opacity-70 mt-1.5 block">
-                          {message.timestamp.toLocaleTimeString("de-DE", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                        <div
+                          className={`max-w-[85%] rounded-xl px-4 py-3 ${
+                            message.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-white dark:bg-card border border-border"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                            {colorizeText(message.content).map(
+                              (part, index) => {
+                                if (part.type === "character") {
+                                  return (
+                                    <span
+                                      key={index}
+                                      style={{
+                                        color: "var(--character-blue)",
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      {part.text}
+                                    </span>
+                                  );
+                                } else if (part.type === "asset") {
+                                  return (
+                                    <span
+                                      key={index}
+                                      style={{
+                                        color: "var(--asset-green)",
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      {part.text}
+                                    </span>
+                                  );
+                                } else if (part.type === "scene") {
+                                  return (
+                                    <span
+                                      key={index}
+                                      style={{
+                                        color: "var(--scene-pink)",
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      {part.text}
+                                    </span>
+                                  );
+                                }
+                                return <span key={index}>{part.text}</span>;
+                              },
+                            )}
+                          </p>
+                          <span className="text-xs opacity-70 mt-1.5 block">
+                            {message.timestamp.toLocaleTimeString("de-DE", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <AssistantOrbitLoader />
-                    </div>
-                  )}
-                </div>
-              )}
+                    ))}
+                    {isLoading && (
+                      <div className="flex justify-start">
+                        <AssistantOrbitLoader />
+                      </div>
+                    )}
+                  </div>
+                )}
               </ScrollArea>
             </div>
 
@@ -1534,10 +1920,10 @@ export function ScriptonyAssistant() {
                 ref={fileInputRef}
                 onChange={handleFileUpload}
                 multiple
-                accept=".pdf,.txt,.doc,.docx,.fountain"
+                accept=".pdf,.txt,.docx,.fountain"
                 className="hidden"
               />
-              
+
               {/* Uploaded Files Display */}
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -1548,7 +1934,7 @@ export function ScriptonyAssistant() {
                   ))}
                 </div>
               )}
-              
+
               {/* Input Container */}
               <div className="relative bg-transparent border-2 border-border focus-within:border-primary rounded-[10px] p-2 flex items-center gap-2 transition-colors">
                 {/* Microphone Button */}
@@ -1562,27 +1948,43 @@ export function ScriptonyAssistant() {
                 {/* Suggestions Dropdown */}
                 {showSuggestions && (
                   <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
-                    <div className={`p-2 border-b border-border text-xs ${
-                      suggestionsType === "@" ? "text-character-blue" : 
-                      suggestionsType === "/" ? "text-asset-green" : "text-scene-pink"
-                    }`}>
-                      {suggestionsType === "@" ? "@ Charaktere" : 
-                       suggestionsType === "/" ? "/ Assets" : "# Szenen"} ({filteredSuggestions.length})
+                    <div
+                      className={`p-2 border-b border-border text-xs ${
+                        suggestionsType === "@"
+                          ? "text-character-blue"
+                          : suggestionsType === "/"
+                            ? "text-asset-green"
+                            : "text-scene-pink"
+                      }`}
+                    >
+                      {suggestionsType === "@"
+                        ? "@ Charaktere"
+                        : suggestionsType === "/"
+                          ? "/ Assets"
+                          : "# Szenen"}{" "}
+                      ({filteredSuggestions.length})
                     </div>
                     {filteredSuggestions.length > 0 ? (
                       filteredSuggestions.map((suggestion, index) => {
-                        const isCharacter = "project" in suggestion && "world" in suggestion;
-                        const isScene = "project" in suggestion && !("world" in suggestion) && !("category" in suggestion);
+                        const isCharacter =
+                          "project" in suggestion && "world" in suggestion;
+                        const isScene =
+                          "project" in suggestion &&
+                          !("world" in suggestion) &&
+                          !("category" in suggestion);
                         const isAsset = "category" in suggestion;
-                        
+
                         let subtitle = "";
                         let color = "";
                         let bgColor = "";
                         let selectedBg = "";
                         let symbol = "";
-                        
+
                         if (isCharacter) {
-                          subtitle = (suggestion as RAGCharacter).project || (suggestion as RAGCharacter).world || "";
+                          subtitle =
+                            (suggestion as RAGCharacter).project ||
+                            (suggestion as RAGCharacter).world ||
+                            "";
                           color = "text-character-blue";
                           bgColor = "hover:bg-character-blue-light";
                           selectedBg = "bg-character-blue-light";
@@ -1600,29 +2002,34 @@ export function ScriptonyAssistant() {
                           selectedBg = "bg-asset-green-light";
                           symbol = "/";
                         }
-                        
+
                         return (
                           <button
                             key={suggestion.id}
                             onClick={() => insertSuggestion(suggestion.name)}
                             className={`w-full text-left px-3 py-2 transition-colors ${bgColor} ${
-                              index === selectedSuggestionIndex ? selectedBg : ""
+                              index === selectedSuggestionIndex
+                                ? selectedBg
+                                : ""
                             }`}
                           >
                             <div className={`text-sm ${color}`}>
-                              {symbol}{suggestion.name}
+                              {symbol}
+                              {suggestion.name}
                             </div>
-                            <div className="text-xs text-muted-foreground">{subtitle}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {subtitle}
+                            </div>
                           </button>
                         );
                       })
                     ) : (
                       <div className="p-3 text-sm text-muted-foreground text-center">
-                        {suggestionsType === "@" 
+                        {suggestionsType === "@"
                           ? "Keine Charaktere gefunden. Verbinde ein Projekt oder eine Welt in der RAG-Datenbank."
-                          : suggestionsType === "/" 
-                          ? "Keine Assets gefunden. Verbinde eine Welt in der RAG-Datenbank."
-                          : "Keine Szenen gefunden. Verbinde ein Projekt in der RAG-Datenbank."}
+                          : suggestionsType === "/"
+                            ? "Keine Assets gefunden. Verbinde eine Welt in der RAG-Datenbank."
+                            : "Keine Szenen gefunden. Verbinde ein Projekt in der RAG-Datenbank."}
                       </div>
                     )}
                   </div>
@@ -1635,12 +2042,16 @@ export function ScriptonyAssistant() {
                     value={inputValue}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyPress}
-                    placeholder={hasRAGConnections ? "Schreibe eine Nachricht... (@ Charaktere, / Assets, # Szenen)" : "Schreibe eine Nachricht..."}
+                    placeholder={
+                      hasRAGConnections
+                        ? "Schreibe eine Nachricht... (@ Charaktere, / Assets, # Szenen)"
+                        : "Schreibe eine Nachricht..."
+                    }
                     rows={1}
                     className="w-full bg-transparent border-0 outline-none text-[14.8px] leading-[1.45] text-foreground placeholder:text-[#9e9ea4] dark:placeholder:text-muted-foreground disabled:opacity-50 resize-none max-h-[80px] overflow-y-auto py-2"
-                    style={{ 
-                      caretColor: 'var(--foreground)',
-                      minHeight: '24px',
+                    style={{
+                      caretColor: "var(--foreground)",
+                      minHeight: "24px",
                     }}
                     disabled={isLoading}
                   />
@@ -1660,7 +2071,12 @@ export function ScriptonyAssistant() {
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isLoading || !assistantReady}
                   className="flex-shrink-0 h-[31px] px-4 flex items-center justify-center gap-2 rounded-[10px] bg-[#6e59a5] dark:bg-primary text-white hover:bg-[#6e59a5]/90 dark:hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title={!assistantReady ? (assistantStatusError || "Bitte konfiguriere zuerst Provider und Modell in den Integrationen.") : ""}
+                  title={
+                    !assistantReady
+                      ? assistantStatusError ||
+                        "Bitte konfiguriere zuerst Provider und Modell in den Integrationen."
+                      : ""
+                  }
                 >
                   <span className="text-[14.8px] font-bold">RUN</span>
                   <div className="size-[16px] flex items-center justify-center">
@@ -1684,10 +2100,11 @@ export function ScriptonyAssistant() {
               System-Prompt
             </DialogTitle>
             <DialogDescription>
-              Definiere den System-Prompt, der bei jedem Chat verwendet werden soll.
+              Definiere den System-Prompt, der bei jedem Chat verwendet werden
+              soll.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 flex flex-col gap-4 overflow-hidden">
             <Textarea
               value={systemPrompt}
@@ -1695,10 +2112,11 @@ export function ScriptonyAssistant() {
               placeholder="Gebe hier deinen System-Prompt ein..."
               className="flex-1 min-h-[300px] resize-none"
             />
-            
+
             {lastEditedDate && (
               <p className="text-sm text-muted-foreground">
-                Zuletzt bearbeitet: {lastEditedDate.toLocaleString("de-DE", {
+                Zuletzt bearbeitet:{" "}
+                {lastEditedDate.toLocaleString("de-DE", {
                   day: "2-digit",
                   month: "2-digit",
                   year: "numeric",
@@ -1740,7 +2158,7 @@ export function ScriptonyAssistant() {
               Wähle das Format und den Dateinamen für den Export.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-6">
             {/* File Name Input */}
             <div className="space-y-2">
@@ -1756,33 +2174,44 @@ export function ScriptonyAssistant() {
             {/* Format Selection */}
             <div className="space-y-3">
               <Label>Export-Format</Label>
-              <RadioGroup value={exportFormat} onValueChange={(value) => setExportFormat(value as "pdf" | "json" | "md")}>
+              <RadioGroup
+                value={exportFormat}
+                onValueChange={(value) =>
+                  setExportFormat(value as "pdf" | "json" | "md")
+                }
+              >
                 <div className="flex items-center space-x-3 rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors">
                   <RadioGroupItem value="json" id="json" />
                   <Label htmlFor="json" className="flex-1 cursor-pointer">
                     <div>
                       <div>JSON</div>
-                      <div className="text-sm text-muted-foreground">Strukturiertes Datenformat</div>
+                      <div className="text-sm text-muted-foreground">
+                        Strukturiertes Datenformat
+                      </div>
                     </div>
                   </Label>
                 </div>
-                
+
                 <div className="flex items-center space-x-3 rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors">
                   <RadioGroupItem value="md" id="md" />
                   <Label htmlFor="md" className="flex-1 cursor-pointer">
                     <div>
                       <div>Markdown</div>
-                      <div className="text-sm text-muted-foreground">Lesbare Textdatei mit Formatierung</div>
+                      <div className="text-sm text-muted-foreground">
+                        Lesbare Textdatei mit Formatierung
+                      </div>
                     </div>
                   </Label>
                 </div>
-                
+
                 <div className="flex items-center space-x-3 rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors">
                   <RadioGroupItem value="pdf" id="pdf" />
                   <Label htmlFor="pdf" className="flex-1 cursor-pointer">
                     <div>
                       <div>PDF</div>
-                      <div className="text-sm text-muted-foreground">Druckversion (öffnet Druckvorschau)</div>
+                      <div className="text-sm text-muted-foreground">
+                        Druckversion (öffnet Druckvorschau)
+                      </div>
                     </div>
                   </Label>
                 </div>
@@ -1821,7 +2250,7 @@ export function ScriptonyAssistant() {
               Durchsuche und lade deine bisherigen Chats.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-4 flex-1 overflow-hidden">
             {/* Search and Filter in one row */}
             <div className="flex items-center gap-1.5">
@@ -1835,7 +2264,7 @@ export function ScriptonyAssistant() {
                   className="pl-9 h-9"
                 />
               </div>
-              
+
               {/* Date From */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -1847,10 +2276,15 @@ export function ScriptonyAssistant() {
                     <Calendar className="size-3.5 shrink-0" />
                     {dateFilterFrom ? (
                       <span className="ml-0.5 text-[11px] truncate">
-                        {dateFilterFrom.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                        {dateFilterFrom.toLocaleDateString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
                       </span>
                     ) : (
-                      <span className="ml-0.5 text-[11px] text-muted-foreground">Von</span>
+                      <span className="ml-0.5 text-[11px] text-muted-foreground">
+                        Von
+                      </span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -1875,10 +2309,15 @@ export function ScriptonyAssistant() {
                     <Calendar className="size-3.5 shrink-0" />
                     {dateFilterTo ? (
                       <span className="ml-0.5 text-[11px] truncate">
-                        {dateFilterTo.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                        {dateFilterTo.toLocaleDateString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
                       </span>
                     ) : (
-                      <span className="ml-0.5 text-[11px] text-muted-foreground">Bis</span>
+                      <span className="ml-0.5 text-[11px] text-muted-foreground">
+                        Bis
+                      </span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -1895,7 +2334,8 @@ export function ScriptonyAssistant() {
 
             {/* Results Count */}
             <div className="text-sm text-muted-foreground">
-              {filteredChatHistory.length} {filteredChatHistory.length === 1 ? 'Chat' : 'Chats'} gefunden
+              {filteredChatHistory.length}{" "}
+              {filteredChatHistory.length === 1 ? "Chat" : "Chats"} gefunden
             </div>
 
             {/* Chat List - Table Style */}
@@ -1929,7 +2369,10 @@ export function ScriptonyAssistant() {
                           <h4 className="font-medium text-foreground group-hover:text-primary transition-colors truncate">
                             {chat.title}
                           </h4>
-                          <Badge variant="secondary" className="text-xs shrink-0">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs shrink-0"
+                          >
                             {chat.model}
                           </Badge>
                         </div>
@@ -1939,13 +2382,18 @@ export function ScriptonyAssistant() {
                               day: "2-digit",
                               month: "2-digit",
                               year: "numeric",
-                            })} ��� {chat.lastEdited.toLocaleTimeString("de-DE", {
+                            })}{" "}
+                            ���{" "}
+                            {chat.lastEdited.toLocaleTimeString("de-DE", {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
                           </span>
                           <span className="text-xs shrink-0">
-                            {chat.messages.length} {chat.messages.length === 1 ? 'Nachricht' : 'Nachrichten'}
+                            {chat.messages.length}{" "}
+                            {chat.messages.length === 1
+                              ? "Nachricht"
+                              : "Nachrichten"}
                           </span>
                         </div>
                       </div>
@@ -1981,7 +2429,8 @@ export function ScriptonyAssistant() {
               RAG-Datenbank
             </DialogTitle>
             <DialogDescription>
-              Wähle Projekte, Welten, Charaktere und Dateien für das Chat-Gedächtnis aus.
+              Wähle Projekte, Welten, Charaktere und Dateien für das
+              Chat-Gedächtnis aus.
             </DialogDescription>
           </DialogHeader>
 
@@ -2066,7 +2515,9 @@ export function ScriptonyAssistant() {
                   id="rag-file-upload"
                 />
                 <Button
-                  onClick={() => document.getElementById('rag-file-upload')?.click()}
+                  onClick={() =>
+                    document.getElementById("rag-file-upload")?.click()
+                  }
                   variant="secondary"
                   size="sm"
                   className="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100"
@@ -2204,7 +2655,9 @@ export function ScriptonyAssistant() {
                   {filteredRAGItems.customFiles.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>Keine Dateien hochgeladen</p>
-                      <p className="text-sm mt-2">Lade PDF, TXT, PNG, JPEG oder WEBP Dateien hoch</p>
+                      <p className="text-sm mt-2">
+                        Lade PDF, TXT, PNG, JPEG oder WEBP Dateien hoch
+                      </p>
                     </div>
                   ) : (
                     filteredRAGItems.customFiles.map((file) => (
@@ -2213,7 +2666,7 @@ export function ScriptonyAssistant() {
                         onClick={() => setPreviewFile(file)}
                         className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/5 cursor-pointer transition-colors"
                       >
-                        <div 
+                        <div
                           className="shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2227,9 +2680,16 @@ export function ScriptonyAssistant() {
                           )}
                         </div>
                         <div className="shrink-0">
-                          {file.type === 'pdf' && <FileText className="size-5 text-red-500" />}
-                          {file.type === 'txt' && <FileText className="size-5 text-blue-500" />}
-                          {(file.type === 'png' || file.type === 'jpg' || file.type === 'jpeg' || file.type === 'webp') && (
+                          {file.type === "pdf" && (
+                            <FileText className="size-5 text-red-500" />
+                          )}
+                          {file.type === "txt" && (
+                            <FileText className="size-5 text-blue-500" />
+                          )}
+                          {(file.type === "png" ||
+                            file.type === "jpg" ||
+                            file.type === "jpeg" ||
+                            file.type === "webp") && (
                             <ImageIcon className="size-5 text-green-500" />
                           )}
                         </div>
@@ -2241,9 +2701,7 @@ export function ScriptonyAssistant() {
                             <span className="text-xs uppercase">
                               {file.type}
                             </span>
-                            <span className="text-xs">
-                              {file.size}
-                            </span>
+                            <span className="text-xs">{file.size}</span>
                             <span className="text-xs">
                               {file.uploadedAt.toLocaleDateString("de-DE")}
                             </span>
@@ -2259,9 +2717,7 @@ export function ScriptonyAssistant() {
             {/* Summary */}
             <div className="border-t pt-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Ausgewählt:
-                </span>
+                <span className="text-muted-foreground">Ausgewählt:</span>
                 <div className="flex items-center gap-3">
                   {selectedRAGProjects.length > 0 && (
                     <Badge variant="secondary">
@@ -2297,7 +2753,11 @@ export function ScriptonyAssistant() {
             </Button>
             <Button
               onClick={() => {
-                const total = selectedRAGProjects.length + selectedRAGWorlds.length + selectedRAGCharacters.length + selectedRAGCustomFiles.length;
+                const total =
+                  selectedRAGProjects.length +
+                  selectedRAGWorlds.length +
+                  selectedRAGCharacters.length +
+                  selectedRAGCustomFiles.length;
                 toast.success(`${total} Items zur RAG-Datenbank hinzugefügt`);
                 setIsRAGDatabaseOpen(false);
               }}
@@ -2309,13 +2769,23 @@ export function ScriptonyAssistant() {
       </Dialog>
 
       {/* File Preview Dialog */}
-      <Dialog open={previewFile !== null} onOpenChange={() => setPreviewFile(null)}>
+      <Dialog
+        open={previewFile !== null}
+        onOpenChange={() => setPreviewFile(null)}
+      >
         <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-auto md:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {previewFile?.type === 'pdf' && <FileText className="size-5 text-red-500" />}
-              {previewFile?.type === 'txt' && <FileText className="size-5 text-blue-500" />}
-              {(previewFile?.type === 'png' || previewFile?.type === 'jpg' || previewFile?.type === 'jpeg' || previewFile?.type === 'webp') && (
+              {previewFile?.type === "pdf" && (
+                <FileText className="size-5 text-red-500" />
+              )}
+              {previewFile?.type === "txt" && (
+                <FileText className="size-5 text-blue-500" />
+              )}
+              {(previewFile?.type === "png" ||
+                previewFile?.type === "jpg" ||
+                previewFile?.type === "jpeg" ||
+                previewFile?.type === "webp") && (
                 <ImageIcon className="size-5 text-green-500" />
               )}
               <span>{previewFile?.name}</span>
@@ -2331,7 +2801,7 @@ export function ScriptonyAssistant() {
 
           <div className="mt-4">
             {/* Preview content based on file type */}
-            {previewFile?.type === 'pdf' && (
+            {previewFile?.type === "pdf" && (
               <div className="bg-muted/30 rounded-lg p-8 text-center">
                 <FileText className="size-16 mx-auto mb-4 text-red-500 opacity-50" />
                 <p className="text-muted-foreground mb-2">PDF Vorschau</p>
@@ -2341,21 +2811,27 @@ export function ScriptonyAssistant() {
               </div>
             )}
 
-            {previewFile?.type === 'txt' && (
+            {previewFile?.type === "txt" && (
               <div className="bg-muted/30 rounded-lg p-6">
                 <div className="bg-background rounded border p-4 font-mono text-sm max-h-96 overflow-auto">
                   <p className="text-muted-foreground">
                     Dies ist eine Demo-Vorschau einer Textdatei.
-                    {'\n\n'}
-                    In einer echten Implementierung würde hier der tatsächliche Inhalt der Datei "{previewFile.name}" angezeigt werden.
-                    {'\n\n'}
-                    Die Datei wurde am {previewFile.uploadedAt.toLocaleDateString("de-DE")} hochgeladen und hat eine Größe von {previewFile.size}.
+                    {"\n\n"}
+                    In einer echten Implementierung würde hier der tatsächliche
+                    Inhalt der Datei "{previewFile.name}" angezeigt werden.
+                    {"\n\n"}
+                    Die Datei wurde am{" "}
+                    {previewFile.uploadedAt.toLocaleDateString("de-DE")}{" "}
+                    hochgeladen und hat eine Größe von {previewFile.size}.
                   </p>
                 </div>
               </div>
             )}
 
-            {(previewFile?.type === 'png' || previewFile?.type === 'jpg' || previewFile?.type === 'jpeg' || previewFile?.type === 'webp') && (
+            {(previewFile?.type === "png" ||
+              previewFile?.type === "jpg" ||
+              previewFile?.type === "jpeg" ||
+              previewFile?.type === "webp") && (
               <div className="bg-muted/30 rounded-lg p-8">
                 <div className="bg-background rounded border p-4 flex items-center justify-center min-h-64">
                   <div className="text-center">
@@ -2365,7 +2841,8 @@ export function ScriptonyAssistant() {
                       {previewFile.name}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      In einer echten Implementierung würde hier das Bild angezeigt werden
+                      In einer echten Implementierung würde hier das Bild
+                      angezeigt werden
                     </p>
                   </div>
                 </div>
@@ -2374,22 +2851,24 @@ export function ScriptonyAssistant() {
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setPreviewFile(null)}
-            >
+            <Button variant="outline" onClick={() => setPreviewFile(null)}>
               Schließen
             </Button>
             <Button
               onClick={() => {
                 if (previewFile) {
                   toggleRAGCustomFile(previewFile.id);
-                  const isSelected = selectedRAGCustomFiles.includes(previewFile.id);
-                  toast.success(isSelected ? 'Datei entfernt' : 'Datei ausgewählt');
+                  const isSelected = selectedRAGCustomFiles.includes(
+                    previewFile.id,
+                  );
+                  toast.success(
+                    isSelected ? "Datei entfernt" : "Datei ausgewählt",
+                  );
                 }
               }}
             >
-              {previewFile && selectedRAGCustomFiles.includes(previewFile.id) ? (
+              {previewFile &&
+              selectedRAGCustomFiles.includes(previewFile.id) ? (
                 <>
                   <CheckSquare className="size-4 mr-2" />
                   Ausgewählt

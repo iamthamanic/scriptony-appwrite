@@ -41,8 +41,6 @@
     "@tiptap/starter-kit": "*",
     "@tiptap/suggestion": "*",
     "appwrite": "^23.0.0",
-    "buffer": "^6.0.3",
-    "cfb": "^1.2.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "*",
     "cmdk": "^1.1.1",
@@ -71,8 +69,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "*",
     "vaul": "^1.1.2",
-    "wavesurfer.js": "^7.8.10",
-    "word": "^0.4.0"
+    "wavesurfer.js": "^7.8.10"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",
@@ -87,19 +84,21 @@
     "@vercel/functions": "^3.4.3",
     "@vitejs/plugin-react-swc": "^3.10.2",
     "eslint": "^10.0.3",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.0.2",
+    "prettier": "^3.8.3",
     "shimwrappercheck": "github:iamthamanic/shimwrappercheck",
     "typescript": "^5.9.3",
     "vite": "^6.4.1",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.6.0",
-    "vitest": "^2.1.9"
+    "vitest": "^3.2.4"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
+    "test:run": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts,.tsx --report-unused-disable-directives --max-warnings 2",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
@@ -150,8 +149,8 @@
     "appwrite:provision:buckets": "node functions/tools/provision-appwrite-buckets.mjs",
     "appwrite:delete:collection": "node functions/tools/delete-appwrite-collection.mjs",
     "appwrite:sync:function-domains": "node scripts/sync-vite-function-domain-map.mjs",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
+    "format:check": "npx prettier --check \"src/**/*.{ts,tsx,css,json}\"",
+    "format": "npx prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "checks": "bash scripts/run-checks.sh",
     "checks:frontend": "bash scripts/run-checks.sh --frontend",
     "checks:backend": "bash scripts/run-checks.sh --backend",

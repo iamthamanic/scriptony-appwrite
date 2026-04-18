@@ -18,17 +18,20 @@
  *   - styleProfileRevision
  */
 
-import { ID, Query } from "node-appwrite";
+import { ID } from "node-appwrite";
 import {
   C,
   createDocument,
   getDocument,
-  listDocumentsFull,
   updateDocument,
 } from "../_shared/appwrite-db";
 import { getAccessibleProject } from "../_shared/scriptony";
-import { computeFreshness, type ShotFreshnessInput, type ShotFreshnessResult } from "../_shared/freshness";
-import { toString, toInteger, userCanAccessShot } from "../_shared/puppet-helpers";
+import {
+  computeFreshness,
+  type ShotFreshnessInput,
+  type ShotFreshnessResult,
+} from "../_shared/freshness";
+import { toInteger, toString } from "../_shared/puppet-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,7 +85,7 @@ function assertNoForbiddenFields(patch: Record<string, unknown>): void {
     if (FORBIDDEN_SYNC_FIELDS.has(key)) {
       throw new Error(
         `sync must not write product-decision field "${key}". ` +
-          "This field belongs to scriptony-stage or scriptony-style."
+          "This field belongs to scriptony-stage or scriptony-style.",
       );
     }
   }
@@ -95,7 +98,7 @@ function assertNoForbiddenFields(patch: Record<string, unknown>): void {
 export async function getShotFreshness(
   shotId: string,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<ShotFreshnessResult> {
   const shot = await getDocument(C.shots, shotId);
   if (!shot) {
@@ -103,7 +106,10 @@ export async function getShotFreshness(
   }
 
   const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId || !(await getAccessibleProject(projectId, userId, organizationIds))) {
+  if (
+    !projectId ||
+    !(await getAccessibleProject(projectId, userId, organizationIds))
+  ) {
     throw new Error("Shot not found or access denied");
   }
 
@@ -126,7 +132,7 @@ export async function getShotFreshness(
 export async function syncShotState(
   input: SyncShotStateInput,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<SyncResult> {
   const shot = await getDocument(C.shots, input.shotId);
   if (!shot) {
@@ -134,7 +140,10 @@ export async function syncShotState(
   }
 
   const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId || !(await getAccessibleProject(projectId, userId, organizationIds))) {
+  if (
+    !projectId ||
+    !(await getAccessibleProject(projectId, userId, organizationIds))
+  ) {
     throw new Error("Shot not found or access denied");
   }
 
@@ -146,7 +155,10 @@ export async function syncShotState(
   }
   if (input.blenderSyncRevision !== undefined) {
     const current = toInteger(shot.blenderSyncRevision);
-    patch.blenderSyncRevision = Math.max(current, toInteger(input.blenderSyncRevision));
+    patch.blenderSyncRevision = Math.max(
+      current,
+      toInteger(input.blenderSyncRevision),
+    );
   }
   // Always bump lastBlenderSyncAt when any shot-state sync happens
   patch.lastBlenderSyncAt = now;
@@ -168,7 +180,7 @@ export async function syncShotState(
 export async function syncGuides(
   input: SyncGuidesInput,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<SyncResult> {
   const shot = await getDocument(C.shots, input.shotId);
   if (!shot) {
@@ -176,7 +188,10 @@ export async function syncGuides(
   }
 
   const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId || !(await getAccessibleProject(projectId, userId, organizationIds))) {
+  if (
+    !projectId ||
+    !(await getAccessibleProject(projectId, userId, organizationIds))
+  ) {
     throw new Error("Shot not found or access denied");
   }
 
@@ -186,7 +201,8 @@ export async function syncGuides(
   const guideBundle = await createDocument(C.guideBundles, ID.unique(), {
     shotId: input.shotId,
     userId,
-    revision: input.guideBundleRevision ?? toInteger(shot.guideBundleRevision) + 1,
+    revision: input.guideBundleRevision ??
+      toInteger(shot.guideBundleRevision) + 1,
     files: input.files ?? "{}",
     metadata: input.metadata ?? "{}",
     maskFileId: null,
@@ -198,7 +214,8 @@ export async function syncGuides(
   });
 
   const guideBundleId = String(guideBundle.id ?? guideBundle.$id ?? "");
-  const nextRevision = input.guideBundleRevision ?? toInteger(shot.guideBundleRevision) + 1;
+  const nextRevision = input.guideBundleRevision ??
+    toInteger(shot.guideBundleRevision) + 1;
 
   const patch: Record<string, unknown> = {
     guideBundleRevision: nextRevision,
@@ -223,7 +240,7 @@ export async function syncGuides(
 export async function syncPreview(
   input: SyncPreviewInput,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<SyncResult> {
   const shot = await getDocument(C.shots, input.shotId);
   if (!shot) {
@@ -231,7 +248,10 @@ export async function syncPreview(
   }
 
   const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId || !(await getAccessibleProject(projectId, userId, organizationIds))) {
+  if (
+    !projectId ||
+    !(await getAccessibleProject(projectId, userId, organizationIds))
+  ) {
     throw new Error("Shot not found or access denied");
   }
 
@@ -253,7 +273,7 @@ export async function syncPreview(
 export async function syncGlbPreview(
   input: SyncGlbPreviewInput,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<SyncResult> {
   const shot = await getDocument(C.shots, input.shotId);
   if (!shot) {
@@ -261,7 +281,10 @@ export async function syncGlbPreview(
   }
 
   const projectId = toString(shot.project_id ?? shot.projectId);
-  if (!projectId || !(await getAccessibleProject(projectId, userId, organizationIds))) {
+  if (
+    !projectId ||
+    !(await getAccessibleProject(projectId, userId, organizationIds))
+  ) {
     throw new Error("Shot not found or access denied");
   }
 

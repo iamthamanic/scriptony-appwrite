@@ -6,16 +6,18 @@ import { requireUserBootstrap } from "../../../_shared/auth";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   readJsonBody,
-  sendBadRequest,
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -44,7 +46,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { userId: bootstrap.user.id }
+        { userId: bootstrap.user.id },
       );
 
       sendJson(res, 200, { conversations: data.ai_conversations });
@@ -79,7 +81,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             system_prompt: body.system_prompt ?? null,
             message_count: 0,
           },
-        }
+        },
       );
 
       sendJson(res, 201, { conversation: created.insert_ai_conversations_one });

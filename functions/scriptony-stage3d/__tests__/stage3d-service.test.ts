@@ -10,18 +10,18 @@
  *   - Coercion helpers (shared puppet-helpers)
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   ConflictError,
   stage3dDocumentRowToApi,
   updateViewStateBodySchema,
 } from "../stage3d-service";
 import {
-  toString,
-  toStringOrNull,
+  toBoolean,
   toInteger,
   toIntegerOrNull,
-  toBoolean,
+  toString,
+  toStringOrNull,
 } from "../../_shared/puppet-helpers";
 
 // ---------------------------------------------------------------------------
@@ -248,8 +248,7 @@ describe("getOrCreateStage3dDocument idempotency", () => {
 
     for (const error of conflictErrors) {
       const msg = error.message;
-      const isConflict =
-        msg.includes("unique") ||
+      const isConflict = msg.includes("unique") ||
         msg.includes("already exists") ||
         msg.includes("conflict");
       expect(isConflict).toBe(true);
@@ -263,7 +262,9 @@ describe("getOrCreateStage3dDocument idempotency", () => {
 
 describe("updateStage3dViewState error handling", () => {
   it("throws descriptive error when document not found", () => {
-    const error = new Error("Stage3D document not found for shot — call GET /stage3d/documents/:shotId first");
+    const error = new Error(
+      "Stage3D document not found for shot — call GET /stage3d/documents/:shotId first",
+    );
     expect(error.message).toContain("not found");
     expect(error.message).toContain("GET");
   });

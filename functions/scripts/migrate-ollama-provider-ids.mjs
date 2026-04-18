@@ -1,4 +1,7 @@
-import { getMissingAppwriteServerEnvKeys, loadAppwriteCliEnv } from "./load-appwrite-cli-env.mjs";
+import {
+  getMissingAppwriteServerEnvKeys,
+  loadAppwriteCliEnv,
+} from "./load-appwrite-cli-env.mjs";
 
 loadAppwriteCliEnv();
 
@@ -18,6 +21,7 @@ loadAppwriteCliEnv();
  */
 
 import { Client, Databases, Query } from "node-appwrite";
+import process from "node:process";
 
 const missingEnv = getMissingAppwriteServerEnvKeys();
 if (missingEnv.length > 0) {
@@ -25,7 +29,9 @@ if (missingEnv.length > 0) {
   for (const line of missingEnv) {
     console.error(`  • ${line}`);
   }
-  console.error("  .env.local: VITE_APPWRITE_*; Appwrite key as APPWRITE_API_KEY or APPWRITE_APIKEY.");
+  console.error(
+    "  .env.local: VITE_APPWRITE_*; Appwrite key as APPWRITE_API_KEY or APPWRITE_APIKEY.",
+  );
   process.exit(1);
 }
 
@@ -34,7 +40,10 @@ const PROJECT = process.env.APPWRITE_PROJECT_ID?.trim();
 const KEY = process.env.APPWRITE_API_KEY?.trim();
 const DB = process.env.AI_DATABASE_ID?.trim() || "scriptony_ai";
 
-const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT).setKey(KEY);
+const client = new Client()
+  .setEndpoint(ENDPOINT)
+  .setProject(PROJECT)
+  .setKey(KEY);
 const databases = new Databases(client);
 
 const OLLAMA_FAMILY_IDS = ["ollama_local", "ollama_cloud"];
@@ -42,14 +51,18 @@ const LEGACY_TO_MODE = { ollama_cloud: "cloud", ollama_local: "local" };
 
 async function migrateFeatureConfig() {
   console.log("\n=== Migrating feature_config collection ===");
-  const res = await databases.listDocuments(DB, "feature_config", [Query.limit(5000)]);
+  const res = await databases.listDocuments(DB, "feature_config", [
+    Query.limit(5000),
+  ]);
   let updated = 0;
 
   for (const doc of res.documents) {
     if (!OLLAMA_FAMILY_IDS.includes(doc.provider)) continue;
 
     const mode = LEGACY_TO_MODE[doc.provider] || "local";
-    console.log(`  feature_config ${doc.$id}: provider="${doc.provider}" → "ollama" (mode=${mode}), feature=${doc.feature}`);
+    console.log(
+      `  feature_config ${doc.$id}: provider="${doc.provider}" → "ollama" (mode=${mode}), feature=${doc.feature}`,
+    );
 
     await databases.updateDocument(DB, "feature_config", doc.$id, {
       provider: "ollama",
@@ -66,14 +79,18 @@ async function migrateFeatureConfig() {
 
 async function migrateApiKeys() {
   console.log("\n=== Migrating api_keys collection ===");
-  const res = await databases.listDocuments(DB, "api_keys", [Query.limit(5000)]);
+  const res = await databases.listDocuments(DB, "api_keys", [
+    Query.limit(5000),
+  ]);
   let updated = 0;
 
   for (const doc of res.documents) {
     if (!OLLAMA_FAMILY_IDS.includes(doc.provider)) continue;
 
     const mode = LEGACY_TO_MODE[doc.provider] || "local";
-    console.log(`  api_keys ${doc.$id}: provider="${doc.provider}" → "ollama" (mode=${mode}), feature=${doc.feature}`);
+    console.log(
+      `  api_keys ${doc.$id}: provider="${doc.provider}" → "ollama" (mode=${mode}), feature=${doc.feature}`,
+    );
 
     await databases.updateDocument(DB, "api_keys", doc.$id, {
       provider: "ollama",
@@ -85,7 +102,7 @@ async function migrateApiKeys() {
   return updated;
 }
 
-async function updateUserOllamaMode(userId, featureKey, mode) {
+async function updateUserOllamaMode(userId, _featureKey, mode) {
   if (!userId) return;
 
   try {
@@ -100,7 +117,9 @@ async function updateUserOllamaMode(userId, featureKey, mode) {
     let settingsJson = {};
 
     try {
-      settingsJson = settingsDoc.settings_json ? JSON.parse(settingsDoc.settings_json) : {};
+      settingsJson = settingsDoc.settings_json
+        ? JSON.parse(settingsDoc.settings_json)
+        : {};
     } catch {
       // If parsing fails, start fresh
     }
@@ -116,9 +135,13 @@ async function updateUserOllamaMode(userId, featureKey, mode) {
       settings_json: JSON.stringify(settingsJson),
     });
 
-    console.log(`    Updated user_settings ${settingsDoc.$id} for user ${userId}: ollama.mode=${mode}`);
+    console.log(
+      `    Updated user_settings ${settingsDoc.$id} for user ${userId}: ollama.mode=${mode}`,
+    );
   } catch (err) {
-    console.warn(`    Could not update user_settings for user ${userId}: ${err.message}`);
+    console.warn(
+      `    Could not update user_settings for user ${userId}: ${err.message}`,
+    );
   }
 }
 
@@ -136,9 +159,15 @@ async function main() {
   console.log(`feature_config: ${featureConfigUpdated} document(s) updated`);
   console.log(`api_keys: ${apiKeysUpdated} document(s) updated`);
   console.log("");
-  console.log("After this migration, the frontend normalizes all Ollama variants to canonical");
-  console.log("'ollama' on load, and saves with the correct ollama_local/ollama_cloud runtime ID.");
-  console.log("Legacy ollama_local/ollama_cloud entries in feature_config and api_keys are now 'ollama'.");
+  console.log(
+    "After this migration, the frontend normalizes all Ollama variants to canonical",
+  );
+  console.log(
+    "'ollama' on load, and saves with the correct ollama_local/ollama_cloud runtime ID.",
+  );
+  console.log(
+    "Legacy ollama_local/ollama_cloud entries in feature_config and api_keys are now 'ollama'.",
+  );
 }
 
 main().catch((err) => {

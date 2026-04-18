@@ -9,7 +9,7 @@
  */
 
 export interface AppwritePublicConfig {
-  /** Appwrite API endpoint, e.g. https://cloud.appwrite.io/v1 */
+  /** Appwrite API endpoint, e.g. http://localhost:8080/v1 (self-hosted) */
   endpoint: string;
   projectId: string;
 }
@@ -166,9 +166,11 @@ export function getBackendConfig(): BackendConfig {
 
   const functionsBaseUrl = trimTrailingSlash(
     validateString(env.VITE_APPWRITE_FUNCTIONS_BASE_URL) ||
-      validateString(env.VITE_BACKEND_API_BASE_URL)
+      validateString(env.VITE_BACKEND_API_BASE_URL),
   );
-  const functionDomainMap = parseFunctionDomainMap(env.VITE_BACKEND_FUNCTION_DOMAIN_MAP);
+  const functionDomainMap = parseFunctionDomainMap(
+    env.VITE_BACKEND_FUNCTION_DOMAIN_MAP,
+  );
 
   _backendConfig = {
     provider: "appwrite",
@@ -179,7 +181,8 @@ export function getBackendConfig(): BackendConfig {
     capacitor: {
       appId: validateString(env.VITE_CAPACITOR_APP_ID) || "ai.scriptony.app",
       urlScheme: validateString(env.VITE_CAPACITOR_URL_SCHEME) || "scriptony",
-      callbackHost: validateString(env.VITE_CAPACITOR_CALLBACK_HOST) || "auth-callback",
+      callbackHost:
+        validateString(env.VITE_CAPACITOR_CALLBACK_HOST) || "auth-callback",
     },
   };
 
@@ -243,26 +246,25 @@ export const appConfig = getAppConfig();
 export function isBackendConfigured(): boolean {
   return Boolean(
     backendConfig.functionsBaseUrl?.trim() ||
-      Object.keys(backendConfig.functionDomainMap).length > 0
+    Object.keys(backendConfig.functionDomainMap).length > 0,
   );
 }
 
 export function hasFunctionConfigured(functionName: string): boolean {
   return Boolean(
-    backendConfig.functionDomainMap[functionName] || backendConfig.functionsBaseUrl?.trim()
+    backendConfig.functionDomainMap[functionName] ||
+    backendConfig.functionsBaseUrl?.trim(),
   );
 }
 
 if (appConfig.isDevelopment) {
   const missingAppwrite = getMissingAppwriteConfig();
-  /* eslint-disable no-console -- dev-only diagnostics */
   console.log("Environment ready:", {
     functionsBaseUrl: backendConfig.functionsBaseUrl || "(unset)",
     functionDomainMapKeys: Object.keys(backendConfig.functionDomainMap),
     appwriteEndpoint: backendConfig.appwrite?.endpoint || "(unset)",
     missingAppwriteConfig: missingAppwrite,
   });
-  /* eslint-enable no-console */
 
   const ep = backendConfig.appwrite?.endpoint;
   const fb = backendConfig.functionsBaseUrl;
@@ -272,7 +274,7 @@ if (appConfig.isDevelopment) {
       "[Scriptony] VITE_BACKEND_API_BASE_URL (or VITE_APPWRITE_FUNCTIONS_BASE_URL) equals the Appwrite API base. " +
         "The app then requests …/v1/scriptony-projects/… — that path is not served by Appwrite core, and the browser " +
         "preflight often fails (e.g. Authorization not in Access-Control-Allow-Headers). " +
-        "Set VITE_BACKEND_FUNCTION_DOMAIN_MAP (JSON from Console → Functions → Domains) or a gateway base; see docs/DEPLOYMENT.md."
+        "Set VITE_BACKEND_FUNCTION_DOMAIN_MAP (JSON from Console → Functions → Domains) or a gateway base; see docs/DEPLOYMENT.md.",
     );
   }
 }

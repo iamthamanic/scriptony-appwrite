@@ -12,9 +12,10 @@
  */
 
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
+import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..", "..");
@@ -29,23 +30,32 @@ function parseEnv(text) {
     if (i === -1) continue;
     const k = t.slice(0, i).trim();
     let v = t.slice(i + 1).trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
       v = v.slice(1, -1);
+    }
     out[k] = v;
   }
   return out;
 }
 
 function loadServerEnv() {
-  try { return parseEnv(readFileSync(serverEnvPath, "utf8")); }
-  catch { return {}; }
+  try {
+    return parseEnv(readFileSync(serverEnvPath, "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 function parseArgs(argv) {
   const out = {};
   for (let i = 2; i < argv.length; i++) {
     if (argv[i].startsWith("--")) {
-      const key = argv[i].slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      const key = argv[i]
+        .slice(2)
+        .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       out[key] = argv[++i];
     }
   }
@@ -60,7 +70,10 @@ async function tryServerApi(endpoint, projectId, apiKey, functionId, domain) {
   };
 
   // List rules
-  const listRes = await fetch(`${endpoint}/proxy/rules?queries[]=${encodeURIComponent("limit(100)")}`, { headers });
+  const listRes = await fetch(
+    `${endpoint}/proxy/rules?queries[]=${encodeURIComponent("limit(100)")}`,
+    { headers },
+  );
   if (!listRes.ok) return false;
   const listData = await listRes.json();
   const rules = listData.rules || listData.documents || [];
@@ -73,10 +86,14 @@ async function tryServerApi(endpoint, projectId, apiKey, functionId, domain) {
   const createRes = await fetch(`${endpoint}/proxy/rules`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ domain, resourceType: "functions", resourceId: functionId }),
+    body: JSON.stringify({
+      domain,
+      resourceType: "functions",
+      resourceId: functionId,
+    }),
   });
   if (!createRes.ok) return false;
-  const created = await createRes.json();
+  const _created = await createRes.json();
   console.log(`✅ Proxy rule created via API: ${domain} → ${functionId}`);
   return true;
 }
@@ -86,7 +103,7 @@ function tryCli(functionId, domain) {
     // List existing rules via CLI
     const listOut = execSync(
       `npx --yes appwrite-cli proxy list-rules --json 2>/dev/null`,
-      { encoding: "utf8", timeout: 15000 }
+      { encoding: "utf8", timeout: 15000 },
     );
     const rules = JSON.parse(listOut);
     const ruleList = rules.rules || rules.documents || rules || [];
@@ -101,11 +118,11 @@ function tryCli(functionId, domain) {
   try {
     execSync(
       `npx --yes appwrite-cli proxy create-function-rule --function-id "${functionId}" --domain "${domain}" 2>&1`,
-      { encoding: "utf8", timeout: 15000, stdio: "inherit" }
+      { encoding: "utf8", timeout: 15000, stdio: "inherit" },
     );
     console.log(`✅ Proxy rule created via CLI: ${domain} → ${functionId}`);
     return true;
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }
@@ -115,18 +132,31 @@ async function main() {
   const functionId = args.functionId?.trim();
   const domain = args.domain?.trim();
   if (!functionId || !domain) {
-    console.log("Usage: node ensure-function-domain.mjs --function-id <id> --domain <domain>");
+    console.log(
+      "Usage: node ensure-function-domain.mjs --function-id <id> --domain <domain>",
+    );
     process.exit(1);
   }
 
   const env = { ...loadServerEnv(), ...process.env };
-  const endpoint = (env.APPWRITE_ENDPOINT || env.VITE_APPWRITE_ENDPOINT || "").replace(/\/+$/, "");
-  const projectId = env.APPWRITE_PROJECT_ID || env.VITE_APPWRITE_PROJECT_ID || "";
+  const endpoint = (
+    env.APPWRITE_ENDPOINT ||
+    env.VITE_APPWRITE_ENDPOINT ||
+    ""
+  ).replace(/\/+$/, "");
+  const projectId = env.APPWRITE_PROJECT_ID || env.VITE_APPWRITE_PROJECT_ID ||
+    "";
   const apiKey = env.APPWRITE_API_KEY || "";
 
   // Try server API first
   if (endpoint && projectId && apiKey) {
-    const ok = await tryServerApi(endpoint, projectId, apiKey, functionId, domain);
+    const ok = await tryServerApi(
+      endpoint,
+      projectId,
+      apiKey,
+      functionId,
+      domain,
+    );
     if (ok) return;
     console.log("Server API lacks proxy scope, falling back to CLI…");
   }
@@ -140,8 +170,12 @@ async function main() {
   console.log("⚠️  Could not create proxy rule automatically.");
   console.log("   The API key lacks `rules.read/rules.write` scopes.");
   console.log("");
-  console.log("   Fix option A: Create an API key with Proxy scope in the Appwrite Console:");
-  console.log("     → https://appwrite.scriptony.raccoova.com/console/api-keys");
+  console.log(
+    "   Fix option A: Create an API key with Proxy scope in the Appwrite Console:",
+  );
+  console.log(
+    "     → https://appwrite.scriptony.raccoova.com/console/api-keys",
+  );
   console.log("     → Add scopes: proxy:read, proxy:write");
   console.log("     → Set it as APPWRITE_API_KEY in .env.server.local");
   console.log("");
@@ -153,4 +187,7 @@ async function main() {
   process.exit(1);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

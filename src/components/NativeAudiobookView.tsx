@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
-import { getActs, getAllSequencesByProject, getAllScenesByProject } from '../lib/api/timeline-api';
-import { useAuth } from '../hooks/useAuth';
-import type { TimelineData } from './FilmDropdown';
+import { useEffect, useState } from "react";
+import {
+  getActs,
+  getAllSequencesByProject,
+  getAllScenesByProject,
+} from "../lib/api/timeline-api";
+import { useAuth } from "../hooks/useAuth";
+import type { TimelineData } from "./FilmDropdown";
 
 /**
  * 🎙️ NATIVE AUDIOBOOK VIEW
- * 
+ *
  * Zeigt Hörbuch-Projekte im professionellen Hörbuch-Skriptformat nach Industrie-Standard:
  * - Sprecher-Namen fett und links
  * - Dialog/Narration klar formatiert
@@ -13,7 +17,7 @@ import type { TimelineData } from './FilmDropdown';
  * - Sound-Effekte in GROSSBUCHSTABEN
  * - Pausen und Timing-Marker
  * - Kapitel-Marker für Audio-Schnitt
- * 
+ *
  * Standards basierend auf:
  * - ACX (Audiobook Creation Exchange) guidelines
  * - Professional audiobook narration scripts
@@ -40,25 +44,29 @@ interface Section {
 
 // Helper to extract text from TipTap JSON
 const extractTextFromTiptap = (node: any): string => {
-  let text = '';
-  
+  let text = "";
+
   if (node.text) {
     text += node.text;
   }
-  
+
   if (node.content && Array.isArray(node.content)) {
     for (const child of node.content) {
       text += extractTextFromTiptap(child);
-      if (child.type === 'paragraph') {
-        text += '\n\n';
+      if (child.type === "paragraph") {
+        text += "\n\n";
       }
     }
   }
-  
+
   return text;
 };
 
-export function NativeAudiobookView({ projectId, projectType, initialData }: NativeAudiobookViewProps) {
+export function NativeAudiobookView({
+  projectId,
+  projectType,
+  initialData,
+}: NativeAudiobookViewProps) {
   const { getAccessToken } = useAuth();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,70 +79,80 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
   const loadAudiobookData = async () => {
     try {
       setLoading(true);
-      
+
       const token = await getAccessToken();
       if (!token) {
-        console.error('[NativeAudiobookView] No auth token');
+        console.error("[NativeAudiobookView] No auth token");
         return;
       }
 
       // Load Acts
       const loadedActs = await getActs(projectId, token);
-      
+
       // Load all sequences and scenes in parallel
       const [allSequences, allScenes] = await Promise.all([
         getAllSequencesByProject(projectId, token).catch(() => []),
         getAllScenesByProject(projectId, token).catch(() => []),
       ]);
-      
+
       // Build chapters structure (same as book)
       const chaptersData: Chapter[] = [];
       let totalWords = 0;
-      
-      loadedActs?.forEach(act => {
-        const actChapters = allSequences?.filter(seq => seq.actId === act.id) || [];
-        
-        actChapters.forEach(chapter => {
-          const chapterSections = allScenes?.filter(scene => scene.sequenceId === chapter.id) || [];
-          
-          const sections: Section[] = chapterSections.map(section => {
-            const content = section.content || section.metadata?.content || section.description || '';
-            
-            let textContent = '';
+
+      loadedActs?.forEach((act) => {
+        const actChapters =
+          allSequences?.filter((seq) => seq.actId === act.id) || [];
+
+        actChapters.forEach((chapter) => {
+          const chapterSections =
+            allScenes?.filter((scene) => scene.sequenceId === chapter.id) || [];
+
+          const sections: Section[] = chapterSections.map((section) => {
+            const content =
+              section.content ||
+              section.metadata?.content ||
+              section.description ||
+              "";
+
+            let textContent: string;
             try {
-              const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
+              const contentObj =
+                typeof content === "string" ? JSON.parse(content) : content;
               textContent = extractTextFromTiptap(contentObj);
             } catch (e) {
-              textContent = typeof content === 'string' ? content : '';
+              textContent = typeof content === "string" ? content : "";
             }
-            
+
             // Count words for duration estimate
-            const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
+            const words = textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0);
             totalWords += words.length;
-            
+
             return {
               id: section.id,
               title: section.title,
               content: textContent,
             };
           });
-          
+
           chaptersData.push({
             id: chapter.id,
-            title: chapter.title ?? '',
+            title: chapter.title ?? "",
             sections,
           });
         });
       });
-      
+
       setChapters(chaptersData);
-      
+
       // Estimate duration: Average narration speed is ~150-160 words per minute
       // We'll use 155 as middle ground
       const durationMinutes = Math.round(totalWords / 155);
       setEstimatedDuration(durationMinutes);
     } catch (error) {
-      console.error('[NativeAudiobookView] Error:', error);
+      console.error("[NativeAudiobookView] Error:", error);
     } finally {
       setLoading(false);
     }
@@ -257,8 +275,12 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
           {chapters.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p className="mb-4">Noch keine Kapitel vorhanden.</p>
-              <p className="text-sm">Erstelle Akte, Kapitel und Abschnitte im Dropdown-View,</p>
-              <p className="text-sm">um sie hier im professionellen Hörbuch-Skript zu sehen.</p>
+              <p className="text-sm">
+                Erstelle Akte, Kapitel und Abschnitte im Dropdown-View,
+              </p>
+              <p className="text-sm">
+                um sie hier im professionellen Hörbuch-Skript zu sehen.
+              </p>
             </div>
           ) : (
             chapters.map((chapter, chapterIndex) => (
@@ -279,32 +301,38 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
                 </div>
 
                 {/* Narrator Label */}
-                <div className="audiobook-narrator">
-                  Erzähler:
-                </div>
+                <div className="audiobook-narrator">Erzähler:</div>
 
                 {/* Sections */}
                 {chapter.sections.map((section, sectionIndex) => (
                   <div key={section.id} className="audiobook-section">
                     {/* Section content as narration */}
-                    {section.content.split(/\n\n+/).filter(p => p.trim()).map((paragraph, idx) => (
-                      <div key={idx}>
-                        <div className="audiobook-text">
-                          {paragraph.trim()}
-                        </div>
-                        
-                        {/* Add pause markers between paragraphs for pacing */}
-                        {idx < section.content.split(/\n\n+/).filter(p => p.trim()).length - 1 && (
-                          <div className="audiobook-pause">
-                            [KURZE PAUSE]
+                    {section.content
+                      .split(/\n\n+/)
+                      .filter((p) => p.trim())
+                      .map((paragraph, idx) => (
+                        <div key={idx}>
+                          <div className="audiobook-text">
+                            {paragraph.trim()}
                           </div>
-                        )}
-                      </div>
-                    ))}
-                    
+
+                          {/* Add pause markers between paragraphs for pacing */}
+                          {idx <
+                            section.content
+                              .split(/\n\n+/)
+                              .filter((p) => p.trim()).length -
+                              1 && (
+                            <div className="audiobook-pause">[KURZE PAUSE]</div>
+                          )}
+                        </div>
+                      ))}
+
                     {/* Section break marker */}
                     {sectionIndex < chapter.sections.length - 1 && (
-                      <div className="audiobook-pause" style={{ marginTop: '1.5em' }}>
+                      <div
+                        className="audiobook-pause"
+                        style={{ marginTop: "1.5em" }}
+                      >
                         [BEAT - Abschnittswechsel]
                       </div>
                     )}
@@ -312,7 +340,7 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
                 ))}
 
                 {/* Chapter end marker */}
-                <div className="audiobook-pause" style={{ marginTop: '2em' }}>
+                <div className="audiobook-pause" style={{ marginTop: "2em" }}>
                   [LÄNGERE PAUSE - Ende Kapitel {chapterIndex + 1}]
                 </div>
               </div>
@@ -321,9 +349,19 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
 
           {/* Example sound effect notation (for reference) */}
           {chapters.length > 0 && (
-            <div style={{ marginTop: '3em', padding: '1em', background: '#f9fafb', borderRadius: '4px', fontSize: '10pt' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '0.5em' }}>📝 Notations-Hinweise:</div>
-              <ul style={{ marginLeft: '1em', color: '#666' }}>
+            <div
+              style={{
+                marginTop: "3em",
+                padding: "1em",
+                background: "#f9fafb",
+                borderRadius: "4px",
+                fontSize: "10pt",
+              }}
+            >
+              <div style={{ fontWeight: "bold", marginBottom: "0.5em" }}>
+                📝 Notations-Hinweise:
+              </div>
+              <ul style={{ marginLeft: "1em", color: "#666" }}>
                 <li>[SOUND: Türknarren] - Sound-Effekt Notiz</li>
                 <li>[PAUSE] - Kurze Pause (~1 Sekunde)</li>
                 <li>[BEAT] - Sehr kurze Pause für Emphasis</li>
@@ -334,7 +372,7 @@ export function NativeAudiobookView({ projectId, projectType, initialData }: Nat
           )}
         </div>
       </div>
-      
+
       {/* Info Panel */}
       <div className="fixed bottom-4 right-4 bg-white border border-border rounded-lg p-3 shadow-lg text-xs max-w-xs">
         <div className="font-medium mb-1">🎙️ Hörbuch-Skript Standard</div>

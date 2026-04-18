@@ -1,13 +1,12 @@
 /**
- * Plain-text extraction for script import (.txt, .docx, legacy .doc, .pdf).
+ * Plain-text extraction for script import (.txt, .docx, .pdf).
  * Binary formats are isolated here so parsers stay text-only.
  */
 
-import mammoth from 'mammoth';
-import { Buffer } from 'buffer';
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { readFileAsUtf8 } from './file';
+import mammoth from "mammoth";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { readFileAsUtf8 } from "./file";
 
 let pdfWorkerConfigured = false;
 
@@ -20,8 +19,8 @@ function ensurePdfWorker(): void {
 
 function fileExtensionLower(file: File): string {
   const n = file.name.toLowerCase();
-  const dot = n.lastIndexOf('.');
-  return dot >= 0 ? n.slice(dot) : '';
+  const dot = n.lastIndexOf(".");
+  return dot >= 0 ? n.slice(dot) : "";
 }
 
 async function extractDocx(arrayBuffer: ArrayBuffer): Promise<string> {
@@ -38,20 +37,20 @@ const PDF_SPACE_GAP_PT = 2.5;
 function collectPdfTextPieces(items: ReadonlyArray<unknown>): PdfTextPiece[] {
   const out: PdfTextPiece[] = [];
   for (const raw of items) {
-    if (!raw || typeof raw !== 'object') continue;
+    if (!raw || typeof raw !== "object") continue;
     const item = raw as {
       str?: string;
       transform?: number[];
       width?: number;
     };
-    const str = typeof item.str === 'string' ? item.str : '';
+    const str = typeof item.str === "string" ? item.str : "";
     const tr = item.transform;
     if (!str || !Array.isArray(tr) || tr.length < 6) continue;
     const x = Number(tr[4]);
     const y = Number(tr[5]);
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
     const w =
-      typeof item.width === 'number' && Number.isFinite(item.width)
+      typeof item.width === "number" && Number.isFinite(item.width)
         ? item.width
         : Math.max(str.length * 3, 1);
     out.push({ str, x, y, w });
@@ -76,25 +75,22 @@ function pdfTextPiecesToLines(pieces: PdfTextPiece[]): string[] {
   while (i < sorted.length) {
     const y0 = sorted[i].y;
     const linePieces: PdfTextPiece[] = [];
-    while (
-      i < sorted.length &&
-      Math.abs(sorted[i].y - y0) <= PDF_Y_LINE_TOL
-    ) {
+    while (i < sorted.length && Math.abs(sorted[i].y - y0) <= PDF_Y_LINE_TOL) {
       linePieces.push(sorted[i]);
       i++;
     }
     linePieces.sort((a, b) => a.x - b.x);
-    let line = '';
+    let line = "";
     let prevEnd = -Infinity;
     for (const p of linePieces) {
       const gap = p.x - prevEnd;
       if (prevEnd >= 0 && gap > PDF_SPACE_GAP_PT) {
-        line += /\s$/.test(line) || /^\s/.test(p.str) ? '' : ' ';
+        line += /\s$/.test(line) || /^\s/.test(p.str) ? "" : " ";
       }
       line += p.str;
       prevEnd = p.x + p.w;
     }
-    const trimmed = line.replace(/\u00a0/g, ' ').trimEnd();
+    const trimmed = line.replace(/\u00a0/g, " ").trimEnd();
     if (trimmed.length > 0) lines.push(trimmed);
   }
   return lines;
@@ -112,34 +108,18 @@ async function extractPdf(arrayBuffer: ArrayBuffer): Promise<string> {
       const content = await page.getTextContent();
       const pieces = collectPdfTextPieces(content.items);
       const lines = pdfTextPiecesToLines(pieces);
-      if (lines.length > 0) pageBlocks.push(lines.join('\n'));
+      if (lines.length > 0) pageBlocks.push(lines.join("\n"));
     }
-    return pageBlocks.join('\n\n').replace(/\u00a0/g, ' ').trim();
+    return pageBlocks
+      .join("\n\n")
+      .replace(/\u00a0/g, " ")
+      .trim();
   } finally {
     await pdf.destroy().catch(() => undefined);
   }
 }
 
-async function extractLegacyDoc(arrayBuffer: ArrayBuffer): Promise<string> {
-  try {
-    const [cfbMod, docCodec, txtCodec] = await Promise.all([
-      import('cfb'),
-      import('word/dist/cjs/codecs/DOC/index.js'),
-      import('word/dist/cjs/codecs/TXT/index.js'),
-    ]);
-    const buf = Buffer.from(arrayBuffer);
-    const file = cfbMod.read(buf, { type: 'buffer' });
-    const doc = docCodec.parse_cfb(file);
-    return txtCodec.write_str(doc).trim();
-  } catch (err) {
-    console.warn('[script-import] .doc extract failed', err);
-    throw new Error(
-      'Word-.doc konnte nicht gelesen werden (Format beschädigt oder nicht unterstützt). Bitte als .docx speichern und erneut importieren.'
-    );
-  }
-}
-
-const TEXT_EXTENSIONS = new Set(['.txt', '.fountain', '.md']);
+const TEXT_EXTENSIONS = new Set([".txt", ".fountain", ".md"]);
 
 /**
  * Read file and return UTF-8 plain text for downstream Fountain/book parsers.
@@ -151,19 +131,15 @@ export async function extractPlainTextForImport(file: File): Promise<string> {
     return readFileAsUtf8(file);
   }
 
-  if (ext === '.docx') {
+  if (ext === ".docx") {
     return extractDocx(await file.arrayBuffer());
   }
 
-  if (ext === '.doc') {
-    return extractLegacyDoc(await file.arrayBuffer());
-  }
-
-  if (ext === '.pdf' || file.type === 'application/pdf') {
+  if (ext === ".pdf" || file.type === "application/pdf") {
     return extractPdf(await file.arrayBuffer());
   }
 
   throw new Error(
-    `Nicht unterstütztes Format (${ext || 'ohne Endung'}). Erlaubt: .txt, .fountain, .md, .doc, .docx, .pdf`
+    `Nicht unterstütztes Format (${ext || "ohne Endung"}). Erlaubt: .txt, .fountain, .md, .docx, .pdf`,
   );
 }

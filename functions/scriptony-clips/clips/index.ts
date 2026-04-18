@@ -6,25 +6,33 @@ import { Query } from "node-appwrite";
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
   getQuery,
-  getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { C, createDocument, deleteDocument, listDocumentsFull, updateDocument } from "../../_shared/appwrite-db";
+import {
+  C,
+  createDocument,
+  listDocumentsFull,
+} from "../../_shared/appwrite-db";
 import { mapClip } from "../../_shared/clips-map";
 import { getShotById } from "../../_shared/timeline";
-import { getAccessibleProject, getUserOrganizationIds } from "../../_shared/scriptony";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../_shared/scriptony";
 
 const MIN_CLIP_DURATION_SEC = 1;
 
-function clipPayloadFromBody(body: Record<string, unknown>): Record<string, unknown> | null {
+function clipPayloadFromBody(
+  body: Record<string, unknown>,
+): Record<string, unknown> | null {
   const projectId = (body.project_id ?? body.projectId) as string | undefined;
   const shotId = (body.shot_id ?? body.shotId) as string | undefined;
   const sceneId = (body.scene_id ?? body.sceneId) as string | undefined;
@@ -36,7 +44,11 @@ function clipPayloadFromBody(body: Record<string, unknown>): Record<string, unkn
   if (!projectId?.trim() || !shotId?.trim() || !sceneId?.trim()) {
     return null;
   }
-  if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || endSec - startSec < MIN_CLIP_DURATION_SEC) {
+  if (
+    !Number.isFinite(startSec) ||
+    !Number.isFinite(endSec) ||
+    endSec - startSec < MIN_CLIP_DURATION_SEC
+  ) {
     return null;
   }
 
@@ -46,19 +58,30 @@ function clipPayloadFromBody(body: Record<string, unknown>): Record<string, unkn
     scene_id: sceneId.trim(),
     start_sec: startSec,
     end_sec: endSec,
-    lane_index: typeof laneIndex === "number" ? laneIndex : parseInt(String(laneIndex ?? 0), 10) || 0,
-    order_index: typeof orderIndex === "number" ? orderIndex : parseInt(String(orderIndex ?? 0), 10) || 0,
+    lane_index: typeof laneIndex === "number"
+      ? laneIndex
+      : parseInt(String(laneIndex ?? 0), 10) || 0,
+    order_index: typeof orderIndex === "number"
+      ? orderIndex
+      : parseInt(String(orderIndex ?? 0), 10) || 0,
   };
 
   const si = body.source_in_sec ?? body.sourceInSec;
   const so = body.source_out_sec ?? body.sourceOutSec;
-  if (si !== undefined && si !== null && Number.isFinite(Number(si))) out.source_in_sec = Number(si);
-  if (so !== undefined && so !== null && Number.isFinite(Number(so))) out.source_out_sec = Number(so);
+  if (si !== undefined && si !== null && Number.isFinite(Number(si))) {
+    out.source_in_sec = Number(si);
+  }
+  if (so !== undefined && so !== null && Number.isFinite(Number(so))) {
+    out.source_out_sec = Number(so);
+  }
 
   return out;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -69,16 +92,23 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId = getQuery(req, "project_id") ||
+        getQuery(req, "projectId");
       const shotId = getQuery(req, "shot_id") || getQuery(req, "shotId");
 
       if (projectId) {
-        const project = await getAccessibleProject(projectId, bootstrap.user.id, organizationIds);
+        const project = await getAccessibleProject(
+          projectId,
+          bootstrap.user.id,
+          organizationIds,
+        );
         if (!project) {
           sendNotFound(res, "Project not found");
           return;
         }
-        const rows = await listDocumentsFull(C.clips, [Query.equal("project_id", projectId)]);
+        const rows = await listDocumentsFull(C.clips, [
+          Query.equal("project_id", projectId),
+        ]);
         sendJson(res, 200, { clips: rows.map(mapClip) });
         return;
       }
@@ -89,12 +119,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           sendNotFound(res, "Shot not found");
           return;
         }
-        const project = await getAccessibleProject(String(shot.project_id), bootstrap.user.id, organizationIds);
+        const project = await getAccessibleProject(
+          String(shot.project_id),
+          bootstrap.user.id,
+          organizationIds,
+        );
         if (!project) {
           sendNotFound(res, "Project not found");
           return;
         }
-        const rows = await listDocumentsFull(C.clips, [Query.equal("shot_id", shotId)]);
+        const rows = await listDocumentsFull(C.clips, [
+          Query.equal("shot_id", shotId),
+        ]);
         sendJson(res, 200, { clips: rows.map(mapClip) });
         return;
       }
@@ -109,13 +145,19 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       if (!payload) {
         sendBadRequest(
           res,
-          "project_id, shot_id, scene_id, start_sec, end_sec required; duration must be >= " + MIN_CLIP_DURATION_SEC + "s"
+          "project_id, shot_id, scene_id, start_sec, end_sec required; duration must be >= " +
+            MIN_CLIP_DURATION_SEC +
+            "s",
         );
         return;
       }
 
       const projectId = payload.project_id as string;
-      const project = await getAccessibleProject(projectId, bootstrap.user.id, organizationIds);
+      const project = await getAccessibleProject(
+        projectId,
+        bootstrap.user.id,
+        organizationIds,
+      );
       if (!project) {
         sendNotFound(res, "Project not found");
         return;
@@ -136,7 +178,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         Query.equal("shot_id", payload.shot_id as string),
       ]);
       if (dup.length > 0) {
-        sendBadRequest(res, "A clip already exists for this shot (Phase 1: one editorial clip per shot)");
+        sendBadRequest(
+          res,
+          "A clip already exists for this shot (Phase 1: one editorial clip per shot)",
+        );
         return;
       }
 

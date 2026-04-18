@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "../../hooks/useRouter";
-import { CreativeGymAppWithProvider } from "../../modules/creative-gym";
+import { CreativeGymAppWithProvider } from "../../modules/creative-gym/presentation/CreativeGymApp";
 import { ChatSettingsDialog } from "../ChatSettingsDialog";
 
 export function CreativeGymPage() {
@@ -32,7 +32,10 @@ export function CreativeGymPage() {
         navigate={navigate}
         onOpenAiSettings={() => setAiSettingsOpen(true)}
       />
-      <ChatSettingsDialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen} />
+      <ChatSettingsDialog
+        open={aiSettingsOpen}
+        onOpenChange={setAiSettingsOpen}
+      />
     </>
   );
 }

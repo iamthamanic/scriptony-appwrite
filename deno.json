@@ -1,0 +1,11 @@
+{
+  "fmt": {
+    "include": ["functions/"]
+  },
+  "lint": {
+    "include": ["functions/"],
+    "rules": {
+      "exclude": ["no-explicit-any", "require-await"]
+    }
+  }
+}

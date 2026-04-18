@@ -15,7 +15,6 @@ import { ID } from "node-appwrite";
 import {
   C,
   createDocument,
-  getDocument,
   listDocumentsFull,
   updateDocument,
 } from "../_shared/appwrite-db";
@@ -47,18 +46,23 @@ export type Stage3dDocumentApi = {
 // ---------------------------------------------------------------------------
 
 /** View state must be valid JSON and under 64 KB. */
-export const viewStateSchema = z.string()
+export const viewStateSchema = z
+  .string()
   .refine(
     (val) => {
       if (val === null || val === undefined) return true;
-      try { JSON.parse(val as string); return true; } catch { return false; }
+      try {
+        JSON.parse(val as string);
+        return true;
+      } catch {
+        return false;
+      }
     },
-    { message: "viewState must be valid JSON" }
+    { message: "viewState must be valid JSON" },
   )
-  .refine(
-    (val) => val === null || val === undefined || val.length <= 65536,
-    { message: "viewState must be at most 64 KB" }
-  )
+  .refine((val) => val === null || val === undefined || val.length <= 65536, {
+    message: "viewState must be at most 64 KB",
+  })
   .nullable()
   .optional();
 
@@ -70,7 +74,9 @@ export const updateViewStateBodySchema = z.object({
 // Row → API
 // ---------------------------------------------------------------------------
 
-export function stage3dDocumentRowToApi(row: Stage3dDocumentRow): Stage3dDocumentApi {
+export function stage3dDocumentRowToApi(
+  row: Stage3dDocumentRow,
+): Stage3dDocumentApi {
   return {
     id: String(row.id ?? row.$id ?? ""),
     shotId: toString(row.shotId),
@@ -79,7 +85,9 @@ export function stage3dDocumentRowToApi(row: Stage3dDocumentRow): Stage3dDocumen
     viewState: toStringOrNull(row.viewState),
     glbPreviewFileId: toStringOrNull(row.glbPreviewFileId),
     lastSyncedAt: toStringOrNull(row.lastSyncedAt),
-    updatedAt: toString(row.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
+    updatedAt: toString(
+      row.updatedAt ?? row.updated_at ?? row.created_at ?? "",
+    ),
   };
 }
 
@@ -87,7 +95,9 @@ export function stage3dDocumentRowToApi(row: Stage3dDocumentRow): Stage3dDocumen
 // Document CRUD
 // ---------------------------------------------------------------------------
 
-export async function getStage3dDocument(shotId: string): Promise<Stage3dDocumentRow | null> {
+export async function getStage3dDocument(
+  shotId: string,
+): Promise<Stage3dDocumentRow | null> {
   const { Query } = await import("node-appwrite");
   const rows = await listDocumentsFull(C.stageDocuments, [
     Query.equal("shotId", shotId),
@@ -105,7 +115,7 @@ export async function getStage3dDocument(shotId: string): Promise<Stage3dDocumen
  */
 export async function getOrCreateStage3dDocument(
   userId: string,
-  shotId: string
+  shotId: string,
 ): Promise<Stage3dDocumentApi> {
   const existing = await getStage3dDocument(shotId);
   if (existing) return stage3dDocumentRowToApi(existing);
@@ -126,7 +136,11 @@ export async function getOrCreateStage3dDocument(
     // Race condition: another request created the document concurrently.
     // Re-read instead of crashing.
     const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes("unique") || msg.includes("already exists") || msg.includes("conflict")) {
+    if (
+      msg.includes("unique") ||
+      msg.includes("already exists") ||
+      msg.includes("conflict")
+    ) {
       const retry = await getStage3dDocument(shotId);
       if (retry) return stage3dDocumentRowToApi(retry);
     }
@@ -139,7 +153,9 @@ export async function getOrCreateStage3dDocument(
  * between our read and our write.
  */
 export class ConflictError extends Error {
-  constructor(message = "Document was modified by a concurrent request — retry") {
+  constructor(
+    message = "Document was modified by a concurrent request — retry",
+  ) {
     super(message);
     this.name = "ConflictError";
   }
@@ -149,11 +165,13 @@ export async function updateStage3dViewState(
   shotId: string,
   patch: {
     viewState?: string | null;
-  }
+  },
 ): Promise<Stage3dDocumentApi> {
   const doc = await getStage3dDocument(shotId);
   if (!doc) {
-    throw new Error("Stage3D document not found for shot — call GET /stage3d/documents/:shotId first");
+    throw new Error(
+      "Stage3D document not found for shot — call GET /stage3d/documents/:shotId first",
+    );
   }
 
   const writeTimestamp = new Date().toISOString();
@@ -165,7 +183,10 @@ export async function updateStage3dViewState(
   // Optimistic lock verification: re-read and confirm our write stuck.
   // If another request overwrote it, the updatedAt won't match.
   const verify = await getStage3dDocument(shotId);
-  if (verify && String(verify.updatedAt ?? verify.updated_at) !== writeTimestamp) {
+  if (
+    verify &&
+    String(verify.updatedAt ?? verify.updated_at) !== writeTimestamp
+  ) {
     throw new ConflictError();
   }
 

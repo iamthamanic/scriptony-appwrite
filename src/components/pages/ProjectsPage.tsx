@@ -1,42 +1,125 @@
-import { useState, useRef, useEffect, useMemo, useId, useCallback } from "react";
-import { Film, Plus, ChevronRight, ArrowLeft, Upload, X, Info, Search, Calendar as CalendarIcon, Camera, Edit2, Save, GripVertical, Image as ImageIcon, AtSign, Globe, ChevronDown, User, Trash2, AlertTriangle, Loader2, List, MoreVertical, Copy, BarChart3, ChevronUp, Tv, Book, Headphones, Layers, Clock, Share2, Download } from "lucide-react";
-import { DndProvider, useDrag, useDrop, type DropTargetMonitor } from "react-dnd";
+import {
+  Suspense,
+  lazy,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useId,
+  useCallback,
+} from "react";
+import {
+  Film,
+  Plus,
+  ChevronRight,
+  ArrowLeft,
+  Upload,
+  X,
+  Info,
+  Search,
+  Calendar as CalendarIcon,
+  Camera,
+  Edit2,
+  Save,
+  GripVertical,
+  Image as ImageIcon,
+  AtSign,
+  Globe,
+  ChevronDown,
+  User,
+  Trash2,
+  AlertTriangle,
+  Loader2,
+  List,
+  MoreVertical,
+  Copy,
+  BarChart3,
+  ChevronUp,
+  Tv,
+  Book,
+  Headphones,
+  Layers,
+  Clock,
+  Share2,
+  Download,
+} from "lucide-react";
+import {
+  DndProvider,
+  useDrag,
+  useDrop,
+  type DropTargetMonitor,
+} from "react-dnd";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { SceneCharacterBadge } from "../SceneCharacterBadge";
 import { WorldReferenceAutocomplete } from "../WorldReferenceAutocomplete";
 import { useColoredTags } from "../hooks/useColoredTags";
 import { useBeats } from "../../hooks/useBeats";
-import { ImageCropDialog } from "../ImageCropDialog";
 import { LoadingSpinner } from "../LoadingSpinner";
-import { FilmDropdown } from "../FilmDropdown";
-import { StructureBeatsSection } from "../StructureBeatsSection";
-import { ProjectStatsLogsDialog } from "../ProjectStatsLogsDialogEnhanced";
-import { ProjectExportDialog } from "../ProjectExportDialog";
-import { StyleGuideSection } from "../style-guide/StyleGuideSection";
 import type { StyleGuideData } from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { ProjectCarousel } from "../ProjectCarousel";
-import { ProjectDebugger } from "../ProjectDebugger";
 import { ProjectSectionFrame } from "../ProjectSectionFrame";
 import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
 import { toast } from "sonner@2.0.3";
-import { deleteCharacter as deleteCharacterApi, getCharacters, createCharacter as createCharacterApi, updateCharacter as updateCharacterApi } from "../../lib/api/characters-api";
+import {
+  deleteCharacter as deleteCharacterApi,
+  getCharacters,
+  createCharacter as createCharacterApi,
+  updateCharacter as updateCharacterApi,
+} from "../../lib/api/characters-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import {
   validateImageFile,
@@ -45,13 +128,12 @@ import {
 } from "../../lib/api/image-upload-api";
 import { startBackgroundUpload } from "../../lib/background-upload";
 import { STORAGE_CONFIG } from "../../lib/config";
-import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
 import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
 import { apiPost } from "../../lib/api-client";
-import { CoverActionModal } from "../ai/CoverActionModal";
-import { CoverGenerateModal } from "../ai/CoverGenerateModal";
-import { AssistantParticleLoader } from "../ai/AssistantParticleLoader";
-import { buildProjectCoverPrompt, type CoverVisualStyle } from "../../lib/cover-prompt";
+import {
+  buildProjectCoverPrompt,
+  type CoverVisualStyle,
+} from "../../lib/cover-prompt";
 import { applyScriptonyWatermarkToImageBase64 } from "../../lib/cover-watermark";
 import scriptonyLogo from "../../assets/scriptony-logo.png";
 import * as ShotsAPI from "../../lib/api/shots-api";
@@ -59,12 +141,18 @@ import { narrativeStructureToInitializeProjectPayload } from "../../lib/narrativ
 import { wipeProjectTimelineForNarrativeReplace } from "../../lib/timeline-narrative-replace";
 import { queryClient, queryKeys } from "../../lib/react-query";
 import { cacheManager } from "../../lib/cache-manager";
-import { prefetchProjectTimeline, setProjectTimelineCache } from "../../hooks/useProjectTimeline";
+import {
+  prefetchProjectTimeline,
+  setProjectTimelineCache,
+} from "../../hooks/useProjectTimeline";
 import type { TimelineData } from "../FilmDropdown";
 import type { BookTimelineData } from "../BookDropdown";
 import { useProjectTimeline } from "../../hooks/useProjectTimeline";
 import { useAuth } from "../../hooks/useAuth";
-import { importScriptFileToProject, SCRIPT_IMPORT_ACCEPT } from "../../lib/script-import";
+import {
+  importScriptFileToProject,
+  SCRIPT_IMPORT_ACCEPT,
+} from "../../lib/script-import";
 import { cn } from "../ui/utils";
 import {
   createDefaultConceptBlocks,
@@ -72,6 +160,52 @@ import {
   type ConceptBlock,
 } from "../../lib/concept-blocks";
 import type { Character } from "../../lib/types";
+
+const StructureBeatsSection = lazy(() =>
+  import("../StructureBeatsSection").then((module) => ({
+    default: module.StructureBeatsSection,
+  })),
+);
+const ProjectStatsLogsDialog = lazy(() =>
+  import("../ProjectStatsLogsDialogEnhanced").then((module) => ({
+    default: module.ProjectStatsLogsDialog,
+  })),
+);
+const ProjectExportDialog = lazy(() =>
+  import("../ProjectExportDialog").then((module) => ({
+    default: module.ProjectExportDialog,
+  })),
+);
+const StyleGuideSection = lazy(() =>
+  import("../style-guide/StyleGuideSection").then((module) => ({
+    default: module.StyleGuideSection,
+  })),
+);
+const ImageCropDialog = lazy(() =>
+  import("../ImageCropDialog").then((module) => ({
+    default: module.ImageCropDialog,
+  })),
+);
+const GifAnimationUploadDialog = lazy(() =>
+  import("../GifAnimationUploadDialog").then((module) => ({
+    default: module.GifAnimationUploadDialog,
+  })),
+);
+const CoverActionModal = lazy(() =>
+  import("../ai/CoverActionModal").then((module) => ({
+    default: module.CoverActionModal,
+  })),
+);
+const CoverGenerateModal = lazy(() =>
+  import("../ai/CoverGenerateModal").then((module) => ({
+    default: module.CoverGenerateModal,
+  })),
+);
+const AssistantParticleLoader = lazy(() =>
+  import("../ai/AssistantParticleLoader").then((module) => ({
+    default: module.AssistantParticleLoader,
+  })),
+);
 
 /** Preset genres for new/edit project picker; custom labels are stored in the same comma-separated `genre` field. */
 export const PROJECT_PRESET_GENRES = [
@@ -89,11 +223,16 @@ export const PROJECT_PRESET_GENRES = [
   "Thriller",
 ] as const;
 
-const PROJECT_PRESET_GENRE_SET = new Set<string>(PROJECT_PRESET_GENRES as unknown as string[]);
+const PROJECT_PRESET_GENRE_SET = new Set<string>(
+  PROJECT_PRESET_GENRES as unknown as string[],
+);
 
 function parseProjectGenreField(genre: string | undefined): string[] {
   if (!genre?.trim()) return [];
-  return genre.split(", ").map((s) => s.trim()).filter(Boolean);
+  return genre
+    .split(", ")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function customGenresFromSelection(genres: string[]): string[] {
@@ -114,7 +253,9 @@ function getProjectLastEditedAt(project: any): string | null {
 }
 
 /** Gesamtminuten aus gespeichertem `project.duration` (Zahl oder Text). */
-function parseStoredDurationMinutes(raw: string | number | undefined | null): number {
+function parseStoredDurationMinutes(
+  raw: string | number | undefined | null,
+): number {
   if (raw == null || raw === "") return 0;
   const s = String(raw).trim();
   const m = s.match(/(\d+(?:[.,]\d+)?)/);
@@ -124,7 +265,10 @@ function parseStoredDurationMinutes(raw: string | number | undefined | null): nu
   return Math.round(n);
 }
 
-function splitTotalMinutesToHoursMinutesStrings(total: number): { h: string; m: string } {
+function splitTotalMinutesToHoursMinutesStrings(total: number): {
+  h: string;
+  m: string;
+} {
   if (!Number.isFinite(total) || total <= 0) return { h: "", m: "" };
   const hh = Math.floor(total / 60);
   const mm = total % 60;
@@ -133,8 +277,14 @@ function splitTotalMinutesToHoursMinutesStrings(total: number): { h: string; m: 
 
 /** Stunden + Minuten → Gesamtminuten (Minutenfeld darf z. B. 90 sein wenn Std. leer). */
 function totalMinutesFromHourMinuteParts(h: string, m: string): number {
-  const hi = Math.max(0, Math.floor(parseFloat(String(h || "").replace(",", ".") || "0") || 0));
-  const mi = Math.max(0, Math.floor(parseFloat(String(m || "").replace(",", ".") || "0") || 0));
+  const hi = Math.max(
+    0,
+    Math.floor(parseFloat(String(h || "").replace(",", ".") || "0") || 0),
+  );
+  const mi = Math.max(
+    0,
+    Math.floor(parseFloat(String(m || "").replace(",", ".") || "0") || 0),
+  );
   return hi * 60 + mi;
 }
 
@@ -183,7 +333,7 @@ function GenrePillGrid({
 
   const toggle = (genre: string) => {
     onSelectedChange((prev) =>
-      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre],
     );
   };
 
@@ -217,7 +367,7 @@ function GenrePillGrid({
             pillBase,
             selected.includes(genre)
               ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background border-border hover:border-primary/50"
+              : "bg-background border-border hover:border-primary/50",
           )}
         >
           {genre}
@@ -229,7 +379,7 @@ function GenrePillGrid({
             type="button"
             className={cn(
               pillBase,
-              "border-dashed bg-background border-border hover:border-primary/50 inline-flex items-center justify-center min-w-[2.5rem]"
+              "border-dashed bg-background border-border hover:border-primary/50 inline-flex items-center justify-center min-w-[2.5rem]",
             )}
             aria-label="Eigenes Genre hinzufügen"
           >
@@ -252,7 +402,12 @@ function GenrePillGrid({
                 }
               }}
             />
-            <Button type="button" size="sm" className="w-full" onClick={addCustom}>
+            <Button
+              type="button"
+              size="sm"
+              className="w-full"
+              onClick={addCustom}
+            >
               Hinzufügen
             </Button>
           </div>
@@ -290,7 +445,12 @@ const getProjectTypeInfo = (rawType: string) => {
     book: { label: "Buch", Icon: Book },
     audio: { label: "Hörspiel", Icon: Headphones },
   };
-  return typeMap[key] || { label: rawType?.charAt(0).toUpperCase() + rawType?.slice(1), Icon: Film };
+  return (
+    typeMap[key] || {
+      label: rawType?.charAt(0).toUpperCase() + rawType?.slice(1),
+      Icon: Film,
+    }
+  );
 };
 
 /** API uses `world_id`; UI expects `linkedWorldId` (ProjectDetail, WB). */
@@ -313,16 +473,25 @@ function ProjectInfoSectionTitle({ projectType }: { projectType: string }) {
   );
 }
 
-export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProps) {
+export function ProjectsPage({
+  selectedProjectId,
+  onNavigate,
+}: ProjectsPageProps) {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [selectedProject, setSelectedProject] = useState(selectedProjectId);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [newProjectCustomGenres, setNewProjectCustomGenres] = useState<string[]>([]);
-  const [projectInspirationNotes, setProjectInspirationNotes] = useState<string[]>([""]); // Renamed to avoid conflict
+  const [newProjectCustomGenres, setNewProjectCustomGenres] = useState<
+    string[]
+  >([]);
+  const [projectInspirationNotes, setProjectInspirationNotes] = useState<
+    string[]
+  >([""]); // Renamed to avoid conflict
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [projectCoverImages, setProjectCoverImages] = useState<Record<string, string>>({});
+  const [projectCoverImages, setProjectCoverImages] = useState<
+    Record<string, string>
+  >({});
   const [viewMode, setViewMode] = useState<"carousel" | "list">(() => {
     // 💾 Load from localStorage, fallback to desktop default "list", mobile default "carousel"
     const saved = localStorage.getItem("scriptony_projects_view_mode");
@@ -331,7 +500,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     return window.innerWidth >= 768 ? "list" : "carousel";
   });
   const [typeFilter, setTypeFilter] = useState<string | null>(null); // Filter by project type
-  
+
   // API State
   const [projects, setProjects] = useState<any[]>([]);
   const [worlds, setWorlds] = useState<any[]>([]);
@@ -341,49 +510,75 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   const [newProjectType, setNewProjectType] = useState("film");
   const [newProjectLogline, setNewProjectLogline] = useState("");
   const [newProjectDurationHours, setNewProjectDurationHours] = useState("");
-  const [newProjectDurationMinutes, setNewProjectDurationMinutes] = useState("");
-  const [newProjectLinkedWorld, setNewProjectLinkedWorld] = useState<string | undefined>();
-  const [newProjectCoverImage, setNewProjectCoverImage] = useState<string | undefined>();
-  const [newProjectCoverFile, setNewProjectCoverFile] = useState<File | undefined>();
-  const newProjectCoverGifModeRef = useRef<ImageUploadGifMode | undefined>(undefined);
-  const [gifPendingNewProjectCover, setGifPendingNewProjectCover] = useState<File | null>(null);
+  const [newProjectDurationMinutes, setNewProjectDurationMinutes] =
+    useState("");
+  const [newProjectLinkedWorld, setNewProjectLinkedWorld] = useState<
+    string | undefined
+  >();
+  const [newProjectCoverImage, setNewProjectCoverImage] = useState<
+    string | undefined
+  >();
+  const [newProjectCoverFile, setNewProjectCoverFile] = useState<
+    File | undefined
+  >();
+  const newProjectCoverGifModeRef = useRef<ImageUploadGifMode | undefined>(
+    undefined,
+  );
+  const [gifPendingNewProjectCover, setGifPendingNewProjectCover] =
+    useState<File | null>(null);
   // Cover upload runs in background — no local loading state
   const newProjectCoverInputRef = useRef<HTMLInputElement>(null);
   const newProjectScriptImportInputRef = useRef<HTMLInputElement>(null);
-  const [newProjectScriptImportFile, setNewProjectScriptImportFile] = useState<File | null>(null);
-  
+  const [newProjectScriptImportFile, setNewProjectScriptImportFile] =
+    useState<File | null>(null);
+
   // 🎬 NEW: Narrative Structure & Beat Template States (Create Dialog)
-  const [newProjectNarrativeStructure, setNewProjectNarrativeStructure] = useState<string>("");
-  const [newProjectBeatTemplate, setNewProjectBeatTemplate] = useState<string>("");
-  const [customNarrativeStructure, setCustomNarrativeStructure] = useState<string>("");
+  const [newProjectNarrativeStructure, setNewProjectNarrativeStructure] =
+    useState<string>("");
+  const [newProjectBeatTemplate, setNewProjectBeatTemplate] =
+    useState<string>("");
+  const [customNarrativeStructure, setCustomNarrativeStructure] =
+    useState<string>("");
   // 📺 NEW: Episode Layout & Season Engine (Series only)
-  const [newProjectEpisodeLayout, setNewProjectEpisodeLayout] = useState<string>("");
-  const [newProjectSeasonEngine, setNewProjectSeasonEngine] = useState<string>("");
+  const [newProjectEpisodeLayout, setNewProjectEpisodeLayout] =
+    useState<string>("");
+  const [newProjectSeasonEngine, setNewProjectSeasonEngine] =
+    useState<string>("");
   const [customEpisodeLayout, setCustomEpisodeLayout] = useState<string>("");
   const [customSeasonEngine, setCustomSeasonEngine] = useState<string>("");
   const [customBeatTemplate, setCustomBeatTemplate] = useState<string>("");
-  
+
   // 📖 NEW: Book Metrics States (Create Dialog)
-  const [newProjectTargetPages, setNewProjectTargetPages] = useState<string>("");
-  const [newProjectWordsPerPage, setNewProjectWordsPerPage] = useState<string>("250");
-  const [newProjectReadingSpeed, setNewProjectReadingSpeed] = useState<string>("230");
-  
+  const [newProjectTargetPages, setNewProjectTargetPages] =
+    useState<string>("");
+  const [newProjectWordsPerPage, setNewProjectWordsPerPage] =
+    useState<string>("250");
+  const [newProjectReadingSpeed, setNewProjectReadingSpeed] =
+    useState<string>("230");
+
   // Delete Project States
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
-  
+
   // Stats & Logs Dialog
   const [showStatsDialog, setShowStatsDialog] = useState(false);
-  const [selectedStatsProject, setSelectedStatsProject] = useState<any | null>(null);
+  const [selectedStatsProject, setSelectedStatsProject] = useState<any | null>(
+    null,
+  );
 
   const [projectExportOpen, setProjectExportOpen] = useState(false);
-  const [projectExportSnapshot, setProjectExportSnapshot] = useState<Record<string, unknown> | null>(null);
-  const [projectExportWorldLabel, setProjectExportWorldLabel] = useState<string | null>(null);
+  const [projectExportSnapshot, setProjectExportSnapshot] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [projectExportWorldLabel, setProjectExportWorldLabel] = useState<
+    string | null
+  >(null);
 
   const openProjectExportFromList = (proj: any) => {
     const wl = proj.linkedWorldId
-      ? worlds.find((w: any) => w.id === proj.linkedWorldId)?.name ?? null
+      ? (worlds.find((w: any) => w.id === proj.linkedWorldId)?.name ?? null)
       : null;
     const coverUrl = projectCoverImages[proj.id] || proj.cover_image_url;
     setProjectExportSnapshot({
@@ -432,7 +627,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       console.time(`⏱️ [PERF] Worldbuilding Load: ${selectedProjectId}`);
 
       const project = projects.find(
-        (p) => String(p.id).trim() === String(selectedProjectId).trim()
+        (p) => String(p.id).trim() === String(selectedProjectId).trim(),
       );
       if (project && project.linkedWorldId) {
         loadWorldbuildingItems(project.linkedWorldId);
@@ -453,16 +648,17 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         throw projectsResult.reason;
       }
       const projectsData = projectsResult.value;
-      const worldsData = worldsResult.status === "fulfilled" ? worldsResult.value : [];
-      setProjects(
-        projectsData.map((p: any) => normalizeProjectClient(p))
-      );
+      const worldsData =
+        worldsResult.status === "fulfilled" ? worldsResult.value : [];
+      setProjects(projectsData.map((p: any) => normalizeProjectClient(p)));
       setWorlds(worldsData);
       if (worldsResult.status !== "fulfilled") {
         console.error("Error loading worlds:", worldsResult.reason);
-        toast.error("Welten konnten nicht geladen werden. Projekte werden ohne Weltliste angezeigt.");
+        toast.error(
+          "Welten konnten nicht geladen werden. Projekte werden ohne Weltliste angezeigt.",
+        );
       }
-      
+
       // 📸 Load cover images from DB into state
       const coverImages: Record<string, string> = {};
       projectsData.forEach((project: any) => {
@@ -490,8 +686,14 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     }
   };
 
-  const handleTimelineDataChange = (projectId: string, data: TimelineData | BookTimelineData) => {
-    console.log("[ProjectsPage] Updating React Query timeline cache for project:", projectId);
+  const handleTimelineDataChange = (
+    projectId: string,
+    data: TimelineData | BookTimelineData,
+  ) => {
+    console.log(
+      "[ProjectsPage] Updating React Query timeline cache for project:",
+      projectId,
+    );
     setProjectTimelineCache(queryClient, projectId, data);
   };
 
@@ -519,16 +721,21 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       console.error("[StyleGuide] Error loading:", error);
       setStyleGuide(null);
       const message =
-        error instanceof Error ? error.message || "Style Guide konnte nicht geladen werden" : "Style Guide konnte nicht geladen werden";
+        error instanceof Error
+          ? error.message || "Style Guide konnte nicht geladen werden"
+          : "Style Guide konnte nicht geladen werden";
       setStyleGuideError(message);
       if (
         error instanceof Error &&
-        (error.message.includes("Failed to fetch") || error.message.includes("fetch"))
+        (error.message.includes("Failed to fetch") ||
+          error.message.includes("fetch"))
       ) {
         console.warn(
-          '[StyleGuide] Deploy scriptony-style-guide and add it to VITE_BACKEND_FUNCTION_DOMAIN_MAP; run npm run appwrite:provision:schema for collections.'
+          "[StyleGuide] Deploy scriptony-style-guide and add it to VITE_BACKEND_FUNCTION_DOMAIN_MAP; run npm run appwrite:provision:schema for collections.",
         );
-        toast.error("Style Guide: Backend nicht erreichbar. Prüfe Deployment / .env.");
+        toast.error(
+          "Style Guide: Backend nicht erreichbar. Prüfe Deployment / .env.",
+        );
       } else if (error instanceof Error) {
         toast.error(message);
       }
@@ -552,25 +759,28 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     try {
       // Prepare narrative structure value (handle custom input)
       let narrativeStructureValue = newProjectNarrativeStructure;
-      if (newProjectNarrativeStructure === 'custom' && customNarrativeStructure) {
+      if (
+        newProjectNarrativeStructure === "custom" &&
+        customNarrativeStructure
+      ) {
         narrativeStructureValue = `custom:${customNarrativeStructure}`;
       }
 
       // Prepare episode layout value (handle custom input)
       let episodeLayoutValue = newProjectEpisodeLayout;
-      if (newProjectEpisodeLayout === 'custom' && customEpisodeLayout) {
+      if (newProjectEpisodeLayout === "custom" && customEpisodeLayout) {
         episodeLayoutValue = `custom:${customEpisodeLayout}`;
       }
 
       // Prepare season engine value (handle custom input)
       let seasonEngineValue = newProjectSeasonEngine;
-      if (newProjectSeasonEngine === 'custom' && customSeasonEngine) {
+      if (newProjectSeasonEngine === "custom" && customSeasonEngine) {
         seasonEngineValue = `custom:${customSeasonEngine}`;
       }
 
       // Prepare beat template value (handle custom input)
       let beatTemplateValue = newProjectBeatTemplate;
-      if (newProjectBeatTemplate === 'custom' && customBeatTemplate) {
+      if (newProjectBeatTemplate === "custom" && customBeatTemplate) {
         beatTemplateValue = `custom:${customBeatTemplate}`;
       }
 
@@ -580,20 +790,47 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         logline: newProjectLogline,
         type: newProjectType,
         genre: selectedGenres.join(", "),
-        duration: durationPartsToApiString(newProjectDurationHours, newProjectDurationMinutes),
+        duration: durationPartsToApiString(
+          newProjectDurationHours,
+          newProjectDurationMinutes,
+        ),
         linkedWorldId: newProjectLinkedWorld,
         concept_blocks: createDefaultConceptBlocks(),
         inspirations: projectInspirationNotes,
         // Series: episode_layout + season_engine
-        episode_layout: newProjectType === 'series' ? (episodeLayoutValue || undefined) : undefined,
-        season_engine: newProjectType === 'series' ? (seasonEngineValue || undefined) : undefined,
+        episode_layout:
+          newProjectType === "series"
+            ? episodeLayoutValue || undefined
+            : undefined,
+        season_engine:
+          newProjectType === "series"
+            ? seasonEngineValue || undefined
+            : undefined,
         // Film/Book/Audio: narrative_structure
-        narrative_structure: newProjectType !== 'series' ? (narrativeStructureValue || undefined) : undefined,
+        narrative_structure:
+          newProjectType !== "series"
+            ? narrativeStructureValue || undefined
+            : undefined,
         beat_template: beatTemplateValue || undefined,
         // 📖 Book Metrics
-        target_pages: newProjectType === 'book' ? (newProjectTargetPages ? parseInt(newProjectTargetPages) : undefined) : undefined,
-        words_per_page: newProjectType === 'book' ? (newProjectWordsPerPage ? parseInt(newProjectWordsPerPage) : 250) : undefined,
-        reading_speed_wpm: newProjectType === 'book' ? (newProjectReadingSpeed ? parseInt(newProjectReadingSpeed) : 230) : undefined,
+        target_pages:
+          newProjectType === "book"
+            ? newProjectTargetPages
+              ? parseInt(newProjectTargetPages)
+              : undefined
+            : undefined,
+        words_per_page:
+          newProjectType === "book"
+            ? newProjectWordsPerPage
+              ? parseInt(newProjectWordsPerPage)
+              : 250
+            : undefined,
+        reading_speed_wpm:
+          newProjectType === "book"
+            ? newProjectReadingSpeed
+              ? parseInt(newProjectReadingSpeed)
+              : 230
+            : undefined,
       });
 
       // Upload cover image in background AFTER project creation
@@ -602,10 +839,13 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         const gifMode = newProjectCoverGifModeRef.current;
         startBackgroundUpload({
           file: coverFile,
-          target: { kind: 'project-cover', projectId: project.id },
+          target: { kind: "project-cover", projectId: project.id },
           prepOptions: gifMode ? { gifMode } : undefined,
           onSuccess: (imageUrl) => {
-            setProjectCoverImages(prev => ({ ...prev, [project.id]: imageUrl }));
+            setProjectCoverImages((prev) => ({
+              ...prev,
+              [project.id]: imageUrl,
+            }));
           },
         });
       }
@@ -618,7 +858,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
           const token = await getAuthToken();
           if (token) {
             const scriptImportNsRaw =
-              newProjectType !== "series" ? narrativeStructureValue?.trim() : "";
+              newProjectType !== "series"
+                ? narrativeStructureValue?.trim()
+                : "";
             let scriptImportNs = scriptImportNsRaw || "3-act";
             if (!narrativeStructureToInitializeProjectPayload(scriptImportNs)) {
               scriptImportNs = "3-act";
@@ -626,21 +868,28 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             await ShotsAPI.initializeTimelineStructureFromNarrative(
               project.id,
               token,
-              scriptImportNs
+              scriptImportNs,
             );
-            await importScriptFileToProject(project.id, newProjectType, scriptFileToImport, token);
+            await importScriptFileToProject(
+              project.id,
+              newProjectType,
+              scriptFileToImport,
+              token,
+            );
             toast.success("Skriptstruktur importiert");
           }
         } catch (impErr) {
           console.error("New project script import:", impErr);
           toast.error(
-            impErr instanceof Error ? impErr.message : "Skript-Import fehlgeschlagen"
+            impErr instanceof Error
+              ? impErr.message
+              : "Skript-Import fehlgeschlagen",
           );
         }
       }
-      
+
       setShowNewProjectDialog(false);
-      
+
       // Reset form
       setNewProjectTitle("");
       setNewProjectType("film");
@@ -668,7 +917,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       setNewProjectEpisodeLayout("");
       setNewProjectSeasonEngine("");
       setNewProjectScriptImportFile(null);
-      
+
       toast.success("Projekt erfolgreich erstellt!");
     } catch (error) {
       console.error("Error creating project:", error);
@@ -676,7 +925,10 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     }
   };
 
-  const applyNewProjectCoverSelection = (file: File, gifMode?: ImageUploadGifMode) => {
+  const applyNewProjectCoverSelection = (
+    file: File,
+    gifMode?: ImageUploadGifMode,
+  ) => {
     newProjectCoverGifModeRef.current = gifMode;
     setNewProjectCoverFile(file);
     const reader = new FileReader();
@@ -686,7 +938,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
     reader.readAsDataURL(file);
   };
 
-  const handleNewProjectCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewProjectCoverChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (e.target) e.target.value = "";
     if (!file) return;
@@ -718,16 +972,16 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
 
     try {
       await projectsApi.delete(selectedProject, deletePassword);
-      
+
       // Remove from local state
-      setProjects(projects.filter(p => p.id !== selectedProject));
-      
+      setProjects(projects.filter((p) => p.id !== selectedProject));
+
       // Reset states
       setShowDeleteDialog(false);
       setDeletePassword("");
-      
+
       toast.success("Projekt erfolgreich gelöscht");
-      
+
       // Navigate back to projects list
       onNavigate("projekte");
     } catch (error: any) {
@@ -740,7 +994,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
 
   const handleDuplicateProject = async (projectId: string) => {
     try {
-      const originalProject = projects.find(p => p.id === projectId);
+      const originalProject = projects.find((p) => p.id === projectId);
       if (!originalProject) return;
 
       const dupInspirations = originalProject.inspirations;
@@ -752,26 +1006,44 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         duration: originalProject.duration,
         linkedWorldId: originalProject.linkedWorldId,
         concept_blocks: normalizeConceptBlocks(originalProject.concept_blocks),
-        ...(Array.isArray(dupInspirations) && dupInspirations.some((s: string) => String(s).trim())
+        ...(Array.isArray(dupInspirations) &&
+        dupInspirations.some((s: string) => String(s).trim())
           ? { inspirations: dupInspirations }
           : {}),
         coverImage: projectCoverImages[projectId],
-        episode_layout: originalProject.type === 'series' ? originalProject.episode_layout : undefined,
-        season_engine: originalProject.type === 'series' ? originalProject.season_engine : undefined,
+        episode_layout:
+          originalProject.type === "series"
+            ? originalProject.episode_layout
+            : undefined,
+        season_engine:
+          originalProject.type === "series"
+            ? originalProject.season_engine
+            : undefined,
         narrative_structure:
-          originalProject.type !== 'series' ? originalProject.narrative_structure : undefined,
+          originalProject.type !== "series"
+            ? originalProject.narrative_structure
+            : undefined,
         beat_template: originalProject.beat_template,
-        target_pages: originalProject.type === 'book' ? originalProject.target_pages : undefined,
-        words_per_page: originalProject.type === 'book' ? originalProject.words_per_page : undefined,
-        reading_speed_wpm: originalProject.type === 'book' ? originalProject.reading_speed_wpm : undefined,
+        target_pages:
+          originalProject.type === "book"
+            ? originalProject.target_pages
+            : undefined,
+        words_per_page:
+          originalProject.type === "book"
+            ? originalProject.words_per_page
+            : undefined,
+        reading_speed_wpm:
+          originalProject.type === "book"
+            ? originalProject.reading_speed_wpm
+            : undefined,
       });
 
       setProjects([...projects, normalizeProjectClient(duplicated)]);
-      
+
       if (projectCoverImages[projectId]) {
-        setProjectCoverImages(prev => ({
+        setProjectCoverImages((prev) => ({
           ...prev,
-          [duplicated.id]: projectCoverImages[projectId]
+          [duplicated.id]: projectCoverImages[projectId],
         }));
       }
 
@@ -789,7 +1061,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   };
 
   const [resolvedProject, setResolvedProject] = useState<any | null>(null);
-  const [resolveState, setResolveState] = useState<"idle" | "loading" | "ok" | "fail">("idle");
+  const [resolveState, setResolveState] = useState<
+    "idle" | "loading" | "ok" | "fail"
+  >("idle");
 
   const selectedIdTrim = selectedProjectId?.trim() ?? "";
 
@@ -825,7 +1099,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   }, [selectedIdTrim, projects, loading]);
 
   const currentProject = normalizeProjectClient(
-    projects.find((p) => String(p.id).trim() === selectedIdTrim) ?? resolvedProject ?? null
+    projects.find((p) => String(p.id).trim() === selectedIdTrim) ??
+      resolvedProject ??
+      null,
   );
 
   if (loading) {
@@ -847,8 +1123,12 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   if (selectedProjectId && !currentProject && resolveState === "fail") {
     return (
       <div className="min-h-screen pb-24 flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-muted-foreground text-center">Projekt nicht gefunden oder kein Zugriff.</p>
-        <Button onClick={() => onNavigate("projekte")}>Zurück zur Übersicht</Button>
+        <p className="text-muted-foreground text-center">
+          Projekt nicht gefunden oder kein Zugriff.
+        </p>
+        <Button onClick={() => onNavigate("projekte")}>
+          Zurück zur Übersicht
+        </Button>
       </div>
     );
   }
@@ -856,75 +1136,77 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
   if (selectedProjectId && currentProject) {
     return (
       <>
-      <ProjectDetail 
-        project={currentProject} 
-        worlds={worlds}
-        onBack={() => onNavigate("projekte")}
-        onOpenWorldbuilding={() => onNavigate("worldbuilding")}
-        coverImage={projectCoverImages[currentProject.id]}
-        onCoverImageChange={async (imageUrl) => {
-          // Update local state immediately (optimistic UI)
-          setProjectCoverImages(prev => ({
-            ...prev,
-            [currentProject.id]: imageUrl
-          }));
-          
-          // Update in database
-          try {
-            await projectsApi.update(currentProject.id, { 
-              cover_image_url: imageUrl 
-            });
-          } catch (error) {
-            console.error('Error saving image URL to database:', error);
-            // Note: Toast already shown in handleFileChange
-          }
-        }}
-        worldbuildingItems={worldbuildingItems}
-        onUpdate={loadData}
-        onDelete={handleDeleteProject}
-        showDeleteDialog={showDeleteDialog}
-        setShowDeleteDialog={setShowDeleteDialog}
-        deletePassword={deletePassword}
-        setDeletePassword={setDeletePassword}
-        deleteLoading={deleteLoading}
-        onDuplicate={() => handleDuplicateProject(currentProject.id)}
-        onShowStats={() => {
-          setSelectedStatsProject(currentProject);
-          setShowStatsDialog(true);
-        }}
-        showStatsDialog={showStatsDialog}
-        setShowStatsDialog={setShowStatsDialog}
-        onTimelineDataChange={handleTimelineDataChange}
-        structureOpen={structureOpen}
-        setStructureOpen={setStructureOpen}
-        charactersOpen={charactersOpen}
-        setCharactersOpen={setCharactersOpen}
-        styleGuideOpen={styleGuideOpen}
-        setStyleGuideOpen={setStyleGuideOpen}
-        styleGuide={styleGuide}
-        styleGuideLoading={styleGuideLoading}
-        styleGuideError={styleGuideError}
-        onStyleGuideChange={setStyleGuide}
-        useStyleGuideForCover={useStyleGuideForCover}
-        setUseStyleGuideForCover={setUseStyleGuideForCover}
-        onRequestProjectExport={(snapshot, worldLabel) => {
-          setProjectExportSnapshot(snapshot);
-          setProjectExportWorldLabel(worldLabel);
-          setProjectExportOpen(true);
-        }}
-      />
-      <ProjectExportDialog
-        open={projectExportOpen}
-        onOpenChange={(o) => {
-          setProjectExportOpen(o);
-          if (!o) {
-            setProjectExportSnapshot(null);
-            setProjectExportWorldLabel(null);
-          }
-        }}
-        projectSnapshot={projectExportSnapshot}
-        linkedWorldLabel={projectExportWorldLabel}
-      />
+        <ProjectDetail
+          project={currentProject}
+          worlds={worlds}
+          onBack={() => onNavigate("projekte")}
+          onOpenWorldbuilding={() => onNavigate("worldbuilding")}
+          coverImage={projectCoverImages[currentProject.id]}
+          onCoverImageChange={async (imageUrl) => {
+            // Update local state immediately (optimistic UI)
+            setProjectCoverImages((prev) => ({
+              ...prev,
+              [currentProject.id]: imageUrl,
+            }));
+
+            // Update in database
+            try {
+              await projectsApi.update(currentProject.id, {
+                cover_image_url: imageUrl,
+              });
+            } catch (error) {
+              console.error("Error saving image URL to database:", error);
+              // Note: Toast already shown in handleFileChange
+            }
+          }}
+          worldbuildingItems={worldbuildingItems}
+          onUpdate={loadData}
+          onDelete={handleDeleteProject}
+          showDeleteDialog={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+          deletePassword={deletePassword}
+          setDeletePassword={setDeletePassword}
+          deleteLoading={deleteLoading}
+          onDuplicate={() => handleDuplicateProject(currentProject.id)}
+          onShowStats={() => {
+            setSelectedStatsProject(currentProject);
+            setShowStatsDialog(true);
+          }}
+          showStatsDialog={showStatsDialog}
+          setShowStatsDialog={setShowStatsDialog}
+          onTimelineDataChange={handleTimelineDataChange}
+          structureOpen={structureOpen}
+          setStructureOpen={setStructureOpen}
+          charactersOpen={charactersOpen}
+          setCharactersOpen={setCharactersOpen}
+          styleGuideOpen={styleGuideOpen}
+          setStyleGuideOpen={setStyleGuideOpen}
+          styleGuide={styleGuide}
+          styleGuideLoading={styleGuideLoading}
+          styleGuideError={styleGuideError}
+          onStyleGuideChange={setStyleGuide}
+          useStyleGuideForCover={useStyleGuideForCover}
+          setUseStyleGuideForCover={setUseStyleGuideForCover}
+          onRequestProjectExport={(snapshot, worldLabel) => {
+            setProjectExportSnapshot(snapshot);
+            setProjectExportWorldLabel(worldLabel);
+            setProjectExportOpen(true);
+          }}
+        />
+        <Suspense fallback={null}>
+          <ProjectExportDialog
+            open={projectExportOpen}
+            onOpenChange={(o) => {
+              setProjectExportOpen(o);
+              if (!o) {
+                setProjectExportSnapshot(null);
+                setProjectExportWorldLabel(null);
+              }
+            }}
+            projectSnapshot={projectExportSnapshot}
+            linkedWorldLabel={projectExportWorldLabel}
+          />
+        </Suspense>
       </>
     );
   }
@@ -936,7 +1218,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         <div className="flex items-center gap-1.5 mb-4">
           <div className="flex-1 relative min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input 
+            <Input
               placeholder="Projekte durchsuchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -961,11 +1243,34 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                 className="size-4"
               >
                 {/* Left rectangle - smaller */}
-                <rect x="1" y="4" width="3" height="8" rx="0.5" fill="currentColor" opacity="0.6" />
+                <rect
+                  x="1"
+                  y="4"
+                  width="3"
+                  height="8"
+                  rx="0.5"
+                  fill="currentColor"
+                  opacity="0.6"
+                />
                 {/* Center rectangle - larger */}
-                <rect x="6" y="2" width="4" height="12" rx="0.5" fill="currentColor" />
+                <rect
+                  x="6"
+                  y="2"
+                  width="4"
+                  height="12"
+                  rx="0.5"
+                  fill="currentColor"
+                />
                 {/* Right rectangle - smaller */}
-                <rect x="12" y="4" width="3" height="8" rx="0.5" fill="currentColor" opacity="0.6" />
+                <rect
+                  x="12"
+                  y="4"
+                  width="3"
+                  height="8"
+                  rx="0.5"
+                  fill="currentColor"
+                  opacity="0.6"
+                />
               </svg>
             </Button>
             <Button
@@ -977,7 +1282,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               <List className="size-4" />
             </Button>
           </div>
-          
+
           {/* Date Filter - Ultra Compact */}
           <Popover>
             <PopoverTrigger asChild>
@@ -989,10 +1294,15 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                 <CalendarIcon className="size-3.5 shrink-0" />
                 {dateFrom ? (
                   <span className="ml-0.5 text-[11px] truncate">
-                    {dateFrom.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                    {dateFrom.toLocaleDateString("de-DE", {
+                      day: "2-digit",
+                      month: "2-digit",
+                    })}
                   </span>
                 ) : (
-                  <span className="ml-0.5 text-[11px] text-muted-foreground">Von</span>
+                  <span className="ml-0.5 text-[11px] text-muted-foreground">
+                    Von
+                  </span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -1016,10 +1326,15 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                 <CalendarIcon className="size-3.5 shrink-0" />
                 {dateTo ? (
                   <span className="ml-0.5 text-[11px] truncate">
-                    {dateTo.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                    {dateTo.toLocaleDateString("de-DE", {
+                      day: "2-digit",
+                      month: "2-digit",
+                    })}
                   </span>
                 ) : (
-                  <span className="ml-0.5 text-[11px] text-muted-foreground">Bis</span>
+                  <span className="ml-0.5 text-[11px] text-muted-foreground">
+                    Bis
+                  </span>
                 )}
               </Button>
             </PopoverTrigger>
@@ -1047,8 +1362,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             </Button>
           )}
         </div>
-        
-        <Button 
+
+        <Button
           onClick={() => setShowNewProjectDialog(true)}
           size="sm"
           className="h-9 w-full"
@@ -1059,14 +1374,14 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
 
         {/* Filter Chips */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-4 pb-1">
-          <Badge 
+          <Badge
             variant={typeFilter === null ? "default" : "outline"}
             className="cursor-pointer whitespace-nowrap px-3 py-1.5"
             onClick={() => setTypeFilter(null)}
           >
             Alle
           </Badge>
-          <Badge 
+          <Badge
             variant={typeFilter === "film" ? "default" : "outline"}
             className="cursor-pointer whitespace-nowrap px-3 py-1.5 flex items-center gap-1.5"
             onClick={() => setTypeFilter(typeFilter === "film" ? null : "film")}
@@ -1074,23 +1389,27 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             <Film className="size-3" />
             Film
           </Badge>
-          <Badge 
+          <Badge
             variant={typeFilter === "series" ? "default" : "outline"}
             className="cursor-pointer whitespace-nowrap px-3 py-1.5 flex items-center gap-1.5"
-            onClick={() => setTypeFilter(typeFilter === "series" ? null : "series")}
+            onClick={() =>
+              setTypeFilter(typeFilter === "series" ? null : "series")
+            }
           >
             <Tv className="size-3" />
             Serie
           </Badge>
-          <Badge 
+          <Badge
             variant={typeFilter === "audio" ? "default" : "outline"}
             className="cursor-pointer whitespace-nowrap px-3 py-1.5 flex items-center gap-1.5"
-            onClick={() => setTypeFilter(typeFilter === "audio" ? null : "audio")}
+            onClick={() =>
+              setTypeFilter(typeFilter === "audio" ? null : "audio")
+            }
           >
             <Headphones className="size-3" />
             Hörspiel
           </Badge>
-          <Badge 
+          <Badge
             variant={typeFilter === "book" ? "default" : "outline"}
             className="cursor-pointer whitespace-nowrap px-3 py-1.5 flex items-center gap-1.5"
             onClick={() => setTypeFilter(typeFilter === "book" ? null : "book")}
@@ -1105,15 +1424,20 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       <div className="px-4">
         {(() => {
           const filteredProjects = projects
-            .filter(project => {
+            .filter((project) => {
               // Search filter
-              const matchesSearch = !searchQuery || 
-                project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                project.logline?.toLowerCase().includes(searchQuery.toLowerCase());
-              
+              const matchesSearch =
+                !searchQuery ||
+                project.title
+                  ?.toLowerCase()
+                  .includes(searchQuery.toLowerCase()) ||
+                project.logline
+                  ?.toLowerCase()
+                  .includes(searchQuery.toLowerCase());
+
               // Type filter
               const matchesType = !typeFilter || project.type === typeFilter;
-              
+
               // Date filter
               let matchesDate = true;
               if (project.createdAt) {
@@ -1125,13 +1449,17 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                   matchesDate = false;
                 }
               }
-              
+
               return matchesSearch && matchesType && matchesDate;
             })
             // Sort by last_edited (newest first)
             .sort((a, b) => {
-              const dateA = a.last_edited ? new Date(a.last_edited).getTime() : 0;
-              const dateB = b.last_edited ? new Date(b.last_edited).getTime() : 0;
+              const dateA = a.last_edited
+                ? new Date(a.last_edited).getTime()
+                : 0;
+              const dateB = b.last_edited
+                ? new Date(b.last_edited).getTime()
+                : 0;
               return dateB - dateA;
             });
 
@@ -1139,8 +1467,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             return (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
-                  {projects.length === 0 
-                    ? "Noch keine Projekte. Erstelle dein erstes Projekt!" 
+                  {projects.length === 0
+                    ? "Noch keine Projekte. Erstelle dein erstes Projekt!"
                     : "Keine Projekte gefunden. Versuche andere Filter."}
                 </CardContent>
               </Card>
@@ -1162,10 +1490,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
 
           // List View
           return (
-            <motion.div 
-              className="space-y-2"
-              layout
-            >
+            <motion.div className="space-y-2" layout>
               <AnimatePresence mode="popLayout">
                 {filteredProjects.map((project, index) => (
                   <motion.div
@@ -1177,153 +1502,201 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                     transition={{ duration: 0.2 }}
                   >
                     {/* LIST VIEW — primary click on left block only; ⋮ stays out of overlay (fixes dead Radix / hash) */}
-                      <Card className="active:scale-[0.99] transition-transform overflow-hidden hover:border-primary/30 group/card">
-                        <div className="flex w-full items-start justify-between gap-2 p-3 rounded-lg transition-all group-hover:bg-primary/10 border-2 border-transparent group-hover:border-primary/30">
-                          <button
-                            type="button"
-                            disabled={!project.id}
-                            className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left border-0 bg-transparent p-0 hover:bg-transparent disabled:opacity-60"
-                            aria-label={`Projekt „${project.title}“ öffnen`}
-                            onMouseEnter={() => {
-                              if (!project.id) return;
-                              void prefetchProjectTimeline(
-                                queryClient,
-                                project.id,
-                                project.type,
-                                getAuthToken
-                              );
-                            }}
-                            onClick={() => project.id && onNavigate("projekte", project.id)}
+                    <Card className="active:scale-[0.99] transition-transform overflow-hidden hover:border-primary/30 group/card">
+                      <div className="flex w-full items-start justify-between gap-2 p-3 rounded-lg transition-all group-hover:bg-primary/10 border-2 border-transparent group-hover:border-primary/30">
+                        <button
+                          type="button"
+                          disabled={!project.id}
+                          className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left border-0 bg-transparent p-0 hover:bg-transparent disabled:opacity-60"
+                          aria-label={`Projekt „${project.title}“ öffnen`}
+                          onMouseEnter={() => {
+                            if (!project.id) return;
+                            void prefetchProjectTimeline(
+                              queryClient,
+                              project.id,
+                              project.type,
+                              getAuthToken,
+                            );
+                          }}
+                          onClick={() =>
+                            project.id && onNavigate("projekte", project.id)
+                          }
+                        >
+                          <div
+                            className="w-[56px] h-[84px] shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden"
+                            style={
+                              projectCoverImages[project.id]
+                                ? {
+                                    backgroundImage: `url(${projectCoverImages[project.id]})`,
+                                    backgroundSize: "cover",
+                                    backgroundPosition: "center",
+                                    backgroundBlendMode: "overlay",
+                                  }
+                                : {}
+                            }
                           >
-                            <div
-                              className="w-[56px] h-[84px] shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden"
-                              style={projectCoverImages[project.id] ? { 
-                                backgroundImage: `url(${projectCoverImages[project.id]})`, 
-                                backgroundSize: 'cover', 
-                                backgroundPosition: 'center',
-                                backgroundBlendMode: 'overlay'
-                              } : {}}
-                            >
-                              {!projectCoverImages[project.id] && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <Film className="size-6 text-primary/40" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-sm leading-snug line-clamp-1 mb-1.5">
-                                {project.title}
-                              </h3>
-                              <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                                {project.logline?.trim() || "Keine Logline"}
-                              </p>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5 flex items-center gap-1">
-                                  {(() => {
-                                    const { label, Icon } = getProjectTypeInfo(project.type);
-                                    return (
-                                      <>
-                                        <Icon className="size-2.5" />
-                                        {label}
-                                      </>
-                                    );
-                                  })()}
-                                </Badge>
-                                {parseProjectGenreField(project.genre).length > 0 ? (
-                                  parseProjectGenreField(project.genre).slice(0, 2).map((genre) => (
-                                    <Badge key={`${project.id}-${genre}`} variant="outline" className="text-[10px] h-5 px-1.5">
+                            {!projectCoverImages[project.id] && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Film className="size-6 text-primary/40" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-sm leading-snug line-clamp-1 mb-1.5">
+                              {project.title}
+                            </h3>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                              {project.logline?.trim() || "Keine Logline"}
+                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] h-5 px-1.5 flex items-center gap-1"
+                              >
+                                {(() => {
+                                  const { label, Icon } = getProjectTypeInfo(
+                                    project.type,
+                                  );
+                                  return (
+                                    <>
+                                      <Icon className="size-2.5" />
+                                      {label}
+                                    </>
+                                  );
+                                })()}
+                              </Badge>
+                              {parseProjectGenreField(project.genre).length >
+                              0 ? (
+                                parseProjectGenreField(project.genre)
+                                  .slice(0, 2)
+                                  .map((genre) => (
+                                    <Badge
+                                      key={`${project.id}-${genre}`}
+                                      variant="outline"
+                                      className="text-[10px] h-5 px-1.5"
+                                    >
                                       {genre}
                                     </Badge>
                                   ))
-                                ) : (
-                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground">
-                                    Kein Genre
-                                  </Badge>
-                                )}
-                                {parseProjectGenreField(project.genre).length > 2 && (
-                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                                    +{parseProjectGenreField(project.genre).length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                              {(() => {
-                                const lastEditedAt = getProjectLastEditedAt(project);
-                                if (!lastEditedAt) return null;
-                                const d = new Date(lastEditedAt);
-                                if (Number.isNaN(d.getTime())) return null;
-                                return (
-                                  <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
-                                    <CalendarIcon className="size-3 shrink-0" />
-                                    <span>
-                                      {d.toLocaleDateString("de-DE", {
-                                        day: "2-digit",
-                                        month: "2-digit",
-                                        year: "numeric",
-                                      })} - {d.toLocaleTimeString("de-DE", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        second: "2-digit",
-                                        hour12: false,
-                                      })}
-                                    </span>
-                                  </div>
-                                );
-                              })()}
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 px-1.5 text-muted-foreground"
+                                >
+                                  Kein Genre
+                                </Badge>
+                              )}
+                              {parseProjectGenreField(project.genre).length >
+                                2 && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 px-1.5"
+                                >
+                                  +
+                                  {parseProjectGenreField(project.genre)
+                                    .length - 2}
+                                </Badge>
+                              )}
                             </div>
-                          </button>
-                          <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
-                            {index === 0 && (
-                              <Badge variant="default" className="text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
-                                <Clock className="size-2" />
-                                Zuletzt
-                              </Badge>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 shrink-0"
-                                  aria-label="Projekt-Menü"
-                                >
-                                  <MoreVertical className="size-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => project.id && onNavigate("projekte", project.id)}
-                                >
-                                  <Edit2 className="size-3.5 mr-2" />
-                                  Edit Project
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
-                                  <Copy className="size-3.5 mr-2" />
-                                  Duplicate Project
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => handleOpenStatsDialog(project, e)}>
-                                  <BarChart3 className="size-3.5 mr-2" />
-                                  Project Stats & Logs
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openProjectExportFromList(project)}>
-                                  <Share2 className="size-3.5 mr-2" />
-                                  Teilen / Export
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedProject(project.id);
-                                    setShowDeleteDialog(true);
-                                  }}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="size-3.5 mr-2" />
-                                  Delete Project
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {(() => {
+                              const lastEditedAt =
+                                getProjectLastEditedAt(project);
+                              if (!lastEditedAt) return null;
+                              const d = new Date(lastEditedAt);
+                              if (Number.isNaN(d.getTime())) return null;
+                              return (
+                                <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <CalendarIcon className="size-3 shrink-0" />
+                                  <span>
+                                    {d.toLocaleDateString("de-DE", {
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      year: "numeric",
+                                    })}{" "}
+                                    -{" "}
+                                    {d.toLocaleTimeString("de-DE", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      second: "2-digit",
+                                      hour12: false,
+                                    })}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
+                        </button>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+                          {index === 0 && (
+                            <Badge
+                              variant="default"
+                              className="text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md"
+                            >
+                              <Clock className="size-2" />
+                              Zuletzt
+                            </Badge>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 shrink-0"
+                                aria-label="Projekt-Menü"
+                              >
+                                <MoreVertical className="size-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  project.id &&
+                                  onNavigate("projekte", project.id)
+                                }
+                              >
+                                <Edit2 className="size-3.5 mr-2" />
+                                Edit Project
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleDuplicateProject(project.id)
+                                }
+                              >
+                                <Copy className="size-3.5 mr-2" />
+                                Duplicate Project
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) =>
+                                  handleOpenStatsDialog(project, e)
+                                }
+                              >
+                                <BarChart3 className="size-3.5 mr-2" />
+                                Project Stats & Logs
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  openProjectExportFromList(project)
+                                }
+                              >
+                                <Share2 className="size-3.5 mr-2" />
+                                Teilen / Export
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedProject(project.id);
+                                  setShowDeleteDialog(true);
+                                }}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="size-3.5 mr-2" />
+                                Delete Project
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                      </Card>
+                      </div>
+                    </Card>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -1333,10 +1706,15 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
       </div>
 
       {/* New Project Dialog */}
-      <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
+      <Dialog
+        open={showNewProjectDialog}
+        onOpenChange={setShowNewProjectDialog}
+      >
         <DialogContent className="w-[95vw] max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto md:w-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary">Create New Project</DialogTitle>
+            <DialogTitle className="text-primary">
+              Create New Project
+            </DialogTitle>
             <DialogDescription className="sr-only">
               Erstelle ein neues Skript-Projekt
             </DialogDescription>
@@ -1346,17 +1724,20 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="title">Project Title</Label>
-                <Input 
-                  id="title" 
-                  placeholder="Enter project title" 
-                  className="h-11" 
+                <Input
+                  id="title"
+                  placeholder="Enter project title"
+                  className="h-11"
                   value={newProjectTitle}
                   onChange={(e) => setNewProjectTitle(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Project Type</Label>
-                <Select value={newProjectType} onValueChange={setNewProjectType}>
+                <Select
+                  value={newProjectType}
+                  onValueChange={setNewProjectType}
+                >
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="Film" />
                   </SelectTrigger>
@@ -1371,7 +1752,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-project-script-import">Skript-Struktur (optional)</Label>
+              <Label htmlFor="new-project-script-import">
+                Skript-Struktur (optional)
+              </Label>
               <input
                 id="new-project-script-import"
                 ref={newProjectScriptImportInputRef}
@@ -1389,13 +1772,17 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                   type="button"
                   variant="outline"
                   className="h-11"
-                  onClick={() => newProjectScriptImportInputRef.current?.click()}
+                  onClick={() =>
+                    newProjectScriptImportInputRef.current?.click()
+                  }
                 >
                   <Upload className="size-4 mr-2" />
                   Datei wählen
                 </Button>
                 <span className="text-sm text-muted-foreground truncate max-w-[200px]">
-                  {newProjectScriptImportFile ? newProjectScriptImportFile.name : "Keine Datei"}
+                  {newProjectScriptImportFile
+                    ? newProjectScriptImportFile.name
+                    : "Keine Datei"}
                 </span>
                 {newProjectScriptImportFile ? (
                   <Button
@@ -1410,32 +1797,52 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                 ) : null}
               </div>
               <p className="text-xs text-muted-foreground">
-                .txt, .fountain, .md, .doc, .docx, .pdf — nach dem Erstellen werden Akte/Sequenzen/Szenen angelegt
-                (ohne bestehende zu löschen). PDFs: reiner Text-Layer; komplexe Layouts können Lücken haben.
+                .txt, .fountain, .md, .docx, .pdf — nach dem Erstellen werden
+                Akte/Sequenzen/Szenen angelegt (ohne bestehende zu löschen).
+                PDFs: reiner Text-Layer; komplexe Layouts können Lücken haben.
               </p>
             </div>
 
             {/* Narrative Structure - Conditional Layout based on Type */}
-            {newProjectType === 'series' ? (
+            {newProjectType === "series" ? (
               /* SERIES: Episode Layout + Season Engine (2 Felder) */
               <>
                 <div className="grid grid-cols-2 gap-3">
                   {/* Episode Layout */}
                   <div className="space-y-2">
                     <Label htmlFor="episode-layout">Episode Layout</Label>
-                    <Select value={newProjectEpisodeLayout} onValueChange={setNewProjectEpisodeLayout}>
+                    <Select
+                      value={newProjectEpisodeLayout}
+                      onValueChange={setNewProjectEpisodeLayout}
+                    >
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Keine" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sitcom-2-act">Sitcom 2-Akt (22–24 min)</SelectItem>
-                        <SelectItem value="sitcom-4-act">Sitcom 4-Akt (22 min)</SelectItem>
-                        <SelectItem value="network-5-act">Network 5-Akt (~45 min)</SelectItem>
-                        <SelectItem value="streaming-3-act">Streaming 3-Akt (45–60 min)</SelectItem>
-                        <SelectItem value="streaming-4-act">Streaming 4-Akt (45–60 min)</SelectItem>
-                        <SelectItem value="anime-ab">Anime A/B (24 min)</SelectItem>
-                        <SelectItem value="sketch-segmented">Sketch/Segmented (3–5 Stories)</SelectItem>
-                        <SelectItem value="kids-11min">Kids 11-Min (2 Segmente)</SelectItem>
+                        <SelectItem value="sitcom-2-act">
+                          Sitcom 2-Akt (22–24 min)
+                        </SelectItem>
+                        <SelectItem value="sitcom-4-act">
+                          Sitcom 4-Akt (22 min)
+                        </SelectItem>
+                        <SelectItem value="network-5-act">
+                          Network 5-Akt (~45 min)
+                        </SelectItem>
+                        <SelectItem value="streaming-3-act">
+                          Streaming 3-Akt (45–60 min)
+                        </SelectItem>
+                        <SelectItem value="streaming-4-act">
+                          Streaming 4-Akt (45–60 min)
+                        </SelectItem>
+                        <SelectItem value="anime-ab">
+                          Anime A/B (24 min)
+                        </SelectItem>
+                        <SelectItem value="sketch-segmented">
+                          Sketch/Segmented (3–5 Stories)
+                        </SelectItem>
+                        <SelectItem value="kids-11min">
+                          Kids 11-Min (2 Segmente)
+                        </SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1444,27 +1851,44 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                   {/* Season Engine */}
                   <div className="space-y-2">
                     <Label htmlFor="season-engine">Season Engine</Label>
-                    <Select value={newProjectSeasonEngine} onValueChange={setNewProjectSeasonEngine}>
+                    <Select
+                      value={newProjectSeasonEngine}
+                      onValueChange={setNewProjectSeasonEngine}
+                    >
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Keine" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="serial">Serial (Season-Arc)</SelectItem>
-                        <SelectItem value="motw">MOTW/COTW (Fall d. Woche)</SelectItem>
-                        <SelectItem value="hybrid">Hybrid (Arc+MOTW)</SelectItem>
-                        <SelectItem value="anthology">Anthology (episodisch)</SelectItem>
-                        <SelectItem value="seasonal-anthology">Seasonal Anthology</SelectItem>
-                        <SelectItem value="limited-series">Limited Series (4–10)</SelectItem>
+                        <SelectItem value="serial">
+                          Serial (Season-Arc)
+                        </SelectItem>
+                        <SelectItem value="motw">
+                          MOTW/COTW (Fall d. Woche)
+                        </SelectItem>
+                        <SelectItem value="hybrid">
+                          Hybrid (Arc+MOTW)
+                        </SelectItem>
+                        <SelectItem value="anthology">
+                          Anthology (episodisch)
+                        </SelectItem>
+                        <SelectItem value="seasonal-anthology">
+                          Seasonal Anthology
+                        </SelectItem>
+                        <SelectItem value="limited-series">
+                          Limited Series (4–10)
+                        </SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                
+
                 {/* Custom Episode Layout Input */}
-                {newProjectEpisodeLayout === 'custom' && (
+                {newProjectEpisodeLayout === "custom" && (
                   <div className="space-y-2">
-                    <Label htmlFor="custom-episode-layout">Custom Episode Layout Name</Label>
+                    <Label htmlFor="custom-episode-layout">
+                      Custom Episode Layout Name
+                    </Label>
                     <Input
                       id="custom-episode-layout"
                       placeholder="z.B. 'Mini-Series 6-Akt'"
@@ -1474,11 +1898,13 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                     />
                   </div>
                 )}
-                
+
                 {/* Custom Season Engine Input */}
-                {newProjectSeasonEngine === 'custom' && (
+                {newProjectSeasonEngine === "custom" && (
                   <div className="space-y-2">
-                    <Label htmlFor="custom-season-engine">Custom Season Engine Name</Label>
+                    <Label htmlFor="custom-season-engine">
+                      Custom Season Engine Name
+                    </Label>
                     <Input
                       id="custom-season-engine"
                       placeholder="z.B. 'Hybrid-Anthology Mix'"
@@ -1496,46 +1922,71 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                   <Label htmlFor="narrative">Narrative Structure</Label>
                   <Info className="size-3.5 text-muted-foreground" />
                 </div>
-                <Select value={newProjectNarrativeStructure} onValueChange={setNewProjectNarrativeStructure}>
+                <Select
+                  value={newProjectNarrativeStructure}
+                  onValueChange={setNewProjectNarrativeStructure}
+                >
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
                     {/* Film Structures */}
-                    {newProjectType === 'film' && (
+                    {newProjectType === "film" && (
                       <>
                         <SelectItem value="3-act">3-Akt (klassisch)</SelectItem>
-                        <SelectItem value="4-act">4-Akt (gesplittetes Act II)</SelectItem>
+                        <SelectItem value="4-act">
+                          4-Akt (gesplittetes Act II)
+                        </SelectItem>
                         <SelectItem value="5-act">5-Akt (Freytag)</SelectItem>
-                        <SelectItem value="8-sequences">8-Sequenzen ("Mini-Movies")</SelectItem>
-                        <SelectItem value="kishotenketsu">Kishōtenketsu (4-Teiler)</SelectItem>
-                        <SelectItem value="non-linear">Nicht-linear / Rashomon</SelectItem>
+                        <SelectItem value="8-sequences">
+                          8-Sequenzen ("Mini-Movies")
+                        </SelectItem>
+                        <SelectItem value="kishotenketsu">
+                          Kishōtenketsu (4-Teiler)
+                        </SelectItem>
+                        <SelectItem value="non-linear">
+                          Nicht-linear / Rashomon
+                        </SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </>
                     )}
                     {/* Buch Structures */}
-                    {newProjectType === 'book' && (
+                    {newProjectType === "book" && (
                       <>
-                        <SelectItem value="3-part">3-Teiler (klassisch)</SelectItem>
-                        <SelectItem value="hero-journey">Heldenreise</SelectItem>
-                        <SelectItem value="save-the-cat">Save the Cat (adapted)</SelectItem>
+                        <SelectItem value="3-part">
+                          3-Teiler (klassisch)
+                        </SelectItem>
+                        <SelectItem value="hero-journey">
+                          Heldenreise
+                        </SelectItem>
+                        <SelectItem value="save-the-cat">
+                          Save the Cat (adapted)
+                        </SelectItem>
                       </>
                     )}
                     {/* Hörspiel Structures */}
-                    {newProjectType === 'audio' && (
+                    {newProjectType === "audio" && (
                       <>
-                        <SelectItem value="30min-3-act">30 min / 3-Akt</SelectItem>
-                        <SelectItem value="60min-4-act">60 min / 4-Akt</SelectItem>
-                        <SelectItem value="podcast-25-35min">Podcast 25–35 min</SelectItem>
+                        <SelectItem value="30min-3-act">
+                          30 min / 3-Akt
+                        </SelectItem>
+                        <SelectItem value="60min-4-act">
+                          60 min / 4-Akt
+                        </SelectItem>
+                        <SelectItem value="podcast-25-35min">
+                          Podcast 25–35 min
+                        </SelectItem>
                       </>
                     )}
                   </SelectContent>
                 </Select>
-                {newProjectNarrativeStructure === 'custom' && (
+                {newProjectNarrativeStructure === "custom" && (
                   <Input
                     placeholder="Custom Structure Name eingeben..."
                     value={customNarrativeStructure}
-                    onChange={(e) => setCustomNarrativeStructure(e.target.value)}
+                    onChange={(e) =>
+                      setCustomNarrativeStructure(e.target.value)
+                    }
                     className="h-11 mt-2"
                   />
                 )}
@@ -1545,27 +1996,40 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             {/* Story Beat Template - Always shown */}
             <div className="space-y-2">
               <Label htmlFor="beat-template">Story Beat Template</Label>
-              <Select value={newProjectBeatTemplate} onValueChange={setNewProjectBeatTemplate}>
+              <Select
+                value={newProjectBeatTemplate}
+                onValueChange={setNewProjectBeatTemplate}
+              >
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Universal Templates */}
                   <SelectItem value="lite-7">Lite-7 (minimal)</SelectItem>
-                  <SelectItem value="save-the-cat">Save the Cat! (15)</SelectItem>
-                  <SelectItem value="syd-field">Syd Field / Paradigm</SelectItem>
-                  <SelectItem value="heroes-journey">Heldenreise (Vogler, 12)</SelectItem>
-                  <SelectItem value="seven-point">Seven-Point Structure</SelectItem>
+                  <SelectItem value="save-the-cat">
+                    Save the Cat! (15)
+                  </SelectItem>
+                  <SelectItem value="syd-field">
+                    Syd Field / Paradigm
+                  </SelectItem>
+                  <SelectItem value="heroes-journey">
+                    Heldenreise (Vogler, 12)
+                  </SelectItem>
+                  <SelectItem value="seven-point">
+                    Seven-Point Structure
+                  </SelectItem>
                   <SelectItem value="8-sequences">8-Sequenzen</SelectItem>
                   <SelectItem value="story-circle">Story Circle 8</SelectItem>
                   {/* Series-specific macro template */}
-                  {newProjectType === 'series' && (
-                    <SelectItem value="season-lite-5">Season-Lite-5 (Macro)</SelectItem>
+                  {newProjectType === "series" && (
+                    <SelectItem value="season-lite-5">
+                      Season-Lite-5 (Macro)
+                    </SelectItem>
                   )}
                   <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
-              {newProjectBeatTemplate === 'custom' && (
+              {newProjectBeatTemplate === "custom" && (
                 <Input
                   placeholder="Custom Beat Template Name eingeben..."
                   value={customBeatTemplate}
@@ -1579,35 +2043,43 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             <div className="space-y-2">
               <Label htmlFor="world">Welt verknüpfen (optional)</Label>
               <div className="flex gap-2">
-                <Select value={newProjectLinkedWorld} onValueChange={setNewProjectLinkedWorld}>
+                <Select
+                  value={newProjectLinkedWorld}
+                  onValueChange={setNewProjectLinkedWorld}
+                >
                   <SelectTrigger className="h-11 flex-1">
                     <SelectValue placeholder="Keine Welt verknüpfen" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Keine Welt verknüpfen</SelectItem>
                     {worlds.map((world) => (
-                      <SelectItem key={world.id} value={world.id}>{world.name}</SelectItem>
+                      <SelectItem key={world.id} value={world.id}>
+                        {world.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   className="h-11 w-11 shrink-0"
                   onClick={() => onNavigate("worldbuilding")}
                 >
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Verknüpfe dein Projekt mit einer Welt für umfangreiches Worldbuilding.</p>
+              <p className="text-xs text-muted-foreground">
+                Verknüpfe dein Projekt mit einer Welt für umfangreiches
+                Worldbuilding.
+              </p>
             </div>
 
             {/* Logline */}
             <div className="space-y-2">
               <Label htmlFor="logline">Logline</Label>
-              <Textarea 
-                id="logline" 
-                placeholder="A brief summary of your project..." 
+              <Textarea
+                id="logline"
+                placeholder="A brief summary of your project..."
                 rows={3}
                 value={newProjectLogline}
                 onChange={(e) => setNewProjectLogline(e.target.value)}
@@ -1624,52 +2096,66 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                 onCustomPoolChange={setNewProjectCustomGenres}
               />
               <p className="text-xs text-muted-foreground">
-                Mindestens ein Genre wählen; mit + eigene Bezeichnungen ergänzen.
+                Mindestens ein Genre wählen; mit + eigene Bezeichnungen
+                ergänzen.
               </p>
             </div>
 
             {/* Duration / Target Pages - Type-dependent */}
-            {newProjectType === 'book' ? (
+            {newProjectType === "book" ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="target-pages">Zielumfang (Seiten)</Label>
-                  <Input 
-                    id="target-pages" 
-                    type="number" 
-                    placeholder="z.B. 300" 
+                  <Input
+                    id="target-pages"
+                    type="number"
+                    placeholder="z.B. 300"
                     className="h-11"
                     value={newProjectTargetPages}
                     onChange={(e) => setNewProjectTargetPages(e.target.value)}
                   />
                   {newProjectTargetPages && (
                     <p className="text-xs text-muted-foreground">
-                      Bei {newProjectWordsPerPage} Wörtern/Seite ≈ {(parseInt(newProjectTargetPages || '0') * parseInt(newProjectWordsPerPage || '250')).toLocaleString('de-DE')} Wörter
+                      Bei {newProjectWordsPerPage} Wörtern/Seite ≈{" "}
+                      {(
+                        parseInt(newProjectTargetPages || "0") *
+                        parseInt(newProjectWordsPerPage || "250")
+                      ).toLocaleString("de-DE")}{" "}
+                      Wörter
                     </p>
                   )}
                 </div>
-                
+
                 {/* Advanced Book Metrics - Collapsible */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="words-per-page" className="text-xs">Wörter pro Seite</Label>
-                    <Input 
-                      id="words-per-page" 
-                      type="number" 
-                      placeholder="250" 
+                    <Label htmlFor="words-per-page" className="text-xs">
+                      Wörter pro Seite
+                    </Label>
+                    <Input
+                      id="words-per-page"
+                      type="number"
+                      placeholder="250"
                       className="h-11"
                       value={newProjectWordsPerPage}
-                      onChange={(e) => setNewProjectWordsPerPage(e.target.value)}
+                      onChange={(e) =>
+                        setNewProjectWordsPerPage(e.target.value)
+                      }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reading-speed" className="text-xs">Lesegeschw. (WPM)</Label>
-                    <Input 
-                      id="reading-speed" 
-                      type="number" 
-                      placeholder="230" 
+                    <Label htmlFor="reading-speed" className="text-xs">
+                      Lesegeschw. (WPM)
+                    </Label>
+                    <Input
+                      id="reading-speed"
+                      type="number"
+                      placeholder="230"
                       className="h-11"
                       value={newProjectReadingSpeed}
-                      onChange={(e) => setNewProjectReadingSpeed(e.target.value)}
+                      onChange={(e) =>
+                        setNewProjectReadingSpeed(e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -1679,7 +2165,12 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                 <Label>Dauer</Label>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1 min-w-0 space-y-1">
-                    <Label htmlFor="duration-hours" className="text-xs text-muted-foreground">Stunden</Label>
+                    <Label
+                      htmlFor="duration-hours"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Stunden
+                    </Label>
                     <Input
                       id="duration-hours"
                       type="number"
@@ -1688,11 +2179,18 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                       placeholder="0"
                       className="h-11"
                       value={newProjectDurationHours}
-                      onChange={(e) => setNewProjectDurationHours(e.target.value)}
+                      onChange={(e) =>
+                        setNewProjectDurationHours(e.target.value)
+                      }
                     />
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
-                    <Label htmlFor="duration-minutes" className="text-xs text-muted-foreground">Minuten</Label>
+                    <Label
+                      htmlFor="duration-minutes"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Minuten
+                    </Label>
                     <Input
                       id="duration-minutes"
                       type="number"
@@ -1701,7 +2199,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                       placeholder="0"
                       className="h-11"
                       value={newProjectDurationMinutes}
-                      onChange={(e) => setNewProjectDurationMinutes(e.target.value)}
+                      onChange={(e) =>
+                        setNewProjectDurationMinutes(e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -1728,7 +2228,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        setProjectInspirationNotes(projectInspirationNotes.filter((_, i) => i !== index));
+                        setProjectInspirationNotes(
+                          projectInspirationNotes.filter((_, i) => i !== index),
+                        );
                       }}
                       className="h-11 w-11 shrink-0"
                     >
@@ -1739,7 +2241,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
               ))}
               <Button
                 variant="outline"
-                onClick={() => setProjectInspirationNotes([...projectInspirationNotes, ""])}
+                onClick={() =>
+                  setProjectInspirationNotes([...projectInspirationNotes, ""])
+                }
                 className="h-9"
               >
                 <Plus className="size-4 mr-2" />
@@ -1750,17 +2254,15 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             {/* Cover Image */}
             <div className="space-y-2">
               <Label>Cover Image (Optional)</Label>
-              <div 
+              <div
                 onClick={() => newProjectCoverInputRef.current?.click()}
-                className={`w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors relative overflow-hidden ${
-                  "cursor-pointer"
-                }`}
+                className={`w-full border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors relative overflow-hidden ${"cursor-pointer"}`}
               >
                 {newProjectCoverImage ? (
                   <div className="relative rounded-lg overflow-hidden min-h-[8rem]">
-                    <img 
-                      src={newProjectCoverImage} 
-                      alt="Cover Preview" 
+                    <img
+                      src={newProjectCoverImage}
+                      alt="Cover Preview"
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
                     <div className="flex items-center justify-center gap-2 relative z-[1]">
@@ -1787,7 +2289,9 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                   <div className="flex flex-col items-center justify-center">
                     <Upload className="size-6 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm mb-1">Cover-Bild hochladen</p>
-                    <p className="text-xs text-muted-foreground">Ideal: 800 × 1200 px (2:3 Hochformat)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Ideal: 800 × 1200 px (2:3 Hochformat)
+                    </p>
                   </div>
                 )}
               </div>
@@ -1801,7 +2305,11 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewProjectDialog(false)} className="h-11">
+            <Button
+              variant="outline"
+              onClick={() => setShowNewProjectDialog(false)}
+              className="h-11"
+            >
               Cancel
             </Button>
             <Button onClick={handleCreateProject} className="h-11">
@@ -1811,61 +2319,70 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
         </DialogContent>
       </Dialog>
 
-      <GifAnimationUploadDialog
-        open={gifPendingNewProjectCover !== null}
-        onOpenChange={(open) => {
-          if (!open) setGifPendingNewProjectCover(null);
-        }}
-        fileName={gifPendingNewProjectCover?.name}
-        allowKeepGif={
-          gifPendingNewProjectCover
-            ? gifPendingNewProjectCover.size <= STORAGE_CONFIG.MAX_FILE_SIZE
-            : true
-        }
-        onConvert={() => {
-          const f = gifPendingNewProjectCover;
-          if (!f) return;
-          applyNewProjectCoverSelection(f, "convert-static");
-          setGifPendingNewProjectCover(null);
-        }}
-        onKeepGif={() => {
-          const f = gifPendingNewProjectCover;
-          if (!f) return;
-          if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
-            toast.error(
-              `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
-            );
-            return;
+      <Suspense fallback={null}>
+        <GifAnimationUploadDialog
+          open={gifPendingNewProjectCover !== null}
+          onOpenChange={(open) => {
+            if (!open) setGifPendingNewProjectCover(null);
+          }}
+          fileName={gifPendingNewProjectCover?.name}
+          allowKeepGif={
+            gifPendingNewProjectCover
+              ? gifPendingNewProjectCover.size <= STORAGE_CONFIG.MAX_FILE_SIZE
+              : true
           }
-          applyNewProjectCoverSelection(f, "keep-animation");
-          setGifPendingNewProjectCover(null);
-        }}
-      />
+          onConvert={() => {
+            const f = gifPendingNewProjectCover;
+            if (!f) return;
+            applyNewProjectCoverSelection(f, "convert-static");
+            setGifPendingNewProjectCover(null);
+          }}
+          onKeepGif={() => {
+            const f = gifPendingNewProjectCover;
+            if (!f) return;
+            if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
+              toast.error(
+                `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`,
+              );
+              return;
+            }
+            applyNewProjectCoverSelection(f, "keep-animation");
+            setGifPendingNewProjectCover(null);
+          }}
+        />
+      </Suspense>
 
       {/* Project Stats & Logs Dialog */}
       {selectedStatsProject && (
-        <ProjectStatsLogsDialog
-          open={showStatsDialog}
-          onOpenChange={setShowStatsDialog}
-          project={selectedStatsProject}
-        />
+        <Suspense fallback={null}>
+          <ProjectStatsLogsDialog
+            open={showStatsDialog}
+            onOpenChange={setShowStatsDialog}
+            project={selectedStatsProject}
+          />
+        </Suspense>
       )}
 
-      <ProjectExportDialog
-        open={projectExportOpen}
-        onOpenChange={(o) => {
-          setProjectExportOpen(o);
-          if (!o) {
-            setProjectExportSnapshot(null);
-            setProjectExportWorldLabel(null);
-          }
-        }}
-        projectSnapshot={projectExportSnapshot}
-        linkedWorldLabel={projectExportWorldLabel}
-      />
+      <Suspense fallback={null}>
+        <ProjectExportDialog
+          open={projectExportOpen}
+          onOpenChange={(o) => {
+            setProjectExportOpen(o);
+            if (!o) {
+              setProjectExportSnapshot(null);
+              setProjectExportWorldLabel(null);
+            }
+          }}
+          projectSnapshot={projectExportSnapshot}
+          linkedWorldLabel={projectExportWorldLabel}
+        />
+      </Suspense>
 
       {/* Delete Project Dialog - Must be here for list delete! */}
-      <AlertDialog open={showDeleteDialog && !selectedProjectId} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog
+        open={showDeleteDialog && !selectedProjectId}
+        onOpenChange={setShowDeleteDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -1877,8 +2394,8 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Diese Aktion kann <strong>nicht rückgängig</strong> gemacht werden. 
-                  Das Projekt wird permanent gelöscht, inklusive aller:
+                  Diese Aktion kann <strong>nicht rückgängig</strong> gemacht
+                  werden. Das Projekt wird permanent gelöscht, inklusive aller:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                   <li>Szenen, Acts, Sequenzen</li>
@@ -1887,7 +2404,10 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                   <li>Projekt-Einstellungen</li>
                 </ul>
                 <div className="pt-2 space-y-2">
-                  <Label htmlFor="delete-password-list" className="text-foreground">
+                  <Label
+                    htmlFor="delete-password-list"
+                    className="text-foreground"
+                  >
                     Gib dein Passwort ein, um zu bestätigen:
                   </Label>
                   <Input
@@ -1899,7 +2419,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
                     disabled={deleteLoading}
                     className="h-11"
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && deletePassword.trim()) {
+                      if (e.key === "Enter" && deletePassword.trim()) {
                         handleDeleteProject();
                       }
                     }}
@@ -1910,7 +2430,7 @@ export function ProjectsPage({ selectedProjectId, onNavigate }: ProjectsPageProp
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
+            <AlertDialogCancel
               onClick={() => {
                 setDeletePassword("");
               }}
@@ -1961,38 +2481,58 @@ interface CharacterCardProps {
     lastEdited: Date;
   };
   onImageUpload: (characterId: string, imageUrl: string) => void;
-  onUpdateDetails: (characterId: string, updates: {
-    name: string;
-    role: string;
-    description: string;
-    age?: string;
-    gender?: string;
-    species?: string;
-    backgroundStory?: string;
-    skills?: string;
-    strengths?: string;
-    weaknesses?: string;
-    characterTraits?: string;
-  }) => void;
+  onUpdateDetails: (
+    characterId: string,
+    updates: {
+      name: string;
+      role: string;
+      description: string;
+      age?: string;
+      gender?: string;
+      species?: string;
+      backgroundStory?: string;
+      skills?: string;
+      strengths?: string;
+      weaknesses?: string;
+      characterTraits?: string;
+    },
+  ) => void;
   onDelete: (characterId: string) => void;
 }
 
-function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: CharacterCardProps) {
+function CharacterCard({
+  character,
+  onImageUpload,
+  onUpdateDetails,
+  onDelete,
+}: CharacterCardProps) {
   const characterImageInputRef = useRef<HTMLInputElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(character.name);
   const [editedRole, setEditedRole] = useState(character.role);
-  const [editedDescription, setEditedDescription] = useState(character.description);
+  const [editedDescription, setEditedDescription] = useState(
+    character.description,
+  );
   const [editedAge, setEditedAge] = useState(character.age || "");
   const [editedGender, setEditedGender] = useState(character.gender || "");
   const [editedSpecies, setEditedSpecies] = useState(character.species || "");
-  const [editedBackgroundStory, setEditedBackgroundStory] = useState(character.backgroundStory || "");
+  const [editedBackgroundStory, setEditedBackgroundStory] = useState(
+    character.backgroundStory || "",
+  );
   const [editedSkills, setEditedSkills] = useState(character.skills || "");
-  const [editedStrengths, setEditedStrengths] = useState(character.strengths || "");
-  const [editedWeaknesses, setEditedWeaknesses] = useState(character.weaknesses || "");
-  const [editedCharacterTraits, setEditedCharacterTraits] = useState(character.characterTraits || "");
-  const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(undefined);
+  const [editedStrengths, setEditedStrengths] = useState(
+    character.strengths || "",
+  );
+  const [editedWeaknesses, setEditedWeaknesses] = useState(
+    character.weaknesses || "",
+  );
+  const [editedCharacterTraits, setEditedCharacterTraits] = useState(
+    character.characterTraits || "",
+  );
+  const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(
+    undefined,
+  );
   const [showImageCropDialog, setShowImageCropDialog] = useState(false);
 
   const handleImageClick = () => {
@@ -2021,14 +2561,18 @@ function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: 
     <Card className="overflow-hidden">
       {!isExpanded ? (
         /* Collapsed View */
-        <div 
+        <div
           className="p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/10 transition-colors"
           onClick={() => setIsExpanded(true)}
         >
           {/* Profile Image Placeholder */}
           <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-muted/30 border-2 border-character-blue-light">
             {character.image ? (
-              <img src={character.image} alt={character.name} className="w-full h-full object-cover" />
+              <img
+                src={character.image}
+                alt={character.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="size-6 text-muted-foreground" />
@@ -2041,7 +2585,12 @@ function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: 
             <CardTitle className="text-sm truncate text-character-blue mb-0.5">
               @{character.name}
             </CardTitle>
-            <Badge variant="secondary" className="w-fit text-xs mb-1 bg-character-blue-light text-character-blue border-0">{character.role}</Badge>
+            <Badge
+              variant="secondary"
+              className="w-fit text-xs mb-1 bg-character-blue-light text-character-blue border-0"
+            >
+              {character.role}
+            </Badge>
             <CardDescription className="text-xs line-clamp-1">
               {character.description}
             </CardDescription>
@@ -2071,7 +2620,7 @@ function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: 
                     skills: editedSkills,
                     strengths: editedStrengths,
                     weaknesses: editedWeaknesses,
-                    characterTraits: editedCharacterTraits
+                    characterTraits: editedCharacterTraits,
                   });
                   setIsEditing(false);
                 } else {
@@ -2128,33 +2677,39 @@ function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: 
             <div className="shrink-0">
               {character.image ? (
                 isEditing ? (
-                  <button 
+                  <button
                     onClick={handleImageClick}
                     className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-character-blue-light hover:border-character-blue transition-colors cursor-pointer group"
                   >
-                    <img src={character.image} alt={character.name} className="w-full h-full object-cover" />
+                    <img
+                      src={character.image}
+                      alt={character.name}
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="size-5 text-white" />
                     </div>
                   </button>
                 ) : (
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-character-blue-light">
-                    <img src={character.image} alt={character.name} className="w-full h-full object-cover" />
+                    <img
+                      src={character.image}
+                      alt={character.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 )
+              ) : isEditing ? (
+                <button
+                  onClick={handleImageClick}
+                  className="w-16 h-16 rounded-full border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center bg-muted/10"
+                >
+                  <Camera className="size-6 text-muted-foreground" />
+                </button>
               ) : (
-                isEditing ? (
-                  <button 
-                    onClick={handleImageClick}
-                    className="w-16 h-16 rounded-full border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center bg-muted/10"
-                  >
-                    <Camera className="size-6 text-muted-foreground" />
-                  </button>
-                ) : (
-                  <div className="w-16 h-16 rounded-full border-2 border-character-blue-light flex items-center justify-center bg-muted/10">
-                    <User className="size-8 text-muted-foreground" />
-                  </div>
-                )
+                <div className="w-16 h-16 rounded-full border-2 border-character-blue-light flex items-center justify-center bg-muted/10">
+                  <User className="size-8 text-muted-foreground" />
+                </div>
               )}
               {isEditing && (
                 <input
@@ -2166,7 +2721,7 @@ function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: 
                 />
               )}
             </div>
-            
+
             <div className="flex-1 min-w-0">
               {isEditing ? (
                 <div className="flex items-center gap-2">
@@ -2192,181 +2747,222 @@ function CharacterCard({ character, onImageUpload, onUpdateDetails, onDelete }: 
                   </div>
                   {/* Name Display Box */}
                   <div className="flex-1 rounded-lg border border-border bg-character-blue-light flex items-center px-3 h-8">
-                    <p className="text-base text-character-blue">{character.name}</p>
+                    <p className="text-base text-character-blue">
+                      {character.name}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        
-        {isEditing ? (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Rolle</Label>
-              <Input
-                value={editedRole}
-                onChange={(e) => setEditedRole(e.target.value)}
-                className="h-9 border-2"
-                placeholder="z.B. Protagonist, Antagonist, Unterstützer"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Beschreibung</Label>
-              <Textarea
-                value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
-                rows={2}
-                className="border-2"
-                placeholder="Kurze Zusammenfassung des Charakters..."
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
+
+          {isEditing ? (
+            <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground font-bold">Alter</Label>
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Rolle
+                </Label>
                 <Input
-                  value={editedAge}
-                  onChange={(e) => setEditedAge(e.target.value)}
+                  value={editedRole}
+                  onChange={(e) => setEditedRole(e.target.value)}
                   className="h-9 border-2"
-                  placeholder="35"
+                  placeholder="z.B. Protagonist, Antagonist, Unterstützer"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground font-bold">Geschlecht</Label>
-                <Input
-                  value={editedGender}
-                  onChange={(e) => setEditedGender(e.target.value)}
-                  className="h-9 border-2"
-                  placeholder="Female"
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Beschreibung
+                </Label>
+                <Textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  rows={2}
+                  className="border-2"
+                  placeholder="Kurze Zusammenfassung des Charakters..."
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-bold">
+                    Alter
+                  </Label>
+                  <Input
+                    value={editedAge}
+                    onChange={(e) => setEditedAge(e.target.value)}
+                    className="h-9 border-2"
+                    placeholder="35"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-bold">
+                    Geschlecht
+                  </Label>
+                  <Input
+                    value={editedGender}
+                    onChange={(e) => setEditedGender(e.target.value)}
+                    className="h-9 border-2"
+                    placeholder="Female"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground font-bold">
+                    Spezies
+                  </Label>
+                  <Input
+                    value={editedSpecies}
+                    onChange={(e) => setEditedSpecies(e.target.value)}
+                    className="h-9 border-2"
+                    placeholder="Human"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Background Story
+                </Label>
+                <Textarea
+                  value={editedBackgroundStory}
+                  onChange={(e) => setEditedBackgroundStory(e.target.value)}
+                  rows={3}
+                  className="border-2"
+                  placeholder="Die Hintergrundgeschichte des Charakters - Herkunft, wichtige Ereignisse, Motivation..."
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground font-bold">Spezies</Label>
-                <Input
-                  value={editedSpecies}
-                  onChange={(e) => setEditedSpecies(e.target.value)}
-                  className="h-9 border-2"
-                  placeholder="Human"
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Skills
+                </Label>
+                <Textarea
+                  value={editedSkills}
+                  onChange={(e) => setEditedSkills(e.target.value)}
+                  rows={2}
+                  className="border-2"
+                  placeholder="Fähigkeiten kommagetrennt (z.B. Piloting, Schwertkampf, Hacking)"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Stärken
+                </Label>
+                <Textarea
+                  value={editedStrengths}
+                  onChange={(e) => setEditedStrengths(e.target.value)}
+                  rows={2}
+                  className="border-2"
+                  placeholder="Was macht den Charakter stark? (z.B. Entscheidungsfreudig, Mutig, Intelligent)"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Schwächen
+                </Label>
+                <Textarea
+                  value={editedWeaknesses}
+                  onChange={(e) => setEditedWeaknesses(e.target.value)}
+                  rows={2}
+                  className="border-2"
+                  placeholder="Schwachstellen und Verletzlichkeiten (z.B. Impulsiv, Vertrauensselig, Sturköpfig)"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground font-bold">
+                  Charakter Traits
+                </Label>
+                <Textarea
+                  value={editedCharacterTraits}
+                  onChange={(e) => setEditedCharacterTraits(e.target.value)}
+                  rows={2}
+                  className="border-2"
+                  placeholder="Persönlichkeitsmerkmale (z.B. Mutig, Sarkastisch, Mitfühlend, Neugierig)"
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Background Story</Label>
-              <Textarea
-                value={editedBackgroundStory}
-                onChange={(e) => setEditedBackgroundStory(e.target.value)}
-                rows={3}
-                className="border-2"
-                placeholder="Die Hintergrundgeschichte des Charakters - Herkunft, wichtige Ereignisse, Motivation..."
-              />
+          ) : (
+            <div className="space-y-2">
+              <Badge variant="secondary" className="w-fit">
+                {character.role}
+              </Badge>
+              <CardDescription className="text-sm">
+                {character.description}
+              </CardDescription>
+              {(character.age || character.gender || character.species) && (
+                <div className="flex gap-2 flex-wrap text-xs text-muted-foreground">
+                  {character.age && <span>Alter: {character.age}</span>}
+                  {character.gender && <span>• {character.gender}</span>}
+                  {character.species && <span>• {character.species}</span>}
+                </div>
+              )}
+              {character.backgroundStory && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold mb-1">Background:</p>
+                  <CardDescription className="text-xs">
+                    {character.backgroundStory}
+                  </CardDescription>
+                </div>
+              )}
+              {character.skills && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold mb-1">Skills:</p>
+                  <CardDescription className="text-xs">
+                    {character.skills}
+                  </CardDescription>
+                </div>
+              )}
+              {character.strengths && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold mb-1">Stärken:</p>
+                  <CardDescription className="text-xs">
+                    {character.strengths}
+                  </CardDescription>
+                </div>
+              )}
+              {character.weaknesses && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold mb-1">Schwächen:</p>
+                  <CardDescription className="text-xs">
+                    {character.weaknesses}
+                  </CardDescription>
+                </div>
+              )}
+              {character.characterTraits && (
+                <div className="mt-2">
+                  <p className="text-xs font-bold mb-1">Traits:</p>
+                  <CardDescription className="text-xs">
+                    {character.characterTraits}
+                  </CardDescription>
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Skills</Label>
-              <Textarea
-                value={editedSkills}
-                onChange={(e) => setEditedSkills(e.target.value)}
-                rows={2}
-                className="border-2"
-                placeholder="Fähigkeiten kommagetrennt (z.B. Piloting, Schwertkampf, Hacking)"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Stärken</Label>
-              <Textarea
-                value={editedStrengths}
-                onChange={(e) => setEditedStrengths(e.target.value)}
-                rows={2}
-                className="border-2"
-                placeholder="Was macht den Charakter stark? (z.B. Entscheidungsfreudig, Mutig, Intelligent)"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Schwächen</Label>
-              <Textarea
-                value={editedWeaknesses}
-                onChange={(e) => setEditedWeaknesses(e.target.value)}
-                rows={2}
-                className="border-2"
-                placeholder="Schwachstellen und Verletzlichkeiten (z.B. Impulsiv, Vertrauensselig, Sturköpfig)"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">Charakter Traits</Label>
-              <Textarea
-                value={editedCharacterTraits}
-                onChange={(e) => setEditedCharacterTraits(e.target.value)}
-                rows={2}
-                className="border-2"
-                placeholder="Persönlichkeitsmerkmale (z.B. Mutig, Sarkastisch, Mitfühlend, Neugierig)"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Badge variant="secondary" className="w-fit">{character.role}</Badge>
-            <CardDescription className="text-sm">{character.description}</CardDescription>
-            {(character.age || character.gender || character.species) && (
-              <div className="flex gap-2 flex-wrap text-xs text-muted-foreground">
-                {character.age && <span>Alter: {character.age}</span>}
-                {character.gender && <span>• {character.gender}</span>}
-                {character.species && <span>• {character.species}</span>}
-              </div>
-            )}
-            {character.backgroundStory && (
-              <div className="mt-2">
-                <p className="text-xs font-bold mb-1">Background:</p>
-                <CardDescription className="text-xs">{character.backgroundStory}</CardDescription>
-              </div>
-            )}
-            {character.skills && (
-              <div className="mt-2">
-                <p className="text-xs font-bold mb-1">Skills:</p>
-                <CardDescription className="text-xs">{character.skills}</CardDescription>
-              </div>
-            )}
-            {character.strengths && (
-              <div className="mt-2">
-                <p className="text-xs font-bold mb-1">Stärken:</p>
-                <CardDescription className="text-xs">{character.strengths}</CardDescription>
-              </div>
-            )}
-            {character.weaknesses && (
-              <div className="mt-2">
-                <p className="text-xs font-bold mb-1">Schwächen:</p>
-                <CardDescription className="text-xs">{character.weaknesses}</CardDescription>
-              </div>
-            )}
-            {character.characterTraits && (
-              <div className="mt-2">
-                <p className="text-xs font-bold mb-1">Traits:</p>
-                <CardDescription className="text-xs">{character.characterTraits}</CardDescription>
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
           <Badge className="text-xs bg-primary/10 text-primary hover:bg-primary/15 border-0 w-fit">
             {character.lastEdited.toLocaleDateString("de-DE", {
               day: "2-digit",
               month: "2-digit",
-              year: "numeric"
-            })}, {character.lastEdited.toLocaleTimeString("de-DE", {
+              year: "numeric",
+            })}
+            ,{" "}
+            {character.lastEdited.toLocaleTimeString("de-DE", {
               hour: "2-digit",
-              minute: "2-digit"
-            })} Uhr
+              minute: "2-digit",
+            })}{" "}
+            Uhr
           </Badge>
         </CardHeader>
       )}
 
       {/* Image Crop Dialog */}
       {showImageCropDialog && tempImageForCrop && (
-        <ImageCropDialog
-          image={tempImageForCrop}
-          onComplete={handleCroppedImage}
-          onCancel={() => {
-            setShowImageCropDialog(false);
-            setTempImageForCrop(undefined);
-          }}
-        />
+        <Suspense fallback={null}>
+          <ImageCropDialog
+            image={tempImageForCrop}
+            onComplete={handleCroppedImage}
+            onCancel={() => {
+              setShowImageCropDialog(false);
+              setTempImageForCrop(undefined);
+            }}
+          />
+        </Suspense>
       )}
     </Card>
   );
@@ -2386,7 +2982,11 @@ interface DraggableSceneProps {
   index: number;
   moveScene: (dragIndex: number, hoverIndex: number) => void;
   onImageUpload: (sceneId: string, imageUrl: string) => void;
-  onUpdateDetails: (sceneId: string, title: string, description: string) => void;
+  onUpdateDetails: (
+    sceneId: string,
+    title: string,
+    description: string,
+  ) => void;
   characters: Array<{
     id: string;
     name: string;
@@ -2412,7 +3012,16 @@ interface DraggableSceneProps {
   linkedWorldId?: string;
 }
 
-function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetails, characters, worldItems, linkedWorldId }: DraggableSceneProps) {
+function DraggableScene({
+  scene,
+  index,
+  moveScene,
+  onImageUpload,
+  onUpdateDetails,
+  characters,
+  worldItems,
+  linkedWorldId,
+}: DraggableSceneProps) {
   const sceneImageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -2420,33 +3029,38 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(scene.title);
   const [editedDescription, setEditedDescription] = useState(scene.description);
-  
+
   // Autocomplete states
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteSearch, setAutocompleteSearch] = useState("");
-  const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
+  const [autocompletePosition, setAutocompletePosition] = useState({
+    top: 0,
+    left: 0,
+  });
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [autocompleteType, setAutocompleteType] = useState<'character' | 'world'>('character');
+  const [autocompleteType, setAutocompleteType] = useState<
+    "character" | "world"
+  >("character");
 
   // Use colored tags hook
   const { colorizeText } = useColoredTags({
-    characters: characters.map(c => ({ id: c.id, name: c.name })),
+    characters: characters.map((c) => ({ id: c.id, name: c.name })),
     assets: worldItems,
-    scenes: []
+    scenes: [],
   });
 
   // Extract tagged characters from description
   const getTaggedCharacters = (text: string) => {
     // Match @CharacterName or @Character Name (with spaces)
     const matches = text.match(/@([A-Za-z]+(\s+[A-Za-z]+)*)/g) || [];
-    const taggedNames = matches.map(m => m.substring(1)); // Remove the @
-    return characters.filter(c => taggedNames.includes(c.name));
+    const taggedNames = matches.map((m) => m.substring(1)); // Remove the @
+    return characters.filter((c) => taggedNames.includes(c.name));
   };
 
   const taggedCharacters = getTaggedCharacters(editedDescription);
 
   // Dynamic placeholder
-  const textareaPlaceholder = linkedWorldId 
+  const textareaPlaceholder = linkedWorldId
     ? "Szenen-Beschreibung (nutze @ für Charaktere, / für World-Items)"
     : "Szenen-Beschreibung (nutze @ um Charaktere zu taggen)";
 
@@ -2473,7 +3087,8 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
       }
 
       const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverMiddleY =
+        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
       const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
 
@@ -2517,7 +3132,9 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
     }
   };
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart;
     setEditedDescription(value);
@@ -2525,30 +3142,30 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
 
     // Check if @ was just typed (for characters)
     const textBeforeCursor = value.substring(0, cursorPos);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
-    
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+    const lastSlashIndex = textBeforeCursor.lastIndexOf("/");
+
     // Determine which is more recent: @ or /
     const useAtAutocomplete = lastAtIndex > lastSlashIndex;
     const useSlashAutocomplete = lastSlashIndex > lastAtIndex && linkedWorldId;
-    
+
     if (useAtAutocomplete && lastAtIndex !== -1) {
       const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
       // Check if there's no space after @
-      if (!textAfterAt.includes(' ') && textAfterAt.length >= 0) {
+      if (!textAfterAt.includes(" ") && textAfterAt.length >= 0) {
         setAutocompleteSearch(textAfterAt);
-        setAutocompleteType('character');
+        setAutocompleteType("character");
         setShowAutocomplete(true);
-        
+
         // Calculate position - directly below the cursor position
         if (textareaRef.current) {
           const textarea = textareaRef.current;
           const rect = textarea.getBoundingClientRect();
-          
+
           // Create a temporary div to measure text position
-          const tempDiv = document.createElement('div');
+          const tempDiv = document.createElement("div");
           const computedStyle = window.getComputedStyle(textarea);
-          
+
           // Copy relevant styles
           tempDiv.style.font = computedStyle.font;
           tempDiv.style.fontSize = computedStyle.fontSize;
@@ -2556,22 +3173,22 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
           tempDiv.style.padding = computedStyle.padding;
           tempDiv.style.border = computedStyle.border;
           tempDiv.style.lineHeight = computedStyle.lineHeight;
-          tempDiv.style.whiteSpace = 'pre-wrap';
-          tempDiv.style.wordWrap = 'break-word';
-          tempDiv.style.position = 'absolute';
-          tempDiv.style.visibility = 'hidden';
-          tempDiv.style.width = rect.width + 'px';
-          
+          tempDiv.style.whiteSpace = "pre-wrap";
+          tempDiv.style.wordWrap = "break-word";
+          tempDiv.style.position = "absolute";
+          tempDiv.style.visibility = "hidden";
+          tempDiv.style.width = rect.width + "px";
+
           // Add text up to cursor
           tempDiv.textContent = textBeforeCursor;
           document.body.appendChild(tempDiv);
-          
+
           const tempRect = tempDiv.getBoundingClientRect();
           document.body.removeChild(tempDiv);
-          
+
           setAutocompletePosition({
             top: rect.top + tempRect.height - textarea.scrollTop,
-            left: rect.left + 10
+            left: rect.left + 10,
           });
         }
       } else {
@@ -2580,40 +3197,40 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
     } else if (useSlashAutocomplete && lastSlashIndex !== -1) {
       const textAfterSlash = textBeforeCursor.substring(lastSlashIndex + 1);
       // Check if there's no space after /
-      if (!textAfterSlash.includes(' ') && textAfterSlash.length >= 0) {
+      if (!textAfterSlash.includes(" ") && textAfterSlash.length >= 0) {
         setAutocompleteSearch(textAfterSlash);
-        setAutocompleteType('world');
+        setAutocompleteType("world");
         setShowAutocomplete(true);
-        
+
         // Calculate position
         if (textareaRef.current) {
           const textarea = textareaRef.current;
           const rect = textarea.getBoundingClientRect();
-          
-          const tempDiv = document.createElement('div');
+
+          const tempDiv = document.createElement("div");
           const computedStyle = window.getComputedStyle(textarea);
-          
+
           tempDiv.style.font = computedStyle.font;
           tempDiv.style.fontSize = computedStyle.fontSize;
           tempDiv.style.fontFamily = computedStyle.fontFamily;
           tempDiv.style.padding = computedStyle.padding;
           tempDiv.style.border = computedStyle.border;
           tempDiv.style.lineHeight = computedStyle.lineHeight;
-          tempDiv.style.whiteSpace = 'pre-wrap';
-          tempDiv.style.wordWrap = 'break-word';
-          tempDiv.style.position = 'absolute';
-          tempDiv.style.visibility = 'hidden';
-          tempDiv.style.width = rect.width + 'px';
-          
+          tempDiv.style.whiteSpace = "pre-wrap";
+          tempDiv.style.wordWrap = "break-word";
+          tempDiv.style.position = "absolute";
+          tempDiv.style.visibility = "hidden";
+          tempDiv.style.width = rect.width + "px";
+
           tempDiv.textContent = textBeforeCursor;
           document.body.appendChild(tempDiv);
-          
+
           const tempRect = tempDiv.getBoundingClientRect();
           document.body.removeChild(tempDiv);
-          
+
           setAutocompletePosition({
             top: rect.top + tempRect.height - textarea.scrollTop,
-            left: rect.left + 10
+            left: rect.left + 10,
           });
         }
       } else {
@@ -2627,19 +3244,17 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
   const insertCharacterTag = (characterName: string) => {
     const textBeforeCursor = editedDescription.substring(0, cursorPosition);
     const textAfterCursor = editedDescription.substring(cursorPosition);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
     // Create the full tag with the original name (including spaces)
-    const tag = '@' + characterName;
-    
-    const newDescription = 
-      editedDescription.substring(0, lastAtIndex) + 
-      tag + ' ' + 
-      textAfterCursor;
-    
+    const tag = "@" + characterName;
+
+    const newDescription =
+      editedDescription.substring(0, lastAtIndex) + tag + " " + textAfterCursor;
+
     setEditedDescription(newDescription);
     setShowAutocomplete(false);
-    
+
     // Set cursor position after the inserted tag
     setTimeout(() => {
       if (textareaRef.current) {
@@ -2653,18 +3268,19 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
   const insertWorldTag = (itemName: string) => {
     const textBeforeCursor = editedDescription.substring(0, cursorPosition);
     const textAfterCursor = editedDescription.substring(cursorPosition);
-    const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
-    
-    const tag = '/' + itemName;
-    
-    const newDescription = 
-      editedDescription.substring(0, lastSlashIndex) + 
-      tag + ' ' + 
+    const lastSlashIndex = textBeforeCursor.lastIndexOf("/");
+
+    const tag = "/" + itemName;
+
+    const newDescription =
+      editedDescription.substring(0, lastSlashIndex) +
+      tag +
+      " " +
       textAfterCursor;
-    
+
     setEditedDescription(newDescription);
     setShowAutocomplete(false);
-    
+
     setTimeout(() => {
       if (textareaRef.current) {
         const newCursorPos = lastSlashIndex + tag.length + 1;
@@ -2674,8 +3290,8 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
     }, 0);
   };
 
-  const filteredCharacters = characters.filter(c => 
-    c.name.toLowerCase().includes(autocompleteSearch.toLowerCase())
+  const filteredCharacters = characters.filter((c) =>
+    c.name.toLowerCase().includes(autocompleteSearch.toLowerCase()),
   );
 
   return (
@@ -2695,14 +3311,18 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
           <div className="flex-1 min-w-0">
             {!isExpanded ? (
               /* Collapsed View with Thumbnail */
-              <div 
+              <div
                 className="p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/10 transition-colors"
                 onClick={() => setIsExpanded(true)}
               >
                 {/* Thumbnail */}
                 <div className="flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden bg-muted/30">
                   {scene.image ? (
-                    <img src={scene.image} alt={scene.title} className="w-full h-full object-cover" />
+                    <img
+                      src={scene.image}
+                      alt={scene.title}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <ImageIcon className="size-5 text-muted-foreground" />
@@ -2715,21 +3335,37 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
                   <div className="flex items-center gap-2 mb-1">
                     {/* # Symbol Box */}
                     <div className="shrink-0 rounded-lg border border-border bg-card flex items-center justify-center px-3 h-8">
-                      <span className="text-base text-scene-pink">#{scene.number}</span>
+                      <span className="text-base text-scene-pink">
+                        #{scene.number}
+                      </span>
                     </div>
                     {/* Title Box */}
                     <div className="flex-1 rounded-lg border border-border bg-scene-pink-light flex items-center px-3 h-8">
-                      <p className="text-base text-scene-pink truncate">{scene.title}</p>
+                      <p className="text-base text-scene-pink truncate">
+                        {scene.title}
+                      </p>
                     </div>
                   </div>
                   <CardDescription className="text-xs line-clamp-1">
                     {colorizeText(scene.description).map((part, i) => {
-                      if (part.type === 'character') {
-                        return <span key={i} className="text-character-blue">{part.text}</span>;
-                      } else if (part.type === 'asset') {
-                        return <span key={i} className="text-asset-green">{part.text}</span>;
-                      } else if (part.type === 'scene') {
-                        return <span key={i} className="text-scene-pink">{part.text}</span>;
+                      if (part.type === "character") {
+                        return (
+                          <span key={i} className="text-character-blue">
+                            {part.text}
+                          </span>
+                        );
+                      } else if (part.type === "asset") {
+                        return (
+                          <span key={i} className="text-asset-green">
+                            {part.text}
+                          </span>
+                        );
+                      } else if (part.type === "scene") {
+                        return (
+                          <span key={i} className="text-scene-pink">
+                            {part.text}
+                          </span>
+                        );
                       }
                       return <span key={i}>{part.text}</span>;
                     })}
@@ -2749,7 +3385,11 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
                     size="sm"
                     onClick={() => {
                       if (isEditing) {
-                        onUpdateDetails(scene.id, editedTitle, editedDescription);
+                        onUpdateDetails(
+                          scene.id,
+                          editedTitle,
+                          editedDescription,
+                        );
                         setIsEditing(false);
                       } else {
                         setEditedTitle(scene.title);
@@ -2787,7 +3427,9 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
                     <>
                       {/* # Symbol Box */}
                       <div className="shrink-0 rounded-lg border border-border bg-card flex items-center justify-center px-3 h-8">
-                        <span className="text-base text-scene-pink">#{scene.number}</span>
+                        <span className="text-base text-scene-pink">
+                          #{scene.number}
+                        </span>
                       </div>
                       {/* Title Input Box */}
                       <div className="flex-1 rounded-lg border border-border bg-scene-pink-light flex items-center h-8 overflow-hidden">
@@ -2803,189 +3445,270 @@ function DraggableScene({ scene, index, moveScene, onImageUpload, onUpdateDetail
                     <>
                       {/* # Symbol Box */}
                       <div className="shrink-0 rounded-lg border border-border bg-card flex items-center justify-center px-3 h-8">
-                        <span className="text-base text-scene-pink">#{scene.number}</span>
+                        <span className="text-base text-scene-pink">
+                          #{scene.number}
+                        </span>
                       </div>
                       {/* Title Display Box */}
                       <div className="flex-1 rounded-lg border border-border bg-scene-pink-light flex items-center px-3 h-8">
-                        <p className="text-base text-scene-pink">{scene.title}</p>
+                        <p className="text-base text-scene-pink">
+                          {scene.title}
+                        </p>
                       </div>
                     </>
                   )}
                 </div>
-              
-              {isEditing ? (
-                <div className="relative mb-3">
-                  {/* Colored Text Overlay */}
-                  <div 
-                    className="absolute left-3 top-2 pointer-events-none text-sm whitespace-pre-wrap select-none z-10 pr-6 pb-4"
-                    style={{ 
-                      width: 'calc(100% - 24px)',
-                      lineHeight: '1.5',
-                      fontFamily: 'inherit'
-                    }}
-                    aria-hidden="true"
-                  >
-                    {editedDescription ? colorizeText(editedDescription).map((part, index) => {
-                      if (part.type === 'character') {
-                        return <span key={index} style={{ color: 'var(--character-blue)', fontWeight: 500 }}>{part.text}</span>;
-                      } else if (part.type === 'asset') {
-                        return <span key={index} style={{ color: 'var(--asset-green)', fontWeight: 500 }}>{part.text}</span>;
-                      } else if (part.type === 'scene') {
-                        return <span key={index} style={{ color: 'var(--scene-pink)', fontWeight: 500 }}>{part.text}</span>;
-                      }
-                      return <span key={index}>{part.text}</span>;
-                    }) : null}
-                  </div>
-                  <Textarea
-                    ref={textareaRef}
-                    value={editedDescription}
-                    onChange={handleDescriptionChange}
-                    className="mb-0 relative text-transparent caret-foreground"
-                    style={{ caretColor: 'var(--foreground)' }}
-                    rows={3}
-                    placeholder={textareaPlaceholder}
-                  />
-                  {showAutocomplete && autocompleteType === 'character' && filteredCharacters.length > 0 && (
-                    <div 
-                      className="absolute z-50 bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
+
+                {isEditing ? (
+                  <div className="relative mb-3">
+                    {/* Colored Text Overlay */}
+                    <div
+                      className="absolute left-3 top-2 pointer-events-none text-sm whitespace-pre-wrap select-none z-10 pr-6 pb-4"
                       style={{
-                        position: 'fixed',
-                        top: `${autocompletePosition.top}px`,
-                        left: `${autocompletePosition.left}px`,
-                        maxWidth: '300px'
+                        width: "calc(100% - 24px)",
+                        lineHeight: "1.5",
+                        fontFamily: "inherit",
                       }}
+                      aria-hidden="true"
                     >
-                      <div className="p-1">
-                        <div className="px-2 py-1.5 text-xs text-character-blue border-b border-border mb-1">
-                          @ Charaktere
+                      {editedDescription
+                        ? colorizeText(editedDescription).map((part, index) => {
+                            if (part.type === "character") {
+                              return (
+                                <span
+                                  key={index}
+                                  style={{
+                                    color: "var(--character-blue)",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {part.text}
+                                </span>
+                              );
+                            } else if (part.type === "asset") {
+                              return (
+                                <span
+                                  key={index}
+                                  style={{
+                                    color: "var(--asset-green)",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {part.text}
+                                </span>
+                              );
+                            } else if (part.type === "scene") {
+                              return (
+                                <span
+                                  key={index}
+                                  style={{
+                                    color: "var(--scene-pink)",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {part.text}
+                                </span>
+                              );
+                            }
+                            return <span key={index}>{part.text}</span>;
+                          })
+                        : null}
+                    </div>
+                    <Textarea
+                      ref={textareaRef}
+                      value={editedDescription}
+                      onChange={handleDescriptionChange}
+                      className="mb-0 relative text-transparent caret-foreground"
+                      style={{ caretColor: "var(--foreground)" }}
+                      rows={3}
+                      placeholder={textareaPlaceholder}
+                    />
+                    {showAutocomplete &&
+                      autocompleteType === "character" &&
+                      filteredCharacters.length > 0 && (
+                        <div
+                          className="absolute z-50 bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
+                          style={{
+                            position: "fixed",
+                            top: `${autocompletePosition.top}px`,
+                            left: `${autocompletePosition.left}px`,
+                            maxWidth: "300px",
+                          }}
+                        >
+                          <div className="p-1">
+                            <div className="px-2 py-1.5 text-xs text-character-blue border-b border-border mb-1">
+                              @ Charaktere
+                            </div>
+                            {filteredCharacters.slice(0, 5).map((character) => (
+                              <button
+                                key={character.id}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  insertCharacterTag(character.name);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-character-blue-light rounded-md flex items-center gap-2 transition-colors"
+                              >
+                                {character.image ? (
+                                  <img
+                                    src={character.image}
+                                    alt={character.name}
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-character-blue-light flex items-center justify-center">
+                                    <AtSign className="size-4 text-character-blue" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm truncate text-character-blue">
+                                    @{character.name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {character.role}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        {filteredCharacters.slice(0, 5).map(character => (
-                          <button
+                      )}
+                    {showAutocomplete &&
+                      autocompleteType === "world" &&
+                      linkedWorldId && (
+                        <WorldReferenceAutocomplete
+                          items={worldItems}
+                          search={autocompleteSearch}
+                          position={autocompletePosition}
+                          onSelect={insertWorldTag}
+                        />
+                      )}
+                  </div>
+                ) : (
+                  <>
+                    <CardDescription className="text-sm mb-3">
+                      {colorizeText(scene.description).map((part, i) => {
+                        if (part.type === "character") {
+                          return (
+                            <span key={i} className="text-character-blue">
+                              {part.text}
+                            </span>
+                          );
+                        } else if (part.type === "asset") {
+                          return (
+                            <span key={i} className="text-asset-green">
+                              {part.text}
+                            </span>
+                          );
+                        } else if (part.type === "scene") {
+                          return (
+                            <span key={i} className="text-scene-pink">
+                              {part.text}
+                            </span>
+                          );
+                        }
+                        return <span key={i}>{part.text}</span>;
+                      })}
+                    </CardDescription>
+                    {taggedCharacters.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {taggedCharacters.map((character) => (
+                          <SceneCharacterBadge
                             key={character.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              insertCharacterTag(character.name);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-character-blue-light rounded-md flex items-center gap-2 transition-colors"
+                            character={character}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Scene Image & Tagged Characters */}
+                <div className="flex gap-3 mb-3">
+                  {/* Scene Image */}
+                  <div className="flex-1 max-w-[75%]">
+                    <div
+                      onClick={handleImageClick}
+                      className="relative aspect-video rounded-lg overflow-hidden bg-muted/30 cursor-pointer group"
+                    >
+                      {scene.image ? (
+                        <>
+                          <img
+                            src={scene.image}
+                            alt={scene.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Camera className="size-6 text-white" />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                          <ImageIcon className="size-6 mb-1" />
+                          <p className="text-[10px]">Bild hochladen</p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      ref={sceneImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Tagged Characters */}
+                  {taggedCharacters.length > 0 && (
+                    <div className="flex-1 flex flex-col gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Charaktere in dieser Szene:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {taggedCharacters.map((character) => (
+                          <div
+                            key={character.id}
+                            className="flex items-center gap-2 bg-primary/10 rounded-lg p-2"
                           >
                             {character.image ? (
-                              <img src={character.image} alt={character.name} className="w-8 h-8 rounded-full object-cover" />
+                              <img
+                                src={character.image}
+                                alt={character.name}
+                                className="w-10 h-10 rounded-full object-cover border-2 border-primary/30"
+                              />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-character-blue-light flex items-center justify-center">
-                                <AtSign className="size-4 text-character-blue" />
+                              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30">
+                                <AtSign className="size-5 text-primary" />
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate text-character-blue">
-                                @{character.name}
+                              <p className="text-xs truncate">
+                                {character.name}
                               </p>
-                              <p className="text-xs text-muted-foreground truncate">{character.role}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                {character.role}
+                              </p>
                             </div>
-                          </button>
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
-                  {showAutocomplete && autocompleteType === 'world' && linkedWorldId && (
-                    <WorldReferenceAutocomplete
-                      items={worldItems}
-                      search={autocompleteSearch}
-                      position={autocompletePosition}
-                      onSelect={insertWorldTag}
-                    />
-                  )}
                 </div>
-              ) : (
-                <>
-                  <CardDescription className="text-sm mb-3">
-                    {colorizeText(scene.description).map((part, i) => {
-                      if (part.type === 'character') {
-                        return <span key={i} className="text-character-blue">{part.text}</span>;
-                      } else if (part.type === 'asset') {
-                        return <span key={i} className="text-asset-green">{part.text}</span>;
-                      } else if (part.type === 'scene') {
-                        return <span key={i} className="text-scene-pink">{part.text}</span>;
-                      }
-                      return <span key={i}>{part.text}</span>;
-                    })}
-                  </CardDescription>
-                  {taggedCharacters.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {taggedCharacters.map(character => (
-                        <SceneCharacterBadge key={character.id} character={character} />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {/* Scene Image & Tagged Characters */}
-              <div className="flex gap-3 mb-3">
-                {/* Scene Image */}
-                <div className="flex-1 max-w-[75%]">
-                  <div
-                    onClick={handleImageClick}
-                    className="relative aspect-video rounded-lg overflow-hidden bg-muted/30 cursor-pointer group"
-                  >
-                    {scene.image ? (
-                      <>
-                        <img src={scene.image} alt={scene.title} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Camera className="size-6 text-white" />
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-                        <ImageIcon className="size-6 mb-1" />
-                        <p className="text-[10px]">Bild hochladen</p>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={sceneImageInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </div>
-
-                {/* Tagged Characters */}
-                {taggedCharacters.length > 0 && (
-                  <div className="flex-1 flex flex-col gap-2">
-                    <p className="text-xs text-muted-foreground">Charaktere in dieser Szene:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {taggedCharacters.map(character => (
-                        <div key={character.id} className="flex items-center gap-2 bg-primary/10 rounded-lg p-2">
-                          {character.image ? (
-                            <img src={character.image} alt={character.name} className="w-10 h-10 rounded-full object-cover border-2 border-primary/30" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30">
-                              <AtSign className="size-5 text-primary" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate">{character.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{character.role}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
 
                 <Badge className="text-xs bg-primary/10 text-primary hover:bg-primary/15 border-0 w-fit">
                   {scene.lastEdited.toLocaleDateString("de-DE", {
                     day: "2-digit",
                     month: "2-digit",
-                    year: "numeric"
-                  })}, {scene.lastEdited.toLocaleTimeString("de-DE", {
+                    year: "numeric",
+                  })}
+                  ,{" "}
+                  {scene.lastEdited.toLocaleTimeString("de-DE", {
                     hour: "2-digit",
-                    minute: "2-digit"
-                  })} Uhr
+                    minute: "2-digit",
+                  })}{" "}
+                  Uhr
                 </Badge>
               </CardHeader>
             )}
@@ -3003,7 +3726,12 @@ interface ProjectDetailProps {
   onOpenWorldbuilding: () => void;
   coverImage?: string;
   onCoverImageChange: (imageUrl: string) => void;
-  worldbuildingItems: Array<{ id: string; name: string; category: string; categoryType: string }>;
+  worldbuildingItems: Array<{
+    id: string;
+    name: string;
+    category: string;
+    categoryType: string;
+  }>;
   onUpdate?: () => void;
   onDelete: () => Promise<void>;
   showDeleteDialog: boolean;
@@ -3016,7 +3744,10 @@ interface ProjectDetailProps {
   showStatsDialog: boolean;
   setShowStatsDialog: (show: boolean) => void;
   // Timeline Cache
-  onTimelineDataChange: (projectId: string, data: TimelineData | BookTimelineData) => void;
+  onTimelineDataChange: (
+    projectId: string,
+    data: TimelineData | BookTimelineData,
+  ) => void;
   // Collapsible Sections
   structureOpen: boolean;
   setStructureOpen: (open: boolean) => void;
@@ -3030,7 +3761,10 @@ interface ProjectDetailProps {
   onStyleGuideChange: (data: StyleGuideData) => void;
   useStyleGuideForCover: boolean;
   setUseStyleGuideForCover: (v: boolean) => void;
-  onRequestProjectExport?: (snapshot: Record<string, unknown>, linkedWorldLabel: string | null) => void;
+  onRequestProjectExport?: (
+    snapshot: Record<string, unknown>,
+    linkedWorldLabel: string | null,
+  ) => void;
 }
 
 /** Legacy scene row for ProjectDetail localStorage drafts. */
@@ -3064,58 +3798,122 @@ interface ProjectCharacterRow {
   lastEdited: Date;
 }
 
-function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImage, onCoverImageChange, worldbuildingItems, onUpdate, onDelete, showDeleteDialog, setShowDeleteDialog, deletePassword, setDeletePassword, deleteLoading, onDuplicate, onShowStats, showStatsDialog, setShowStatsDialog, onTimelineDataChange, structureOpen, setStructureOpen, charactersOpen, setCharactersOpen, styleGuideOpen, setStyleGuideOpen, styleGuide, styleGuideLoading, styleGuideError, onStyleGuideChange, useStyleGuideForCover, setUseStyleGuideForCover, onRequestProjectExport }: ProjectDetailProps) {
-  const [structureView, setStructureView] = useState<"dropdown" | "timeline">("dropdown");
+function ProjectDetail({
+  project,
+  worlds,
+  onBack,
+  onOpenWorldbuilding,
+  coverImage,
+  onCoverImageChange,
+  worldbuildingItems,
+  onUpdate,
+  onDelete,
+  showDeleteDialog,
+  setShowDeleteDialog,
+  deletePassword,
+  setDeletePassword,
+  deleteLoading,
+  onDuplicate,
+  onShowStats,
+  showStatsDialog,
+  setShowStatsDialog,
+  onTimelineDataChange,
+  structureOpen,
+  setStructureOpen,
+  charactersOpen,
+  setCharactersOpen,
+  styleGuideOpen,
+  setStyleGuideOpen,
+  styleGuide,
+  styleGuideLoading,
+  styleGuideError,
+  onStyleGuideChange,
+  useStyleGuideForCover,
+  setUseStyleGuideForCover,
+  onRequestProjectExport,
+}: ProjectDetailProps) {
+  const [structureView, setStructureView] = useState<"dropdown" | "timeline">(
+    "dropdown",
+  );
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
-  const [beatTemplateSaveDialogOpen, setBeatTemplateSaveDialogOpen] = useState(false);
-  const [narrativeOverwriteDialogOpen, setNarrativeOverwriteDialogOpen] = useState(false);
-  const [narrativeOverwriteStep, setNarrativeOverwriteStep] = useState<1 | 2>(1);
+  const [beatTemplateSaveDialogOpen, setBeatTemplateSaveDialogOpen] =
+    useState(false);
+  const [narrativeOverwriteDialogOpen, setNarrativeOverwriteDialogOpen] =
+    useState(false);
+  const [narrativeOverwriteStep, setNarrativeOverwriteStep] = useState<1 | 2>(
+    1,
+  );
   const [pendingNarrativeReplace, setPendingNarrativeReplace] = useState(false);
   const [editedTitle, setEditedTitle] = useState(project.title || "");
   const [editedLogline, setEditedLogline] = useState(project.logline || "");
   const [editedType, setEditedType] = useState(project.type || "");
   const [editedGenre, setEditedGenre] = useState(project.genre || "");
-  const [editedLinkedWorldId, setEditedLinkedWorldId] = useState<string>(project.linkedWorldId || "none");
-  const [editedDurationHours, setEditedDurationHours] = useState(() =>
-    splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration)).h
+  const [editedLinkedWorldId, setEditedLinkedWorldId] = useState<string>(
+    project.linkedWorldId || "none",
   );
-  const [editedDurationMinutes, setEditedDurationMinutes] = useState(() =>
-    splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration)).m
+  const [editedDurationHours, setEditedDurationHours] = useState(
+    () =>
+      splitTotalMinutesToHoursMinutesStrings(
+        parseStoredDurationMinutes(project.duration),
+      ).h,
   );
-  const [editedNarrativeStructure, setEditedNarrativeStructure] = useState(project.narrative_structure || "");
-  const [editedBeatTemplate, setEditedBeatTemplate] = useState(project.beat_template || "");
+  const [editedDurationMinutes, setEditedDurationMinutes] = useState(
+    () =>
+      splitTotalMinutesToHoursMinutesStrings(
+        parseStoredDurationMinutes(project.duration),
+      ).m,
+  );
+  const [editedNarrativeStructure, setEditedNarrativeStructure] = useState(
+    project.narrative_structure || "",
+  );
+  const [editedBeatTemplate, setEditedBeatTemplate] = useState(
+    project.beat_template || "",
+  );
   const [editedGenresMulti, setEditedGenresMulti] = useState<string[]>(() =>
-    parseProjectGenreField(project.genre)
+    parseProjectGenreField(project.genre),
   );
-  const [editedCustomGenrePool, setEditedCustomGenrePool] = useState<string[]>(() =>
-    customGenresFromSelection(parseProjectGenreField(project.genre))
+  const [editedCustomGenrePool, setEditedCustomGenrePool] = useState<string[]>(
+    () => customGenresFromSelection(parseProjectGenreField(project.genre)),
   );
-  const [editedEpisodeLayout, setEditedEpisodeLayout] = useState(project.episode_layout || "");
-  const [editedSeasonEngine, setEditedSeasonEngine] = useState(project.season_engine || "");
-  const [editedConceptBlocks, setEditedConceptBlocks] = useState<ConceptBlock[]>(
-    () => normalizeConceptBlocks(project.concept_blocks)
+  const [editedEpisodeLayout, setEditedEpisodeLayout] = useState(
+    project.episode_layout || "",
   );
+  const [editedSeasonEngine, setEditedSeasonEngine] = useState(
+    project.season_engine || "",
+  );
+  const [editedConceptBlocks, setEditedConceptBlocks] = useState<
+    ConceptBlock[]
+  >(() => normalizeConceptBlocks(project.concept_blocks));
 
   const getConceptContent = (type: ConceptBlock["type"]) =>
     editedConceptBlocks.find((b) => b.type === type)?.content || "";
 
   const setConceptContent = (type: ConceptBlock["type"], content: string) => {
     setEditedConceptBlocks((prev) =>
-      prev.map((b) => (b.type === type ? { ...b, content } : b))
+      prev.map((b) => (b.type === type ? { ...b, content } : b)),
     );
   };
   // 📖 NEW: Book Metrics States (Edit Mode)
-  const [editedTargetPages, setEditedTargetPages] = useState<string>(project.target_pages?.toString() || "");
-  const [editedWordsPerPage, setEditedWordsPerPage] = useState<string>(project.words_per_page?.toString() || "250");
-  const [editedReadingSpeed, setEditedReadingSpeed] = useState<string>(project.reading_speed_wpm?.toString() || "230");
+  const [editedTargetPages, setEditedTargetPages] = useState<string>(
+    project.target_pages?.toString() || "",
+  );
+  const [editedWordsPerPage, setEditedWordsPerPage] = useState<string>(
+    project.words_per_page?.toString() || "250",
+  );
+  const [editedReadingSpeed, setEditedReadingSpeed] = useState<string>(
+    project.reading_speed_wpm?.toString() || "230",
+  );
   const [isCalculatingWords, setIsCalculatingWords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /** Timeline trim needs more span than project duration — confirm before extending stored minutes. */
-  const [projectDurationExtendOpen, setProjectDurationExtendOpen] = useState(false);
-  const [pendingDurationHintSeconds, setPendingDurationHintSeconds] = useState<number | null>(null);
+  const [projectDurationExtendOpen, setProjectDurationExtendOpen] =
+    useState(false);
+  const [pendingDurationHintSeconds, setPendingDurationHintSeconds] = useState<
+    number | null
+  >(null);
 
   const { loading: authLoading } = useAuth();
   const {
@@ -3128,7 +3926,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const { data: beatsForTemplateWarning } = useBeats(project.id);
 
   const isTimelineQueryBusy =
-    !rqTimelineError && (authLoading || rqTimelinePending || rqTimelineFetching);
+    !rqTimelineError &&
+    (authLoading || rqTimelinePending || rqTimelineFetching);
 
   // 🎯 Performance Monitoring: Track when ProjectDetail is rendered
   useEffect(() => {
@@ -3151,7 +3950,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setEditedGenre(project.genre || "");
     setEditedLinkedWorldId(project.linkedWorldId || "none");
     {
-      const d = splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration));
+      const d = splitTotalMinutesToHoursMinutesStrings(
+        parseStoredDurationMinutes(project.duration),
+      );
       setEditedDurationHours(d.h);
       setEditedDurationMinutes(d.m);
     }
@@ -3166,24 +3967,50 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setEditedTargetPages(project.target_pages?.toString() || "");
     setEditedWordsPerPage(project.words_per_page?.toString() || "250");
     setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
-  }, [project.id, project.title, project.logline, project.type, project.genre, project.linkedWorldId, project.duration, project.narrative_structure, project.beat_template, project.episode_layout, project.season_engine, project.target_pages, project.words_per_page, project.reading_speed_wpm, project.concept_blocks]);
+  }, [
+    project.id,
+    project.title,
+    project.logline,
+    project.type,
+    project.genre,
+    project.linkedWorldId,
+    project.duration,
+    project.narrative_structure,
+    project.beat_template,
+    project.episode_layout,
+    project.season_engine,
+    project.target_pages,
+    project.words_per_page,
+    project.reading_speed_wpm,
+    project.concept_blocks,
+  ]);
 
   const editedDurationTotalMinutes = useMemo(
-    () => totalMinutesFromHourMinuteParts(editedDurationHours, editedDurationMinutes),
-    [editedDurationHours, editedDurationMinutes]
+    () =>
+      totalMinutesFromHourMinuteParts(
+        editedDurationHours,
+        editedDurationMinutes,
+      ),
+    [editedDurationHours, editedDurationMinutes],
   );
-  const editedDurationForApi = durationPartsToApiString(editedDurationHours, editedDurationMinutes);
+  const editedDurationForApi = durationPartsToApiString(
+    editedDurationHours,
+    editedDurationMinutes,
+  );
 
   const handleProjectDurationSecondsHint = useCallback(
     (minSeconds: number) => {
       if (project.type === "book") return;
-      const currentTotalMin = totalMinutesFromHourMinuteParts(editedDurationHours, editedDurationMinutes);
+      const currentTotalMin = totalMinutesFromHourMinuteParts(
+        editedDurationHours,
+        editedDurationMinutes,
+      );
       const requiredTotalMin = Math.ceil(minSeconds / 60);
       if (requiredTotalMin <= currentTotalMin) return;
       setPendingDurationHintSeconds(minSeconds);
       setProjectDurationExtendOpen(true);
     },
-    [project.type, editedDurationHours, editedDurationMinutes]
+    [project.type, editedDurationHours, editedDurationMinutes],
   );
 
   const confirmProjectDurationExtend = useCallback(async () => {
@@ -3195,13 +4022,17 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       await projectsApi.update(project.id, { duration: durationStr });
       setEditedDurationHours(parts.h);
       setEditedDurationMinutes(parts.m);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.projects.byId(project.id) });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.byId(project.id),
+      });
       await queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
       onUpdate?.();
       toast.success("Projektdauer wurde angepasst.");
     } catch (e: any) {
       console.error("[ProjectDetail] extend duration:", e);
-      toast.error(e?.message || "Projektdauer konnte nicht gespeichert werden.");
+      toast.error(
+        e?.message || "Projektdauer konnte nicht gespeichert werden.",
+      );
     } finally {
       setProjectDurationExtendOpen(false);
       setPendingDurationHintSeconds(null);
@@ -3211,9 +4042,10 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const linkedWorldLabelForExport = useMemo(
     () =>
       project.linkedWorldId
-        ? worlds.find((w: any) => w.id === project.linkedWorldId)?.name ?? null
+        ? (worlds.find((w: any) => w.id === project.linkedWorldId)?.name ??
+          null)
         : null,
-    [worlds, project.linkedWorldId]
+    [worlds, project.linkedWorldId],
   );
 
   const exportProjectSnapshot = useMemo((): Record<string, unknown> => {
@@ -3229,18 +4061,36 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       type: editedType,
       genre: editedGenresMulti.join(", "),
       duration: editedDurationForApi,
-      linkedWorldId: editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
+      linkedWorldId:
+        editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
       concept_blocks: editedConceptBlocks,
-      episode_layout: editedType === "series" ? editedEpisodeLayout || undefined : undefined,
-      season_engine: editedType === "series" ? editedSeasonEngine || undefined : undefined,
-      narrative_structure: editedType !== "series" ? editedNarrativeStructure || undefined : undefined,
+      episode_layout:
+        editedType === "series" ? editedEpisodeLayout || undefined : undefined,
+      season_engine:
+        editedType === "series" ? editedSeasonEngine || undefined : undefined,
+      narrative_structure:
+        editedType !== "series"
+          ? editedNarrativeStructure || undefined
+          : undefined,
       beat_template: editedBeatTemplate || undefined,
       target_pages:
-        editedType === "book" ? (editedTargetPages ? parseInt(editedTargetPages, 10) : undefined) : undefined,
+        editedType === "book"
+          ? editedTargetPages
+            ? parseInt(editedTargetPages, 10)
+            : undefined
+          : undefined,
       words_per_page:
-        editedType === "book" ? (editedWordsPerPage ? parseInt(editedWordsPerPage, 10) : 250) : undefined,
+        editedType === "book"
+          ? editedWordsPerPage
+            ? parseInt(editedWordsPerPage, 10)
+            : 250
+          : undefined,
       reading_speed_wpm:
-        editedType === "book" ? (editedReadingSpeed ? parseInt(editedReadingSpeed, 10) : 230) : undefined,
+        editedType === "book"
+          ? editedReadingSpeed
+            ? parseInt(editedReadingSpeed, 10)
+            : 230
+          : undefined,
       ...coverPatch,
     };
   }, [
@@ -3264,54 +4114,66 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   ]);
 
   // 📖 Calculate word count from timeline cache (live recalculation)
-  const [calculatedWords, setCalculatedWords] = useState(project.current_words || 0);
-  
+  const [calculatedWords, setCalculatedWords] = useState(
+    project.current_words || 0,
+  );
+
   useEffect(() => {
-    if (project.type !== 'book') return;
-    
+    if (project.type !== "book") return;
+
     const timelineData = rqTimeline as BookTimelineData | undefined;
     if (!timelineData?.scenes) {
       // Fallback to stored value
       setCalculatedWords(project.current_words || 0);
       return;
     }
-    
+
     // Extract text from TipTap JSON
     const extractTextFromTiptap = (node: any): string => {
-      if (!node) return '';
-      let text = '';
+      if (!node) return "";
+      let text = "";
       if (node.text) text += node.text;
       if (node.content && Array.isArray(node.content)) {
         for (const child of node.content) {
-          text += extractTextFromTiptap(child) + ' ';
+          text += extractTextFromTiptap(child) + " ";
         }
       }
       return text;
     };
-    
+
     // Count words in all scenes
     let totalWords = 0;
     timelineData.scenes.forEach((scene) => {
-      const content = scene.content || scene.metadata?.content || scene.description;
+      const content =
+        scene.content || scene.metadata?.content || scene.description;
       if (content) {
         try {
-          const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
+          const contentObj =
+            typeof content === "string" ? JSON.parse(content) : content;
           const textContent = extractTextFromTiptap(contentObj);
           if (textContent.trim()) {
-            const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
+            const words = textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0);
             totalWords += words.length;
           }
         } catch (e) {
-          const textContent = typeof content === 'string' ? content : '';
+          const textContent = typeof content === "string" ? content : "";
           if (textContent.trim()) {
-            const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
+            const words = textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0);
             totalWords += words.length;
           }
         }
       }
     });
-    
-    console.log(`📊 [BOOK METRICS] Calculated ${totalWords} words from timeline cache (${timelineData.scenes.length} scenes)`);
+
+    console.log(
+      `📊 [BOOK METRICS] Calculated ${totalWords} words from timeline cache (${timelineData.scenes.length} scenes)`,
+    );
     setCalculatedWords(totalWords);
   }, [project.id, project.type, rqTimeline, project.current_words]);
 
@@ -3325,39 +4187,45 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         // Convert date strings back to Date objects
         return parsed.map((scene: any) => ({
           ...scene,
-          lastEdited: new Date(scene.lastEdited)
+          lastEdited: new Date(scene.lastEdited),
         }));
       } catch (e) {
-        console.error('Error loading scenes from localStorage:', e);
+        console.error("Error loading scenes from localStorage:", e);
       }
     }
     // Return empty array - scenes will be created by user
     return [];
   };
 
-  const [scenesState, setScenesState] = useState<ProjectSceneRow[]>(() => getInitialScenes() as ProjectSceneRow[]);
+  const [scenesState, setScenesState] = useState<ProjectSceneRow[]>(
+    () => getInitialScenes() as ProjectSceneRow[],
+  );
 
   // Save scenes to localStorage whenever they change
   useEffect(() => {
     const storageKey = `project-${project.id}-scenes`;
     localStorage.setItem(storageKey, JSON.stringify(scenesState));
   }, [scenesState, project.id]);
-  
+
   // New Scene Dialog States
   const [newSceneTitle, setNewSceneTitle] = useState("");
   const [newSceneDescription, setNewSceneDescription] = useState("");
   const [newSceneNumber, setNewSceneNumber] = useState("");
-  const [newSceneImage, setNewSceneImage] = useState<string | undefined>(undefined);
+  const [newSceneImage, setNewSceneImage] = useState<string | undefined>(
+    undefined,
+  );
   const newSceneImageInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Conflict Dialog States
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictSceneData, setConflictSceneData] = useState<any>(null);
   const [gifCoverPending, setGifCoverPending] = useState<File | null>(null);
   const [isCoverActionModalOpen, setIsCoverActionModalOpen] = useState(false);
-  const [isCoverGenerateModalOpen, setIsCoverGenerateModalOpen] = useState(false);
+  const [isCoverGenerateModalOpen, setIsCoverGenerateModalOpen] =
+    useState(false);
   const [coverPromptDraft, setCoverPromptDraft] = useState("");
-  const [coverVisualStyle, setCoverVisualStyle] = useState<CoverVisualStyle>("realistic");
+  const [coverVisualStyle, setCoverVisualStyle] =
+    useState<CoverVisualStyle>("realistic");
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   // Upload runs in background via startBackgroundUpload — no local loading state needed
 
@@ -3368,8 +4236,10 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const handleDownloadCoverAs = async (format: "jpeg" | "webp") => {
     const url = coverImage?.trim();
     if (!url) return;
-    const safeBase =
-      ((project.title || "cover").replace(/[\\/:*?"<>|]+/g, "-").trim() || "cover").slice(0, 120);
+    const safeBase = (
+      (project.title || "cover").replace(/[\\/:*?"<>|]+/g, "-").trim() ||
+      "cover"
+    ).slice(0, 120);
     try {
       const res = await fetch(url, { mode: "cors", credentials: "omit" });
       if (!res.ok) throw new Error(String(res.status));
@@ -3394,7 +4264,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       });
       if (!outBlob) {
         if (format === "webp") {
-          toast.error("WebP wird in diesem Browser nicht unterstützt — bitte JPEG wählen.");
+          toast.error(
+            "WebP wird in diesem Browser nicht unterstützt — bitte JPEG wählen.",
+          );
           return;
         }
         throw new Error("toBlob");
@@ -3437,7 +4309,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         },
         visualStyle: coverVisualStyle,
         styleGuideCompactPrompt: sg,
-      })
+      }),
     );
     setIsCoverGenerateModalOpen(true);
   };
@@ -3446,11 +4318,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     file: File,
     gifMode?: ImageUploadGifMode,
     /** e.g. clear AI cover loading state after background upload finishes */
-    onUploadSettled?: () => void
+    onUploadSettled?: () => void,
   ) => {
     startBackgroundUpload({
       file,
-      target: { kind: 'project-cover', projectId: project.id },
+      target: { kind: "project-cover", projectId: project.id },
       prepOptions: gifMode ? { gifMode } : undefined,
       onSuccess: (imageUrl) => {
         onCoverImageChange(imageUrl);
@@ -3497,24 +4369,36 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         prompt,
       });
       if ("error" in result && result.error) {
-        toast.error(result.error.message || "Cover konnte nicht generiert werden");
+        toast.error(
+          result.error.message || "Cover konnte nicht generiert werden",
+        );
         setIsGeneratingCover(false);
         return;
       }
       const b64 = result.data?.image_base64 || "";
       const mime = result.data?.mime_type || "image/png";
       if (!b64) {
-        toast.error(result.data?.error || "Provider hat kein Bild zurückgegeben.");
+        toast.error(
+          result.data?.error || "Provider hat kein Bild zurückgegeben.",
+        );
         setIsGeneratingCover(false);
         return;
       }
       let generatedFile: File;
       try {
-        const watermarked = await applyScriptonyWatermarkToImageBase64(b64, mime, scriptonyLogo);
-        generatedFile = new File([watermarked], `cover-${project.id}.png`, { type: "image/png" });
+        const watermarked = await applyScriptonyWatermarkToImageBase64(
+          b64,
+          mime,
+          scriptonyLogo,
+        );
+        generatedFile = new File([watermarked], `cover-${project.id}.png`, {
+          type: "image/png",
+        });
       } catch (wmErr) {
         console.error("[Cover] watermark failed", wmErr);
-        toast.error("Scriptony-Logo konnte nicht eingebettet werden. Bitte erneut versuchen.");
+        toast.error(
+          "Scriptony-Logo konnte nicht eingebettet werden. Bitte erneut versuchen.",
+        );
         setIsGeneratingCover(false);
         return;
       }
@@ -3524,7 +4408,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       });
       toast.success("Cover wird generiert und hochgeladen…");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Cover-Generierung fehlgeschlagen");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Cover-Generierung fehlgeschlagen",
+      );
       setIsGeneratingCover(false);
     }
   };
@@ -3534,39 +4422,49 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     const newScenes = [...scenesState];
     newScenes.splice(dragIndex, 1);
     newScenes.splice(hoverIndex, 0, dragScene);
-    
+
     // Renumber scenes
     const renumbered = newScenes.map((scene, idx) => ({
       ...scene,
-      number: idx + 1
+      number: idx + 1,
     }));
-    
+
     setScenesState(renumbered);
   };
 
   const updateSceneImage = (sceneId: string, imageUrl: string) => {
-    setScenesState(prev => prev.map(scene => 
-      scene.id === sceneId ? { ...scene, image: imageUrl } : scene
-    ));
+    setScenesState((prev) =>
+      prev.map((scene) =>
+        scene.id === sceneId ? { ...scene, image: imageUrl } : scene,
+      ),
+    );
   };
 
-  const updateSceneDetails = (sceneId: string, title: string, description: string) => {
-    setScenesState(prev => prev.map(scene => 
-      scene.id === sceneId ? { ...scene, title, description, lastEdited: new Date() } : scene
-    ));
+  const updateSceneDetails = (
+    sceneId: string,
+    title: string,
+    description: string,
+  ) => {
+    setScenesState((prev) =>
+      prev.map((scene) =>
+        scene.id === sceneId
+          ? { ...scene, title, description, lastEdited: new Date() }
+          : scene,
+      ),
+    );
   };
 
   const handleCreateScene = () => {
     const targetNumber = parseInt(newSceneNumber) || scenesState.length + 1;
-    const existingScene = scenesState.find(s => s.number === targetNumber);
-    
+    const existingScene = scenesState.find((s) => s.number === targetNumber);
+
     const newScene = {
       id: Date.now().toString(),
       number: targetNumber,
       title: newSceneTitle,
       description: newSceneDescription,
       image: newSceneImage,
-      lastEdited: new Date()
+      lastEdited: new Date(),
     };
 
     if (existingScene) {
@@ -3581,28 +4479,32 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
   const insertScene = (newScene: any, action: "up" | "down" | "none") => {
     let updatedScenes = [...scenesState];
-    
+
     if (action === "down") {
       // Move existing scenes at this position and below down
-      updatedScenes = updatedScenes.map(scene => 
-        scene.number >= newScene.number ? { ...scene, number: scene.number + 1 } : scene
+      updatedScenes = updatedScenes.map((scene) =>
+        scene.number >= newScene.number
+          ? { ...scene, number: scene.number + 1 }
+          : scene,
       );
     } else if (action === "up") {
       // Move existing scenes at this position and above up
-      updatedScenes = updatedScenes.map(scene => 
-        scene.number <= newScene.number ? { ...scene, number: scene.number - 1 } : scene
+      updatedScenes = updatedScenes.map((scene) =>
+        scene.number <= newScene.number
+          ? { ...scene, number: scene.number - 1 }
+          : scene,
       );
     }
-    
+
     updatedScenes.push(newScene);
     updatedScenes.sort((a, b) => a.number - b.number);
-    
+
     // Renumber all scenes to ensure continuous numbering
     const renumbered = updatedScenes.map((scene, idx) => ({
       ...scene,
-      number: idx + 1
+      number: idx + 1,
     }));
-    
+
     setScenesState(renumbered);
     resetNewSceneForm();
   };
@@ -3615,7 +4517,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setNewSceneImage(undefined);
   };
 
-  const handleNewSceneImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewSceneImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -3627,7 +4531,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   };
 
   // Characters State - NO MORE MOCK DATA! ✅
-  const [charactersState, setCharactersState] = useState<ProjectCharacterRow[]>([]);
+  const [charactersState, setCharactersState] = useState<ProjectCharacterRow[]>(
+    [],
+  );
   const [charactersLoading, setCharactersLoading] = useState(true);
 
   const handleCoverVisualStyleChange = (style: CoverVisualStyle) => {
@@ -3649,7 +4555,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         },
         visualStyle: style,
         styleGuideCompactPrompt: sg,
-      })
+      }),
     );
   };
 
@@ -3674,7 +4580,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             },
             visualStyle: coverVisualStyle,
             styleGuideCompactPrompt: sg,
-          })
+          }),
     );
   }, [
     isCoverGenerateModalOpen,
@@ -3696,7 +4602,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         setCharactersLoading(true);
         const token = await getAuthToken();
         if (!token) {
-          console.log("[ProjectDetail] No auth token, using localStorage characters");
+          console.log(
+            "[ProjectDetail] No auth token, using localStorage characters",
+          );
           setCharactersLoading(false);
           console.timeEnd(`⏱️ [PERF] Characters Load: ${project.id}`);
           return;
@@ -3704,14 +4612,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
         // Load characters from API
         const characters = await getCharacters(project.id, token);
-        
-        console.log("[ProjectDetail] Loaded characters from backend:", characters);
-        console.log("[ProjectDetail] 📸 Character Images:", characters.map(c => ({
-          name: c.name,
-          imageUrl: c.imageUrl,
-          hasImage: !!c.imageUrl
-        })));
-        
+
+        console.log(
+          "[ProjectDetail] Loaded characters from backend:",
+          characters,
+        );
+        console.log(
+          "[ProjectDetail] 📸 Character Images:",
+          characters.map((c) => ({
+            name: c.name,
+            imageUrl: c.imageUrl,
+            hasImage: !!c.imageUrl,
+          })),
+        );
+
         // Transform to match local format
         const transformedCharacters = characters.map((char: any) => ({
           id: char.id,
@@ -3734,9 +4648,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           characterTraits: char.personality || "",
           image: char.imageUrl || char.image_url,
           imageUrl: char.imageUrl || char.image_url, // For timeline/shots
-          lastEdited: new Date(char.updatedAt || char.updated_at)
+          lastEdited: new Date(char.updatedAt || char.updated_at),
         }));
-        
+
         setCharactersState(transformedCharacters as ProjectCharacterRow[]);
         console.timeEnd(`⏱️ [PERF] Characters Load: ${project.id}`);
       } catch (error: any) {
@@ -3764,25 +4678,39 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const [newCharacterAge, setNewCharacterAge] = useState("");
   const [newCharacterGender, setNewCharacterGender] = useState("");
   const [newCharacterSpecies, setNewCharacterSpecies] = useState("");
-  const [newCharacterBackgroundStory, setNewCharacterBackgroundStory] = useState("");
+  const [newCharacterBackgroundStory, setNewCharacterBackgroundStory] =
+    useState("");
   const [newCharacterSkills, setNewCharacterSkills] = useState("");
   const [newCharacterStrengths, setNewCharacterStrengths] = useState("");
   const [newCharacterWeaknesses, setNewCharacterWeaknesses] = useState("");
   const [newCharacterTraits, setNewCharacterTraits] = useState("");
-  const [newCharacterImage, setNewCharacterImage] = useState<string | undefined>(undefined);
+  const [newCharacterImage, setNewCharacterImage] = useState<
+    string | undefined
+  >(undefined);
   /** Zusätzliche Referenzbilder — gespeichert in `reference_images_json` */
-  const [newCharacterGalleryImages, setNewCharacterGalleryImages] = useState<string[]>([]);
-  const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(undefined);
+  const [newCharacterGalleryImages, setNewCharacterGalleryImages] = useState<
+    string[]
+  >([]);
+  const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(
+    undefined,
+  );
   const [showImageCropDialog, setShowImageCropDialog] = useState(false);
   const newCharacterImageInputRef = useRef<HTMLInputElement>(null);
   const newCharacterGalleryInputRef = useRef<HTMLInputElement>(null);
 
-  const updateCharacterImage = async (characterId: string, imageUrl: string) => {
+  const updateCharacterImage = async (
+    characterId: string,
+    imageUrl: string,
+  ) => {
     // Optimistic update
     const previousCharacters = charactersState;
-    setCharactersState(prev => prev.map(character => 
-      character.id === characterId ? { ...character, image: imageUrl } : character
-    ));
+    setCharactersState((prev) =>
+      prev.map((character) =>
+        character.id === characterId
+          ? { ...character, image: imageUrl }
+          : character,
+      ),
+    );
 
     try {
       const token = await getAuthToken();
@@ -3799,24 +4727,31 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     }
   };
 
-  const updateCharacterDetails = async (characterId: string, updates: {
-    name: string;
-    role: string;
-    description: string;
-    age?: string;
-    gender?: string;
-    species?: string;
-    backgroundStory?: string;
-    skills?: string;
-    strengths?: string;
-    weaknesses?: string;
-    characterTraits?: string;
-  }) => {
+  const updateCharacterDetails = async (
+    characterId: string,
+    updates: {
+      name: string;
+      role: string;
+      description: string;
+      age?: string;
+      gender?: string;
+      species?: string;
+      backgroundStory?: string;
+      skills?: string;
+      strengths?: string;
+      weaknesses?: string;
+      characterTraits?: string;
+    },
+  ) => {
     // Optimistic update
     const previousCharacters = charactersState;
-    setCharactersState(prev => prev.map(character => 
-      character.id === characterId ? { ...character, ...updates, lastEdited: new Date() } : character
-    ));
+    setCharactersState((prev) =>
+      prev.map((character) =>
+        character.id === characterId
+          ? { ...character, ...updates, lastEdited: new Date() }
+          : character,
+      ),
+    );
 
     try {
       const token = await getAuthToken();
@@ -3838,7 +4773,10 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           name: updates.name,
           role: (updates.role || "supporting") as Character["role"],
           description: updates.description,
-          age: updates.age !== undefined && updates.age !== "" ? Number(updates.age) : undefined,
+          age:
+            updates.age !== undefined && updates.age !== ""
+              ? Number(updates.age)
+              : undefined,
           gender: updates.gender,
           species: updates.species,
           backstory: updates.backgroundStory,
@@ -3847,7 +4785,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           weaknesses: parseList(updates.weaknesses),
           personality: updates.characterTraits,
         },
-        token
+        token,
       );
 
       toast.success("Character aktualisiert");
@@ -3862,15 +4800,17 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const deleteCharacter = async (characterId: string) => {
     // Optimistic update: Sofort aus UI entfernen
     const previousCharacters = charactersState;
-    setCharactersState(prev => prev.filter(character => character.id !== characterId));
-    
+    setCharactersState((prev) =>
+      prev.filter((character) => character.id !== characterId),
+    );
+
     try {
       // API Call zum Backend
       const token = await getAuthToken();
       if (!token) {
         throw new Error("Nicht authentifiziert");
       }
-      
+
       await deleteCharacterApi(characterId, token);
       toast.success("Character erfolgreich gelöscht");
     } catch (error: any) {
@@ -3954,7 +4894,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           imageUrl: snap.image,
           referenceImageUrls: snap.gallery,
         },
-        token
+        token,
       );
 
       console.log("[ProjectDetail] Character created:", createdCharacter);
@@ -3984,16 +4924,17 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 image: createdCharacter.imageUrl || createdCharacter.image_url,
                 referenceImages:
                   createdCharacter.referenceImageUrls ||
-                  (createdCharacter as { reference_image_urls?: string[] }).reference_image_urls ||
+                  (createdCharacter as { reference_image_urls?: string[] })
+                    .reference_image_urls ||
                   [],
                 lastEdited: new Date(
                   createdCharacter.updatedAt ??
                     createdCharacter.updated_at ??
-                    Date.now()
+                    Date.now(),
                 ),
               }
-            : char
-        )
+            : char,
+        ),
       );
 
       toast.success("Character erfolgreich erstellt");
@@ -4001,7 +4942,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       console.error("[ProjectDetail] Error creating character:", error);
       toast.error(error.message || "Fehler beim Erstellen des Characters");
 
-      setCharactersState((prev) => prev.filter((char) => !char.id.startsWith("temp-")));
+      setCharactersState((prev) =>
+        prev.filter((char) => !char.id.startsWith("temp-")),
+      );
     }
   };
 
@@ -4022,7 +4965,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setNewCharacterGalleryImages([]);
   };
 
-  const handleNewCharacterGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewCharacterGalleryChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
@@ -4037,7 +4982,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     reader.readAsDataURL(file);
   };
 
-  const handleNewCharacterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewCharacterImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -4055,7 +5002,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     setTempImageForCrop(undefined);
   };
 
-  const performSaveProjectInfo = async (options?: { replaceNarrativeTimeline?: boolean }) => {
+  const performSaveProjectInfo = async (options?: {
+    replaceNarrativeTimeline?: boolean;
+  }) => {
     if (!editedGenresMulti || editedGenresMulti.length === 0) {
       toast.error("Bitte wähle mindestens ein Genre aus");
       return;
@@ -4068,23 +5017,50 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         type: editedType,
         genre: editedGenresMulti.join(", "),
         duration: editedDurationForApi,
-        linkedWorldId: editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
+        linkedWorldId:
+          editedLinkedWorldId === "none" ? null : editedLinkedWorldId,
         concept_blocks: editedConceptBlocks,
-        episode_layout: editedType === 'series' ? (editedEpisodeLayout || undefined) : undefined,
-        season_engine: editedType === 'series' ? (editedSeasonEngine || undefined) : undefined,
-        narrative_structure: editedType !== 'series' ? (editedNarrativeStructure || undefined) : undefined,
+        episode_layout:
+          editedType === "series"
+            ? editedEpisodeLayout || undefined
+            : undefined,
+        season_engine:
+          editedType === "series" ? editedSeasonEngine || undefined : undefined,
+        narrative_structure:
+          editedType !== "series"
+            ? editedNarrativeStructure || undefined
+            : undefined,
         beat_template: editedBeatTemplate || undefined,
-        target_pages: editedType === 'book' ? (editedTargetPages ? parseInt(editedTargetPages) : undefined) : undefined,
-        words_per_page: editedType === 'book' ? (editedWordsPerPage ? parseInt(editedWordsPerPage) : 250) : undefined,
-        reading_speed_wpm: editedType === 'book' ? (editedReadingSpeed ? parseInt(editedReadingSpeed) : 230) : undefined,
+        target_pages:
+          editedType === "book"
+            ? editedTargetPages
+              ? parseInt(editedTargetPages)
+              : undefined
+            : undefined,
+        words_per_page:
+          editedType === "book"
+            ? editedWordsPerPage
+              ? parseInt(editedWordsPerPage)
+              : 250
+            : undefined,
+        reading_speed_wpm:
+          editedType === "book"
+            ? editedReadingSpeed
+              ? parseInt(editedReadingSpeed)
+              : 230
+            : undefined,
       });
 
       let narrativeStructureMaterialized = false;
       let narrativeTimelineCleared = false;
 
       if (editedType !== "series") {
-        const initPayload = narrativeStructureToInitializeProjectPayload(editedNarrativeStructure);
-        const timelineActs = (rqTimeline as TimelineData | BookTimelineData | undefined)?.acts;
+        const initPayload = narrativeStructureToInitializeProjectPayload(
+          editedNarrativeStructure,
+        );
+        const timelineActs = (
+          rqTimeline as TimelineData | BookTimelineData | undefined
+        )?.acts;
         const hasActs = Array.isArray(timelineActs) && timelineActs.length > 0;
         const token = await getAuthToken();
 
@@ -4098,7 +5074,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 await ShotsAPI.initializeTimelineStructureFromNarrative(
                   project.id,
                   token,
-                  editedNarrativeStructure
+                  editedNarrativeStructure,
                 );
                 narrativeStructureMaterialized = true;
               }
@@ -4109,7 +5085,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               await ShotsAPI.initializeTimelineStructureFromNarrative(
                 project.id,
                 token,
-                editedNarrativeStructure
+                editedNarrativeStructure,
               );
               narrativeStructureMaterialized = true;
               cacheManager.invalidate(`timeline:${project.id}`);
@@ -4118,11 +5094,14 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               });
             }
           } catch (initErr) {
-            console.error("[ProjectDetail] narrative timeline after save:", initErr);
+            console.error(
+              "[ProjectDetail] narrative timeline after save:",
+              initErr,
+            );
             toast.error(
               initErr instanceof Error
                 ? initErr.message
-                : "Timeline konnte nicht angepasst werden."
+                : "Timeline konnte nicht angepasst werden.",
             );
           }
         }
@@ -4135,7 +5114,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           ? "Projekt gespeichert — Narrativ-Struktur angelegt"
           : narrativeTimelineCleared
             ? "Projekt gespeichert — bestehende Struktur wurde entfernt"
-            : "Projekt gespeichert"
+            : "Projekt gespeichert",
       );
     } catch (error: any) {
       console.error("[ProjectDetail] Error updating project info:", error);
@@ -4151,8 +5130,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
     const narrativeChanged =
       (editedNarrativeStructure || "") !== (project.narrative_structure || "");
-    const timelineActs = (rqTimeline as TimelineData | BookTimelineData | undefined)?.acts;
-    const hasTimelineActs = Array.isArray(timelineActs) && timelineActs.length > 0;
+    const timelineActs = (
+      rqTimeline as TimelineData | BookTimelineData | undefined
+    )?.acts;
+    const hasTimelineActs =
+      Array.isArray(timelineActs) && timelineActs.length > 0;
 
     if (editedType !== "series" && narrativeChanged && hasTimelineActs) {
       setNarrativeOverwriteStep(1);
@@ -4160,7 +5142,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       return;
     }
 
-    const beatChanged = (editedBeatTemplate || "") !== (project.beat_template || "");
+    const beatChanged =
+      (editedBeatTemplate || "") !== (project.beat_template || "");
     if (
       beatChanged &&
       beatsForTemplateWarning &&
@@ -4176,7 +5159,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
   const confirmNarrativeOverwriteFinal = () => {
     setNarrativeOverwriteDialogOpen(false);
     setNarrativeOverwriteStep(1);
-    const beatChanged = (editedBeatTemplate || "") !== (project.beat_template || "");
+    const beatChanged =
+      (editedBeatTemplate || "") !== (project.beat_template || "");
     if (
       beatChanged &&
       beatsForTemplateWarning &&
@@ -4194,7 +5178,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
     const useReplace = pendingNarrativeReplace;
     setPendingNarrativeReplace(false);
     await performSaveProjectInfo(
-      useReplace ? { replaceNarrativeTimeline: true } : undefined
+      useReplace ? { replaceNarrativeTimeline: true } : undefined,
     );
   };
 
@@ -4216,7 +5200,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 "text-muted-foreground transition-[transform,box-shadow,background-color,border-color,color] duration-200 ease-out",
                 "hover:scale-125 hover:border-primary/45 hover:bg-primary/12 hover:text-primary hover:shadow-md",
                 "active:scale-95",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45",
               )}
               aria-label="Cover herunterladen — Format wählen"
               title="Cover herunterladen"
@@ -4224,11 +5208,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               <Download className="size-[7px]" strokeWidth={2.5} aria-hidden />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="top" className="min-w-[12rem]">
-            <DropdownMenuItem onSelect={() => void handleDownloadCoverAs("jpeg")}>
+          <DropdownMenuContent
+            align="start"
+            side="top"
+            className="min-w-[12rem]"
+          >
+            <DropdownMenuItem
+              onSelect={() => void handleDownloadCoverAs("jpeg")}
+            >
               Als JPEG herunterladen
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void handleDownloadCoverAs("webp")}>
+            <DropdownMenuItem
+              onSelect={() => void handleDownloadCoverAs("webp")}
+            >
               Als WebP herunterladen
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -4257,20 +5249,28 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 {narrativeOverwriteStep === 1 ? (
                   <>
                     <p>
-                      Du hast die <strong className="text-foreground">Narrativ-Struktur</strong> geändert. Es sind
-                      bereits Acts/Ebenen in der Timeline vorhanden.
+                      Du hast die{" "}
+                      <strong className="text-foreground">
+                        Narrativ-Struktur
+                      </strong>{" "}
+                      geändert. Es sind bereits Acts/Ebenen in der Timeline
+                      vorhanden.
                     </p>
                     <p>
-                      Beim Speichern wird die <strong className="text-foreground">bestehende Timeline entfernt</strong>
-                      (Acts, Sequenzen, Szenen, Shots, Clips) und — sofern für die neue Auswahl eine Vorlage
-                      existiert — die Struktur neu angelegt.
+                      Beim Speichern wird die{" "}
+                      <strong className="text-foreground">
+                        bestehende Timeline entfernt
+                      </strong>
+                      (Acts, Sequenzen, Szenen, Shots, Clips) und — sofern für
+                      die neue Auswahl eine Vorlage existiert — die Struktur neu
+                      angelegt.
                     </p>
                   </>
                 ) : (
                   <>
                     <p>
-                      <strong className="text-foreground">Achtung:</strong> Dieser Vorgang kann nicht rückgängig
-                      gemacht werden.
+                      <strong className="text-foreground">Achtung:</strong>{" "}
+                      Dieser Vorgang kann nicht rückgängig gemacht werden.
                     </p>
                     <p>Bist du dir sicher, dass du fortfahren möchtest?</p>
                   </>
@@ -4282,16 +5282,26 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             {narrativeOverwriteStep === 1 ? (
               <>
                 <AlertDialogCancel type="button">Abbrechen</AlertDialogCancel>
-                <Button type="button" onClick={() => setNarrativeOverwriteStep(2)}>
+                <Button
+                  type="button"
+                  onClick={() => setNarrativeOverwriteStep(2)}
+                >
                   Weiter
                 </Button>
               </>
             ) : (
               <>
-                <Button type="button" variant="outline" onClick={() => setNarrativeOverwriteStep(1)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setNarrativeOverwriteStep(1)}
+                >
                   Zurück
                 </Button>
-                <AlertDialogAction type="button" onClick={() => confirmNarrativeOverwriteFinal()}>
+                <AlertDialogAction
+                  type="button"
+                  onClick={() => confirmNarrativeOverwriteFinal()}
+                >
                   Überschreiben und speichern
                 </AlertDialogAction>
               </>
@@ -4311,14 +5321,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           <AlertDialogHeader>
             <AlertDialogTitle>Beat-Template geändert</AlertDialogTitle>
             <AlertDialogDescription>
-              Für dieses Projekt sind bereits Story-Beats angelegt. Beim Speichern wird nur die Template-Zuordnung
-              im Projekt aktualisiert — bestehende Beats werden nicht automatisch umbenannt oder gelöscht. Du kannst
-              sie in der Struktur-Sektion bei Bedarf über „Beats aus Template erzeugen“ anpassen.
+              Für dieses Projekt sind bereits Story-Beats angelegt. Beim
+              Speichern wird nur die Template-Zuordnung im Projekt aktualisiert
+              — bestehende Beats werden nicht automatisch umbenannt oder
+              gelöscht. Du kannst sie in der Struktur-Sektion bei Bedarf über
+              „Beats aus Template erzeugen“ anpassen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction type="button" onClick={() => void confirmBeatTemplateProjectSave()}>
+            <AlertDialogAction
+              type="button"
+              onClick={() => void confirmBeatTemplateProjectSave()}
+            >
               Speichern
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -4339,17 +5354,30 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               <p>
                 Der Timeline-Inhalt braucht mindestens{" "}
                 <strong className="text-foreground">
-                  {pendingDurationHintSeconds != null ? Math.ceil(pendingDurationHintSeconds / 60) : "—"} Min.
+                  {pendingDurationHintSeconds != null
+                    ? Math.ceil(pendingDurationHintSeconds / 60)
+                    : "—"}{" "}
+                  Min.
                 </strong>{" "}
-                ({pendingDurationHintSeconds != null ? `${pendingDurationHintSeconds} s` : ""} erkannt). Die aktuelle
-                Projektdauer ist kürzer — ohne Anpassung bleibt die Expansion am rechten Ende begrenzt.
+                (
+                {pendingDurationHintSeconds != null
+                  ? `${pendingDurationHintSeconds} s`
+                  : ""}{" "}
+                erkannt). Die aktuelle Projektdauer ist kürzer — ohne Anpassung
+                bleibt die Expansion am rechten Ende begrenzt.
               </p>
-              <p>Soll die gespeicherte Projektdauer entsprechend verlängert werden?</p>
+              <p>
+                Soll die gespeicherte Projektdauer entsprechend verlängert
+                werden?
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel type="button">Abbrechen</AlertDialogCancel>
-            <AlertDialogAction type="button" onClick={() => void confirmProjectDurationExtend()}>
+            <AlertDialogAction
+              type="button"
+              onClick={() => void confirmProjectDurationExtend()}
+            >
               Projektdauer anpassen
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -4357,9 +5385,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       </AlertDialog>
 
       {/* Back Button */}
-      <Button 
-        variant="ghost" 
-        onClick={onBack} 
+      <Button
+        variant="ghost"
+        onClick={onBack}
         className="absolute top-4 left-4 backdrop-blur-sm bg-background/80 rounded-full h-9 px-3 z-10"
       >
         <ArrowLeft className="size-4 mr-1" />
@@ -4375,66 +5403,82 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         className="hidden"
       />
 
-      <GifAnimationUploadDialog
-        open={gifCoverPending !== null}
-        onOpenChange={(open) => {
-          if (!open) setGifCoverPending(null);
-        }}
-        fileName={gifCoverPending?.name}
-        allowKeepGif={
-          gifCoverPending ? gifCoverPending.size <= STORAGE_CONFIG.MAX_FILE_SIZE : true
-        }
-        onConvert={() => {
-          const f = gifCoverPending;
-          if (!f) return;
-          setGifCoverPending(null);
-          void uploadProjectCoverFile(f, "convert-static");
-        }}
-        onKeepGif={() => {
-          const f = gifCoverPending;
-          if (!f) return;
-          if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
-            toast.error(
-              `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
-            );
-            return;
+      <Suspense fallback={null}>
+        <GifAnimationUploadDialog
+          open={gifCoverPending !== null}
+          onOpenChange={(open) => {
+            if (!open) setGifCoverPending(null);
+          }}
+          fileName={gifCoverPending?.name}
+          allowKeepGif={
+            gifCoverPending
+              ? gifCoverPending.size <= STORAGE_CONFIG.MAX_FILE_SIZE
+              : true
           }
-          setGifCoverPending(null);
-          void uploadProjectCoverFile(f, "keep-animation");
-        }}
-      />
+          onConvert={() => {
+            const f = gifCoverPending;
+            if (!f) return;
+            setGifCoverPending(null);
+            void uploadProjectCoverFile(f, "convert-static");
+          }}
+          onKeepGif={() => {
+            const f = gifCoverPending;
+            if (!f) return;
+            if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
+              toast.error(
+                `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`,
+              );
+              return;
+            }
+            setGifCoverPending(null);
+            void uploadProjectCoverFile(f, "keep-animation");
+          }}
+        />
+      </Suspense>
 
-      <CoverActionModal
-        open={isCoverActionModalOpen}
-        onOpenChange={setIsCoverActionModalOpen}
-        onUpload={handleCoverUploadChoice}
-        onGenerate={handleCoverGenerateChoice}
-      />
+      <Suspense fallback={null}>
+        <CoverActionModal
+          open={isCoverActionModalOpen}
+          onOpenChange={setIsCoverActionModalOpen}
+          onUpload={handleCoverUploadChoice}
+          onGenerate={handleCoverGenerateChoice}
+        />
+      </Suspense>
 
-      <CoverGenerateModal
-        open={isCoverGenerateModalOpen}
-        onOpenChange={setIsCoverGenerateModalOpen}
-        prompt={coverPromptDraft}
-        onPromptChange={setCoverPromptDraft}
-        visualStyle={coverVisualStyle}
-        onVisualStyleChange={handleCoverVisualStyleChange}
-        onGenerate={() => void handleGenerateCover()}
-        generating={isGeneratingCover}
-      />
+      <Suspense fallback={null}>
+        <CoverGenerateModal
+          open={isCoverGenerateModalOpen}
+          onOpenChange={setIsCoverGenerateModalOpen}
+          prompt={coverPromptDraft}
+          onPromptChange={setCoverPromptDraft}
+          visualStyle={coverVisualStyle}
+          onVisualStyleChange={handleCoverVisualStyleChange}
+          onGenerate={() => void handleGenerateCover()}
+          generating={isGeneratingCover}
+        />
+      </Suspense>
 
       {/* MOBILE LAYOUT (<768px): Cover oben + Collapsible Info */}
       <div className="md:hidden">
         {/* Cover Top Centered */}
         <div className="pt-16 pb-4 flex justify-center bg-gradient-to-b from-primary/5 to-transparent">
           <div className="relative group">
-            <div 
+            <div
               onClick={() => handleCoverClick()}
-              className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
-                "cursor-pointer"
-              }`}
-              style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+              className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${"cursor-pointer"}`}
+              style={
+                coverImage
+                  ? {
+                      backgroundImage: `url(${coverImage})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }
+                  : {}
+              }
             >
-              {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
+              {coverImage && (
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />
+              )}
               {/* Project Type Icon + Dimensions - Centered when no cover */}
               {!coverImage && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -4478,732 +5522,1071 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 </CardHeader>
               </Card>
             </CollapsibleTrigger>
-            
+
             <CollapsibleContent>
               <Card className="mb-4">
-          <CardHeader className="p-4 flex flex-row items-center justify-between">
-            <ProjectInfoSectionTitle
-              projectType={isEditingInfo ? editedType : project.type}
-            />
-            
-            {/* SAVE BUTTON + 3-PUNKTE-MENÜ */}
-            <div className="flex items-center gap-2">
-              {/* SAVE BUTTON - nur im Edit-Modus sichtbar */}
-              {isEditingInfo && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleSaveProjectInfo}
-                  className="h-8 gap-1.5"
-                >
-                  <Save className="size-3.5" />
-                  Speichern
-                </Button>
-              )}
-              
-              {/* 3-PUNKTE-MENÜ */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                  >
-                    <MoreVertical className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <CardHeader className="p-4 flex flex-row items-center justify-between">
+                  <ProjectInfoSectionTitle
+                    projectType={isEditingInfo ? editedType : project.type}
+                  />
+
+                  {/* SAVE BUTTON + 3-PUNKTE-MENÜ */}
+                  <div className="flex items-center gap-2">
+                    {/* SAVE BUTTON - nur im Edit-Modus sichtbar */}
+                    {isEditingInfo && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleSaveProjectInfo}
+                        className="h-8 gap-1.5"
+                      >
+                        <Save className="size-3.5" />
+                        Speichern
+                      </Button>
+                    )}
+
+                    {/* 3-PUNKTE-MENÜ */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {isEditingInfo ? (
+                          <>
+                            <DropdownMenuItem onClick={handleSaveProjectInfo}>
+                              <Save className="size-3.5 mr-2" />
+                              Speichern
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                // Reset to original values
+                                setIsEditingInfo(false);
+                                setEditedTitle(project.title || "");
+                                setEditedLogline(project.logline || "");
+                                setEditedType(project.type || "");
+                                setEditedGenre(project.genre || "");
+                                setEditedLinkedWorldId(
+                                  project.linkedWorldId || "none",
+                                );
+                                {
+                                  const d =
+                                    splitTotalMinutesToHoursMinutesStrings(
+                                      parseStoredDurationMinutes(
+                                        project.duration,
+                                      ),
+                                    );
+                                  setEditedDurationHours(d.h);
+                                  setEditedDurationMinutes(d.m);
+                                }
+                                setEditedNarrativeStructure(
+                                  project.narrative_structure || "",
+                                );
+                                setEditedBeatTemplate(
+                                  project.beat_template || "",
+                                );
+                                const pgM = parseProjectGenreField(
+                                  project.genre,
+                                );
+                                setEditedGenresMulti(pgM);
+                                setEditedCustomGenrePool(
+                                  customGenresFromSelection(pgM),
+                                );
+                                setEditedConceptBlocks(
+                                  normalizeConceptBlocks(
+                                    project.concept_blocks,
+                                  ),
+                                );
+                                setEditedEpisodeLayout(
+                                  project.episode_layout || "",
+                                );
+                                setEditedSeasonEngine(
+                                  project.season_engine || "",
+                                );
+                                setEditedTargetPages(
+                                  project.target_pages?.toString() || "",
+                                );
+                                setEditedWordsPerPage(
+                                  project.words_per_page?.toString() || "250",
+                                );
+                                setEditedReadingSpeed(
+                                  project.reading_speed_wpm?.toString() ||
+                                    "230",
+                                );
+                              }}
+                            >
+                              <X className="size-3.5 mr-2" />
+                              Abbrechen
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => setIsEditingInfo(true)}
+                            >
+                              <Edit2 className="size-3.5 mr-2" />
+                              Bearbeiten
+                            </DropdownMenuItem>
+                            {onDuplicate && (
+                              <DropdownMenuItem onClick={onDuplicate}>
+                                <Copy className="size-3.5 mr-2" />
+                                Projekt duplizieren
+                              </DropdownMenuItem>
+                            )}
+                            {onShowStats && (
+                              <DropdownMenuItem onClick={onShowStats}>
+                                <BarChart3 className="size-3.5 mr-2" />
+                                Statistiken & Logs
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onRequestProjectExport?.(
+                                  exportProjectSnapshot,
+                                  isEditingInfo
+                                    ? editedLinkedWorldId === "none"
+                                      ? null
+                                      : (worlds.find(
+                                          (w: any) =>
+                                            w.id === editedLinkedWorldId,
+                                        )?.name ?? null)
+                                    : linkedWorldLabelForExport,
+                                )
+                              }
+                            >
+                              <Share2 className="size-3.5 mr-2" />
+                              Teilen / Export
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setShowDeleteDialog(true)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="size-3.5 mr-2" />
+                              Projekt löschen
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-4">
                   {isEditingInfo ? (
                     <>
-                      <DropdownMenuItem onClick={handleSaveProjectInfo}>
-                        <Save className="size-3.5 mr-2" />
-                        Speichern
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        // Reset to original values
-                        setIsEditingInfo(false);
-                        setEditedTitle(project.title || "");
-                        setEditedLogline(project.logline || "");
-                        setEditedType(project.type || "");
-                        setEditedGenre(project.genre || "");
-                        setEditedLinkedWorldId(project.linkedWorldId || "none");
-                        {
-                          const d = splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration));
-                          setEditedDurationHours(d.h);
-                          setEditedDurationMinutes(d.m);
-                        }
-                        setEditedNarrativeStructure(project.narrative_structure || "");
-                        setEditedBeatTemplate(project.beat_template || "");
-                        const pgM = parseProjectGenreField(project.genre);
-                        setEditedGenresMulti(pgM);
-                        setEditedCustomGenrePool(customGenresFromSelection(pgM));
-                        setEditedConceptBlocks(normalizeConceptBlocks(project.concept_blocks));
-                        setEditedEpisodeLayout(project.episode_layout || "");
-                        setEditedSeasonEngine(project.season_engine || "");
-                        setEditedTargetPages(project.target_pages?.toString() || "");
-                        setEditedWordsPerPage(project.words_per_page?.toString() || "250");
-                        setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
-                      }}>
-                        <X className="size-3.5 mr-2" />
-                        Abbrechen
-                      </DropdownMenuItem>
+                      <div>
+                        <Label
+                          htmlFor="project-title"
+                          className="text-sm mb-2 block font-bold"
+                        >
+                          Titel
+                        </Label>
+                        <Input
+                          id="project-title"
+                          value={editedTitle}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="project-logline"
+                          className="text-sm mb-2 block font-bold"
+                        >
+                          Logline
+                        </Label>
+                        <Textarea
+                          id="project-logline"
+                          value={editedLogline}
+                          onChange={(e) => setEditedLogline(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label
+                            htmlFor="project-type"
+                            className="text-sm mb-2 block font-bold"
+                          >
+                            Project Type
+                          </Label>
+                          <Select
+                            value={editedType}
+                            onValueChange={setEditedType}
+                          >
+                            <SelectTrigger id="project-type" className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="film">Film</SelectItem>
+                              <SelectItem value="series">Serie</SelectItem>
+                              <SelectItem value="book">Buch</SelectItem>
+                              <SelectItem value="audio">Hörspiel</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor="project-duration"
+                            className="text-sm mb-2 block font-bold"
+                          >
+                            {editedType === "book" ? "Zielumfang" : "Dauer"}
+                          </Label>
+                          {editedType === "book" ? (
+                            <Input
+                              id="project-target-pages"
+                              type="number"
+                              value={editedTargetPages}
+                              onChange={(e) =>
+                                setEditedTargetPages(e.target.value)
+                              }
+                              placeholder="300"
+                              className="h-9"
+                            />
+                          ) : (
+                            <div className="flex gap-2">
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <Label
+                                  htmlFor="project-duration-hours"
+                                  className="text-xs text-muted-foreground"
+                                >
+                                  Std.
+                                </Label>
+                                <Input
+                                  id="project-duration-hours"
+                                  type="number"
+                                  min={0}
+                                  inputMode="numeric"
+                                  value={editedDurationHours}
+                                  onChange={(e) =>
+                                    setEditedDurationHours(e.target.value)
+                                  }
+                                  placeholder="0"
+                                  className="h-9"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <Label
+                                  htmlFor="project-duration-minutes"
+                                  className="text-xs text-muted-foreground"
+                                >
+                                  Min.
+                                </Label>
+                                <Input
+                                  id="project-duration-minutes"
+                                  type="number"
+                                  min={0}
+                                  inputMode="numeric"
+                                  value={editedDurationMinutes}
+                                  onChange={(e) =>
+                                    setEditedDurationMinutes(e.target.value)
+                                  }
+                                  placeholder="0"
+                                  className="h-9"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Book Advanced Metrics - Mobile */}
+                      {editedType === "book" && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label
+                              htmlFor="words-per-page-mobile"
+                              className="text-sm mb-2 block font-bold"
+                            >
+                              Wörter/Seite
+                            </Label>
+                            <Input
+                              id="words-per-page-mobile"
+                              type="number"
+                              value={editedWordsPerPage}
+                              onChange={(e) =>
+                                setEditedWordsPerPage(e.target.value)
+                              }
+                              placeholder="250"
+                              className="h-9"
+                            />
+                          </div>
+                          <div>
+                            <Label
+                              htmlFor="reading-speed-mobile"
+                              className="text-sm mb-2 block font-bold"
+                            >
+                              Lesegeschw. (WPM)
+                            </Label>
+                            <Input
+                              id="reading-speed-mobile"
+                              type="number"
+                              value={editedReadingSpeed}
+                              onChange={(e) =>
+                                setEditedReadingSpeed(e.target.value)
+                              }
+                              placeholder="230"
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Genres - Multi-Select Pills */}
+                      <div className="col-span-3">
+                        <Label className="text-sm mb-2 block font-bold">
+                          Genres
+                        </Label>
+                        <GenrePillGrid
+                          selected={editedGenresMulti}
+                          onSelectedChange={setEditedGenresMulti}
+                          customPool={editedCustomGenrePool}
+                          onCustomPoolChange={setEditedCustomGenrePool}
+                          compact
+                        />
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          Ein oder mehrere Genres; mit + eigene ergänzen.
+                        </p>
+                      </div>
+
+                      {/* Narrative Structure - Conditional Layout */}
+                      {editedType === "series" ? (
+                        /* SERIES: Episode Layout + Season Engine */
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Episode Layout */}
+                          <div>
+                            <Label
+                              htmlFor="episode-layout"
+                              className="text-sm mb-2 block font-bold"
+                            >
+                              Episode Layout
+                            </Label>
+                            <Select
+                              value={editedEpisodeLayout}
+                              onValueChange={setEditedEpisodeLayout}
+                            >
+                              <SelectTrigger
+                                id="episode-layout"
+                                className="h-9"
+                              >
+                                <SelectValue placeholder="Keine" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="sitcom-2-act">
+                                  Sitcom 2-Akt
+                                </SelectItem>
+                                <SelectItem value="sitcom-4-act">
+                                  Sitcom 4-Akt
+                                </SelectItem>
+                                <SelectItem value="network-5-act">
+                                  Network 5-Akt
+                                </SelectItem>
+                                <SelectItem value="streaming-3-act">
+                                  Streaming 3-Akt
+                                </SelectItem>
+                                <SelectItem value="streaming-4-act">
+                                  Streaming 4-Akt
+                                </SelectItem>
+                                <SelectItem value="anime-ab">
+                                  Anime A/B
+                                </SelectItem>
+                                <SelectItem value="sketch-segmented">
+                                  Sketch/Segmented
+                                </SelectItem>
+                                <SelectItem value="kids-11min">
+                                  Kids 11-Min
+                                </SelectItem>
+                                <SelectItem value="custom">Custom</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Season Engine */}
+                          <div>
+                            <Label
+                              htmlFor="season-engine"
+                              className="text-sm mb-2 block font-bold"
+                            >
+                              Season Engine
+                            </Label>
+                            <Select
+                              value={editedSeasonEngine}
+                              onValueChange={setEditedSeasonEngine}
+                            >
+                              <SelectTrigger id="season-engine" className="h-9">
+                                <SelectValue placeholder="Keine" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="serial">
+                                  Serial (Season-Arc)
+                                </SelectItem>
+                                <SelectItem value="motw">MOTW/COTW</SelectItem>
+                                <SelectItem value="hybrid">
+                                  Hybrid (Arc+MOTW)
+                                </SelectItem>
+                                <SelectItem value="anthology">
+                                  Anthology (episodisch)
+                                </SelectItem>
+                                <SelectItem value="seasonal-anthology">
+                                  Seasonal Anthology
+                                </SelectItem>
+                                <SelectItem value="limited-series">
+                                  Limited Series
+                                </SelectItem>
+                                <SelectItem value="custom">Custom</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      ) : (
+                        /* FILM/BOOK/AUDIO: Narrative Structure */
+                        <div>
+                          <Label
+                            htmlFor="narrative-structure"
+                            className="text-sm mb-2 block font-bold"
+                          >
+                            Narrative Structure
+                          </Label>
+                          <Select
+                            value={editedNarrativeStructure}
+                            onValueChange={setEditedNarrativeStructure}
+                          >
+                            <SelectTrigger
+                              id="narrative-structure"
+                              className="h-9"
+                            >
+                              <SelectValue placeholder="Keine" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {/* Film Structures */}
+                              {editedType === "film" && (
+                                <>
+                                  <SelectItem value="3-act">
+                                    3-Akt (klassisch)
+                                  </SelectItem>
+                                  <SelectItem value="4-act">
+                                    4-Akt (gesplittetes Act II)
+                                  </SelectItem>
+                                  <SelectItem value="5-act">
+                                    5-Akt (Freytag)
+                                  </SelectItem>
+                                  <SelectItem value="8-sequences">
+                                    8-Sequenzen ("Mini-Movies")
+                                  </SelectItem>
+                                  <SelectItem value="kishotenketsu">
+                                    Kishōtenketsu (4-Teiler)
+                                  </SelectItem>
+                                  <SelectItem value="non-linear">
+                                    Nicht-linear / Rashomon
+                                  </SelectItem>
+                                </>
+                              )}
+                              {/* Buch Structures */}
+                              {editedType === "book" && (
+                                <>
+                                  <SelectItem value="3-part">
+                                    3-Teiler (klassisch)
+                                  </SelectItem>
+                                  <SelectItem value="hero-journey">
+                                    Heldenreise
+                                  </SelectItem>
+                                  <SelectItem value="save-the-cat">
+                                    Save the Cat (adapted)
+                                  </SelectItem>
+                                </>
+                              )}
+                              {/* Hörspiel Structures */}
+                              {editedType === "audio" && (
+                                <>
+                                  <SelectItem value="30min-3-act">
+                                    30 min / 3-Akt
+                                  </SelectItem>
+                                  <SelectItem value="60min-4-act">
+                                    60 min / 4-Akt
+                                  </SelectItem>
+                                  <SelectItem value="podcast-25-35min">
+                                    Podcast 25–35 min
+                                  </SelectItem>
+                                </>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Beat Template - Always shown */}
+                      <div>
+                        <Label
+                          htmlFor="beat-template"
+                          className="text-sm mb-2 block font-bold"
+                        >
+                          Beat Template
+                        </Label>
+                        <Select
+                          value={editedBeatTemplate}
+                          onValueChange={setEditedBeatTemplate}
+                        >
+                          <SelectTrigger id="beat-template" className="h-9">
+                            <SelectValue placeholder="Kein Template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="lite-7">
+                              Lite-7 (minimal)
+                            </SelectItem>
+                            <SelectItem value="save-the-cat">
+                              Save the Cat! (15)
+                            </SelectItem>
+                            <SelectItem value="syd-field">
+                              Syd Field / Paradigm
+                            </SelectItem>
+                            <SelectItem value="heroes-journey">
+                              Heldenreise (Vogler, 12)
+                            </SelectItem>
+                            <SelectItem value="seven-point">
+                              Seven-Point Structure
+                            </SelectItem>
+                            <SelectItem value="8-sequences">
+                              8-Sequenzen
+                            </SelectItem>
+                            <SelectItem value="story-circle">
+                              Story Circle 8
+                            </SelectItem>
+                            {editedType === "series" && (
+                              <SelectItem value="season-lite-5">
+                                Season-Lite-5 (Macro)
+                              </SelectItem>
+                            )}
+                            <SelectItem value="custom">Custom</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="project-world"
+                          className="text-sm mb-2 block font-bold"
+                        >
+                          Verknüpfte Welt
+                        </Label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={editedLinkedWorldId}
+                            onValueChange={setEditedLinkedWorldId}
+                          >
+                            <SelectTrigger
+                              id="project-world"
+                              className="h-9 flex-1"
+                            >
+                              <SelectValue placeholder="Keine Welt verknüpft" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                Keine Welt verknüpft
+                              </SelectItem>
+                              {worlds.map((world) => (
+                                <SelectItem key={world.id} value={world.id}>
+                                  {world.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 shrink-0"
+                            title="Neue Welt erstellen"
+                            onClick={onOpenWorldbuilding}
+                          >
+                            <Plus className="size-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          {editedLinkedWorldId !== "none"
+                            ? "Projekt greift auf alle Welt-Informationen zu"
+                            : "Verknüpfe eine Welt für Worldbuilding-Referenzen"}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <Label
+                            htmlFor="project-premise"
+                            className="text-sm block font-bold"
+                          >
+                            Prämisse
+                          </Label>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                aria-label="Hilfe: Prämisse"
+                              >
+                                <Info className="size-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[320px]"
+                            >
+                              <div className="space-y-1">
+                                <div className="font-semibold">
+                                  Was kommt hier rein?
+                                </div>
+                                <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
+                                <div className="opacity-90">
+                                  Beispiel: „Eine Therapeutin für Götter muss …,
+                                  bevor …“
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <Textarea
+                          id="project-premise"
+                          value={getConceptContent("premise")}
+                          onChange={(e) =>
+                            setConceptContent("premise", e.target.value)
+                          }
+                          rows={3}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <Label
+                            htmlFor="project-theme"
+                            className="text-sm block font-bold"
+                          >
+                            Thema
+                          </Label>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                aria-label="Hilfe: Thema"
+                              >
+                                <Info className="size-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[320px]"
+                            >
+                              <div className="space-y-1">
+                                <div className="font-semibold">
+                                  Worum geht’s „eigentlich“?
+                                </div>
+                                <div>Aussage/Frage oder Spannungsfeld.</div>
+                                <div className="opacity-90">
+                                  Beispiele: „Verantwortung vs. Macht“, „Heilung
+                                  braucht Wahrheit“
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <Textarea
+                          id="project-theme"
+                          value={getConceptContent("theme")}
+                          onChange={(e) =>
+                            setConceptContent("theme", e.target.value)
+                          }
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <Label
+                            htmlFor="project-hook"
+                            className="text-sm block font-bold"
+                          >
+                            Hook
+                          </Label>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                aria-label="Hilfe: Hook"
+                              >
+                                <Info className="size-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[320px]"
+                            >
+                              <div className="space-y-1">
+                                <div className="font-semibold">
+                                  Was ist das Einzigartige?
+                                </div>
+                                <div>
+                                  Der „Warum sollte ich das
+                                  schauen/lesen?“-Grund.
+                                </div>
+                                <div className="opacity-90">
+                                  Beispiele: „Therapie verändert die Welt“,
+                                  „Case + Meta-Plot“
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <Textarea
+                          id="project-hook"
+                          value={getConceptContent("hook")}
+                          onChange={(e) =>
+                            setConceptContent("hook", e.target.value)
+                          }
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <Label
+                            htmlFor="project-notes"
+                            className="text-sm block font-bold"
+                          >
+                            Notiz
+                          </Label>
+                          <Tooltip delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                aria-label="Hilfe: Notiz"
+                              >
+                                <Info className="size-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[320px]"
+                            >
+                              <div className="space-y-1">
+                                <div className="font-semibold">Sammelplatz</div>
+                                <div>
+                                  Tonalität, Regeln/No-Gos, offene Fragen,
+                                  Szenenideen, Links.
+                                </div>
+                                <div className="opacity-90">
+                                  Beispiel: „Keine Zeitreisen. Ton: Dramedy.
+                                  Offene Frage: …“
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <Textarea
+                          id="project-notes"
+                          value={getConceptContent("notes")}
+                          onChange={(e) =>
+                            setConceptContent("notes", e.target.value)
+                          }
+                          rows={3}
+                        />
+                      </div>
                     </>
                   ) : (
                     <>
-                      <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
-                        <Edit2 className="size-3.5 mr-2" />
-                        Bearbeiten
-                      </DropdownMenuItem>
-                      {onDuplicate && (
-                        <DropdownMenuItem onClick={onDuplicate}>
-                          <Copy className="size-3.5 mr-2" />
-                          Projekt duplizieren
-                        </DropdownMenuItem>
+                      <div>
+                        <p className="text-sm font-bold mb-1">Titel</p>
+                        <h1 className="mb-0">{editedTitle}</h1>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold mb-1">Logline</p>
+                        <p className="text-sm text-muted-foreground">
+                          {editedLogline}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-sm font-bold mb-1">Project Type</p>
+                          <p className="text-sm">{editedType}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold mb-1">Dauer</p>
+                          <p className="text-sm">
+                            {formatDurationHrMinDe(
+                              editedDurationHours,
+                              editedDurationMinutes,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Genres - Multi Badge Display */}
+                      <div>
+                        <p className="text-sm font-bold mb-1">Genres</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {editedGenresMulti.length > 0 ? (
+                            editedGenresMulti.map((genre) => (
+                              <Badge
+                                key={genre}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {genre}
+                              </Badge>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Keine Genres ausgewählt
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Narrative Structure - Conditional Display */}
+                      {editedType === "series" ? (
+                        /* SERIES: Episode Layout + Season Engine */
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-sm font-bold mb-1">
+                              Episode Layout
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {editedEpisodeLayout || "Kein Layout"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold mb-1">
+                              Season Engine
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {editedSeasonEngine || "Keine Engine"}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* FILM/BOOK/AUDIO: Narrative Structure */
+                        <div>
+                          <p className="text-sm font-bold mb-1">
+                            Narrative Structure
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {editedNarrativeStructure ||
+                              "Keine Struktur festgelegt"}
+                          </p>
+                        </div>
                       )}
-                      {onShowStats && (
-                        <DropdownMenuItem onClick={onShowStats}>
-                          <BarChart3 className="size-3.5 mr-2" />
-                          Statistiken & Logs
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem
-                        onClick={() =>
-                          onRequestProjectExport?.(
-                            exportProjectSnapshot,
-                            isEditingInfo
-                              ? editedLinkedWorldId === "none"
-                                ? null
-                                : worlds.find((w: any) => w.id === editedLinkedWorldId)?.name ?? null
-                              : linkedWorldLabelForExport
-                          )
-                        }
-                      >
-                        <Share2 className="size-3.5 mr-2" />
-                        Teilen / Export
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => setShowDeleteDialog(true)}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <Trash2 className="size-3.5 mr-2" />
-                        Projekt löschen
-                      </DropdownMenuItem>
+
+                      {/* Beat Template - Always shown */}
+                      <div>
+                        <p className="text-sm font-bold mb-1">Beat Template</p>
+                        <p className="text-sm text-muted-foreground">
+                          {editedBeatTemplate === "lite-7"
+                            ? "Lite-7 (minimal)"
+                            : editedBeatTemplate === "save-the-cat"
+                              ? "Save the Cat! (15)"
+                              : editedBeatTemplate === "syd-field"
+                                ? "Syd Field / Paradigm"
+                                : editedBeatTemplate === "heroes-journey"
+                                  ? "Heldenreise (Vogler, 12)"
+                                  : editedBeatTemplate === "seven-point"
+                                    ? "Seven-Point Structure"
+                                    : editedBeatTemplate === "8-sequences"
+                                      ? "8-Sequenzen"
+                                      : editedBeatTemplate === "story-circle"
+                                        ? "Story Circle 8"
+                                        : editedBeatTemplate === "season-lite-5"
+                                          ? "Season-Lite-5 (Macro)"
+                                          : editedBeatTemplate === "custom"
+                                            ? "Custom"
+                                            : "Kein Template"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-bold mb-1">
+                          Verknüpfte Welt
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {editedLinkedWorldId !== "none"
+                            ? worlds.find((w) => w.id === editedLinkedWorldId)
+                                ?.name || "Verknüpft"
+                            : "Keine Welt verknüpft"}
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-sm font-bold">Prämisse</p>
+                            <Tooltip delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  aria-label="Hilfe: Prämisse"
+                                >
+                                  <Info className="size-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="left"
+                                sideOffset={6}
+                                className="max-w-[320px]"
+                              >
+                                <div className="space-y-1">
+                                  <div className="font-semibold">
+                                    Was kommt hier rein?
+                                  </div>
+                                  <div>
+                                    Setup + Hauptfigur + Ziel + Konflikt.
+                                  </div>
+                                  <div className="opacity-90">
+                                    Beispiel: „Eine Therapeutin für Götter muss
+                                    …, bevor …“
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {getConceptContent("premise")?.trim() || "—"}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <p className="text-sm font-bold">Thema</p>
+                              <Tooltip delayDuration={100}>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    aria-label="Hilfe: Thema"
+                                  >
+                                    <Info className="size-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="left"
+                                  sideOffset={6}
+                                  className="max-w-[320px]"
+                                >
+                                  <div className="space-y-1">
+                                    <div className="font-semibold">
+                                      Worum geht’s „eigentlich“?
+                                    </div>
+                                    <div>Aussage/Frage oder Spannungsfeld.</div>
+                                    <div className="opacity-90">
+                                      Beispiele: „Verantwortung vs. Macht“,
+                                      „Heilung braucht Wahrheit“
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {getConceptContent("theme")?.trim() || "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <p className="text-sm font-bold">Hook</p>
+                              <Tooltip delayDuration={100}>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    aria-label="Hilfe: Hook"
+                                  >
+                                    <Info className="size-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="left"
+                                  sideOffset={6}
+                                  className="max-w-[320px]"
+                                >
+                                  <div className="space-y-1">
+                                    <div className="font-semibold">
+                                      Was ist das Einzigartige?
+                                    </div>
+                                    <div>
+                                      Der „Warum sollte ich das
+                                      schauen/lesen?“-Grund.
+                                    </div>
+                                    <div className="opacity-90">
+                                      Beispiele: „Therapie verändert die Welt“,
+                                      „Case + Meta-Plot“
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {getConceptContent("hook")?.trim() || "—"}
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-sm font-bold">Notiz</p>
+                            <Tooltip delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  aria-label="Hilfe: Notiz"
+                                >
+                                  <Info className="size-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="left"
+                                sideOffset={6}
+                                className="max-w-[320px]"
+                              >
+                                <div className="space-y-1">
+                                  <div className="font-semibold">
+                                    Sammelplatz
+                                  </div>
+                                  <div>
+                                    Tonalität, Regeln/No-Gos, offene Fragen,
+                                    Szenenideen, Links.
+                                  </div>
+                                  <div className="opacity-90">
+                                    Beispiel: „Keine Zeitreisen. Ton: Dramedy.
+                                    Offene Frage: …“
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {getConceptContent("notes")?.trim() || "—"}
+                          </p>
+                        </div>
+                      </div>
                     </>
                   )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 space-y-4">
-            {isEditingInfo ? (
-              <>
-                <div>
-                  <Label htmlFor="project-title" className="text-sm mb-2 block font-bold">Titel</Label>
-                  <Input
-                    id="project-title"
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    className="h-9"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-logline" className="text-sm mb-2 block font-bold">Logline</Label>
-                  <Textarea
-                    id="project-logline"
-                    value={editedLogline}
-                    onChange={(e) => setEditedLogline(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label htmlFor="project-type" className="text-sm mb-2 block font-bold">Project Type</Label>
-                    <Select value={editedType} onValueChange={setEditedType}>
-                      <SelectTrigger id="project-type" className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="film">Film</SelectItem>
-                        <SelectItem value="series">Serie</SelectItem>
-                        <SelectItem value="book">Buch</SelectItem>
-                        <SelectItem value="audio">Hörspiel</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="project-duration" className="text-sm mb-2 block font-bold">
-                      {editedType === 'book' ? 'Zielumfang' : 'Dauer'}
-                    </Label>
-                    {editedType === 'book' ? (
-                      <Input
-                        id="project-target-pages"
-                        type="number"
-                        value={editedTargetPages}
-                        onChange={(e) => setEditedTargetPages(e.target.value)}
-                        placeholder="300"
-                        className="h-9"
-                      />
-                    ) : (
-                      <div className="flex gap-2">
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <Label htmlFor="project-duration-hours" className="text-xs text-muted-foreground">Std.</Label>
-                          <Input
-                            id="project-duration-hours"
-                            type="number"
-                            min={0}
-                            inputMode="numeric"
-                            value={editedDurationHours}
-                            onChange={(e) => setEditedDurationHours(e.target.value)}
-                            placeholder="0"
-                            className="h-9"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <Label htmlFor="project-duration-minutes" className="text-xs text-muted-foreground">Min.</Label>
-                          <Input
-                            id="project-duration-minutes"
-                            type="number"
-                            min={0}
-                            inputMode="numeric"
-                            value={editedDurationMinutes}
-                            onChange={(e) => setEditedDurationMinutes(e.target.value)}
-                            placeholder="0"
-                            className="h-9"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Book Advanced Metrics - Mobile */}
-                {editedType === 'book' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="words-per-page-mobile" className="text-sm mb-2 block font-bold">Wörter/Seite</Label>
-                      <Input
-                        id="words-per-page-mobile"
-                        type="number"
-                        value={editedWordsPerPage}
-                        onChange={(e) => setEditedWordsPerPage(e.target.value)}
-                        placeholder="250"
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="reading-speed-mobile" className="text-sm mb-2 block font-bold">Lesegeschw. (WPM)</Label>
-                      <Input
-                        id="reading-speed-mobile"
-                        type="number"
-                        value={editedReadingSpeed}
-                        onChange={(e) => setEditedReadingSpeed(e.target.value)}
-                        placeholder="230"
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Genres - Multi-Select Pills */}
-                <div className="col-span-3">
-                  <Label className="text-sm mb-2 block font-bold">Genres</Label>
-                  <GenrePillGrid
-                    selected={editedGenresMulti}
-                    onSelectedChange={setEditedGenresMulti}
-                    customPool={editedCustomGenrePool}
-                    onCustomPoolChange={setEditedCustomGenrePool}
-                    compact
-                  />
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Ein oder mehrere Genres; mit + eigene ergänzen.
-                  </p>
-                </div>
-
-                {/* Narrative Structure - Conditional Layout */}
-                {editedType === 'series' ? (
-                  /* SERIES: Episode Layout + Season Engine */
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Episode Layout */}
-                    <div>
-                      <Label htmlFor="episode-layout" className="text-sm mb-2 block font-bold">Episode Layout</Label>
-                      <Select value={editedEpisodeLayout} onValueChange={setEditedEpisodeLayout}>
-                        <SelectTrigger id="episode-layout" className="h-9">
-                          <SelectValue placeholder="Keine" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sitcom-2-act">Sitcom 2-Akt</SelectItem>
-                          <SelectItem value="sitcom-4-act">Sitcom 4-Akt</SelectItem>
-                          <SelectItem value="network-5-act">Network 5-Akt</SelectItem>
-                          <SelectItem value="streaming-3-act">Streaming 3-Akt</SelectItem>
-                          <SelectItem value="streaming-4-act">Streaming 4-Akt</SelectItem>
-                          <SelectItem value="anime-ab">Anime A/B</SelectItem>
-                          <SelectItem value="sketch-segmented">Sketch/Segmented</SelectItem>
-                          <SelectItem value="kids-11min">Kids 11-Min</SelectItem>
-                          <SelectItem value="custom">Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Season Engine */}
-                    <div>
-                      <Label htmlFor="season-engine" className="text-sm mb-2 block font-bold">Season Engine</Label>
-                      <Select value={editedSeasonEngine} onValueChange={setEditedSeasonEngine}>
-                        <SelectTrigger id="season-engine" className="h-9">
-                          <SelectValue placeholder="Keine" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="serial">Serial (Season-Arc)</SelectItem>
-                          <SelectItem value="motw">MOTW/COTW</SelectItem>
-                          <SelectItem value="hybrid">Hybrid (Arc+MOTW)</SelectItem>
-                          <SelectItem value="anthology">Anthology (episodisch)</SelectItem>
-                          <SelectItem value="seasonal-anthology">Seasonal Anthology</SelectItem>
-                          <SelectItem value="limited-series">Limited Series</SelectItem>
-                          <SelectItem value="custom">Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ) : (
-                  /* FILM/BOOK/AUDIO: Narrative Structure */
-                  <div>
-                    <Label htmlFor="narrative-structure" className="text-sm mb-2 block font-bold">Narrative Structure</Label>
-                    <Select value={editedNarrativeStructure} onValueChange={setEditedNarrativeStructure}>
-                      <SelectTrigger id="narrative-structure" className="h-9">
-                        <SelectValue placeholder="Keine" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* Film Structures */}
-                        {editedType === 'film' && (
-                          <>
-                            <SelectItem value="3-act">3-Akt (klassisch)</SelectItem>
-                            <SelectItem value="4-act">4-Akt (gesplittetes Act II)</SelectItem>
-                            <SelectItem value="5-act">5-Akt (Freytag)</SelectItem>
-                            <SelectItem value="8-sequences">8-Sequenzen ("Mini-Movies")</SelectItem>
-                            <SelectItem value="kishotenketsu">Kishōtenketsu (4-Teiler)</SelectItem>
-                            <SelectItem value="non-linear">Nicht-linear / Rashomon</SelectItem>
-                          </>
-                        )}
-                        {/* Buch Structures */}
-                        {editedType === 'book' && (
-                          <>
-                            <SelectItem value="3-part">3-Teiler (klassisch)</SelectItem>
-                            <SelectItem value="hero-journey">Heldenreise</SelectItem>
-                            <SelectItem value="save-the-cat">Save the Cat (adapted)</SelectItem>
-                          </>
-                        )}
-                        {/* Hörspiel Structures */}
-                        {editedType === 'audio' && (
-                          <>
-                            <SelectItem value="30min-3-act">30 min / 3-Akt</SelectItem>
-                            <SelectItem value="60min-4-act">60 min / 4-Akt</SelectItem>
-                            <SelectItem value="podcast-25-35min">Podcast 25–35 min</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Beat Template - Always shown */}
-                <div>
-                  <Label htmlFor="beat-template" className="text-sm mb-2 block font-bold">Beat Template</Label>
-                  <Select value={editedBeatTemplate} onValueChange={setEditedBeatTemplate}>
-                    <SelectTrigger id="beat-template" className="h-9">
-                      <SelectValue placeholder="Kein Template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lite-7">Lite-7 (minimal)</SelectItem>
-                      <SelectItem value="save-the-cat">Save the Cat! (15)</SelectItem>
-                      <SelectItem value="syd-field">Syd Field / Paradigm</SelectItem>
-                      <SelectItem value="heroes-journey">Heldenreise (Vogler, 12)</SelectItem>
-                      <SelectItem value="seven-point">Seven-Point Structure</SelectItem>
-                      <SelectItem value="8-sequences">8-Sequenzen</SelectItem>
-                      <SelectItem value="story-circle">Story Circle 8</SelectItem>
-                      {editedType === 'series' && (
-                        <SelectItem value="season-lite-5">Season-Lite-5 (Macro)</SelectItem>
-                      )}
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="project-world" className="text-sm mb-2 block font-bold">Verknüpfte Welt</Label>
-                  <div className="flex gap-2">
-                    <Select value={editedLinkedWorldId} onValueChange={setEditedLinkedWorldId}>
-                      <SelectTrigger id="project-world" className="h-9 flex-1">
-                        <SelectValue placeholder="Keine Welt verknüpft" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Keine Welt verknüpft</SelectItem>
-                        {worlds.map((world) => (
-                          <SelectItem key={world.id} value={world.id}>{world.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 shrink-0"
-                      title="Neue Welt erstellen"
-                      onClick={onOpenWorldbuilding}
-                    >
-                      <Plus className="size-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    {editedLinkedWorldId !== "none" ? "Projekt greift auf alle Welt-Informationen zu" : "Verknüpfe eine Welt für Worldbuilding-Referenzen"}
-                  </p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <Label htmlFor="project-premise" className="text-sm block font-bold">Prämisse</Label>
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          aria-label="Hilfe: Prämisse"
-                        >
-                          <Info className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                        <div className="space-y-1">
-                          <div className="font-semibold">Was kommt hier rein?</div>
-                          <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
-                          <div className="opacity-90">
-                            Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Textarea
-                    id="project-premise"
-                    value={getConceptContent("premise")}
-                    onChange={(e) => setConceptContent("premise", e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <Label htmlFor="project-theme" className="text-sm block font-bold">Thema</Label>
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          aria-label="Hilfe: Thema"
-                        >
-                          <Info className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                        <div className="space-y-1">
-                          <div className="font-semibold">Worum geht’s „eigentlich“?</div>
-                          <div>Aussage/Frage oder Spannungsfeld.</div>
-                          <div className="opacity-90">
-                            Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Textarea
-                    id="project-theme"
-                    value={getConceptContent("theme")}
-                    onChange={(e) => setConceptContent("theme", e.target.value)}
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <Label htmlFor="project-hook" className="text-sm block font-bold">Hook</Label>
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          aria-label="Hilfe: Hook"
-                        >
-                          <Info className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                        <div className="space-y-1">
-                          <div className="font-semibold">Was ist das Einzigartige?</div>
-                          <div>Der „Warum sollte ich das schauen/lesen?“-Grund.</div>
-                          <div className="opacity-90">
-                            Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Textarea
-                    id="project-hook"
-                    value={getConceptContent("hook")}
-                    onChange={(e) => setConceptContent("hook", e.target.value)}
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <Label htmlFor="project-notes" className="text-sm block font-bold">Notiz</Label>
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          aria-label="Hilfe: Notiz"
-                        >
-                          <Info className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                        <div className="space-y-1">
-                          <div className="font-semibold">Sammelplatz</div>
-                          <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
-                          <div className="opacity-90">
-                            Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Textarea
-                    id="project-notes"
-                    value={getConceptContent("notes")}
-                    onChange={(e) => setConceptContent("notes", e.target.value)}
-                    rows={3}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="text-sm font-bold mb-1">Titel</p>
-                  <h1 className="mb-0">{editedTitle}</h1>
-                </div>
-                <div>
-                  <p className="text-sm font-bold mb-1">Logline</p>
-                  <p className="text-sm text-muted-foreground">{editedLogline}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-sm font-bold mb-1">Project Type</p>
-                    <p className="text-sm">{editedType}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold mb-1">Dauer</p>
-                    <p className="text-sm">{formatDurationHrMinDe(editedDurationHours, editedDurationMinutes)}</p>
-                  </div>
-                </div>
-
-                {/* Genres - Multi Badge Display */}
-                <div>
-                  <p className="text-sm font-bold mb-1">Genres</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {editedGenresMulti.length > 0 ? (
-                      editedGenresMulti.map((genre) => (
-                        <Badge key={genre} variant="secondary" className="text-xs">
-                          {genre}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Keine Genres ausgewählt</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Narrative Structure - Conditional Display */}
-                {editedType === 'series' ? (
-                  /* SERIES: Episode Layout + Season Engine */
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-sm font-bold mb-1">Episode Layout</p>
-                      <p className="text-sm text-muted-foreground">
-                        {editedEpisodeLayout || "Kein Layout"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold mb-1">Season Engine</p>
-                      <p className="text-sm text-muted-foreground">
-                        {editedSeasonEngine || "Keine Engine"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  /* FILM/BOOK/AUDIO: Narrative Structure */
-                  <div>
-                    <p className="text-sm font-bold mb-1">Narrative Structure</p>
-                    <p className="text-sm text-muted-foreground">
-                      {editedNarrativeStructure || "Keine Struktur festgelegt"}
-                    </p>
-                  </div>
-                )}
-
-                {/* Beat Template - Always shown */}
-                <div>
-                  <p className="text-sm font-bold mb-1">Beat Template</p>
-                  <p className="text-sm text-muted-foreground">
-                    {editedBeatTemplate === 'lite-7' ? 'Lite-7 (minimal)' :
-                     editedBeatTemplate === 'save-the-cat' ? 'Save the Cat! (15)' :
-                     editedBeatTemplate === 'syd-field' ? 'Syd Field / Paradigm' :
-                     editedBeatTemplate === 'heroes-journey' ? 'Heldenreise (Vogler, 12)' :
-                     editedBeatTemplate === 'seven-point' ? 'Seven-Point Structure' :
-                     editedBeatTemplate === '8-sequences' ? '8-Sequenzen' :
-                     editedBeatTemplate === 'story-circle' ? 'Story Circle 8' :
-                     editedBeatTemplate === 'season-lite-5' ? 'Season-Lite-5 (Macro)' :
-                     editedBeatTemplate === 'custom' ? 'Custom' :
-                     'Kein Template'}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-bold mb-1">Verknüpfte Welt</p>
-                  <p className="text-sm text-muted-foreground">
-                    {editedLinkedWorldId !== "none"
-                      ? (worlds.find((w) => w.id === editedLinkedWorldId)?.name || "Verknüpft")
-                      : "Keine Welt verknüpft"}
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="text-sm font-bold">Prämisse</p>
-                      <Tooltip delayDuration={100}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            aria-label="Hilfe: Prämisse"
-                          >
-                            <Info className="size-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                          <div className="space-y-1">
-                            <div className="font-semibold">Was kommt hier rein?</div>
-                            <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
-                            <div className="opacity-90">
-                              Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {getConceptContent("premise")?.trim() || "—"}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-sm font-bold">Thema</p>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Thema"
-                            >
-                              <Info className="size-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                            <div className="space-y-1">
-                              <div className="font-semibold">Worum geht’s „eigentlich“?</div>
-                              <div>Aussage/Frage oder Spannungsfeld.</div>
-                              <div className="opacity-90">
-                                Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {getConceptContent("theme")?.trim() || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-sm font-bold">Hook</p>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Hook"
-                            >
-                              <Info className="size-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                            <div className="space-y-1">
-                              <div className="font-semibold">Was ist das Einzigartige?</div>
-                              <div>Der „Warum sollte ich das schauen/lesen?“-Grund.</div>
-                              <div className="opacity-90">
-                                Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {getConceptContent("hook")?.trim() || "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="text-sm font-bold">Notiz</p>
-                      <Tooltip delayDuration={100}>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            aria-label="Hilfe: Notiz"
-                          >
-                            <Info className="size-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
-                          <div className="space-y-1">
-                            <div className="font-semibold">Sammelplatz</div>
-                            <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
-                            <div className="opacity-90">
-                              Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {getConceptContent("notes")?.trim() || "—"}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -5219,7 +6602,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 <ProjectInfoSectionTitle
                   projectType={isEditingInfo ? editedType : project.type}
                 />
-                
+
                 {/* SAVE BUTTON + 3-PUNKTE-MENÜ */}
                 <div className="flex items-center gap-2">
                   {/* SAVE BUTTON - nur im Edit-Modus sichtbar */}
@@ -5234,15 +6617,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       Speichern
                     </Button>
                   )}
-                  
+
                   {/* 3-PUNKTE-MENÜ */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                      >
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
                         <MoreVertical className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -5253,38 +6632,67 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                             <Save className="size-3.5 mr-2" />
                             Speichern
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            // Reset to original values
-                            setIsEditingInfo(false);
-                            setEditedTitle(project.title || "");
-                            setEditedLogline(project.logline || "");
-                            setEditedType(project.type || "");
-                            setEditedGenre(project.genre || "");
-                            setEditedLinkedWorldId(project.linkedWorldId || "none");
-                            {
-                              const d = splitTotalMinutesToHoursMinutesStrings(parseStoredDurationMinutes(project.duration));
-                              setEditedDurationHours(d.h);
-                              setEditedDurationMinutes(d.m);
-                            }
-                            setEditedNarrativeStructure(project.narrative_structure || "");
-                            setEditedBeatTemplate(project.beat_template || "");
-                            const pg = parseProjectGenreField(project.genre);
-                            setEditedGenresMulti(pg);
-                            setEditedCustomGenrePool(customGenresFromSelection(pg));
-                            setEditedConceptBlocks(normalizeConceptBlocks(project.concept_blocks));
-                            setEditedEpisodeLayout(project.episode_layout || "");
-                            setEditedSeasonEngine(project.season_engine || "");
-                            setEditedTargetPages(project.target_pages?.toString() || "");
-                            setEditedWordsPerPage(project.words_per_page?.toString() || "250");
-                            setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
-                          }}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              // Reset to original values
+                              setIsEditingInfo(false);
+                              setEditedTitle(project.title || "");
+                              setEditedLogline(project.logline || "");
+                              setEditedType(project.type || "");
+                              setEditedGenre(project.genre || "");
+                              setEditedLinkedWorldId(
+                                project.linkedWorldId || "none",
+                              );
+                              {
+                                const d =
+                                  splitTotalMinutesToHoursMinutesStrings(
+                                    parseStoredDurationMinutes(
+                                      project.duration,
+                                    ),
+                                  );
+                                setEditedDurationHours(d.h);
+                                setEditedDurationMinutes(d.m);
+                              }
+                              setEditedNarrativeStructure(
+                                project.narrative_structure || "",
+                              );
+                              setEditedBeatTemplate(
+                                project.beat_template || "",
+                              );
+                              const pg = parseProjectGenreField(project.genre);
+                              setEditedGenresMulti(pg);
+                              setEditedCustomGenrePool(
+                                customGenresFromSelection(pg),
+                              );
+                              setEditedConceptBlocks(
+                                normalizeConceptBlocks(project.concept_blocks),
+                              );
+                              setEditedEpisodeLayout(
+                                project.episode_layout || "",
+                              );
+                              setEditedSeasonEngine(
+                                project.season_engine || "",
+                              );
+                              setEditedTargetPages(
+                                project.target_pages?.toString() || "",
+                              );
+                              setEditedWordsPerPage(
+                                project.words_per_page?.toString() || "250",
+                              );
+                              setEditedReadingSpeed(
+                                project.reading_speed_wpm?.toString() || "230",
+                              );
+                            }}
+                          >
                             <X className="size-3.5 mr-2" />
                             Abbrechen
                           </DropdownMenuItem>
                         </>
                       ) : (
                         <>
-                          <DropdownMenuItem onClick={() => setIsEditingInfo(true)}>
+                          <DropdownMenuItem
+                            onClick={() => setIsEditingInfo(true)}
+                          >
                             <Edit2 className="size-3.5 mr-2" />
                             Bearbeiten
                           </DropdownMenuItem>
@@ -5307,15 +6715,18 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                                 isEditingInfo
                                   ? editedLinkedWorldId === "none"
                                     ? null
-                                    : worlds.find((w: any) => w.id === editedLinkedWorldId)?.name ?? null
-                                  : linkedWorldLabelForExport
+                                    : (worlds.find(
+                                        (w: any) =>
+                                          w.id === editedLinkedWorldId,
+                                      )?.name ?? null)
+                                  : linkedWorldLabelForExport,
                               )
                             }
                           >
                             <Share2 className="size-3.5 mr-2" />
                             Teilen / Export
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => setShowDeleteDialog(true)}
                             className="text-red-600 focus:text-red-600"
                           >
@@ -5334,7 +6745,12 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   <>
                     {/* Same edit form as mobile - will be duplicated for simplicity */}
                     <div>
-                      <Label htmlFor="project-title-desktop" className="text-xs mb-1 block">Titel</Label>
+                      <Label
+                        htmlFor="project-title-desktop"
+                        className="text-xs mb-1 block"
+                      >
+                        Titel
+                      </Label>
                       <Input
                         id="project-title-desktop"
                         value={editedTitle}
@@ -5344,7 +6760,12 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     </div>
                     <Separator />
                     <div>
-                      <Label htmlFor="project-logline-desktop" className="text-xs mb-1 block">Logline</Label>
+                      <Label
+                        htmlFor="project-logline-desktop"
+                        className="text-xs mb-1 block"
+                      >
+                        Logline
+                      </Label>
                       <Textarea
                         id="project-logline-desktop"
                         value={editedLogline}
@@ -5356,9 +6777,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <Separator />
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="project-type-desktop" className="text-xs mb-1 block">Projekt Type</Label>
-                        <Select value={editedType} onValueChange={setEditedType}>
-                          <SelectTrigger id="project-type-desktop" className="h-8 text-sm">
+                        <Label
+                          htmlFor="project-type-desktop"
+                          className="text-xs mb-1 block"
+                        >
+                          Projekt Type
+                        </Label>
+                        <Select
+                          value={editedType}
+                          onValueChange={setEditedType}
+                        >
+                          <SelectTrigger
+                            id="project-type-desktop"
+                            className="h-8 text-sm"
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -5370,42 +6802,61 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="project-duration-desktop" className="text-xs mb-1 block">
-                          {editedType === 'book' ? 'Zielumfang' : 'Dauer'}
+                        <Label
+                          htmlFor="project-duration-desktop"
+                          className="text-xs mb-1 block"
+                        >
+                          {editedType === "book" ? "Zielumfang" : "Dauer"}
                         </Label>
-                        {editedType === 'book' ? (
+                        {editedType === "book" ? (
                           <Input
                             id="project-target-pages-desktop"
                             type="number"
                             value={editedTargetPages}
-                            onChange={(e) => setEditedTargetPages(e.target.value)}
+                            onChange={(e) =>
+                              setEditedTargetPages(e.target.value)
+                            }
                             placeholder="300"
                             className="h-8 text-sm"
                           />
                         ) : (
                           <div className="flex gap-2">
                             <div className="flex-1 min-w-0 space-y-0.5">
-                              <Label htmlFor="project-duration-hours-desktop" className="text-[10px] text-muted-foreground">Std.</Label>
+                              <Label
+                                htmlFor="project-duration-hours-desktop"
+                                className="text-[10px] text-muted-foreground"
+                              >
+                                Std.
+                              </Label>
                               <Input
                                 id="project-duration-hours-desktop"
                                 type="number"
                                 min={0}
                                 inputMode="numeric"
                                 value={editedDurationHours}
-                                onChange={(e) => setEditedDurationHours(e.target.value)}
+                                onChange={(e) =>
+                                  setEditedDurationHours(e.target.value)
+                                }
                                 placeholder="0"
                                 className="h-8 text-sm"
                               />
                             </div>
                             <div className="flex-1 min-w-0 space-y-0.5">
-                              <Label htmlFor="project-duration-minutes-desktop" className="text-[10px] text-muted-foreground">Min.</Label>
+                              <Label
+                                htmlFor="project-duration-minutes-desktop"
+                                className="text-[10px] text-muted-foreground"
+                              >
+                                Min.
+                              </Label>
                               <Input
                                 id="project-duration-minutes-desktop"
                                 type="number"
                                 min={0}
                                 inputMode="numeric"
                                 value={editedDurationMinutes}
-                                onChange={(e) => setEditedDurationMinutes(e.target.value)}
+                                onChange={(e) =>
+                                  setEditedDurationMinutes(e.target.value)
+                                }
                                 placeholder="0"
                                 className="h-8 text-sm"
                               />
@@ -5424,28 +6875,42 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                         compact
                       />
                     </div>
-                    
+
                     {/* Book Advanced Metrics - Desktop */}
-                    {editedType === 'book' && (
+                    {editedType === "book" && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label htmlFor="words-per-page-desktop" className="text-xs mb-1 block">Wörter/Seite</Label>
+                          <Label
+                            htmlFor="words-per-page-desktop"
+                            className="text-xs mb-1 block"
+                          >
+                            Wörter/Seite
+                          </Label>
                           <Input
                             id="words-per-page-desktop"
                             type="number"
                             value={editedWordsPerPage}
-                            onChange={(e) => setEditedWordsPerPage(e.target.value)}
+                            onChange={(e) =>
+                              setEditedWordsPerPage(e.target.value)
+                            }
                             placeholder="250"
                             className="h-8 text-sm"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="reading-speed-desktop" className="text-xs mb-1 block">Lesegeschw. (WPM)</Label>
+                          <Label
+                            htmlFor="reading-speed-desktop"
+                            className="text-xs mb-1 block"
+                          >
+                            Lesegeschw. (WPM)
+                          </Label>
                           <Input
                             id="reading-speed-desktop"
                             type="number"
                             value={editedReadingSpeed}
-                            onChange={(e) => setEditedReadingSpeed(e.target.value)}
+                            onChange={(e) =>
+                              setEditedReadingSpeed(e.target.value)
+                            }
                             placeholder="230"
                             className="h-8 text-sm"
                           />
@@ -5455,40 +6920,88 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <Separator />
 
                     {/* Narrative Structure / Episode Layout - Desktop Edit */}
-                    {editedType === 'series' ? (
+                    {editedType === "series" ? (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label htmlFor="episode-layout-desktop" className="text-xs mb-1 block">Episode Layout</Label>
-                          <Select value={editedEpisodeLayout} onValueChange={setEditedEpisodeLayout}>
-                            <SelectTrigger id="episode-layout-desktop" className="h-8 text-sm">
+                          <Label
+                            htmlFor="episode-layout-desktop"
+                            className="text-xs mb-1 block"
+                          >
+                            Episode Layout
+                          </Label>
+                          <Select
+                            value={editedEpisodeLayout}
+                            onValueChange={setEditedEpisodeLayout}
+                          >
+                            <SelectTrigger
+                              id="episode-layout-desktop"
+                              className="h-8 text-sm"
+                            >
                               <SelectValue placeholder="Keine" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="sitcom-2-act">Sitcom 2-Akt</SelectItem>
-                              <SelectItem value="sitcom-4-act">Sitcom 4-Akt</SelectItem>
-                              <SelectItem value="network-5-act">Network 5-Akt</SelectItem>
-                              <SelectItem value="streaming-3-act">Streaming 3-Akt</SelectItem>
-                              <SelectItem value="streaming-4-act">Streaming 4-Akt</SelectItem>
-                              <SelectItem value="anime-ab">Anime A/B</SelectItem>
-                              <SelectItem value="sketch-segmented">Sketch/Segmented</SelectItem>
-                              <SelectItem value="kids-11min">Kids 11-Min</SelectItem>
+                              <SelectItem value="sitcom-2-act">
+                                Sitcom 2-Akt
+                              </SelectItem>
+                              <SelectItem value="sitcom-4-act">
+                                Sitcom 4-Akt
+                              </SelectItem>
+                              <SelectItem value="network-5-act">
+                                Network 5-Akt
+                              </SelectItem>
+                              <SelectItem value="streaming-3-act">
+                                Streaming 3-Akt
+                              </SelectItem>
+                              <SelectItem value="streaming-4-act">
+                                Streaming 4-Akt
+                              </SelectItem>
+                              <SelectItem value="anime-ab">
+                                Anime A/B
+                              </SelectItem>
+                              <SelectItem value="sketch-segmented">
+                                Sketch/Segmented
+                              </SelectItem>
+                              <SelectItem value="kids-11min">
+                                Kids 11-Min
+                              </SelectItem>
                               <SelectItem value="custom">Custom</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="season-engine-desktop" className="text-xs mb-1 block">Season Engine</Label>
-                          <Select value={editedSeasonEngine} onValueChange={setEditedSeasonEngine}>
-                            <SelectTrigger id="season-engine-desktop" className="h-8 text-sm">
+                          <Label
+                            htmlFor="season-engine-desktop"
+                            className="text-xs mb-1 block"
+                          >
+                            Season Engine
+                          </Label>
+                          <Select
+                            value={editedSeasonEngine}
+                            onValueChange={setEditedSeasonEngine}
+                          >
+                            <SelectTrigger
+                              id="season-engine-desktop"
+                              className="h-8 text-sm"
+                            >
                               <SelectValue placeholder="Keine" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="serial">Serial (Season-Arc)</SelectItem>
+                              <SelectItem value="serial">
+                                Serial (Season-Arc)
+                              </SelectItem>
                               <SelectItem value="motw">MOTW/COTW</SelectItem>
-                              <SelectItem value="hybrid">Hybrid (Arc+MOTW)</SelectItem>
-                              <SelectItem value="anthology">Anthology (episodisch)</SelectItem>
-                              <SelectItem value="seasonal-anthology">Seasonal Anthology</SelectItem>
-                              <SelectItem value="limited-series">Limited Series</SelectItem>
+                              <SelectItem value="hybrid">
+                                Hybrid (Arc+MOTW)
+                              </SelectItem>
+                              <SelectItem value="anthology">
+                                Anthology (episodisch)
+                              </SelectItem>
+                              <SelectItem value="seasonal-anthology">
+                                Seasonal Anthology
+                              </SelectItem>
+                              <SelectItem value="limited-series">
+                                Limited Series
+                              </SelectItem>
                               <SelectItem value="custom">Custom</SelectItem>
                             </SelectContent>
                           </Select>
@@ -5496,34 +7009,69 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       </div>
                     ) : (
                       <div>
-                        <Label htmlFor="narrative-structure-desktop" className="text-xs mb-1 block">Narrative Structure</Label>
-                        <Select value={editedNarrativeStructure} onValueChange={setEditedNarrativeStructure}>
-                          <SelectTrigger id="narrative-structure-desktop" className="h-8 text-sm">
+                        <Label
+                          htmlFor="narrative-structure-desktop"
+                          className="text-xs mb-1 block"
+                        >
+                          Narrative Structure
+                        </Label>
+                        <Select
+                          value={editedNarrativeStructure}
+                          onValueChange={setEditedNarrativeStructure}
+                        >
+                          <SelectTrigger
+                            id="narrative-structure-desktop"
+                            className="h-8 text-sm"
+                          >
                             <SelectValue placeholder="Keine" />
                           </SelectTrigger>
                           <SelectContent>
-                            {editedType === 'film' && (
+                            {editedType === "film" && (
                               <>
-                                <SelectItem value="3-act">3-Akt (klassisch)</SelectItem>
-                                <SelectItem value="4-act">4-Akt (gesplittetes Act II)</SelectItem>
-                                <SelectItem value="5-act">5-Akt (Freytag)</SelectItem>
-                                <SelectItem value="8-sequences">8-Sequenzen ("Mini-Movies")</SelectItem>
-                                <SelectItem value="kishotenketsu">Kishōtenketsu (4-Teiler)</SelectItem>
-                                <SelectItem value="non-linear">Nicht-linear / Rashomon</SelectItem>
+                                <SelectItem value="3-act">
+                                  3-Akt (klassisch)
+                                </SelectItem>
+                                <SelectItem value="4-act">
+                                  4-Akt (gesplittetes Act II)
+                                </SelectItem>
+                                <SelectItem value="5-act">
+                                  5-Akt (Freytag)
+                                </SelectItem>
+                                <SelectItem value="8-sequences">
+                                  8-Sequenzen ("Mini-Movies")
+                                </SelectItem>
+                                <SelectItem value="kishotenketsu">
+                                  Kishōtenketsu (4-Teiler)
+                                </SelectItem>
+                                <SelectItem value="non-linear">
+                                  Nicht-linear / Rashomon
+                                </SelectItem>
                               </>
                             )}
-                            {editedType === 'book' && (
+                            {editedType === "book" && (
                               <>
-                                <SelectItem value="3-part">3-Teiler (klassisch)</SelectItem>
-                                <SelectItem value="hero-journey">Heldenreise</SelectItem>
-                                <SelectItem value="save-the-cat">Save the Cat (adapted)</SelectItem>
+                                <SelectItem value="3-part">
+                                  3-Teiler (klassisch)
+                                </SelectItem>
+                                <SelectItem value="hero-journey">
+                                  Heldenreise
+                                </SelectItem>
+                                <SelectItem value="save-the-cat">
+                                  Save the Cat (adapted)
+                                </SelectItem>
                               </>
                             )}
-                            {editedType === 'audio' && (
+                            {editedType === "audio" && (
                               <>
-                                <SelectItem value="30min-3-act">30 min / 3-Akt</SelectItem>
-                                <SelectItem value="60min-4-act">60 min / 4-Akt</SelectItem>
-                                <SelectItem value="podcast-25-35min">Podcast 25–35 min</SelectItem>
+                                <SelectItem value="30min-3-act">
+                                  30 min / 3-Akt
+                                </SelectItem>
+                                <SelectItem value="60min-4-act">
+                                  60 min / 4-Akt
+                                </SelectItem>
+                                <SelectItem value="podcast-25-35min">
+                                  Podcast 25–35 min
+                                </SelectItem>
                               </>
                             )}
                           </SelectContent>
@@ -5534,36 +7082,78 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
                     {/* Beat Template - Desktop Edit */}
                     <div>
-                      <Label htmlFor="beat-template-desktop" className="text-xs mb-1 block">Beat Template</Label>
-                      <Select value={editedBeatTemplate} onValueChange={setEditedBeatTemplate}>
-                        <SelectTrigger id="beat-template-desktop" className="h-8 text-sm">
+                      <Label
+                        htmlFor="beat-template-desktop"
+                        className="text-xs mb-1 block"
+                      >
+                        Beat Template
+                      </Label>
+                      <Select
+                        value={editedBeatTemplate}
+                        onValueChange={setEditedBeatTemplate}
+                      >
+                        <SelectTrigger
+                          id="beat-template-desktop"
+                          className="h-8 text-sm"
+                        >
                           <SelectValue placeholder="Kein Template" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="lite-7">Lite-7 (minimal)</SelectItem>
-                          <SelectItem value="save-the-cat">Save the Cat! (15)</SelectItem>
-                          <SelectItem value="syd-field">Syd Field / Paradigm</SelectItem>
-                          <SelectItem value="heroes-journey">Heldenreise (Vogler, 12)</SelectItem>
-                          <SelectItem value="seven-point">Seven-Point Structure</SelectItem>
-                          <SelectItem value="8-sequences">8-Sequenzen</SelectItem>
-                          <SelectItem value="story-circle">Story Circle 8</SelectItem>
-                          {editedType === 'series' && (
-                            <SelectItem value="season-lite-5">Season-Lite-5 (Macro)</SelectItem>
+                          <SelectItem value="lite-7">
+                            Lite-7 (minimal)
+                          </SelectItem>
+                          <SelectItem value="save-the-cat">
+                            Save the Cat! (15)
+                          </SelectItem>
+                          <SelectItem value="syd-field">
+                            Syd Field / Paradigm
+                          </SelectItem>
+                          <SelectItem value="heroes-journey">
+                            Heldenreise (Vogler, 12)
+                          </SelectItem>
+                          <SelectItem value="seven-point">
+                            Seven-Point Structure
+                          </SelectItem>
+                          <SelectItem value="8-sequences">
+                            8-Sequenzen
+                          </SelectItem>
+                          <SelectItem value="story-circle">
+                            Story Circle 8
+                          </SelectItem>
+                          {editedType === "series" && (
+                            <SelectItem value="season-lite-5">
+                              Season-Lite-5 (Macro)
+                            </SelectItem>
                           )}
                           <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="project-world-desktop" className="text-xs mb-1 block">Verknüpfte Welt</Label>
-                      <Select value={editedLinkedWorldId} onValueChange={setEditedLinkedWorldId}>
-                        <SelectTrigger id="project-world-desktop" className="h-8 text-sm">
+                      <Label
+                        htmlFor="project-world-desktop"
+                        className="text-xs mb-1 block"
+                      >
+                        Verknüpfte Welt
+                      </Label>
+                      <Select
+                        value={editedLinkedWorldId}
+                        onValueChange={setEditedLinkedWorldId}
+                      >
+                        <SelectTrigger
+                          id="project-world-desktop"
+                          className="h-8 text-sm"
+                        >
                           <SelectValue placeholder="Keine Welt verknüpft" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Keine Welt verknüpft</SelectItem>
+                          <SelectItem value="none">
+                            Keine Welt verknüpft
+                          </SelectItem>
                           {worlds.map((world) => (
-                            <SelectItem key={world.id} value={world.id}>{world.name}</SelectItem>
+                            <SelectItem key={world.id} value={world.id}>
+                              {world.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -5571,7 +7161,12 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <Separator />
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <Label htmlFor="project-premise-desktop" className="text-xs block">Prämisse</Label>
+                        <Label
+                          htmlFor="project-premise-desktop"
+                          className="text-xs block"
+                        >
+                          Prämisse
+                        </Label>
                         <Tooltip delayDuration={100}>
                           <TooltipTrigger asChild>
                             <Button
@@ -5584,12 +7179,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               <Info className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <TooltipContent
+                            side="left"
+                            sideOffset={6}
+                            className="max-w-[320px]"
+                          >
                             <div className="space-y-1">
-                              <div className="font-semibold">Was kommt hier rein?</div>
+                              <div className="font-semibold">
+                                Was kommt hier rein?
+                              </div>
                               <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
                               <div className="opacity-90">
-                                Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
+                                Beispiel: „Eine Therapeutin für Götter muss …,
+                                bevor …“
                               </div>
                             </div>
                           </TooltipContent>
@@ -5598,14 +7200,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       <Textarea
                         id="project-premise-desktop"
                         value={getConceptContent("premise")}
-                        onChange={(e) => setConceptContent("premise", e.target.value)}
+                        onChange={(e) =>
+                          setConceptContent("premise", e.target.value)
+                        }
                         rows={3}
                         className="text-sm"
                       />
                     </div>
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <Label htmlFor="project-theme-desktop" className="text-xs block">Thema</Label>
+                        <Label
+                          htmlFor="project-theme-desktop"
+                          className="text-xs block"
+                        >
+                          Thema
+                        </Label>
                         <Tooltip delayDuration={100}>
                           <TooltipTrigger asChild>
                             <Button
@@ -5618,12 +7227,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               <Info className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <TooltipContent
+                            side="left"
+                            sideOffset={6}
+                            className="max-w-[320px]"
+                          >
                             <div className="space-y-1">
-                              <div className="font-semibold">Worum geht’s „eigentlich“?</div>
+                              <div className="font-semibold">
+                                Worum geht’s „eigentlich“?
+                              </div>
                               <div>Aussage/Frage oder Spannungsfeld.</div>
                               <div className="opacity-90">
-                                Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
+                                Beispiele: „Verantwortung vs. Macht“, „Heilung
+                                braucht Wahrheit“
                               </div>
                             </div>
                           </TooltipContent>
@@ -5632,14 +7248,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       <Textarea
                         id="project-theme-desktop"
                         value={getConceptContent("theme")}
-                        onChange={(e) => setConceptContent("theme", e.target.value)}
+                        onChange={(e) =>
+                          setConceptContent("theme", e.target.value)
+                        }
                         rows={2}
                         className="text-sm"
                       />
                     </div>
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <Label htmlFor="project-hook-desktop" className="text-xs block">Hook</Label>
+                        <Label
+                          htmlFor="project-hook-desktop"
+                          className="text-xs block"
+                        >
+                          Hook
+                        </Label>
                         <Tooltip delayDuration={100}>
                           <TooltipTrigger asChild>
                             <Button
@@ -5652,12 +7275,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               <Info className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <TooltipContent
+                            side="left"
+                            sideOffset={6}
+                            className="max-w-[320px]"
+                          >
                             <div className="space-y-1">
-                              <div className="font-semibold">Was ist das Einzigartige?</div>
+                              <div className="font-semibold">
+                                Was ist das Einzigartige?
+                              </div>
                               <div>Der „Warum das?“-Grund in 1–2 Zeilen.</div>
                               <div className="opacity-90">
-                                Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
+                                Beispiele: „Therapie verändert die Welt“, „Case
+                                + Meta-Plot“
                               </div>
                             </div>
                           </TooltipContent>
@@ -5666,14 +7296,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       <Textarea
                         id="project-hook-desktop"
                         value={getConceptContent("hook")}
-                        onChange={(e) => setConceptContent("hook", e.target.value)}
+                        onChange={(e) =>
+                          setConceptContent("hook", e.target.value)
+                        }
                         rows={2}
                         className="text-sm"
                       />
                     </div>
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <Label htmlFor="project-notes-desktop" className="text-xs block">Notiz</Label>
+                        <Label
+                          htmlFor="project-notes-desktop"
+                          className="text-xs block"
+                        >
+                          Notiz
+                        </Label>
                         <Tooltip delayDuration={100}>
                           <TooltipTrigger asChild>
                             <Button
@@ -5686,12 +7323,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               <Info className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <TooltipContent
+                            side="left"
+                            sideOffset={6}
+                            className="max-w-[320px]"
+                          >
                             <div className="space-y-1">
                               <div className="font-semibold">Sammelplatz</div>
-                              <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
+                              <div>
+                                Tonalität, Regeln/No-Gos, offene Fragen,
+                                Szenenideen, Links.
+                              </div>
                               <div className="opacity-90">
-                                Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
+                                Beispiel: „Keine Zeitreisen. Ton: Dramedy.
+                                Offene Frage: …“
                               </div>
                             </div>
                           </TooltipContent>
@@ -5700,7 +7345,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       <Textarea
                         id="project-notes-desktop"
                         value={getConceptContent("notes")}
-                        onChange={(e) => setConceptContent("notes", e.target.value)}
+                        onChange={(e) =>
+                          setConceptContent("notes", e.target.value)
+                        }
                         rows={3}
                         className="text-sm"
                       />
@@ -5709,45 +7356,67 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 ) : (
                   <>
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Titel</div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Titel
+                      </div>
                       <div className="font-bold">{editedTitle}</div>
                     </div>
                     <Separator />
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Logline</div>
-                      <div className="text-sm text-muted-foreground">{editedLogline || "Keine Logline"}</div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Logline
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {editedLogline || "Keine Logline"}
+                      </div>
                     </div>
                     <Separator />
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Projekt Type</div>
-                        <div className="text-sm">{(() => {
-                          const typeInfo = getProjectTypeInfo(editedType);
-                          return typeInfo.label;
-                        })()}</div>
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Projekt Type
+                        </div>
+                        <div className="text-sm">
+                          {(() => {
+                            const typeInfo = getProjectTypeInfo(editedType);
+                            return typeInfo.label;
+                          })()}
+                        </div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">
-                          {editedType === 'book' ? 'Zielumfang' : 'Dauer'}
+                          {editedType === "book" ? "Zielumfang" : "Dauer"}
                         </div>
                         <div className="text-sm">
-                          {editedType === 'book' 
-                            ? (editedTargetPages ? `${editedTargetPages} Seiten` : '–')
-                            : formatDurationHrMinDe(editedDurationHours, editedDurationMinutes)
-                          }
+                          {editedType === "book"
+                            ? editedTargetPages
+                              ? `${editedTargetPages} Seiten`
+                              : "–"
+                            : formatDurationHrMinDe(
+                                editedDurationHours,
+                                editedDurationMinutes,
+                              )}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Genres</div>
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Genres
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {editedGenresMulti.length > 0 ? (
                             editedGenresMulti.map((genre) => (
-                              <Badge key={genre} variant="secondary" className="text-xs">
+                              <Badge
+                                key={genre}
+                                variant="secondary"
+                                className="text-xs"
+                              >
                                 {genre}
                               </Badge>
                             ))
                           ) : (
-                            <div className="text-sm text-muted-foreground">Keine Genres</div>
+                            <div className="text-sm text-muted-foreground">
+                              Keine Genres
+                            </div>
                           )}
                         </div>
                       </div>
@@ -5755,49 +7424,75 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <Separator />
 
                     {/* Narrative Structure / Episode Layout - Desktop Read-Only */}
-                    {editedType === 'series' ? (
+                    {editedType === "series" ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Episode Layout</div>
-                          <div className="text-sm">{editedEpisodeLayout || "–"}</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Episode Layout
+                          </div>
+                          <div className="text-sm">
+                            {editedEpisodeLayout || "–"}
+                          </div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Season Engine</div>
-                          <div className="text-sm">{editedSeasonEngine || "–"}</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Season Engine
+                          </div>
+                          <div className="text-sm">
+                            {editedSeasonEngine || "–"}
+                          </div>
                         </div>
                       </div>
                     ) : (
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Narrative Structure</div>
-                        <div className="text-sm">{editedNarrativeStructure || "–"}</div>
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Narrative Structure
+                        </div>
+                        <div className="text-sm">
+                          {editedNarrativeStructure || "–"}
+                        </div>
                       </div>
                     )}
                     <Separator />
 
                     {/* Beat Template - Desktop Read-Only */}
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Beat Template</div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Beat Template
+                      </div>
                       <div className="text-sm">
-                        {editedBeatTemplate === 'lite-7' ? 'Lite-7 (minimal)' :
-                         editedBeatTemplate === 'save-the-cat' ? 'Save the Cat! (15)' :
-                         editedBeatTemplate === 'syd-field' ? 'Syd Field / Paradigm' :
-                         editedBeatTemplate === 'heroes-journey' ? 'Heldenreise (Vogler, 12)' :
-                         editedBeatTemplate === 'seven-point' ? 'Seven-Point Structure' :
-                         editedBeatTemplate === '8-sequences' ? '8-Sequenzen' :
-                         editedBeatTemplate === 'story-circle' ? 'Story Circle 8' :
-                         editedBeatTemplate === 'season-lite-5' ? 'Season-Lite-5 (Macro)' :
-                         editedBeatTemplate === 'custom' ? 'Custom' :
-                         '–'}
+                        {editedBeatTemplate === "lite-7"
+                          ? "Lite-7 (minimal)"
+                          : editedBeatTemplate === "save-the-cat"
+                            ? "Save the Cat! (15)"
+                            : editedBeatTemplate === "syd-field"
+                              ? "Syd Field / Paradigm"
+                              : editedBeatTemplate === "heroes-journey"
+                                ? "Heldenreise (Vogler, 12)"
+                                : editedBeatTemplate === "seven-point"
+                                  ? "Seven-Point Structure"
+                                  : editedBeatTemplate === "8-sequences"
+                                    ? "8-Sequenzen"
+                                    : editedBeatTemplate === "story-circle"
+                                      ? "Story Circle 8"
+                                      : editedBeatTemplate === "season-lite-5"
+                                        ? "Season-Lite-5 (Macro)"
+                                        : editedBeatTemplate === "custom"
+                                          ? "Custom"
+                                          : "–"}
                       </div>
                     </div>
                     <Separator />
 
                     {/* World Link - Desktop Read-Only */}
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Verknüpfte Welt</div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Verknüpfte Welt
+                      </div>
                       <div className="text-sm">
                         {editedLinkedWorldId !== "none"
-                          ? (worlds.find((w) => w.id === editedLinkedWorldId)?.name || "Verknüpft")
+                          ? worlds.find((w) => w.id === editedLinkedWorldId)
+                              ?.name || "Verknüpft"
                           : "Keine Welt verknüpft"}
                       </div>
                     </div>
@@ -5805,7 +7500,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="text-xs text-muted-foreground">Prämisse</div>
+                        <div className="text-xs text-muted-foreground">
+                          Prämisse
+                        </div>
                         <Tooltip delayDuration={100}>
                           <TooltipTrigger asChild>
                             <Button
@@ -5818,12 +7515,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               <Info className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <TooltipContent
+                            side="left"
+                            sideOffset={6}
+                            className="max-w-[320px]"
+                          >
                             <div className="space-y-1">
-                              <div className="font-semibold">Was kommt hier rein?</div>
+                              <div className="font-semibold">
+                                Was kommt hier rein?
+                              </div>
                               <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
                               <div className="opacity-90">
-                                Beispiel: „Eine Therapeutin für Götter muss …, bevor …“
+                                Beispiel: „Eine Therapeutin für Götter muss …,
+                                bevor …“
                               </div>
                             </div>
                           </TooltipContent>
@@ -5836,7 +7540,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="text-xs text-muted-foreground">Thema</div>
+                          <div className="text-xs text-muted-foreground">
+                            Thema
+                          </div>
                           <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
                               <Button
@@ -5849,12 +7555,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                                 <Info className="size-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[320px]"
+                            >
                               <div className="space-y-1">
-                                <div className="font-semibold">Worum geht’s „eigentlich“?</div>
+                                <div className="font-semibold">
+                                  Worum geht’s „eigentlich“?
+                                </div>
                                 <div>Aussage/Frage oder Spannungsfeld.</div>
                                 <div className="opacity-90">
-                                  Beispiele: „Verantwortung vs. Macht“, „Heilung braucht Wahrheit“
+                                  Beispiele: „Verantwortung vs. Macht“, „Heilung
+                                  braucht Wahrheit“
                                 </div>
                               </div>
                             </TooltipContent>
@@ -5866,7 +7579,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       </div>
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="text-xs text-muted-foreground">Hook</div>
+                          <div className="text-xs text-muted-foreground">
+                            Hook
+                          </div>
                           <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
                               <Button
@@ -5879,12 +7594,22 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                                 <Info className="size-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                            <TooltipContent
+                              side="left"
+                              sideOffset={6}
+                              className="max-w-[320px]"
+                            >
                               <div className="space-y-1">
-                                <div className="font-semibold">Was ist das Einzigartige?</div>
-                                <div>Der „Warum sollte ich das schauen/lesen?“-Grund.</div>
+                                <div className="font-semibold">
+                                  Was ist das Einzigartige?
+                                </div>
+                                <div>
+                                  Der „Warum sollte ich das
+                                  schauen/lesen?“-Grund.
+                                </div>
                                 <div className="opacity-90">
-                                  Beispiele: „Therapie verändert die Welt“, „Case + Meta-Plot“
+                                  Beispiele: „Therapie verändert die Welt“,
+                                  „Case + Meta-Plot“
                                 </div>
                               </div>
                             </TooltipContent>
@@ -5897,7 +7622,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     </div>
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="text-xs text-muted-foreground">Notiz</div>
+                        <div className="text-xs text-muted-foreground">
+                          Notiz
+                        </div>
                         <Tooltip delayDuration={100}>
                           <TooltipTrigger asChild>
                             <Button
@@ -5910,12 +7637,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                               <Info className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="left" sideOffset={6} className="max-w-[320px]">
+                          <TooltipContent
+                            side="left"
+                            sideOffset={6}
+                            className="max-w-[320px]"
+                          >
                             <div className="space-y-1">
                               <div className="font-semibold">Sammelplatz</div>
-                              <div>Tonalität, Regeln/No-Gos, offene Fragen, Szenenideen, Links.</div>
+                              <div>
+                                Tonalität, Regeln/No-Gos, offene Fragen,
+                                Szenenideen, Links.
+                              </div>
                               <div className="opacity-90">
-                                Beispiel: „Keine Zeitreisen. Ton: Dramedy. Offene Frage: …“
+                                Beispiel: „Keine Zeitreisen. Ton: Dramedy.
+                                Offene Frage: …“
                               </div>
                             </div>
                           </TooltipContent>
@@ -5927,53 +7662,80 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     </div>
 
                     {/* 📖 BOOK METRICS CARD - nur für Bücher */}
-                    {editedType === 'book' && (
+                    {editedType === "book" && (
                       <Card className="mt-4">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm flex items-center gap-2">
                             <Book className="size-4" />
                             Schreibfortschritt
-                            {isCalculatingWords && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+                            {isCalculatingWords && (
+                              <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                            )}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {/* Current Words */}
                           <div className="text-center p-3 bg-primary/5 rounded-lg">
                             <div className="text-2xl font-bold text-primary">
-                              {isCalculatingWords ? '...' : calculatedWords.toLocaleString('de-DE')}
+                              {isCalculatingWords
+                                ? "..."
+                                : calculatedWords.toLocaleString("de-DE")}
                             </div>
-                            <div className="text-xs text-muted-foreground">Wörter</div>
+                            <div className="text-xs text-muted-foreground">
+                              Wörter
+                            </div>
                           </div>
-                          
+
                           {/* Current Pages */}
                           <div className="text-center p-3 bg-muted/50 rounded-lg">
                             <div className="text-2xl font-bold">
-                              ~{(calculatedWords / (project.words_per_page || 250)).toFixed(1)}
+                              ~
+                              {(
+                                calculatedWords /
+                                (project.words_per_page || 250)
+                              ).toFixed(1)}
                             </div>
-                            <div className="text-xs text-muted-foreground">Seiten</div>
+                            <div className="text-xs text-muted-foreground">
+                              Seiten
+                            </div>
                           </div>
-                          
+
                           {/* Progress % */}
                           <div className="text-center p-3 bg-muted/50 rounded-lg">
                             <div className="text-2xl font-bold text-green-600">
-                              {project.target_pages 
-                                ? ((calculatedWords / ((project.target_pages || 0) * (project.words_per_page || 250))) * 100).toFixed(1)
-                                : 0}%
+                              {project.target_pages
+                                ? (
+                                    (calculatedWords /
+                                      ((project.target_pages || 0) *
+                                        (project.words_per_page || 250))) *
+                                    100
+                                  ).toFixed(1)
+                                : 0}
+                              %
                             </div>
-                            <div className="text-xs text-muted-foreground">Fortschritt</div>
+                            <div className="text-xs text-muted-foreground">
+                              Fortschritt
+                            </div>
                           </div>
-                          
+
                           {/* Reading Time */}
                           <div className="text-center p-3 bg-muted/50 rounded-lg">
                             <div className="text-xl font-bold">
                               {(() => {
-                                const minutes = Math.round(calculatedWords / (project.reading_speed_wpm || 230));
+                                const minutes = Math.round(
+                                  calculatedWords /
+                                    (project.reading_speed_wpm || 230),
+                                );
                                 const hours = Math.floor(minutes / 60);
                                 const mins = minutes % 60;
-                                return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                                return hours > 0
+                                  ? `${hours}h ${mins}m`
+                                  : `${mins}m`;
                               })()}
                             </div>
-                            <div className="text-xs text-muted-foreground">Lesezeit (Ø)</div>
+                            <div className="text-xs text-muted-foreground">
+                              Lesezeit (Ø)
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -5987,12 +7749,18 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
           {/* Cover Right */}
           <div className="shrink-0">
             <div className="relative group">
-              <div 
+              <div
                 onClick={() => handleCoverClick()}
-                className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${
-                  "cursor-pointer"
-                }`}
-                style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                className={`w-[240px] aspect-[2/3] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shadow-lg ${"cursor-pointer"}`}
+                style={
+                  coverImage
+                    ? {
+                        backgroundImage: `url(${coverImage})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : {}
+                }
               >
                 {!coverImage && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -6001,17 +7769,23 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                       const TypeIcon = typeInfo.Icon;
                       return <TypeIcon className="size-16 text-primary/30" />;
                     })()}
-                    <p className="text-xs text-muted-foreground">800 × 1200 px</p>
+                    <p className="text-xs text-muted-foreground">
+                      800 × 1200 px
+                    </p>
                   </div>
                 )}
-                {coverImage && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />}
+                {coverImage && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />
+                )}
                 {isGeneratingCover && !isCoverGenerateModalOpen ? (
-                  <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-lg">
-                    <AssistantParticleLoader
-                      className="assistant-pl-root--fill assistant-pl-root--translucent min-h-0"
-                      ariaLabel="Cover wird generiert und hochgeladen"
-                    />
-                  </div>
+                  <Suspense fallback={null}>
+                    <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-lg">
+                      <AssistantParticleLoader
+                        className="assistant-pl-root--fill assistant-pl-root--translucent min-h-0"
+                        ariaLabel="Cover wird generiert und hochgeladen"
+                      />
+                    </div>
+                  </Suspense>
                 ) : null}
                 {/* Hover overlay for camera icon */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
@@ -6030,30 +7804,40 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
       {/* Structure & Beats Section */}
       <section className="px-6 mb-8 mt-8">
-        <StructureBeatsSection
-          projectId={project.id}
-          projectType={project.type}
-          beatTemplate={project.beat_template}
-          narrativeStructure={
-            isEditingInfo ? editedNarrativeStructure || "" : project.narrative_structure || ""
+        <Suspense
+          fallback={
+            <div className="flex min-h-[12rem] items-center justify-center rounded-2xl border border-border/60 bg-card/40">
+              <LoadingSpinner />
+            </div>
           }
-          initialData={rqTimeline}
-          onDataChange={(data) => onTimelineDataChange(project.id, data)}
-          isLoadingCache={!rqTimeline && isTimelineQueryBusy}
-          // 📖 Book Metrics for Timeline Duration
-          totalWords={calculatedWords}
-          wordsPerPage={project.words_per_page || 250}
-          readingSpeedWpm={project.reading_speed_wpm || 230}
-          targetPages={project.target_pages}
-          targetDurationMinutes={
-            project.type === 'book'
-              ? undefined
-              : editedDurationTotalMinutes > 0
-                ? String(editedDurationTotalMinutes)
-                : undefined
-          }
-          onProjectDurationSecondsHint={handleProjectDurationSecondsHint}
-        />
+        >
+          <StructureBeatsSection
+            projectId={project.id}
+            projectType={project.type}
+            beatTemplate={project.beat_template}
+            narrativeStructure={
+              isEditingInfo
+                ? editedNarrativeStructure || ""
+                : project.narrative_structure || ""
+            }
+            initialData={rqTimeline}
+            onDataChange={(data) => onTimelineDataChange(project.id, data)}
+            isLoadingCache={!rqTimeline && isTimelineQueryBusy}
+            // 📖 Book Metrics for Timeline Duration
+            totalWords={calculatedWords}
+            wordsPerPage={project.words_per_page || 250}
+            readingSpeedWpm={project.reading_speed_wpm || 230}
+            targetPages={project.target_pages}
+            targetDurationMinutes={
+              project.type === "book"
+                ? undefined
+                : editedDurationTotalMinutes > 0
+                  ? String(editedDurationTotalMinutes)
+                  : undefined
+            }
+            onProjectDurationSecondsHint={handleProjectDurationSecondsHint}
+          />
+        </Suspense>
       </section>
 
       {/* Characters Section */}
@@ -6061,13 +7845,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
         <Collapsible open={charactersOpen} onOpenChange={setCharactersOpen}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Badge className="bg-[#6E59A5] text-white h-8 flex items-center">Charaktere ({charactersState.length})</Badge>
+              <Badge className="bg-[#6E59A5] text-white h-8 flex items-center">
+                Charaktere ({charactersState.length})
+              </Badge>
               <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   {charactersOpen ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
@@ -6076,9 +7858,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                 </Button>
               </CollapsibleTrigger>
             </div>
-            <Button 
-              size="sm" 
-              variant="secondary" 
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => setShowNewCharacter(true)}
               className="h-8 bg-[rgba(110,89,165,1)] text-[rgba(255,255,255,1)]"
             >
@@ -6119,7 +7901,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               </Badge>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  {styleGuideOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {styleGuideOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                 </Button>
               </CollapsibleTrigger>
             </div>
@@ -6127,36 +7913,43 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
           <CollapsibleContent>
             <ProjectSectionFrame>
-              <StyleGuideSection
-                projectId={project.id}
-                data={styleGuide}
-                loading={styleGuideLoading}
-                loadError={styleGuideError}
-                onDataChange={onStyleGuideChange}
-                useForCover={useStyleGuideForCover}
-                onUseForCoverChange={setUseStyleGuideForCover}
-              />
+              <Suspense fallback={<LoadingSpinner />}>
+                <StyleGuideSection
+                  projectId={project.id}
+                  data={styleGuide}
+                  loading={styleGuideLoading}
+                  loadError={styleGuideError}
+                  onDataChange={onStyleGuideChange}
+                  useForCover={useStyleGuideForCover}
+                  onUseForCoverChange={setUseStyleGuideForCover}
+                />
+              </Suspense>
             </ProjectSectionFrame>
           </CollapsibleContent>
         </Collapsible>
       </section>
 
       {/* New Scene Dialog */}
-      <Dialog open={showNewScene} onOpenChange={(open) => {
-        setShowNewScene(open);
-        if (!open) resetNewSceneForm();
-      }}>
+      <Dialog
+        open={showNewScene}
+        onOpenChange={(open) => {
+          setShowNewScene(open);
+          if (!open) resetNewSceneForm();
+        }}
+      >
         <DialogContent className="w-[95vw] max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto md:w-auto">
           <DialogHeader>
             <DialogTitle>Neue Szene</DialogTitle>
-            <DialogDescription>Füge eine neue Szene zu deinem Projekt hinzu</DialogDescription>
+            <DialogDescription>
+              Füge eine neue Szene zu deinem Projekt hinzu
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Titel</Label>
-                <Input 
-                  placeholder="z.B. Eröffnungsszene" 
+                <Input
+                  placeholder="z.B. Eröffnungsszene"
                   className="h-11"
                   value={newSceneTitle}
                   onChange={(e) => setNewSceneTitle(e.target.value)}
@@ -6164,8 +7957,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               </div>
               <div className="space-y-2">
                 <Label>Szenen-Nummer</Label>
-                <Input 
-                  type="number" 
+                <Input
+                  type="number"
                   placeholder={`${scenesState.length + 1}`}
                   className="h-11"
                   value={newSceneNumber}
@@ -6177,20 +7970,24 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             </div>
             <div className="space-y-2">
               <Label>Beschreibung</Label>
-              <Textarea 
-                placeholder="Kurze Beschreibung der Szene..." 
+              <Textarea
+                placeholder="Kurze Beschreibung der Szene..."
                 rows={3}
                 value={newSceneDescription}
                 onChange={(e) => setNewSceneDescription(e.target.value)}
               />
             </div>
-            
+
             {/* Scene Image Upload */}
             <div className="space-y-2">
               <Label>Szenen-Bild (Optional)</Label>
               {newSceneImage ? (
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-muted/30 max-w-[60%]">
-                  <img src={newSceneImage} alt="Preview" className="w-full h-full object-cover" />
+                  <img
+                    src={newSceneImage}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
                   <Button
                     variant="destructive"
                     size="sm"
@@ -6202,14 +7999,16 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   </Button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => newSceneImageInputRef.current?.click()}
                   className="w-full border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex flex-col items-center justify-center">
                     <ImageIcon className="size-6 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm mb-1">Bild hochladen</p>
-                    <p className="text-xs text-muted-foreground">Empfohlen: 16:9 Format</p>
+                    <p className="text-xs text-muted-foreground">
+                      Empfohlen: 16:9 Format
+                    </p>
                   </div>
                 </button>
               )}
@@ -6223,11 +8022,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowNewScene(false);
-              resetNewSceneForm();
-            }} className="h-11">Abbrechen</Button>
-            <Button onClick={handleCreateScene} className="h-11" disabled={!newSceneTitle.trim()}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewScene(false);
+                resetNewSceneForm();
+              }}
+              className="h-11"
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleCreateScene}
+              className="h-11"
+              disabled={!newSceneTitle.trim()}
+            >
               Szene erstellen
             </Button>
           </DialogFooter>
@@ -6235,20 +8044,26 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       </Dialog>
 
       {/* Conflict Dialog */}
-      <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+      <AlertDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
+      >
         <AlertDialogContent className="w-[95vw] max-w-xl rounded-2xl md:w-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Szenen-Konflikt</AlertDialogTitle>
             <AlertDialogDescription>
-              An Position #{conflictSceneData?.number} existiert bereits eine Szene. 
-              Wie sollen die bestehenden Szenen verschoben werden?
+              An Position #{conflictSceneData?.number} existiert bereits eine
+              Szene. Wie sollen die bestehenden Szenen verschoben werden?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel onClick={() => setShowConflictDialog(false)} className="h-11">
+            <AlertDialogCancel
+              onClick={() => setShowConflictDialog(false)}
+              className="h-11"
+            >
               Abbrechen
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => {
                 insertScene(conflictSceneData, "up");
                 setShowConflictDialog(false);
@@ -6257,7 +8072,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             >
               Bestehende nach oben verschieben
             </AlertDialogAction>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => {
                 insertScene(conflictSceneData, "down");
                 setShowConflictDialog(false);
@@ -6271,14 +8086,19 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       </AlertDialog>
 
       {/* New Character Dialog */}
-      <Dialog open={showNewCharacter} onOpenChange={(open) => {
-        setShowNewCharacter(open);
-        if (!open) resetNewCharacterForm();
-      }}>
+      <Dialog
+        open={showNewCharacter}
+        onOpenChange={(open) => {
+          setShowNewCharacter(open);
+          if (!open) resetNewCharacterForm();
+        }}
+      >
         <DialogContent className="w-[95vw] max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto md:w-auto">
           <DialogHeader>
             <DialogTitle>Neuer Charakter</DialogTitle>
-            <DialogDescription>Erstelle einen neuen Charakter für dein Projekt</DialogDescription>
+            <DialogDescription>
+              Erstelle einen neuen Charakter für dein Projekt
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Character Image Upload - First */}
@@ -6286,7 +8106,11 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               <Label>Profilbild (Optional)</Label>
               {newCharacterImage ? (
                 <div className="relative w-32 h-32 mx-auto">
-                  <img src={newCharacterImage} alt="Preview" className="w-full h-full object-cover rounded-full border-4 border-character-blue-light" />
+                  <img
+                    src={newCharacterImage}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded-full border-4 border-character-blue-light"
+                  />
                   <Button
                     variant="destructive"
                     size="sm"
@@ -6297,12 +8121,14 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                   </Button>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => newCharacterImageInputRef.current?.click()}
                   className="w-32 h-32 mx-auto border-2 border-dashed border-border rounded-full text-center hover:border-primary/50 transition-colors active:scale-[0.98] cursor-pointer flex flex-col items-center justify-center bg-muted/10"
                 >
                   <Camera className="size-8 mb-1 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Bild hochladen</p>
+                  <p className="text-xs text-muted-foreground">
+                    Bild hochladen
+                  </p>
                 </button>
               )}
               <input
@@ -6317,7 +8143,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             <div className="space-y-2">
               <Label>Weitere Referenzbilder (optional)</Label>
               <p className="text-xs text-muted-foreground">
-                Bis zu 12 Bilder — z. B. Outfits, Poses, Moodboard (getrennt vom Profilbild).
+                Bis zu 12 Bilder — z. B. Outfits, Poses, Moodboard (getrennt vom
+                Profilbild).
               </p>
               <div className="flex flex-wrap gap-2">
                 {newCharacterGalleryImages.map((url, i) => (
@@ -6325,14 +8152,20 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     key={`g-${i}-${url.length}`}
                     className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/20"
                   >
-                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
                     <Button
                       type="button"
                       variant="destructive"
                       size="sm"
                       className="absolute right-0.5 top-0.5 h-6 w-6 rounded-full p-0"
                       onClick={() =>
-                        setNewCharacterGalleryImages((p) => p.filter((_, j) => j !== i))
+                        setNewCharacterGalleryImages((p) =>
+                          p.filter((_, j) => j !== i),
+                        )
                       }
                       aria-label="Referenzbild entfernen"
                     >
@@ -6347,7 +8180,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/10 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                   >
                     <Plus className="size-6 mb-0.5" />
-                    <span className="text-[10px] px-1 text-center leading-tight">Hinzufügen</span>
+                    <span className="text-[10px] px-1 text-center leading-tight">
+                      Hinzufügen
+                    </span>
                   </button>
                 ) : null}
               </div>
@@ -6362,8 +8197,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
             <div className="space-y-2">
               <Label>Name *</Label>
-              <Input 
-                placeholder="z.B. Max Weber, Sarah Johnson" 
+              <Input
+                placeholder="z.B. Max Weber, Sarah Johnson"
                 className="h-11 border-2"
                 value={newCharacterName}
                 onChange={(e) => setNewCharacterName(e.target.value)}
@@ -6371,8 +8206,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             </div>
             <div className="space-y-2">
               <Label>Rolle</Label>
-              <Input 
-                placeholder="z.B. Protagonist, Antagonist, Unterstützer" 
+              <Input
+                placeholder="z.B. Protagonist, Antagonist, Unterstützer"
                 className="h-11 border-2"
                 value={newCharacterRole}
                 onChange={(e) => setNewCharacterRole(e.target.value)}
@@ -6380,8 +8215,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             </div>
             <div className="space-y-2">
               <Label>Beschreibung</Label>
-              <Textarea 
-                placeholder="Kurze Zusammenfassung des Charakters..." 
+              <Textarea
+                placeholder="Kurze Zusammenfassung des Charakters..."
                 rows={3}
                 className="border-2"
                 value={newCharacterDescription}
@@ -6393,8 +8228,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>Alter</Label>
-                <Input 
-                  placeholder="z.B. 35" 
+                <Input
+                  placeholder="z.B. 35"
                   className="h-11 border-2"
                   value={newCharacterAge}
                   onChange={(e) => setNewCharacterAge(e.target.value)}
@@ -6402,8 +8237,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               </div>
               <div className="space-y-2">
                 <Label>Geschlecht</Label>
-                <Input 
-                  placeholder="Female, Male, ..." 
+                <Input
+                  placeholder="Female, Male, ..."
                   className="h-11 border-2"
                   value={newCharacterGender}
                   onChange={(e) => setNewCharacterGender(e.target.value)}
@@ -6411,8 +8246,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
               </div>
               <div className="space-y-2">
                 <Label>Spezies</Label>
-                <Input 
-                  placeholder="Human, Alien, ..." 
+                <Input
+                  placeholder="Human, Alien, ..."
                   className="h-11 border-2"
                   value={newCharacterSpecies}
                   onChange={(e) => setNewCharacterSpecies(e.target.value)}
@@ -6422,8 +8257,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
             <div className="space-y-2">
               <Label>Background Story</Label>
-              <Textarea 
-                placeholder="Die Hintergrundgeschichte des Charakters - Herkunft, wichtige Ereignisse, Motivation..." 
+              <Textarea
+                placeholder="Die Hintergrundgeschichte des Charakters - Herkunft, wichtige Ereignisse, Motivation..."
                 rows={3}
                 className="border-2"
                 value={newCharacterBackgroundStory}
@@ -6433,8 +8268,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
             <div className="space-y-2">
               <Label>Skills</Label>
-              <Textarea 
-                placeholder="Fähigkeiten kommagetrennt (z.B. Piloting, Schwertkampf, Hacking, Heilung)" 
+              <Textarea
+                placeholder="Fähigkeiten kommagetrennt (z.B. Piloting, Schwertkampf, Hacking, Heilung)"
                 rows={2}
                 className="border-2"
                 value={newCharacterSkills}
@@ -6444,8 +8279,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
             <div className="space-y-2">
               <Label>Stärken</Label>
-              <Textarea 
-                placeholder="Was macht den Charakter stark? (z.B. Entscheidungsfreudig, Mutig, Intelligent, Loyal)" 
+              <Textarea
+                placeholder="Was macht den Charakter stark? (z.B. Entscheidungsfreudig, Mutig, Intelligent, Loyal)"
                 rows={2}
                 className="border-2"
                 value={newCharacterStrengths}
@@ -6455,8 +8290,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
             <div className="space-y-2">
               <Label>Schwächen</Label>
-              <Textarea 
-                placeholder="Schwachstellen und Verletzlichkeiten (z.B. Impulsiv, Vertrauensselig, Sturköpfig)" 
+              <Textarea
+                placeholder="Schwachstellen und Verletzlichkeiten (z.B. Impulsiv, Vertrauensselig, Sturköpfig)"
                 rows={2}
                 className="border-2"
                 value={newCharacterWeaknesses}
@@ -6466,8 +8301,8 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
             <div className="space-y-2">
               <Label>Charakter Traits</Label>
-              <Textarea 
-                placeholder="Persönlichkeitsmerkmale (z.B. Mutig, Sarkastisch, Mitf��hlend, Neugierig, Introvertiert)" 
+              <Textarea
+                placeholder="Persönlichkeitsmerkmale (z.B. Mutig, Sarkastisch, Mitf��hlend, Neugierig, Introvertiert)"
                 rows={2}
                 className="border-2"
                 value={newCharacterTraits}
@@ -6476,11 +8311,21 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowNewCharacter(false);
-              resetNewCharacterForm();
-            }} className="h-11">Abbrechen</Button>
-            <Button onClick={handleCreateCharacter} className="h-11" disabled={!newCharacterName.trim()}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewCharacter(false);
+                resetNewCharacterForm();
+              }}
+              className="h-11"
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleCreateCharacter}
+              className="h-11"
+              disabled={!newCharacterName.trim()}
+            >
               Charakter erstellen
             </Button>
           </DialogFooter>
@@ -6489,14 +8334,16 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
 
       {/* Image Crop Dialog */}
       {showImageCropDialog && tempImageForCrop && (
-        <ImageCropDialog
-          image={tempImageForCrop}
-          onComplete={handleCroppedImage}
-          onCancel={() => {
-            setShowImageCropDialog(false);
-            setTempImageForCrop(undefined);
-          }}
-        />
+        <Suspense fallback={null}>
+          <ImageCropDialog
+            image={tempImageForCrop}
+            onComplete={handleCroppedImage}
+            onCancel={() => {
+              setShowImageCropDialog(false);
+              setTempImageForCrop(undefined);
+            }}
+          />
+        </Suspense>
       )}
 
       {/* Delete Project Dialog */}
@@ -6512,9 +8359,9 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Diese Aktion kann <strong>nicht rückgängig</strong> gemacht werden. 
-                  Das Projekt <strong>"{project.title}"</strong> wird permanent gelöscht, 
-                  inklusive aller:
+                  Diese Aktion kann <strong>nicht rückgängig</strong> gemacht
+                  werden. Das Projekt <strong>"{project.title}"</strong> wird
+                  permanent gelöscht, inklusive aller:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                   <li>Szenen</li>
@@ -6535,7 +8382,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
                     disabled={deleteLoading}
                     className="h-11"
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && deletePassword.trim()) {
+                      if (e.key === "Enter" && deletePassword.trim()) {
                         onDelete();
                       }
                     }}
@@ -6546,7 +8393,7 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
+            <AlertDialogCancel
               onClick={() => {
                 setDeletePassword("");
               }}
@@ -6576,12 +8423,13 @@ function ProjectDetail({ project, worlds, onBack, onOpenWorldbuilding, coverImag
       </AlertDialog>
 
       {/* Project Stats & Logs Dialog */}
-      <ProjectStatsLogsDialog
-        open={showStatsDialog}
-        onOpenChange={setShowStatsDialog}
-        project={project}
-      />
-
+      <Suspense fallback={null}>
+        <ProjectStatsLogsDialog
+          open={showStatsDialog}
+          onOpenChange={setShowStatsDialog}
+          project={project}
+        />
+      </Suspense>
     </div>
   );
 }

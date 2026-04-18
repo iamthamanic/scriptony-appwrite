@@ -1,10 +1,10 @@
 /**
- * Platzhalter-Payload für Three.js / R3F — minimal halten bis die 3D-Engine festliegt.
+ * Platzhalter-Payload fuer Three.js / R3F.
  * Erweiterungen: nodes, materials, environment; schemaVersion am Envelope anheben.
  */
 export interface Stage3DNodeStub {
   id: string;
-  /** z. B. "group" | "mesh" | "light" */
+  /** Zum Beispiel "group" | "mesh" | "light" */
   type: string;
   /** Freiform bis das echte Schema steht */
   data?: Record<string, unknown>;

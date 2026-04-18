@@ -10,20 +10,17 @@ import { ID, Query } from "node-appwrite";
 import {
   C,
   createDocument,
-  deleteDocument,
   getDocument,
   listDocumentsFull,
   updateDocument,
 } from "../_shared/appwrite-db";
-import { getAccessibleProject } from "../_shared/scriptony";
 import { uploadFileToStorage } from "../_shared/storage";
 import { getStorageBucketId } from "../_shared/env";
 import {
+  toBoolean,
+  toIntegerOrNull,
   toString,
   toStringOrNull,
-  toIntegerOrNull,
-  toBoolean,
-  userCanAccessShot,
 } from "../_shared/puppet-helpers";
 
 // ---------------------------------------------------------------------------
@@ -75,7 +72,9 @@ export function stageDocumentRowToApi(row: StageDocumentRow): StageDocumentApi {
     currentFrame: toIntegerOrNull(row.currentFrame),
     glbPreviewFileId: toStringOrNull(row.glbPreviewFileId),
     lastSyncedAt: toStringOrNull(row.lastSyncedAt),
-    updatedAt: toString(row.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
+    updatedAt: toString(
+      row.updatedAt ?? row.updated_at ?? row.created_at ?? "",
+    ),
   };
 }
 
@@ -83,7 +82,9 @@ export function stageDocumentRowToApi(row: StageDocumentRow): StageDocumentApi {
 // Document CRUD
 // ---------------------------------------------------------------------------
 
-export async function getStageDocument(shotId: string): Promise<StageDocumentRow | null> {
+export async function getStageDocument(
+  shotId: string,
+): Promise<StageDocumentRow | null> {
   const rows = await listDocumentsFull(C.stageDocuments, [
     Query.equal("shotId", shotId),
     Query.equal("kind", "stage2d"),
@@ -94,7 +95,7 @@ export async function getStageDocument(shotId: string): Promise<StageDocumentRow
 
 export async function getOrCreateStageDocument(
   userId: string,
-  shotId: string
+  shotId: string,
 ): Promise<StageDocumentApi> {
   const existing = await getStageDocument(shotId);
   if (existing) return stageDocumentRowToApi(existing);
@@ -122,18 +123,28 @@ export async function updateStageDocument(
     viewState?: string | null;
     selectedTakeId?: string | null;
     currentFrame?: number | null;
-  }
+  },
 ): Promise<StageDocumentApi> {
-  let doc = await getStageDocument(shotId);
+  const doc = await getStageDocument(shotId);
   if (!doc) {
     throw new Error("Stage document not found for shot");
   }
-  const update: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+  const update: Record<string, unknown> = {
+    updatedAt: new Date().toISOString(),
+  };
   if (patch.payload !== undefined) update.payload = patch.payload;
   if (patch.viewState !== undefined) update.viewState = patch.viewState;
-  if (patch.selectedTakeId !== undefined) update.selectedTakeId = patch.selectedTakeId;
-  if (patch.currentFrame !== undefined) update.currentFrame = patch.currentFrame;
-  const updated = await updateDocument(C.stageDocuments, String(doc.id), update);
+  if (patch.selectedTakeId !== undefined) {
+    update.selectedTakeId = patch.selectedTakeId;
+  }
+  if (patch.currentFrame !== undefined) {
+    update.currentFrame = patch.currentFrame;
+  }
+  const updated = await updateDocument(
+    C.stageDocuments,
+    String(doc.id),
+    update,
+  );
   return stageDocumentRowToApi(updated);
 }
 
@@ -155,7 +166,11 @@ function parseLayersFromPayload(row: StageDocumentRow): LayerApi[] {
       opacity: typeof l.opacity === "number" ? l.opacity : 1,
       orderIndex: typeof l.orderIndex === "number" ? l.orderIndex : 0,
       fileId: l.fileId ? String(l.fileId) : null,
-      metadata: l.metadata ? (typeof l.metadata === "string" ? l.metadata : JSON.stringify(l.metadata)) : null,
+      metadata: l.metadata
+        ? typeof l.metadata === "string"
+          ? l.metadata
+          : JSON.stringify(l.metadata)
+        : null,
     }));
   } catch {
     return [];
@@ -183,7 +198,7 @@ export async function addLayer(
     orderIndex?: number;
     fileId?: string | null;
     metadata?: string | null;
-  }
+  },
 ): Promise<LayerApi> {
   const doc = await getOrCreateStageDocument(userId, shotId);
   const row = await getDocument(C.stageDocuments, doc.id);
@@ -195,7 +210,9 @@ export async function addLayer(
     name: input.name || "Untitled layer",
     visible: input.visible !== undefined ? input.visible : true,
     opacity: input.opacity !== undefined ? input.opacity : 1,
-    orderIndex: input.orderIndex !== undefined ? input.orderIndex : layers.length,
+    orderIndex: input.orderIndex !== undefined
+      ? input.orderIndex
+      : layers.length,
     fileId: input.fileId ?? null,
     metadata: input.metadata ?? null,
   };
@@ -211,7 +228,7 @@ export async function addLayer(
 export async function updateLayer(
   shotId: string,
   layerId: string,
-  patch: Partial<Omit<LayerApi, "id">>
+  patch: Partial<Omit<LayerApi, "id">>,
 ): Promise<LayerApi | null> {
   const doc = await getStageDocument(shotId);
   if (!doc) return null;
@@ -228,7 +245,10 @@ export async function updateLayer(
   return layers[idx];
 }
 
-export async function deleteLayer(shotId: string, layerId: string): Promise<boolean> {
+export async function deleteLayer(
+  shotId: string,
+  layerId: string,
+): Promise<boolean> {
   const doc = await getStageDocument(shotId);
   if (!doc) return false;
   const row = await getDocument(C.stageDocuments, doc.id);
@@ -254,7 +274,7 @@ export async function prepareRepair(
   input: {
     layerId: string;
     repairType?: string;
-  }
+  },
 ): Promise<{ maskFileId: string; guideBundleId: string }> {
   // Ensure stage document exists
   const doc = await getOrCreateStageDocument(userId, shotId);
@@ -276,7 +296,7 @@ export async function prepareRepair(
   const maskFileId = await uploadJsonToStorage(
     `mask-${shotId}-${input.layerId}.json`,
     maskContent,
-    userId
+    userId,
   );
 
   // Create a guide bundle entry
@@ -301,13 +321,15 @@ export async function prepareRepair(
 async function uploadJsonToStorage(
   filename: string,
   content: string,
-  userId: string
+  _userId: string,
 ): Promise<string> {
-  const bucketId = getStorageBucketId();
+  getStorageBucketId();
   const file = new File([content], filename, { type: "application/json" });
-  const { Storage } = await import("node-appwrite");
-  const { getDatabases } = await import("../_shared/appwrite-db");
   // Use storage upload via shared helper
-  const uploaded = await uploadFileToStorage(file, filename, "application/json");
+  const uploaded = await uploadFileToStorage(
+    file,
+    filename,
+    "application/json",
+  );
   return uploaded?.id || uploaded?.$id || "";
 }

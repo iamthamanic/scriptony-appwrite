@@ -3,7 +3,14 @@
  * Location: src/modules/creative-gym/presentation/CreativeGymApp.tsx
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -13,7 +20,13 @@ import {
   Wrench,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
 import { Textarea } from "../../../components/ui/textarea";
 import { Label } from "../../../components/ui/label";
 import {
@@ -26,8 +39,18 @@ import {
 import { Badge } from "../../../components/ui/badge";
 import { cn } from "../../../components/ui/utils";
 import { toast } from "sonner@2.0.3";
-import type { ChallengeTemplate, CreativeIntent, CreativeMedium, CreativeSession, Difficulty, RescueActionId, SessionMode, TransferTargetType } from "../domain/types";
+import type {
+  ChallengeTemplate,
+  CreativeIntent,
+  CreativeMedium,
+  CreativeSession,
+  Difficulty,
+  RescueActionId,
+  SessionMode,
+  TransferTargetType,
+} from "../domain/types";
 import * as UC from "../application/use-cases";
+import { resolveCreativeGymMode } from "../application/wiring";
 import { CreativeGymProvider, useCreativeGym } from "./creative-gym-context";
 import type { GymUserDisplay } from "./creative-gym-context";
 import {
@@ -82,9 +105,16 @@ export function CreativeGymAppWithProvider(props: CreativeGymAppProps) {
   );
 }
 
-function CreativeGymRouter({ segment, subSegment, navigate, onOpenAiSettings }: CreativeGymAppProps) {
+function CreativeGymRouter({
+  segment,
+  subSegment,
+  navigate,
+  onOpenAiSettings,
+}: CreativeGymAppProps) {
   if (!segment) {
-    return <HomeScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />;
+    return (
+      <HomeScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />
+    );
   }
   if (segment === "library") {
     return <LibraryScreen navigate={navigate} librarySubSegment={subSegment} />;
@@ -96,11 +126,20 @@ function CreativeGymRouter({ segment, subSegment, navigate, onOpenAiSettings }: 
     return <AssetsScreen navigate={navigate} />;
   }
   if (segment === "session" && subSegment === "new") {
-    return <SessionSetupScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />;
+    return (
+      <SessionSetupScreen
+        navigate={navigate}
+        onOpenAiSettings={onOpenAiSettings}
+      />
+    );
   }
   if (segment === "session" && subSegment && subSegment !== "new") {
     return (
-      <SessionFlowScreen sessionId={subSegment} navigate={navigate} onOpenAiSettings={onOpenAiSettings} />
+      <SessionFlowScreen
+        sessionId={subSegment}
+        navigate={navigate}
+        onOpenAiSettings={onOpenAiSettings}
+      />
     );
   }
   return <HomeScreen navigate={navigate} onOpenAiSettings={onOpenAiSettings} />;
@@ -126,7 +165,11 @@ function HomeScreen({
       <div className="border-b border-border/60 bg-gradient-to-b from-muted/25 to-transparent pb-3 pt-2 md:pb-4 md:pt-3">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <GymHubMenu navigate={navigate} current="home" className="shrink-0" />
+            <GymHubMenu
+              navigate={navigate}
+              current="home"
+              className="shrink-0"
+            />
             {onOpenAiSettings ? (
               <Button
                 type="button"
@@ -193,12 +236,23 @@ function HomeScreen({
 
         {overview?.profile && (
           <div className="mt-8 border-t border-border/60 pt-12 md:mt-10 md:pt-14">
-            <h2 className="mb-5 text-sm font-medium text-muted-foreground">Kurzüberblick</h2>
+            <h2 className="mb-5 text-sm font-medium text-muted-foreground">
+              Kurzüberblick
+            </h2>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
-              <StatPill label="Sessions" value={String(overview.sessionsCompleted)} />
-              <StatPill label="Streak" value={`${overview.profile.currentStreak} Tage`} />
+              <StatPill
+                label="Sessions"
+                value={String(overview.sessionsCompleted)}
+              />
+              <StatPill
+                label="Streak"
+                value={`${overview.profile.currentStreak} Tage`}
+              />
               <StatPill label="Fokus" value={overview.weakSpots[0] ?? "—"} />
-              <StatPill label="Transfer" value={overview.profile.mediaTranslation.toFixed(0)} />
+              <StatPill
+                label="Transfer"
+                value={overview.profile.mediaTranslation.toFixed(0)}
+              />
             </div>
           </div>
         )}
@@ -210,8 +264,12 @@ function HomeScreen({
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-h-[4.5rem] flex-col justify-center rounded-xl border border-border/70 bg-muted/20 px-4 py-3 shadow-sm">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+        {value}
+      </p>
     </div>
   );
 }
@@ -233,7 +291,7 @@ function IntentCard({
     <div
       className={cn(
         "group flex h-full min-h-0 min-w-0 flex-col rounded-xl border border-border/80 bg-card p-2.5 text-left shadow-sm transition-all sm:p-4 md:p-5",
-        "hover:border-primary/35 hover:bg-accent/30 hover:shadow-md"
+        "hover:border-primary/35 hover:bg-accent/30 hover:shadow-md",
       )}
     >
       <button
@@ -241,7 +299,7 @@ function IntentCard({
         onClick={onClick}
         className={cn(
           "flex min-h-0 flex-1 flex-col text-left",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg -m-0.5 p-0.5"
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg -m-0.5 p-0.5",
         )}
       >
         <div className="mb-2 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 sm:mb-3 sm:size-10 [&_svg]:size-4 sm:[&_svg]:size-5">
@@ -300,9 +358,10 @@ function LibraryScreen({
   }, [librarySubSegment]);
 
   useEffect(() => {
-    void UC.listChallengesUseCase(deps, filter === "all" ? undefined : { intent: filter }).then(
-      setList
-    );
+    void UC.listChallengesUseCase(
+      deps,
+      filter === "all" ? undefined : { intent: filter },
+    ).then(setList);
   }, [deps, filter]);
 
   const setFilterAndNavigate = (k: CreativeIntent | "all") => {
@@ -321,7 +380,9 @@ function LibraryScreen({
         <h1 className="text-lg font-semibold text-foreground">Library</h1>
       </div>
       <div className="flex flex-wrap gap-2 mb-6">
-        {(["all", "unblock", "explore", "train", "project_extend"] as const).map((k) => (
+        {(
+          ["all", "unblock", "explore", "train", "project_extend"] as const
+        ).map((k) => (
           <Button
             key={k}
             size="sm"
@@ -343,7 +404,9 @@ function LibraryScreen({
                   {c.difficulty}
                 </Badge>
               </div>
-              <CardDescription className="text-xs line-clamp-2">{c.description}</CardDescription>
+              <CardDescription className="text-xs line-clamp-2">
+                {c.description}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button
@@ -379,7 +442,9 @@ function ProgressScreen({ navigate }: { navigate: NavigateFn }) {
       ) : (
         <div className="space-y-8">
           <div>
-            <h2 className="text-sm font-medium text-muted-foreground mb-4">Skill-Raster</h2>
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">
+              Skill-Raster
+            </h2>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 ["Originalität", p.originality],
@@ -394,24 +459,29 @@ function ProgressScreen({ navigate }: { navigate: NavigateFn }) {
               ].map(([name, val]) => {
                 const n = Number(val);
                 return (
-                <div key={String(name)} className="rounded-lg border border-border p-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>{name}</span>
-                    <span className="text-primary">{n.toFixed(0)}</span>
+                  <div
+                    key={String(name)}
+                    className="rounded-lg border border-border p-3"
+                  >
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>{name}</span>
+                      <span className="text-primary">{n.toFixed(0)}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${Math.min(100, n)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.min(100, n)}%` }}
-                    />
-                  </div>
-                </div>
                 );
               })}
             </div>
           </div>
           <div>
-            <h2 className="text-sm font-medium text-muted-foreground mb-2">Schwächen</h2>
+            <h2 className="text-sm font-medium text-muted-foreground mb-2">
+              Schwächen
+            </h2>
             <p className="text-sm">{data?.weakSpots.join(" · ") || "—"}</p>
           </div>
         </div>
@@ -422,12 +492,12 @@ function ProgressScreen({ navigate }: { navigate: NavigateFn }) {
 
 function AssetsScreen({ navigate }: { navigate: NavigateFn }) {
   const { deps, mode } = useCreativeGym();
-  const [capsules, setCapsules] = useState<Awaited<ReturnType<typeof deps.capsuleBridge.listCapsules>>>(
-    []
-  );
-  const [artifacts, setArtifacts] = useState<Awaited<ReturnType<typeof deps.artifacts.listByUser>>>(
-    []
-  );
+  const [capsules, setCapsules] = useState<
+    Awaited<ReturnType<typeof deps.capsuleBridge.listCapsules>>
+  >([]);
+  const [artifacts, setArtifacts] = useState<
+    Awaited<ReturnType<typeof deps.artifacts.listByUser>>
+  >([]);
   const [title, setTitle] = useState("");
 
   const reload = useCallback(async () => {
@@ -471,13 +541,16 @@ function AssetsScreen({ navigate }: { navigate: NavigateFn }) {
         </div>
         {mode === "integrated" && (
           <p className="text-xs text-muted-foreground mt-2">
-            Scriptony-Projekte: Transfer aus Session-Abschluss (integrierter Modus).
+            Scriptony-Projekte: Transfer aus Session-Abschluss (integrierter
+            Modus).
           </p>
         )}
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Capsules</h3>
+          <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+            Capsules
+          </h3>
           <ul className="space-y-2">
             {capsules.map((c) => (
               <li
@@ -485,18 +558,27 @@ function AssetsScreen({ navigate }: { navigate: NavigateFn }) {
                 className="rounded-lg border border-border px-3 py-2 text-sm flex justify-between"
               >
                 <span>{c.title}</span>
-                <span className="text-muted-foreground">{c.artifactIds.length} Artefakte</span>
+                <span className="text-muted-foreground">
+                  {c.artifactIds.length} Artefakte
+                </span>
               </li>
             ))}
           </ul>
         </div>
         <div>
-          <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Artefakte</h3>
+          <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+            Artefakte
+          </h3>
           <ul className="space-y-2">
             {artifacts.map((a) => (
-              <li key={a.id} className="rounded-lg border border-border px-3 py-2 text-sm">
+              <li
+                key={a.id}
+                className="rounded-lg border border-border px-3 py-2 text-sm"
+              >
                 <span className="font-medium">{a.title}</span>
-                <span className="text-muted-foreground text-xs block">{a.transferStatus}</span>
+                <span className="text-muted-foreground text-xs block">
+                  {a.transferStatus}
+                </span>
               </li>
             ))}
           </ul>
@@ -522,8 +604,12 @@ function SessionSetupScreen({
   const [challengeId, setChallengeId] = useState(CHALLENGE_SEEDS[0]?.id ?? "");
 
   const filtered = useMemo(
-    () => CHALLENGE_SEEDS.filter((c) => c.defaultIntent === intent || c.tags.includes(`intent:${intent}`)),
-    [intent]
+    () =>
+      CHALLENGE_SEEDS.filter(
+        (c) =>
+          c.defaultIntent === intent || c.tags.includes(`intent:${intent}`),
+      ),
+    [intent],
   );
 
   useEffect(() => {
@@ -534,7 +620,7 @@ function SessionSetupScreen({
     }
     if (filtered.length) {
       setChallengeId((prev) =>
-        filtered.some((c) => c.id === prev) ? prev : filtered[0].id
+        filtered.some((c) => c.id === prev) ? prev : filtered[0].id,
       );
     }
   }, [intent, filtered]);
@@ -542,7 +628,7 @@ function SessionSetupScreen({
   const start = async () => {
     clearSetupIntent();
     clearSetupChallengeId();
-    const mode = await import("../application/wiring").then((m) => m.resolveCreativeGymMode());
+    const mode = await resolveCreativeGymMode();
     const session = await UC.startCreativeSession(deps, {
       mode,
       intent,
@@ -558,7 +644,12 @@ function SessionSetupScreen({
 
   return (
     <section className="min-h-screen pb-16 text-foreground px-4 py-8 mx-auto max-w-2xl">
-      <Button variant="ghost" size="sm" className="mb-4 gap-1" onClick={() => navigate("gym")}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mb-4 gap-1"
+        onClick={() => navigate("gym")}
+      >
         <ArrowLeft className="size-4" />
         Zurück
       </Button>
@@ -585,7 +676,10 @@ function SessionSetupScreen({
         ) : null}
         <div>
           <Label className="text-xs text-muted-foreground">Medium</Label>
-          <Select value={medium} onValueChange={(v) => setMedium(v as CreativeMedium)}>
+          <Select
+            value={medium}
+            onValueChange={(v) => setMedium(v as CreativeMedium)}
+          >
             <SelectTrigger className="border-border bg-background">
               <SelectValue />
             </SelectTrigger>
@@ -614,8 +708,13 @@ function SessionSetupScreen({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-muted-foreground">Session-Modus</Label>
-            <Select value={sessionMode} onValueChange={(v) => setSessionMode(v as SessionMode)}>
+            <Label className="text-xs text-muted-foreground">
+              Session-Modus
+            </Label>
+            <Select
+              value={sessionMode}
+              onValueChange={(v) => setSessionMode(v as SessionMode)}
+            >
               <SelectTrigger className="border-border bg-background">
                 <SelectValue />
               </SelectTrigger>
@@ -630,7 +729,10 @@ function SessionSetupScreen({
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Intensität</Label>
-            <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
+            <Select
+              value={difficulty}
+              onValueChange={(v) => setDifficulty(v as Difficulty)}
+            >
               <SelectTrigger className="border-border bg-background">
                 <SelectValue />
               </SelectTrigger>
@@ -643,7 +745,9 @@ function SessionSetupScreen({
           </div>
         </div>
         <div>
-          <Label className="text-xs text-muted-foreground">Zeitbudget (Min)</Label>
+          <Label className="text-xs text-muted-foreground">
+            Zeitbudget (Min)
+          </Label>
           <input
             type="number"
             min={5}
@@ -655,7 +759,11 @@ function SessionSetupScreen({
         </div>
         {onOpenAiSettings ? (
           <p className="text-xs text-muted-foreground">
-            <button type="button" className="underline underline-offset-2" onClick={() => onOpenAiSettings()}>
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={() => onOpenAiSettings()}
+            >
               KI &amp; API-Keys konfigurieren
             </button>
           </p>
@@ -683,15 +791,17 @@ function SessionFlowScreen({
   const [body, setBody] = useState("");
   const [rescueText, setRescueText] = useState<string | null>(null);
   const [phase, setPhase] = useState<"active" | "done">("active");
-  const [reviewUsefulness, setReviewUsefulness] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [reviewUsefulness, setReviewUsefulness] = useState<1 | 2 | 3 | 4 | 5>(
+    3,
+  );
   const [transferReady, setTransferReady] = useState(false);
   const [artifactId, setArtifactId] = useState<string | null>(null);
   const [projects, setProjects] = useState<{ id: string; title: string }[]>([]);
   const [projectId, setProjectId] = useState("");
   const [target, setTarget] = useState<TransferTargetType>("scene_list");
-  const [capsules, setCapsules] = useState<Awaited<ReturnType<typeof deps.capsuleBridge.listCapsules>>>(
-    []
-  );
+  const [capsules, setCapsules] = useState<
+    Awaited<ReturnType<typeof deps.capsuleBridge.listCapsules>>
+  >([]);
   const [capsuleId, setCapsuleId] = useState("");
   const startedAt = useRef(Date.now());
   const starterRequestedRef = useRef(false);
@@ -725,8 +835,14 @@ function SessionFlowScreen({
     starterRequestedRef.current = true;
     setStarterLoading(true);
     const projectId =
-      session.sourceContext?.sourceType === "project" ? session.sourceContext.sourceId : undefined;
-    const uiLang = typeof document !== "undefined" && document.documentElement.lang?.startsWith("en") ? "en" : "de";
+      session.sourceContext?.sourceType === "project"
+        ? session.sourceContext.sourceId
+        : undefined;
+    const uiLang =
+      typeof document !== "undefined" &&
+      document.documentElement.lang?.startsWith("en")
+        ? "en"
+        : "de";
     void (async () => {
       try {
         const res = await requestGymStarter({
@@ -756,11 +872,14 @@ function SessionFlowScreen({
         await load();
       } catch (e) {
         starterRequestedRef.current = false;
-        const msg = e instanceof Error ? e.message : "Starter-Text konnte nicht geladen werden.";
+        const msg =
+          e instanceof Error
+            ? e.message
+            : "Starter-Text konnte nicht geladen werden.";
         toast.error(
           onOpenAiSettings && /API|Key|Hosted|konfiguriert/i.test(msg)
             ? `${msg} — Button „KI-Einstellungen“ oben.`
-            : msg
+            : msg,
         );
       } finally {
         setStarterLoading(false);
@@ -793,8 +912,14 @@ function SessionFlowScreen({
     if (!session) return;
     setStarterLoading(true);
     const projectId =
-      session.sourceContext?.sourceType === "project" ? session.sourceContext.sourceId : undefined;
-    const uiLang = typeof document !== "undefined" && document.documentElement.lang?.startsWith("en") ? "en" : "de";
+      session.sourceContext?.sourceType === "project"
+        ? session.sourceContext.sourceId
+        : undefined;
+    const uiLang =
+      typeof document !== "undefined" &&
+      document.documentElement.lang?.startsWith("en")
+        ? "en"
+        : "de";
     try {
       const res = await requestGymStarter({
         challenge_template_id: session.challengeTemplateId,
@@ -823,11 +948,12 @@ function SessionFlowScreen({
       await load();
       toast.success("Neuer Starter-Text");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Neu würfeln fehlgeschlagen.";
+      const msg =
+        e instanceof Error ? e.message : "Neu würfeln fehlgeschlagen.";
       toast.error(
         onOpenAiSettings && /API|Key|Hosted|konfiguriert/i.test(msg)
           ? `${msg} — Button „KI-Einstellungen“ oben.`
-          : msg
+          : msg,
       );
     } finally {
       setStarterLoading(false);
@@ -867,7 +993,12 @@ function SessionFlowScreen({
 
   const transfer = async () => {
     if (!artifactId) return;
-    const r = await UC.transferArtifactUseCase(deps, artifactId, projectId, target);
+    const r = await UC.transferArtifactUseCase(
+      deps,
+      artifactId,
+      projectId,
+      target,
+    );
     if (r.ok) toast.success(r.message ?? "Transfer ok");
     else toast.error(r.message ?? "Transfer fehlgeschlagen");
   };
@@ -910,7 +1041,10 @@ function SessionFlowScreen({
                 ))}
               </SelectContent>
             </Select>
-            <Select value={target} onValueChange={(v) => setTarget(v as TransferTargetType)}>
+            <Select
+              value={target}
+              onValueChange={(v) => setTarget(v as TransferTargetType)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -919,7 +1053,9 @@ function SessionFlowScreen({
                 <SelectItem value="idea_bank">Ideen / Notizen</SelectItem>
                 <SelectItem value="outline_area">Outline</SelectItem>
                 <SelectItem value="character_area">Charakter</SelectItem>
-                <SelectItem value="worldbuilding_area">Worldbuilding</SelectItem>
+                <SelectItem value="worldbuilding_area">
+                  Worldbuilding
+                </SelectItem>
                 <SelectItem value="production_board">Production</SelectItem>
               </SelectContent>
             </Select>
@@ -942,11 +1078,19 @@ function SessionFlowScreen({
               ))}
             </SelectContent>
           </Select>
-          <Button variant="secondary" className="w-full" onClick={() => void toCapsule()}>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => void toCapsule()}
+          >
             In Capsule speichern
           </Button>
         </div>
-        <Button variant="ghost" className="mt-6" onClick={() => navigate("gym")}>
+        <Button
+          variant="ghost"
+          className="mt-6"
+          onClick={() => navigate("gym")}
+        >
           Zur Startseite
         </Button>
       </section>
@@ -956,14 +1100,21 @@ function SessionFlowScreen({
   return (
     <section className="min-h-screen text-[#e8e4f4] flex flex-col lg:flex-row">
       <aside className="lg:w-[320px] border-b lg:border-b-0 lg:border-r border-[#2b2740] p-4 space-y-3 bg-[#181629]">
-        <Button variant="ghost" size="sm" className="gap-1 mb-2" onClick={() => navigate("gym")}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1 mb-2"
+          onClick={() => navigate("gym")}
+        >
           <ArrowLeft className="size-4" />
           Home
         </Button>
         <h2 className="font-semibold text-sm">{tpl.title}</h2>
         <p className="text-xs text-[#8c85a8]">{tpl.description}</p>
         <div className="text-xs space-y-2">
-          <p className="text-[#a89fd4] font-medium">Anweisung ({session.medium})</p>
+          <p className="text-[#a89fd4] font-medium">
+            Anweisung ({session.medium})
+          </p>
           <p>{renderer?.instruction}</p>
           <ul className="list-disc pl-4 text-[#c7c0de]">
             {renderer?.rules.map((r) => (
@@ -984,12 +1135,16 @@ function SessionFlowScreen({
               disabled={starterLoading}
               onClick={() => void shuffleStarter()}
             >
-              <RefreshCw className={starterLoading ? "size-3 animate-spin" : "size-3"} />
+              <RefreshCw
+                className={starterLoading ? "size-3 animate-spin" : "size-3"}
+              />
               <span className="ml-1">Neu würfeln</span>
             </Button>
           </div>
           {starterLoading && (
-            <p className="text-[10px] text-[#8c85a8]">KI erzeugt Starter-Text…</p>
+            <p className="text-[10px] text-[#8c85a8]">
+              KI erzeugt Starter-Text…
+            </p>
           )}
           <Textarea
             className="min-h-[240px] mt-1 border-[#2b2740] bg-[#14121c] font-mono text-sm"
@@ -1002,7 +1157,9 @@ function SessionFlowScreen({
               <Label className="text-xs">Nützlichkeit (1–5)</Label>
               <Select
                 value={String(reviewUsefulness)}
-                onValueChange={(v) => setReviewUsefulness(Number(v) as 1 | 2 | 3 | 4 | 5)}
+                onValueChange={(v) =>
+                  setReviewUsefulness(Number(v) as 1 | 2 | 3 | 4 | 5)
+                }
               >
                 <SelectTrigger className="border-[#2b2740] bg-[#14121c]">
                   <SelectValue />

@@ -7,7 +7,8 @@
  *   POST   /stage/render-jobs              — create a new render job
  *   GET    /stage/render-jobs/:id           — get job by ID
  *   GET    /stage/render-jobs?shotId=…      — list jobs for a shot
- *   POST   /stage/render-jobs/:id/complete  — mark job as completed
+ *   POST   /stage/render-jobs/:id/complete — mark job as completed
+ *   POST   /stage/render-jobs/:id/fail     — mark job as failed
  *   PUT    /stage/render-jobs/:id/accept    — accept job (official shot render)
  *   PUT    /stage/render-jobs/:id/reject    — reject job (acceptedRenderJobId stays)
  */
@@ -17,34 +18,35 @@ import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { getUserOrganizationIds } from "../_shared/scriptony";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import {
   acceptRenderJob,
   completeRenderJob,
   createRenderJob,
+  failRenderJob,
   getRenderJobById,
   listRenderJobsForShot,
-  renderJobRowToApi,
   rejectRenderJob,
+  renderJobRowToApi,
   userCanAccessProject,
 } from "./stage-service";
 
 function getPathname(req: RequestLike): string {
-  const direct =
-    (typeof req?.path === "string" && req.path) ||
+  const direct = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://"))
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
       return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -54,13 +56,14 @@ function getPathname(req: RequestLike): string {
 
 function getQueryParam(req: RequestLike, key: string): string {
   const fromQuery = req?.query?.[key];
-  if (typeof fromQuery === "string" && fromQuery.trim()) return fromQuery.trim();
+  if (typeof fromQuery === "string" && fromQuery.trim()) {
+    return fromQuery.trim();
+  }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url =
-      raw.startsWith("http://") || raw.startsWith("https://")
-        ? new URL(raw)
-        : new URL(raw, "http://local");
+    const url = raw.startsWith("http://") || raw.startsWith("https://")
+      ? new URL(raw)
+      : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
@@ -113,11 +116,16 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         }>(req);
 
         if (!body.projectId || !body.shotId || !body.type || !body.jobClass) {
-          sendBadRequest(res, "projectId, shotId, type, and jobClass are required");
+          sendBadRequest(
+            res,
+            "projectId, shotId, type, and jobClass are required",
+          );
           return;
         }
 
-        if (!(await userCanAccessProject(body.projectId, userId, organizationIds))) {
+        if (
+          !(await userCanAccessProject(body.projectId, userId, organizationIds))
+        ) {
           sendNotFound(res, "Project not found");
           return;
         }
@@ -141,7 +149,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     }
 
     // POST /stage/render-jobs/:id/complete
-    const completeMatch = pathname.match(/^\/stage\/render-jobs\/([^/]+)\/complete$/);
+    const completeMatch = pathname.match(
+      /^\/stage\/render-jobs\/([^/]+)\/complete$/,
+    );
     if (completeMatch) {
       if (req.method !== "POST") {
         sendMethodNotAllowed(res, ["POST"]);
@@ -153,18 +163,55 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendNotFound(res, "Render job not found");
         return;
       }
-      const body = await readJsonBody<{ outputImageIds?: string[] }>(req).catch(() => ({}));
+      const body = await readJsonBody<{ outputImageIds?: string[] }>(req).catch(
+        () => ({}),
+      );
       try {
         const job = await completeRenderJob(row, body.outputImageIds);
         sendJson(res, 200, { job });
       } catch (error) {
-        sendBadRequest(res, error instanceof Error ? error.message : "Cannot complete job");
+        sendBadRequest(
+          res,
+          error instanceof Error ? error.message : "Cannot complete job",
+        );
+      }
+      return;
+    }
+
+    // POST /stage/render-jobs/:id/fail
+    const failMatch = pathname.match(
+      /^\/stage\/render-jobs\/([^/]+)\/fail$/,
+    );
+    if (failMatch) {
+      if (req.method !== "POST") {
+        sendMethodNotAllowed(res, ["POST"]);
+        return;
+      }
+      const jobId = failMatch[1];
+      const row = await getRenderJobById(jobId);
+      if (!row) {
+        sendNotFound(res, "Render job not found");
+        return;
+      }
+      const body = await readJsonBody<{ error?: string }>(req).catch(
+        () => ({}),
+      );
+      try {
+        const job = await failRenderJob(row, body.error);
+        sendJson(res, 200, { job });
+      } catch (error) {
+        sendBadRequest(
+          res,
+          error instanceof Error ? error.message : "Cannot fail job",
+        );
       }
       return;
     }
 
     // PUT /stage/render-jobs/:id/accept
-    const acceptMatch = pathname.match(/^\/stage\/render-jobs\/([^/]+)\/accept$/);
+    const acceptMatch = pathname.match(
+      /^\/stage\/render-jobs\/([^/]+)\/accept$/,
+    );
     if (acceptMatch) {
       if (req.method !== "PUT") {
         sendMethodNotAllowed(res, ["PUT"]);
@@ -180,13 +227,18 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         const job = await acceptRenderJob(row, userId);
         sendJson(res, 200, { job });
       } catch (error) {
-        sendBadRequest(res, error instanceof Error ? error.message : "Cannot accept job");
+        sendBadRequest(
+          res,
+          error instanceof Error ? error.message : "Cannot accept job",
+        );
       }
       return;
     }
 
     // PUT /stage/render-jobs/:id/reject
-    const rejectMatch = pathname.match(/^\/stage\/render-jobs\/([^/]+)\/reject$/);
+    const rejectMatch = pathname.match(
+      /^\/stage\/render-jobs\/([^/]+)\/reject$/,
+    );
     if (rejectMatch) {
       if (req.method !== "PUT") {
         sendMethodNotAllowed(res, ["PUT"]);
@@ -202,7 +254,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         const job = await rejectRenderJob(row, userId);
         sendJson(res, 200, { job });
       } catch (error) {
-        sendBadRequest(res, error instanceof Error ? error.message : "Cannot reject job");
+        sendBadRequest(
+          res,
+          error instanceof Error ? error.message : "Cannot reject job",
+        );
       }
       return;
     }

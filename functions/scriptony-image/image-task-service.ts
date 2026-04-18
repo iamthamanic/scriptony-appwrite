@@ -58,7 +58,9 @@ function toStringOrNull(value: unknown): string | null {
 }
 
 function toStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === "string");
+  }
   return [];
 }
 
@@ -95,9 +97,11 @@ export function imageTaskRowToApi(row: ImageTaskRow): ImageTaskApi {
 export async function userCanAccessProject(
   projectId: string,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<boolean> {
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
+  return Boolean(
+    await getAccessibleProject(projectId, userId, organizationIds),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -130,13 +134,15 @@ export async function createImageTask(input: {
   return imageTaskRowToApi(row);
 }
 
-export async function getImageTaskById(taskId: string): Promise<ImageTaskRow | null> {
+export async function getImageTaskById(
+  taskId: string,
+): Promise<ImageTaskRow | null> {
   return getDocument(C.imageTasks, taskId);
 }
 
 export async function listImageTasksForUser(
   userId: string,
-  projectId?: string | null
+  projectId?: string | null,
 ): Promise<ImageTaskApi[]> {
   const queries = [Query.equal("userId", userId), Query.orderDesc("createdAt")];
   if (projectId) {
@@ -148,7 +154,7 @@ export async function listImageTasksForUser(
 
 export async function completeImageTask(
   row: ImageTaskRow,
-  outputImageIds?: string[]
+  outputImageIds?: string[],
 ): Promise<ImageTaskApi> {
   const now = new Date().toISOString();
   const update: Record<string, unknown> = {
@@ -164,7 +170,7 @@ export async function completeImageTask(
 
 export async function failImageTask(
   row: ImageTaskRow,
-  error?: string
+  error?: string,
 ): Promise<ImageTaskApi> {
   const now = new Date().toISOString();
   const update: Record<string, unknown> = {
@@ -172,7 +178,8 @@ export async function failImageTask(
     completedAt: now,
   };
   if (error) {
-    update.prompt = (toString(row.prompt) ? toString(row.prompt) + " | " : "") + `[error] ${error}`.slice(0, 2000);
+    update.prompt = (toString(row.prompt) ? toString(row.prompt) + " | " : "") +
+      `[error] ${error}`.slice(0, 2000);
   }
   const updated = await updateDocument(C.imageTasks, String(row.id), update);
   return imageTaskRowToApi(updated);
@@ -189,13 +196,25 @@ export async function failImageTask(
 export async function notifyStageRenderComplete(
   jobId: string,
   outputImageIds: string[],
-  callbackBaseUrl: string
+  callbackBaseUrl: string,
+  authToken?: string,
 ): Promise<{ ok: boolean; status: number; body?: string }> {
-  const url = `${callbackBaseUrl.replace(/\/+$/, "")}/stage/render-jobs/${jobId}/complete`;
+  const url = `${
+    callbackBaseUrl.replace(
+      /\/+$/,
+      "",
+    )
+  }/stage/render-jobs/${jobId}/complete`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ outputImageIds }),
     });
     const text = await res.text();

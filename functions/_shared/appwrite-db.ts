@@ -2,13 +2,14 @@
  * Appwrite Databases admin client and collection helpers for function routes.
  */
 
-import { Client, Databases, Query, ID } from "node-appwrite";
+import { Client, Databases, ID, Query } from "node-appwrite";
 import {
   getAppwriteApiKey,
   getAppwriteDatabaseId,
   getAppwriteEndpoint,
   getAppwriteProjectId,
 } from "./env";
+import process from "node:process";
 
 let _clientCache: {
   databases: Databases;
@@ -16,13 +17,19 @@ let _clientCache: {
   projectId: string;
   apiKey: string;
 } | null = null;
-const DB_REQUEST_TIMEOUT_MS = Number(process.env.SCRIPTONY_DB_REQUEST_TIMEOUT_MS || 7000);
+const DB_REQUEST_TIMEOUT_MS = Number(
+  process.env.SCRIPTONY_DB_REQUEST_TIMEOUT_MS || 7000,
+);
 
 function elapsedMs(start: number): number {
   return Date.now() - start;
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
   let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
   try {
     return await Promise.race<T>([
@@ -44,8 +51,7 @@ export function getDatabases(): Databases {
   const endpoint = getAppwriteEndpoint();
   const projectId = getAppwriteProjectId();
   const apiKey = getAppwriteApiKey();
-  const cacheOk =
-    _clientCache &&
+  const cacheOk = _clientCache &&
     _clientCache.endpoint === endpoint &&
     _clientCache.projectId === projectId &&
     _clientCache.apiKey === apiKey;
@@ -56,7 +62,10 @@ export function getDatabases(): Databases {
       endpoint,
       projectId,
     });
-    const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+    const client = new Client()
+      .setEndpoint(endpoint)
+      .setProject(projectId)
+      .setKey(apiKey);
     _clientCache = {
       databases: new Databases(client),
       endpoint,
@@ -118,8 +127,15 @@ export function docToRow(doc: AppwriteDoc): Record<string, any> {
   const id = doc.$id;
   const created_at = doc.$createdAt;
   const updated_at = doc.$updatedAt;
-  const { $id, $createdAt, $updatedAt, $permissions, $databaseId, $collectionId, ...rest } =
-    doc as Record<string, unknown>;
+  const {
+    $id: _$id,
+    $createdAt: _$createdAt,
+    $updatedAt: _$updatedAt,
+    $permissions: _$permissions,
+    $databaseId: _$databaseId,
+    $collectionId: _$collectionId,
+    ...rest
+  } = doc as Record<string, unknown>;
   // Spread rest first: some collections define an attribute `id` that can be null and would
   // otherwise overwrite the real document id derived from $id.
   return { ...rest, id, created_at, updated_at };
@@ -127,10 +143,14 @@ export function docToRow(doc: AppwriteDoc): Record<string, any> {
 
 export async function getDocument(
   collection: string,
-  documentId: string
+  documentId: string,
 ): Promise<Record<string, any> | null> {
   try {
-    const doc = await getDatabases().getDocument(dbId(), collection, documentId);
+    const doc = await getDatabases().getDocument(
+      dbId(),
+      collection,
+      documentId,
+    );
     return docToRow(doc as unknown as AppwriteDoc);
   } catch {
     return null;
@@ -140,7 +160,7 @@ export async function getDocument(
 export async function listDocumentsFull(
   collection: string,
   queries: string[],
-  limit = 5000
+  limit = 5000,
 ): Promise<Record<string, any>[]> {
   const q = [...queries, Query.limit(limit)];
   const res = await getDatabases().listDocuments(dbId(), collection, q);
@@ -150,7 +170,7 @@ export async function listDocumentsFull(
 export async function createDocument(
   collection: string,
   documentId: string | undefined,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): Promise<Record<string, any>> {
   const id = documentId || ID.unique();
   const doc = await getDatabases().createDocument(dbId(), collection, id, data);
@@ -160,17 +180,28 @@ export async function createDocument(
 export async function updateDocument(
   collection: string,
   documentId: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): Promise<Record<string, any>> {
-  const doc = await getDatabases().updateDocument(dbId(), collection, documentId, data);
+  const doc = await getDatabases().updateDocument(
+    dbId(),
+    collection,
+    documentId,
+    data,
+  );
   return docToRow(doc as unknown as AppwriteDoc);
 }
 
-export async function deleteDocument(collection: string, documentId: string): Promise<void> {
+export async function deleteDocument(
+  collection: string,
+  documentId: string,
+): Promise<void> {
   await getDatabases().deleteDocument(dbId(), collection, documentId);
 }
 
-export async function countDocuments(collection: string, queries: string[] = []): Promise<number> {
+export async function countDocuments(
+  collection: string,
+  queries: string[] = [],
+): Promise<number> {
   const startedAt = Date.now();
   const databaseId = dbId();
   console.log("[appwrite-db] countDocuments start", {
@@ -179,9 +210,15 @@ export async function countDocuments(collection: string, queries: string[] = [])
     timeoutMs: DB_REQUEST_TIMEOUT_MS,
   });
   const res = await withTimeout(
-    getDatabases().listDocuments(databaseId, collection, [Query.limit(1), ...queries], undefined, true),
+    getDatabases().listDocuments(
+      databaseId,
+      collection,
+      [Query.limit(1), ...queries],
+      undefined,
+      true,
+    ),
     DB_REQUEST_TIMEOUT_MS,
-    `countDocuments(${collection})`
+    `countDocuments(${collection})`,
   );
   console.log("[appwrite-db] countDocuments done", {
     collection,

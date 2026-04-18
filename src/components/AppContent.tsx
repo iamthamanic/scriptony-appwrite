@@ -4,28 +4,91 @@ import { useTheme } from "../hooks/useTheme";
 import { useIsMobile } from "../components/ui/use-mobile";
 import { Navigation } from "../components/Navigation";
 import { HomePage } from "../components/pages/HomePage";
-import { ProjectsPage } from "../components/pages/ProjectsPage";
-import { WorldbuildingPage } from "../components/pages/WorldbuildingPage";
-import { CreativeGymPage } from "../components/pages/CreativeGymPage";
-import { UploadPage } from "../components/pages/UploadPage";
-import { AdminPage } from "../components/pages/AdminPage";
-import { SettingsPage } from "../components/pages/SettingsPage";
-import { SuperadminPage } from "../components/pages/SuperadminPage";
-import { StagePage } from "../components/pages/StagePage";
 import { AuthPage } from "../components/pages/AuthPage";
 import { ResetPasswordPage } from "../components/pages/ResetPasswordPage";
-import { ApiTestPage } from "../components/pages/ApiTestPage";
-import { ProjectRecoveryPage } from "../components/pages/ProjectRecoveryPage";
 import { Toaster } from "../components/ui/sonner";
-import { ScriptonyAssistant } from "../components/ScriptonyAssistant";
 import { ServerStatusBanner } from "../components/ServerStatusBanner";
 import { ConnectionStatusIndicator } from "../components/ConnectionStatusIndicator";
 import { BackendNotConfiguredBanner } from "../components/BackendNotConfiguredBanner";
-import { PerformanceDashboard } from "../components/PerformanceDashboard";
 import { isBackendConfigured } from "../lib/env";
 import { setupUndoKeyboardShortcuts } from "../lib/undo-manager";
-import scriptonyLogo from '../assets/scriptony-logo.png';
-import { useCallback, useEffect } from "react";
+import scriptonyLogo from "../assets/scriptony-logo.png";
+import { Suspense, lazy, useCallback, useEffect } from "react";
+
+const ProjectsPage = lazy(() =>
+  import("../components/pages/ProjectsPage").then((module) => ({
+    default: module.ProjectsPage,
+  })),
+);
+const WorldbuildingPage = lazy(() =>
+  import("../components/pages/WorldbuildingPage").then((module) => ({
+    default: module.WorldbuildingPage,
+  })),
+);
+const CreativeGymPage = lazy(() =>
+  import("../components/pages/CreativeGymPage").then((module) => ({
+    default: module.CreativeGymPage,
+  })),
+);
+const UploadPage = lazy(() =>
+  import("../components/pages/UploadPage").then((module) => ({
+    default: module.UploadPage,
+  })),
+);
+const AdminPage = lazy(() =>
+  import("../components/pages/AdminPage").then((module) => ({
+    default: module.AdminPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import("../components/pages/SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+const SuperadminPage = lazy(() =>
+  import("../components/pages/SuperadminPage").then((module) => ({
+    default: module.SuperadminPage,
+  })),
+);
+const StagePage = lazy(() =>
+  import("../components/pages/StagePage").then((module) => ({
+    default: module.StagePage,
+  })),
+);
+const ApiTestPage = lazy(() =>
+  import("../components/pages/ApiTestPage").then((module) => ({
+    default: module.ApiTestPage,
+  })),
+);
+const ProjectRecoveryPage = lazy(() =>
+  import("../components/pages/ProjectRecoveryPage").then((module) => ({
+    default: module.ProjectRecoveryPage,
+  })),
+);
+const ScriptonyAssistant = lazy(() =>
+  import("../components/ScriptonyAssistant").then((module) => ({
+    default: module.ScriptonyAssistant,
+  })),
+);
+const PerformanceDashboard = lazy(() =>
+  import("../components/PerformanceDashboard").then((module) => ({
+    default: module.PerformanceDashboard,
+  })),
+);
+
+function AppSectionFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="h-14 w-14">
+        <img
+          src={scriptonyLogo}
+          alt="Scriptony Logo"
+          className="h-full w-full animate-pulse object-contain"
+        />
+      </div>
+    </div>
+  );
+}
 
 export function AppContent() {
   const { user, loading: authLoading } = useAuth();
@@ -34,11 +97,14 @@ export function AppContent() {
     (page: string, id?: string, categoryId?: string) => {
       navigate(normalizePage(page), id, categoryId);
     },
-    [navigate]
+    [navigate],
   );
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
-  const isStagePage = router.page === "stage" || router.page === "create" || router.page === "present";
+  const isStagePage =
+    router.page === "stage" ||
+    router.page === "create" ||
+    router.page === "present";
 
   // Setup undo/redo keyboard shortcuts
   useEffect(() => {
@@ -73,7 +139,7 @@ export function AppContent() {
 
   const renderPage = () => {
     const { page, id: selectedId, categoryId: selectedCategoryId } = router;
-    
+
     switch (page) {
       case "home":
         return <HomePage onNavigate={onNavigate} />;
@@ -142,18 +208,22 @@ export function AppContent() {
       <main
         className={`w-full ${
           isMobile
-            ? 'pb-[calc(5rem+env(safe-area-inset-bottom,0px))]'
+            ? "pb-[calc(5rem+env(safe-area-inset-bottom,0px))]"
             : isStagePage
-              ? 'h-[calc(100dvh-56px)] overflow-hidden max-w-none px-0'
-              : 'pt-0 max-w-7xl mx-auto px-6 pb-safe'
+              ? "h-[calc(100dvh-56px)] overflow-hidden max-w-none px-0"
+              : "pt-0 max-w-7xl mx-auto px-6 pb-safe"
         }`}
       >
-        {renderPage()}
+        <Suspense fallback={<AppSectionFallback />}>{renderPage()}</Suspense>
       </main>
       <Toaster position="top-center" />
-      <ScriptonyAssistant />
+      <Suspense fallback={null}>
+        <ScriptonyAssistant />
+      </Suspense>
       <ConnectionStatusIndicator />
-      <PerformanceDashboard />
+      <Suspense fallback={null}>
+        <PerformanceDashboard />
+      </Suspense>
     </div>
   );
 }

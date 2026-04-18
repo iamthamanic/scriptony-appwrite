@@ -1,6 +1,6 @@
 /**
  * General Utility Functions
- * 
+ *
  * Shared helper functions for common operations.
  */
 
@@ -34,16 +34,19 @@ export function unique<T>(array: T[]): T[] {
  */
 export function groupBy<T, K extends string | number>(
   array: T[],
-  keyFn: (item: T) => K
+  keyFn: (item: T) => K,
 ): Record<K, T[]> {
-  return array.reduce((groups, item) => {
-    const key = keyFn(item);
-    if (!groups[key]) {
-      groups[key] = [];
-    }
-    groups[key].push(item);
-    return groups;
-  }, {} as Record<K, T[]>);
+  return array.reduce(
+    (groups, item) => {
+      const key = keyFn(item);
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+      return groups;
+    },
+    {} as Record<K, T[]>,
+  );
 }
 
 /**
@@ -80,10 +83,7 @@ export function randomItem<T>(array: T[]): T | undefined {
 /**
  * Sorts array by multiple keys
  */
-export function sortBy<T>(
-  array: T[],
-  ...keys: ((item: T) => any)[]
-): T[] {
+export function sortBy<T>(array: T[], ...keys: ((item: T) => any)[]): T[] {
   return [...array].sort((a, b) => {
     for (const key of keys) {
       const aVal = key(a);
@@ -103,28 +103,28 @@ export function sortBy<T>(
  * Deep clones an object
  */
 export function deepClone<T>(obj: T): T {
-  if (obj === null || typeof obj !== 'object') {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
-  
+
   if (obj instanceof Date) {
     return new Date(obj.getTime()) as any;
   }
-  
+
   if (obj instanceof Array) {
-    return obj.map(item => deepClone(item)) as any;
+    return obj.map((item) => deepClone(item)) as any;
   }
-  
+
   if (obj instanceof Object) {
     const cloned = {} as T;
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         cloned[key] = deepClone(obj[key]);
       }
     }
     return cloned;
   }
-  
+
   return obj;
 }
 
@@ -133,20 +133,20 @@ export function deepClone<T>(obj: T): T {
  */
 export function deepEqual(obj1: any, obj2: any): boolean {
   if (obj1 === obj2) return true;
-  
+
   if (obj1 === null || obj2 === null) return false;
-  if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
-  
+  if (typeof obj1 !== "object" || typeof obj2 !== "object") return false;
+
   const keys1 = Object.keys(obj1);
   const keys2 = Object.keys(obj2);
-  
+
   if (keys1.length !== keys2.length) return false;
-  
+
   for (const key of keys1) {
     if (!keys2.includes(key)) return false;
     if (!deepEqual(obj1[key], obj2[key])) return false;
   }
-  
+
   return true;
 }
 
@@ -185,16 +185,16 @@ export function omit<T extends object, K extends keyof T>(
  */
 export function deepMerge<T extends object>(...objects: Partial<T>[]): T {
   const result = {} as T;
-  
+
   for (const obj of objects) {
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         const value = obj[key];
-        
-        if (value && typeof value === 'object' && !Array.isArray(value)) {
+
+        if (value && typeof value === "object" && !Array.isArray(value)) {
           result[key] = deepMerge(
             (result[key] as any) || {},
-            value as any
+            value as any,
           ) as any;
         } else {
           result[key] = value as any;
@@ -202,7 +202,7 @@ export function deepMerge<T extends object>(...objects: Partial<T>[]): T {
       }
     }
   }
-  
+
   return result;
 }
 
@@ -215,10 +215,10 @@ export function deepMerge<T extends object>(...objects: Partial<T>[]): T {
  */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
@@ -230,10 +230,10 @@ export function debounce<T extends (...args: any[]) => any>(
  */
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
-  limit: number
+  limit: number,
 ): (...args: Parameters<T>) => void {
   let inThrottle: boolean;
-  
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
@@ -246,18 +246,16 @@ export function throttle<T extends (...args: any[]) => any>(
 /**
  * Memoizes a function result
  */
-export function memoize<T extends (...args: any[]) => any>(
-  func: T
-): T {
+export function memoize<T extends (...args: any[]) => any>(func: T): T {
   const cache = new Map<string, ReturnType<T>>();
-  
+
   return ((...args: Parameters<T>) => {
     const key = JSON.stringify(args);
-    
+
     if (cache.has(key)) {
       return cache.get(key)!;
     }
-    
+
     const result = func(...args);
     cache.set(key, result);
     return result;
@@ -270,22 +268,22 @@ export function memoize<T extends (...args: any[]) => any>(
 export async function retry<T>(
   fn: () => Promise<T>,
   maxAttempts: number = 3,
-  delay: number = 1000
+  delay: number = 1000,
 ): Promise<T> {
   let lastError: any;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      
+
       if (attempt < maxAttempts) {
         await sleep(delay * attempt); // Exponential backoff
       }
     }
   }
-  
+
   throw lastError;
 }
 
@@ -297,7 +295,7 @@ export async function retry<T>(
  * Creates a promise that resolves after specified milliseconds
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -306,25 +304,25 @@ export function sleep(ms: number): Promise<void> {
 export async function parallelLimit<T>(
   items: T[],
   limit: number,
-  fn: (item: T) => Promise<any>
+  fn: (item: T) => Promise<any>,
 ): Promise<any[]> {
   const results: any[] = [];
   const executing: Promise<any>[] = [];
-  
+
   for (const item of items) {
-    const promise = fn(item).then(result => {
+    const promise = fn(item).then((result) => {
       executing.splice(executing.indexOf(promise), 1);
       return result;
     });
-    
+
     results.push(promise);
     executing.push(promise);
-    
+
     if (executing.length >= limit) {
       await Promise.race(executing);
     }
   }
-  
+
   return Promise.all(results);
 }
 
@@ -336,8 +334,9 @@ export async function parallelLimit<T>(
  * Generates a random ID
  */
 export function generateId(length: number = 16): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -348,9 +347,9 @@ export function generateId(length: number = 16): string {
  * Generates a UUID v4
  */
 export function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -371,9 +370,9 @@ export function isNullish(value: any): value is null | undefined {
  */
 export function isEmpty(value: any): boolean {
   if (isNullish(value)) return true;
-  if (typeof value === 'string') return value.trim().length === 0;
+  if (typeof value === "string") return value.trim().length === 0;
   if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === 'object') return Object.keys(value).length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
   return false;
 }
 
@@ -382,9 +381,7 @@ export function isEmpty(value: any): boolean {
  */
 export function isPlainObject(value: any): value is object {
   return (
-    value !== null &&
-    typeof value === 'object' &&
-    value.constructor === Object
+    value !== null && typeof value === "object" && value.constructor === Object
   );
 }
 
@@ -400,7 +397,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text);
     return true;
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error);
+    console.error("Failed to copy to clipboard:", error);
     return false;
   }
 }
@@ -408,10 +405,14 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 /**
  * Downloads a file with specified content
  */
-export function downloadFile(content: string, filename: string, mimeType: string = 'text/plain'): void {
+export function downloadFile(
+  content: string,
+  filename: string,
+  mimeType: string = "text/plain",
+): void {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   document.body.appendChild(link);
@@ -424,7 +425,7 @@ export function downloadFile(content: string, filename: string, mimeType: string
  * Checks if code is running in browser
  */
 export function isBrowser(): boolean {
-  return typeof window !== 'undefined';
+  return typeof window !== "undefined";
 }
 
 /**
@@ -445,7 +446,7 @@ export function getQueryParam(param: string): string | null {
  */
 export function getLocalStorage<T>(key: string, defaultValue: T): T {
   if (!isBrowser()) return defaultValue;
-  
+
   try {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
@@ -459,7 +460,7 @@ export function getLocalStorage<T>(key: string, defaultValue: T): T {
  */
 export function setLocalStorage<T>(key: string, value: T): boolean {
   if (!isBrowser()) return false;
-  
+
   try {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
@@ -473,7 +474,7 @@ export function setLocalStorage<T>(key: string, value: T): boolean {
  */
 export function removeLocalStorage(key: string): boolean {
   if (!isBrowser()) return false;
-  
+
   try {
     localStorage.removeItem(key);
     return true;

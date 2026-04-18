@@ -1,13 +1,13 @@
 /**
  * 🎬 SCRIPTONY VIDEO - Edge Function
- * 
+ *
  * Video Generation Service for Scriptony:
  * - Generate videos from text prompts
  * - Multiple providers: Runway, Pika, Stable Video Diffusion
  * - Video-to-video editing
  * - Status tracking for async generation
  * - History and favorites
- * 
+ *
  * Uses centralized AI service from _shared/ai-service/
  */
 
@@ -15,8 +15,9 @@ import "../_shared/fetch-polyfill";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Client, Databases, Query } from "node-appwrite";
-import { requireAuthenticatedUser, type AuthSource } from "../_shared/auth";
+import { type AuthSource, requireAuthenticatedUser } from "../_shared/auth";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
+import process from "node:process";
 
 // =============================================================================
 // SETUP
@@ -26,8 +27,16 @@ const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
-  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
+  .setEndpoint(
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+      process.env.APPWRITE_ENDPOINT ||
+      "",
+  )
+  .setProject(
+    process.env.APPWRITE_FUNCTION_PROJECT_ID ||
+      process.env.APPWRITE_PROJECT_ID ||
+      "",
+  );
 
 const databases = new Databases(client);
 
@@ -40,16 +49,21 @@ const PRESETS_COLLECTION = "video_presets";
 // MIDDLEWARE
 // =============================================================================
 
-app.use("*", cors({
-  origin: "*",
-  allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  exposeHeaders: ["Content-Length"],
-  maxAge: 600,
-}));
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+  }),
+);
 
 // Auth middleware
-async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null> {
+async function getUserIdFromAuth(
+  authSource: AuthSource,
+): Promise<string | null> {
   const user = await requireAuthenticatedUser(authSource);
   return user?.id || null;
 }
@@ -59,8 +73,8 @@ async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null>
 // =============================================================================
 
 app.get("/", (c) => {
-  return c.json({ 
-    status: "ok", 
+  return c.json({
+    status: "ok",
     function: "scriptony-video",
     version: "1.0.0",
     message: "Scriptony Video Generation Service",
@@ -92,16 +106,18 @@ app.get("/health", (c) => {
  * List all video-capable providers
  */
 app.get("/providers", async (c) => {
-  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import("../_shared/ai-service/providers");
-  
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import(
+    "../_shared/ai-service/providers"
+  );
+
   const videoProviders = Object.entries(PROVIDER_CAPABILITIES)
-    .filter(([name, caps]) => caps.video)
+    .filter(([_name, caps]) => caps.video)
     .map(([name, caps]) => ({
       id: name,
       name: PROVIDER_DISPLAY_NAMES[name] || name,
       capabilities: caps,
     }));
-  
+
   return c.json({ providers: videoProviders });
 });
 
@@ -111,9 +127,9 @@ app.get("/providers", async (c) => {
  */
 app.get("/models", async (c) => {
   const { getModelsForFeature } = await import("../_shared/ai-service/config");
-  
+
   const models = getModelsForFeature("video");
-  
+
   return c.json({ models });
 });
 
@@ -127,11 +143,11 @@ app.get("/models", async (c) => {
  */
 app.post("/generate", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
   const {
     prompt,
@@ -145,16 +161,16 @@ app.post("/generate", async (c) => {
     style_preset,
     negative_prompt,
     save_to_history = true,
-    webhook_url,
+    webhook_url: _webhook_url,
   } = body;
-  
+
   if (!prompt) {
     return c.json({ error: "Prompt required" }, 400);
   }
-  
+
   try {
     const { generateVideo } = await import("../_shared/ai-service");
-    
+
     const result = await generateVideo(userId, prompt, {
       // NOTE: provider/model resolved from feature config, not request body
       duration,
@@ -164,7 +180,7 @@ app.post("/generate", async (c) => {
       style_preset,
       negative_prompt,
     });
-    
+
     // Save to history if requested
     if (save_to_history) {
       try {
@@ -179,7 +195,7 @@ app.post("/generate", async (c) => {
             video_id: result.id,
             status: result.status,
             created_at: new Date().toISOString(),
-          }
+          },
         );
       } catch (e) {
         console.log("Could not save to history:", e);
@@ -206,26 +222,31 @@ app.post("/generate", async (c) => {
  */
 app.post("/generate/short", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
-  const { prompt, provider: _provider2 = "openrouter", model: _model2 = "pika-v1", aspect_ratio = "9:16" } = body;
-  
+  const {
+    prompt,
+    provider: _provider2 = "openrouter",
+    model: _model2 = "pika-v1",
+    aspect_ratio = "9:16",
+  } = body;
+
   if (!prompt) {
     return c.json({ error: "Prompt required" }, 400);
   }
-  
+
   try {
     const { generateShortVideo } = await import("../_shared/ai-service");
-    
+
     const result = await generateShortVideo(userId, prompt, {
       // NOTE: provider/model resolved from feature config
       aspect_ratio: aspect_ratio as "16:9" | "9:16" | "1:1",
     });
-    
+
     return c.json({
       success: true,
       video: result,
@@ -242,26 +263,31 @@ app.post("/generate/short", async (c) => {
  */
 app.post("/generate/landscape", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
-  const { prompt, provider: _provider3 = "openrouter", model: _model3 = "runway-gen3", duration = 10 } = body;
-  
+  const {
+    prompt,
+    provider: _provider3 = "openrouter",
+    model: _model3 = "runway-gen3",
+    duration = 10,
+  } = body;
+
   if (!prompt) {
     return c.json({ error: "Prompt required" }, 400);
   }
-  
+
   try {
     const { generateVideoLandscape } = await import("../_shared/ai-service");
-    
+
     const result = await generateVideoLandscape(userId, prompt, {
       // NOTE: provider/model resolved from feature config
       duration,
     });
-    
+
     return c.json({
       success: true,
       video: result,
@@ -278,30 +304,33 @@ app.post("/generate/landscape", async (c) => {
  */
 app.post("/generate/from-image", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
   const {
     image_url,
-    prompt,
+    prompt: _prompt,
     // NOTE: provider/model resolved from feature config
     provider: _provider4 = "runway",
     model: _model4 = "runway-gen3",
-    duration = 5,
+    duration: _duration = 5,
   } = body;
-  
+
   if (!image_url) {
     return c.json({ error: "Image URL required" }, 400);
   }
-  
+
   try {
     // TODO: Implement image-to-video in AI service
-    return c.json({ 
-      error: "Image-to-video not yet implemented" 
-    }, 501);
+    return c.json(
+      {
+        error: "Image-to-video not yet implemented",
+      },
+      501,
+    );
   } catch (error: any) {
     console.error("Image-to-video generation error:", error);
     return c.json({ error: error.message }, 500);
@@ -318,18 +347,18 @@ app.post("/generate/from-image", async (c) => {
  */
 app.get("/status/:id", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const videoId = c.req.param("id");
-  
+
   try {
     const { getVideoStatus } = await import("../_shared/ai-service");
-    
+
     const result = await getVideoStatus(userId, videoId);
-    
+
     return c.json({
       success: true,
       video: result,
@@ -346,24 +375,24 @@ app.get("/status/:id", async (c) => {
  */
 app.get("/status/batch", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const ids = c.req.query("ids")?.split(",") || [];
-  
+
   if (ids.length === 0) {
     return c.json({ error: "Video IDs required" }, 400);
   }
-  
+
   if (ids.length > 20) {
     return c.json({ error: "Maximum 20 videos per batch" }, 400);
   }
-  
+
   try {
     const { getVideoStatus } = await import("../_shared/ai-service");
-    
+
     const results = await Promise.all(
       ids.map(async (id) => {
         try {
@@ -372,9 +401,9 @@ app.get("/status/batch", async (c) => {
         } catch (error: any) {
           return { id, error: error.message };
         }
-      })
+      }),
     );
-    
+
     return c.json({
       success: true,
       videos: results,
@@ -395,15 +424,15 @@ app.get("/status/batch", async (c) => {
  */
 app.get("/history", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const limit = parseInt(c.req.query("limit") || "50");
   const offset = parseInt(c.req.query("offset") || "0");
   const status = c.req.query("status"); // pending, processing, completed, failed
-  
+
   try {
     const queries: any[] = [
       Query.equal("user_id", userId),
@@ -411,22 +440,22 @@ app.get("/history", async (c) => {
       Query.limit(limit),
       Query.offset(offset),
     ];
-    
+
     if (status) {
       queries.push(Query.equal("status", status));
     }
-    
+
     const response = await databases.listDocuments(
       VIDEO_DB_ID,
       GENERATIONS_COLLECTION,
-      queries
+      queries,
     );
-    
+
     return c.json({
       generations: response.documents,
       total: response.total,
     });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Return empty history if DB doesn't exist
     return c.json({ generations: [], total: 0 });
   }
@@ -438,31 +467,31 @@ app.get("/history", async (c) => {
  */
 app.delete("/history/:id", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const generationId = c.req.param("id");
-  
+
   try {
     // Verify ownership
     const doc = await databases.getDocument(
       VIDEO_DB_ID,
       GENERATIONS_COLLECTION,
-      generationId
+      generationId,
     );
-    
+
     if (doc.user_id !== userId) {
       return c.json({ error: "Forbidden" }, 403);
     }
-    
+
     await databases.deleteDocument(
       VIDEO_DB_ID,
       GENERATIONS_COLLECTION,
-      generationId
+      generationId,
     );
-    
+
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -553,23 +582,23 @@ app.get("/presets", async (c) => {
       model_recommendations: ["runway-gen3"],
     },
   ];
-  
+
   try {
     const userId = await getUserIdFromAuth(c.req);
-    
+
     // Get user custom presets
     const customPresets = await databases.listDocuments(
       VIDEO_DB_ID,
       PRESETS_COLLECTION,
-      [Query.equal("user_id", userId)]
+      [Query.equal("user_id", userId)],
     );
-    
+
     return c.json({
       presets: [...defaultPresets, ...customPresets.documents],
       default_presets: defaultPresets,
       custom_presets: customPresets.documents,
     });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Return just default presets if DB doesn't exist or no auth
     return c.json({ presets: defaultPresets });
   }
@@ -581,25 +610,25 @@ app.get("/presets", async (c) => {
  */
 app.post("/presets", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
-  const { 
-    name, 
-    description, 
-    prompt_suffix, 
+  const {
+    name,
+    description,
+    prompt_suffix,
     recommended_duration,
     recommended_aspect,
-    model_recommendations 
+    model_recommendations,
   } = body;
-  
+
   if (!name || !prompt_suffix) {
     return c.json({ error: "Name and prompt_suffix required" }, 400);
   }
-  
+
   try {
     const preset = await databases.createDocument(
       VIDEO_DB_ID,
@@ -614,9 +643,9 @@ app.post("/presets", async (c) => {
         recommended_aspect: recommended_aspect || ["16:9"],
         model_recommendations: model_recommendations || [],
         created_at: new Date().toISOString(),
-      }
+      },
     );
-    
+
     return c.json({ success: true, preset });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

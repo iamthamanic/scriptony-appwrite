@@ -1,0 +1,20 @@
+node_modules
+build
+dist
+backend
+functions
+local-bridge
+docs
+tickets
+.claude
+.husky
+bugs 14.04.26 - 09:16
+eslint-temp.mjs
+src/BEATS_INTEGRATION_SNIPPET.tsx
+src/COPY_PASTE_READY_STRUCTURE_BEATS.tsx
+src/PASTE_THIS_INTO_PROJECTSPAGE.tsx
+src/STRUCTURE_BEATS_SNIPPET.tsx
+src/components/BookDropdown.OPTIMIZED_EXAMPLE.tsx
+src/components/FilmDropdown.OPTIMIZED_EXAMPLE.tsx
+src/components/NativeBookView-temp.tsx
+src/components/VideoEditorTimeline_CLEAN.tsx

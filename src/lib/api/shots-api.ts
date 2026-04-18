@@ -1,19 +1,33 @@
 /**
  * Shot API Client
- * 
+ *
  * 🚀 MIGRATED TO API GATEWAY + AUDIO MICROSERVICE
- * 
+ *
  * Helper functions for Shot CRUD operations, file uploads, and character management.
  * - Shot CRUD / image upload → API Gateway → scriptony-shots
  * - Audio operations → API Gateway → scriptony-audio
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-client';
-import type { Shot, ShotAudio } from '../types';
-import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../api-gateway';
-import { prepareImageFileForUpload, type ImageUploadGifMode } from '../image-upload-prep';
-import { assertPreparedImageWithinUploadLimit, fileToBase64 } from './image-upload-api';
-import { narrativeStructureToInitializeProjectPayload } from '../narrative-structure-init';
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  unwrapApiResult,
+} from "../api-client";
+import type { Shot, ShotAudio } from "../types";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../api-gateway";
+import {
+  prepareImageFileForUpload,
+  type ImageUploadGifMode,
+} from "../image-upload-prep";
+import {
+  assertPreparedImageWithinUploadLimit,
+  fileToBase64,
+} from "./image-upload-api";
+import { getActs } from "./timeline-api";
+import { initializeProject } from "./timeline-api-v2";
+import { narrativeStructureToInitializeProjectPayload } from "../narrative-structure-init";
 
 // API Base URLs for direct file uploads
 const SHOTS_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.SHOTS);
@@ -23,14 +37,20 @@ const AUDIO_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUDIO);
 // SHOT CRUD
 // =============================================================================
 
-export async function getShots(sceneId: string, accessToken: string): Promise<Shot[]> {
+export async function getShots(
+  sceneId: string,
+  accessToken: string,
+): Promise<Shot[]> {
   // scriptony-shots: GET /shots/by-scene/:sceneId (nicht /shots/:id — das ist ein einzelner Shot)
   const result = await apiGet(`/shots/by-scene/${encodeURIComponent(sceneId)}`);
   const data = unwrapApiResult(result);
   return data?.shots || [];
 }
 
-export async function getShot(shotId: string, accessToken: string): Promise<Shot> {
+export async function getShot(
+  shotId: string,
+  accessToken: string,
+): Promise<Shot> {
   const result = await apiGet(`/shots/${shotId}`);
   const data = unwrapApiResult(result);
   return data?.shot || data;
@@ -39,20 +59,21 @@ export async function getShot(shotId: string, accessToken: string): Promise<Shot
 export async function createShot(
   sceneId: string,
   shotData: Partial<Shot>,
-  accessToken: string
+  accessToken: string,
 ): Promise<Shot> {
-  console.log('[Shots API] Creating shot:', { sceneId, shotData });
-  
+  console.log("[Shots API] Creating shot:", { sceneId, shotData });
+
   try {
     // Extract project_id from shotData
-    const projectId = (shotData as any).projectId || (shotData as any).project_id;
-    
+    const projectId =
+      (shotData as any).projectId || (shotData as any).project_id;
+
     // Convert ALL camelCase to snake_case for backend
     const payload: any = {
       scene_id: sceneId,
       project_id: projectId,
     };
-    
+
     // Map common camelCase fields to snake_case
     if ((shotData as any).shotNumber !== undefined) {
       payload.shot_number = (shotData as any).shotNumber;
@@ -72,15 +93,15 @@ export async function createShot(
     if ((shotData as any).imageUrl !== undefined) {
       payload.image_url = (shotData as any).imageUrl;
     }
-    
-    const result = await apiPost('/shots', payload);
-    
-    console.log('[Shots API] Raw result:', result);
+
+    const result = await apiPost("/shots", payload);
+
+    console.log("[Shots API] Raw result:", result);
     const data = unwrapApiResult(result);
-    console.log('[Shots API] Unwrapped data:', data);
+    console.log("[Shots API] Unwrapped data:", data);
     return data?.shot || data;
   } catch (error) {
-    console.error('[Shots API] Error creating shot:', {
+    console.error("[Shots API] Error creating shot:", {
       sceneId,
       shotData,
       error,
@@ -105,26 +126,45 @@ function sanitizeShotUpdatePayload(updates: Partial<Shot>): Partial<Shot> {
 export async function updateShot(
   shotId: string,
   updates: Partial<Shot>,
-  accessToken: string
+  accessToken: string,
 ): Promise<Shot | undefined> {
   const payload = sanitizeShotUpdatePayload(updates) as Record<string, unknown>;
   // Appwrite `shotlength_*` attributes are integers; floats break updates.
-  if (typeof payload.shotlengthMinutes === 'number' && Number.isFinite(payload.shotlengthMinutes)) {
-    payload.shotlengthMinutes = Math.max(0, Math.round(payload.shotlengthMinutes));
+  if (
+    typeof payload.shotlengthMinutes === "number" &&
+    Number.isFinite(payload.shotlengthMinutes)
+  ) {
+    payload.shotlengthMinutes = Math.max(
+      0,
+      Math.round(payload.shotlengthMinutes),
+    );
   }
-  if (typeof payload.shotlengthSeconds === 'number' && Number.isFinite(payload.shotlengthSeconds)) {
-    payload.shotlengthSeconds = Math.max(0, Math.round(payload.shotlengthSeconds));
+  if (
+    typeof payload.shotlengthSeconds === "number" &&
+    Number.isFinite(payload.shotlengthSeconds)
+  ) {
+    payload.shotlengthSeconds = Math.max(
+      0,
+      Math.round(payload.shotlengthSeconds),
+    );
   }
   if (Object.keys(payload).length === 0) {
     return undefined;
   }
-  console.log('[Shots API] updateShot called:', { shotId, updates: payload, updateType: typeof payload });
+  console.log("[Shots API] updateShot called:", {
+    shotId,
+    updates: payload,
+    updateType: typeof payload,
+  });
   const result = await apiPut(`/shots/${shotId}`, payload);
   const data = unwrapApiResult(result);
   return data?.shot || data;
 }
 
-export async function deleteShot(shotId: string, accessToken: string): Promise<void> {
+export async function deleteShot(
+  shotId: string,
+  accessToken: string,
+): Promise<void> {
   const result = await apiDelete(`/shots/${shotId}`);
   unwrapApiResult(result);
 }
@@ -132,9 +172,9 @@ export async function deleteShot(shotId: string, accessToken: string): Promise<v
 export async function reorderShots(
   sceneId: string,
   shotIds: string[],
-  accessToken: string
+  accessToken: string,
 ): Promise<void> {
-  const result = await apiPost('/shots/reorder', {
+  const result = await apiPost("/shots/reorder", {
     scene_id: sceneId,
     shot_ids: shotIds,
   });
@@ -149,7 +189,7 @@ export async function uploadShotImage(
   shotId: string,
   file: File,
   accessToken: string,
-  prepOptions?: { gifMode?: ImageUploadGifMode }
+  prepOptions?: { gifMode?: ImageUploadGifMode },
 ): Promise<string> {
   const ready = await prepareImageFileForUpload(file, prepOptions);
   assertPreparedImageWithinUploadLimit(ready, 5);
@@ -161,10 +201,16 @@ export async function uploadShotImage(
     fileName: ready.name,
     mimeType: ready.type,
   });
-  const data = unwrapApiResult(result) as { imageUrl?: string; image_url?: string; data?: { imageUrl?: string } };
+  const data = unwrapApiResult(result) as {
+    imageUrl?: string;
+    image_url?: string;
+    data?: { imageUrl?: string };
+  };
   const url = data?.imageUrl ?? data?.image_url ?? data?.data?.imageUrl;
   if (!url || typeof url !== "string") {
-    throw new Error("Upload antwortete ohne imageUrl — bitte scriptony-shots deployen und Logs prüfen.");
+    throw new Error(
+      "Upload antwortete ohne imageUrl — bitte scriptony-shots deployen und Logs prüfen.",
+    );
   }
   return url;
 }
@@ -176,53 +222,67 @@ export async function uploadShotStageDocument(
   shotId: string,
   document: unknown,
   kind: "stage2d" | "stage3d",
-  _accessToken: string
+  _accessToken: string,
 ): Promise<{ fileId?: string; fileUrl?: string }> {
   const result = await apiPost(`/shots/${shotId}/upload-stage-document`, {
     kind,
     document,
   });
-  const data = unwrapApiResult(result) as { fileId?: string; fileUrl?: string; shot?: Shot };
+  const data = unwrapApiResult(result) as {
+    fileId?: string;
+    fileUrl?: string;
+    shot?: Shot;
+  };
   return { fileId: data?.fileId, fileUrl: data?.fileUrl };
 }
 
 export async function uploadShotAudio(
   shotId: string,
   file: File,
-  type: 'music' | 'sfx',
+  type: "music" | "sfx",
   accessToken: string,
   label?: string,
   startTime?: number,
   endTime?: number,
   fadeIn?: number,
-  fadeOut?: number
+  fadeOut?: number,
 ): Promise<ShotAudio> {
-  console.log(`[Shots API] Uploading audio to scriptony-audio function:`, { shotId, fileName: file.name, type });
+  console.log(`[Shots API] Uploading audio to scriptony-audio function:`, {
+    shotId,
+    fileName: file.name,
+    type,
+  });
 
   const base64 = await fileToBase64(file);
 
-  const response = await fetch(`${AUDIO_API_BASE}/shots/${shotId}/upload-audio`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
+  const response = await fetch(
+    `${AUDIO_API_BASE}/shots/${shotId}/upload-audio`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileBase64: base64,
+        fileName: file.name,
+        mimeType: file.type,
+        type,
+        ...(label !== undefined && { label }),
+        ...(startTime !== undefined && { startTime }),
+        ...(endTime !== undefined && { endTime }),
+        ...(fadeIn !== undefined && { fadeIn }),
+        ...(fadeOut !== undefined && { fadeOut }),
+      }),
     },
-    body: JSON.stringify({
-      fileBase64: base64,
-      fileName: file.name,
-      mimeType: file.type,
-      type,
-      ...(label !== undefined && { label }),
-      ...(startTime !== undefined && { startTime }),
-      ...(endTime !== undefined && { endTime }),
-      ...(fadeIn !== undefined && { fadeIn }),
-      ...(fadeOut !== undefined && { fadeOut }),
-    }),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Shots API] Audio upload failed:`, { status: response.status, errorText });
+    console.error(`[Shots API] Audio upload failed:`, {
+      status: response.status,
+      errorText,
+    });
     throw new Error(`Failed to upload audio: ${response.statusText}`);
   }
 
@@ -233,15 +293,24 @@ export async function uploadShotAudio(
 
 export async function updateShotAudio(
   audioId: string,
-  updates: { label?: string; startTime?: number; endTime?: number; fadeIn?: number; fadeOut?: number },
-  accessToken: string
+  updates: {
+    label?: string;
+    startTime?: number;
+    endTime?: number;
+    fadeIn?: number;
+    fadeOut?: number;
+  },
+  accessToken: string,
 ): Promise<ShotAudio> {
-  console.log(`[Shots API] Updating audio via scriptony-audio:`, { audioId, updates });
-  
+  console.log(`[Shots API] Updating audio via scriptony-audio:`, {
+    audioId,
+    updates,
+  });
+
   const response = await fetch(`${AUDIO_API_BASE}/shots/audio/${audioId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(updates),
@@ -249,7 +318,10 @@ export async function updateShotAudio(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Shots API] Audio update failed:`, { status: response.status, errorText });
+    console.error(`[Shots API] Audio update failed:`, {
+      status: response.status,
+      errorText,
+    });
     throw new Error(`Failed to update audio: ${response.statusText}`);
   }
 
@@ -258,11 +330,14 @@ export async function updateShotAudio(
   return audio;
 }
 
-export async function deleteShotAudio(audioId: string, accessToken: string): Promise<void> {
+export async function deleteShotAudio(
+  audioId: string,
+  accessToken: string,
+): Promise<void> {
   console.log(`[Shots API] Deleting audio via scriptony-audio:`, { audioId });
-  
+
   const response = await fetch(`${AUDIO_API_BASE}/shots/audio/${audioId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -270,18 +345,26 @@ export async function deleteShotAudio(audioId: string, accessToken: string): Pro
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Shots API] Audio deletion failed:`, { status: response.status, errorText });
+    console.error(`[Shots API] Audio deletion failed:`, {
+      status: response.status,
+      errorText,
+    });
     throw new Error(`Failed to delete audio: ${response.statusText}`);
   }
-  
+
   console.log(`[Shots API] Audio deleted successfully`);
 }
 
-export async function getShotAudio(shotId: string, accessToken: string): Promise<ShotAudio[]> {
-  console.log(`[Shots API] Getting audio for shot via scriptony-audio:`, { shotId });
-  
+export async function getShotAudio(
+  shotId: string,
+  accessToken: string,
+): Promise<ShotAudio[]> {
+  console.log(`[Shots API] Getting audio for shot via scriptony-audio:`, {
+    shotId,
+  });
+
   const response = await fetch(`${AUDIO_API_BASE}/shots/${shotId}/audio`, {
-    method: 'GET',
+    method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -289,7 +372,10 @@ export async function getShotAudio(shotId: string, accessToken: string): Promise
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Shots API] Get shot audio failed:`, { status: response.status, errorText });
+    console.error(`[Shots API] Get shot audio failed:`, {
+      status: response.status,
+      errorText,
+    });
     throw new Error(`Failed to get shot audio: ${response.statusText}`);
   }
 
@@ -304,32 +390,37 @@ export async function getShotAudio(shotId: string, accessToken: string): Promise
  */
 export async function getBatchShotAudio(
   shotIds: string[],
-  accessToken: string
+  accessToken: string,
 ): Promise<Record<string, ShotAudio[]>> {
   if (shotIds.length === 0) {
     return {};
   }
 
   console.log(`[Shots API] BATCH: Getting audio for ${shotIds.length} shots`);
-  
+
   const response = await fetch(
-    `${AUDIO_API_BASE}/shots/audio/batch?shot_ids=${shotIds.join(',')}`,
+    `${AUDIO_API_BASE}/shots/audio/batch?shot_ids=${shotIds.join(",")}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    }
+    },
   );
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Shots API] Batch audio fetch failed:`, { status: response.status, errorText });
+    console.error(`[Shots API] Batch audio fetch failed:`, {
+      status: response.status,
+      errorText,
+    });
     throw new Error(`Failed to get batch audio: ${response.statusText}`);
   }
 
   const { audio } = await response.json();
-  console.log(`[Shots API] BATCH: Got audio for ${Object.keys(audio).length} shots`);
+  console.log(
+    `[Shots API] BATCH: Got audio for ${Object.keys(audio).length} shots`,
+  );
   return audio;
 }
 
@@ -340,12 +431,17 @@ export async function getBatchShotAudio(
 export async function addCharacterToShot(
   shotId: string,
   characterId: string,
-  accessToken: string
-): Promise<{ id: string; projectId: string; sceneId: string; characters: any[] }> {
+  accessToken: string,
+): Promise<{
+  id: string;
+  projectId: string;
+  sceneId: string;
+  characters: any[];
+}> {
   const response = await fetch(`${SHOTS_API_BASE}/shots/${shotId}/characters`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
@@ -354,9 +450,13 @@ export async function addCharacterToShot(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: response.statusText }));
-    console.error('[Shots API] Error adding character to shot:', errorData);
-    throw new Error(`Failed to add character to shot: ${errorData.error || response.statusText}`);
+    const errorData = await response
+      .json()
+      .catch(() => ({ error: response.statusText }));
+    console.error("[Shots API] Error adding character to shot:", errorData);
+    throw new Error(
+      `Failed to add character to shot: ${errorData.error || response.statusText}`,
+    );
   }
 
   const { shot } = await response.json();
@@ -366,17 +466,22 @@ export async function addCharacterToShot(
 export async function removeCharacterFromShot(
   shotId: string,
   characterId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<void> {
-  const response = await fetch(`${SHOTS_API_BASE}/shots/${shotId}/characters/${characterId}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
+  const response = await fetch(
+    `${SHOTS_API_BASE}/shots/${shotId}/characters/${characterId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
-  });
+  );
 
   if (!response.ok) {
-    throw new Error(`Failed to remove character from shot: ${response.statusText}`);
+    throw new Error(
+      `Failed to remove character from shot: ${response.statusText}`,
+    );
   }
 }
 
@@ -389,7 +494,7 @@ export async function removeCharacterFromShot(
  */
 export async function getAllShotsByProject(
   projectId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<Shot[]> {
   const result = await apiGet(`/shots?project_id=${projectId}`);
   const data = unwrapApiResult(result);
@@ -414,20 +519,18 @@ const threeActInitTailByProject = new Map<string, Promise<unknown>>();
 export async function initializeTimelineStructureFromNarrative(
   projectId: string,
   accessToken: string,
-  narrativeStructure: string | null | undefined
+  narrativeStructure: string | null | undefined,
 ): Promise<any> {
   const body = narrativeStructureToInitializeProjectPayload(narrativeStructure);
   if (!body) {
-    throw new Error('NARRATIVE_INIT_UNSUPPORTED');
+    throw new Error("NARRATIVE_INIT_UNSUPPORTED");
   }
 
-  const queuedAfter = threeActInitTailByProject.get(projectId) ?? Promise.resolve();
+  const queuedAfter =
+    threeActInitTailByProject.get(projectId) ?? Promise.resolve();
 
   const run = queuedAfter.then(async () => {
-    const TimelineAPI = await import('./timeline-api');
-    const { initializeProject } = await import('./timeline-api-v2');
-
-    const acts = await TimelineAPI.getActs(projectId, accessToken);
+    const acts = await getActs(projectId, accessToken);
     if (acts && acts.length > 0) {
       return { nodes: acts };
     }
@@ -440,7 +543,10 @@ export async function initializeTimelineStructureFromNarrative(
     return { nodes };
   });
 
-  threeActInitTailByProject.set(projectId, run.catch(() => undefined));
+  threeActInitTailByProject.set(
+    projectId,
+    run.catch(() => undefined),
+  );
 
   return run;
 }
@@ -450,7 +556,11 @@ export async function initializeTimelineStructureFromNarrative(
  */
 export async function initializeThreeActStructure(
   projectId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<any> {
-  return initializeTimelineStructureFromNarrative(projectId, accessToken, '3-act');
+  return initializeTimelineStructureFromNarrative(
+    projectId,
+    accessToken,
+    "3-act",
+  );
 }

@@ -7,14 +7,15 @@ import { ID } from "node-appwrite";
 import {
   C,
   createDocument,
-  deleteDocument,
   getDocument,
   listDocumentsFull,
   updateDocument,
 } from "../_shared/appwrite-db";
 import { parseJsonStringArray } from "../_shared/style-guide-schema";
 
-export function styleRowToApi(row: Record<string, any>): Record<string, unknown> {
+export function styleRowToApi(
+  row: Record<string, any>,
+): Record<string, unknown> {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -40,11 +41,15 @@ export function styleRowToApi(row: Record<string, any>): Record<string, unknown>
 
 function parseExportPayload(raw: unknown): Record<string, unknown> {
   if (raw == null || raw === "") return {};
-  if (typeof raw === "object" && raw !== null && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  if (typeof raw === "object" && raw !== null && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
   if (typeof raw === "string") {
     try {
       const v = JSON.parse(raw);
-      return typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {};
+      return typeof v === "object" && v !== null
+        ? (v as Record<string, unknown>)
+        : {};
     } catch {
       return {};
     }
@@ -52,7 +57,9 @@ function parseExportPayload(raw: unknown): Record<string, unknown> {
   return {};
 }
 
-export function itemRowToApi(row: Record<string, any>): Record<string, unknown> {
+export function itemRowToApi(
+  row: Record<string, any>,
+): Record<string, unknown> {
   return {
     id: row.id,
     visualStyleId: row.visual_style_id,
@@ -101,7 +108,7 @@ const DEFAULT_STYLE_ROW = (projectId: string, userId: string) => ({
 
 export async function getOrCreateStyleRoot(
   projectId: string,
-  userId: string
+  userId: string,
 ): Promise<Record<string, any>> {
   const found = await listDocumentsFull(C.project_visual_style, [
     Query.equal("project_id", projectId),
@@ -110,17 +117,25 @@ export async function getOrCreateStyleRoot(
   if (found.length > 0) {
     return found[0];
   }
-  return createDocument(C.project_visual_style, ID.unique(), DEFAULT_STYLE_ROW(projectId, userId));
+  return createDocument(
+    C.project_visual_style,
+    ID.unique(),
+    DEFAULT_STYLE_ROW(projectId, userId),
+  );
 }
 
-export async function listItemsForStyle(visualStyleId: string): Promise<Record<string, any>[]> {
+export async function listItemsForStyle(
+  visualStyleId: string,
+): Promise<Record<string, any>[]> {
   return listDocumentsFull(C.project_visual_style_items, [
     Query.equal("visual_style_id", visualStyleId),
     Query.orderAsc("order_index"),
   ]);
 }
 
-export async function getItemById(itemId: string): Promise<Record<string, any> | null> {
+export async function getItemById(
+  itemId: string,
+): Promise<Record<string, any> | null> {
   return getDocument(C.project_visual_style_items, itemId);
 }
 
@@ -136,7 +151,7 @@ export async function maxOrderIndex(visualStyleId: string): Promise<number> {
 
 export function compileCompactPrompt(
   root: Record<string, any>,
-  items: Record<string, any>[]
+  items: Record<string, any>[],
 ): string {
   const lines: string[] = [];
   const sum = String(root.style_summary ?? "").trim();
@@ -157,7 +172,11 @@ export function compileCompactPrompt(
   const pb = parseJsonStringArray(root.palette_background_json);
   if (pp.length || ps.length || pa.length || pb.length) {
     lines.push(
-      `Palette hints — primary: ${pp.join(", ")}; secondary: ${ps.join(", ")}; accent: ${pa.join(", ")}; background: ${pb.join(", ")}`
+      `Palette hints — primary: ${pp.join(", ")}; secondary: ${
+        ps.join(
+          ", ",
+        )
+      }; accent: ${pa.join(", ")}; background: ${pb.join(", ")}`,
     );
   }
   const pinned = items.filter((i) => i.pinned).slice(0, 8);
@@ -176,7 +195,7 @@ export function compileCompactPrompt(
 
 export function compileExportPayload(
   root: Record<string, any>,
-  items: Record<string, any>[]
+  items: Record<string, any>[],
 ): Record<string, unknown> {
   return {
     version: 1,
@@ -211,7 +230,7 @@ export function compileExportPayload(
 export async function persistCompiledOutputs(
   styleId: string,
   root: Record<string, any>,
-  items: Record<string, any>[]
+  items: Record<string, any>[],
 ): Promise<Record<string, any>> {
   const compact = compileCompactPrompt(root, items);
   const exportObj = compileExportPayload(root, items);

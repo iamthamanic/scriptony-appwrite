@@ -1,6 +1,6 @@
 /**
  * 💪 SCRIPTONY GYM - Edge Function
- * 
+ *
  * Creative Gym for Scriptony:
  * - Exercises/Challenges CRUD
  * - User progress tracking
@@ -10,7 +10,7 @@
  *   - Generate custom exercises
  *   - AI feedback on submissions
  *   - Personalized suggestions
- * 
+ *
  * Uses centralized AI service from _shared/ai-service/
  */
 
@@ -18,8 +18,9 @@ import "../_shared/fetch-polyfill";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Client, Databases, Query } from "node-appwrite";
-import { requireAuthenticatedUser, type AuthSource } from "../_shared/auth";
+import { type AuthSource, requireAuthenticatedUser } from "../_shared/auth";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
+import process from "node:process";
 
 // =============================================================================
 // SETUP
@@ -29,8 +30,16 @@ const app = new Hono();
 
 // Initialize Appwrite client
 const client = new Client()
-  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || "")
-  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || process.env.APPWRITE_PROJECT_ID || "");
+  .setEndpoint(
+    process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+      process.env.APPWRITE_ENDPOINT ||
+      "",
+  )
+  .setProject(
+    process.env.APPWRITE_FUNCTION_PROJECT_ID ||
+      process.env.APPWRITE_PROJECT_ID ||
+      "",
+  );
 
 const databases = new Databases(client);
 
@@ -46,16 +55,21 @@ const SUBMISSIONS_COLLECTION = "submissions";
 // MIDDLEWARE
 // =============================================================================
 
-app.use("*", cors({
-  origin: "*",
-  allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  exposeHeaders: ["Content-Length"],
-  maxAge: 600,
-}));
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization", "X-Appwrite-Key"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+  }),
+);
 
 // Auth middleware
-async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null> {
+async function getUserIdFromAuth(
+  authSource: AuthSource,
+): Promise<string | null> {
   const user = await requireAuthenticatedUser(authSource);
   return user?.id || null;
 }
@@ -65,8 +79,8 @@ async function getUserIdFromAuth(authSource: AuthSource): Promise<string | null>
 // =============================================================================
 
 app.get("/", (c) => {
-  return c.json({ 
-    status: "ok", 
+  return c.json({
+    status: "ok",
     function: "scriptony-gym",
     version: "1.0.0",
     message: "Scriptony Creative Gym Service",
@@ -99,56 +113,59 @@ app.get("/health", (c) => {
  */
 app.get("/exercises", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const category = c.req.query("category");
   const difficulty = c.req.query("difficulty");
   const limit = parseInt(c.req.query("limit") || "50");
   const offset = parseInt(c.req.query("offset") || "0");
-  
+
   try {
-    const queries: any[] = [
-      Query.limit(limit),
-      Query.offset(offset),
-    ];
-    
+    const queries: any[] = [Query.limit(limit), Query.offset(offset)];
+
     if (category) {
       queries.push(Query.equal("category", category));
     }
-    
+
     if (difficulty) {
       queries.push(Query.equal("difficulty", difficulty));
     }
-    
+
     const response = await databases.listDocuments(
       GYM_DB_ID,
       EXERCISES_COLLECTION,
-      queries
+      queries,
     );
-    
-    return c.json({ 
+
+    return c.json({
       exercises: response.documents,
       total: response.total,
     });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Return mock data if DB doesn't exist yet
     console.log("DB not ready, returning mock data");
-    
+
     const mockExercises = [
       {
         id: "char-dev-1",
         title: "Character Development: The Reluctant Hero",
-        description: "Create a detailed character backstory for a hero who never wanted to be one.",
+        description:
+          "Create a detailed character backstory for a hero who never wanted to be one.",
         category: "characters",
         difficulty: "medium",
         points: 50,
         estimated_time: 30,
         tags: ["character", "protagonist", "backstory"],
-        instructions: "Write a 500-word backstory for a character who becomes a hero by accident. Include: childhood, turning point, current motivation.",
-        tips: ["Start with a defining moment", "Show don't tell", "Include flaws"],
+        instructions:
+          "Write a 500-word backstory for a character who becomes a hero by accident. Include: childhood, turning point, current motivation.",
+        tips: [
+          "Start with a defining moment",
+          "Show don't tell",
+          "Include flaws",
+        ],
       },
       {
         id: "scene-1",
@@ -159,33 +176,40 @@ app.get("/exercises", async (c) => {
         points: 25,
         estimated_time: 20,
         tags: ["scene", "dialogue-free", "emotion"],
-        instructions: "Write a 2-page scene with no dialogue that shows a character receiving life-changing news.",
+        instructions:
+          "Write a 2-page scene with no dialogue that shows a character receiving life-changing news.",
         tips: ["Use body language", "Focus on details", "Let silence speak"],
       },
       {
         id: "dialogue-1",
         title: "Dialogue Master: The Argument",
-        description: "Write a compelling dialogue between two characters who disagree.",
+        description:
+          "Write a compelling dialogue between two characters who disagree.",
         category: "dialogue",
         difficulty: "hard",
         points: 100,
         estimated_time: 45,
         tags: ["dialogue", "conflict", "subtext"],
-        instructions: "Write a 3-page dialogue where two characters argue about something important. Each should have a valid point.",
-        tips: ["Give each character a unique voice", "Use subtext", "Show power dynamics"],
+        instructions:
+          "Write a 3-page dialogue where two characters argue about something important. Each should have a valid point.",
+        tips: [
+          "Give each character a unique voice",
+          "Use subtext",
+          "Show power dynamics",
+        ],
       },
     ];
-    
+
     let filtered = mockExercises;
-    
+
     if (category) {
-      filtered = filtered.filter(e => e.category === category);
+      filtered = filtered.filter((e) => e.category === category);
     }
-    
+
     if (difficulty) {
-      filtered = filtered.filter(e => e.difficulty === difficulty);
+      filtered = filtered.filter((e) => e.difficulty === difficulty);
     }
-    
+
     return c.json({ exercises: filtered, total: filtered.length });
   }
 });
@@ -196,24 +220,24 @@ app.get("/exercises", async (c) => {
  */
 app.get("/exercises/:id", async (c) => {
   const userId = await getUserIdFromAuth(c.req);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const exerciseId = c.req.param("id");
-  
+
   try {
     const exercise = await databases.getDocument(
       GYM_DB_ID,
       EXERCISES_COLLECTION,
-      exerciseId
+      exerciseId,
     );
-    
+
     return c.json({ exercise });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Mock data fallback
-    return c.json({ 
+    return c.json({
       exercise: {
         id: exerciseId,
         title: "Exercise Title",
@@ -222,7 +246,7 @@ app.get("/exercises/:id", async (c) => {
         difficulty: "medium",
         points: 50,
         instructions: "Detailed instructions here...",
-      }
+      },
     });
   }
 });
@@ -234,15 +258,15 @@ app.get("/exercises/:id", async (c) => {
 app.post("/exercises/:id/complete", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const exerciseId = c.req.param("id");
   const body = await c.req.json();
   const { submission, time_spent } = body;
-  
+
   try {
     // Create submission record
     const submissionRecord = await databases.createDocument(
@@ -255,28 +279,28 @@ app.post("/exercises/:id/complete", async (c) => {
         submission,
         time_spent: time_spent || 0,
         completed_at: new Date().toISOString(),
-      }
+      },
     );
-    
+
     // Update user progress
     // TODO: Implement progress tracking
-    
+
     // Calculate points
     const pointsEarned = 50; // TODO: Get from exercise
-    
-    return c.json({ 
+
+    return c.json({
       success: true,
       submission_id: submissionRecord.$id,
       points_earned: pointsEarned,
-      message: "Exercise completed! 🎉"
+      message: "Exercise completed! 🎉",
     });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Mock response
-    return c.json({ 
+    return c.json({
       success: true,
       points_earned: 50,
       total_points: 150,
-      message: "Exercise completed! 🎉"
+      message: "Exercise completed! 🎉",
     });
   }
 });
@@ -292,29 +316,29 @@ app.post("/exercises/:id/complete", async (c) => {
 app.get("/progress", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   try {
     const response = await databases.listDocuments(
       GYM_DB_ID,
       PROGRESS_COLLECTION,
-      [Query.equal("user_id", userId)]
+      [Query.equal("user_id", userId)],
     );
-    
+
     return c.json({ progress: response.documents[0] || null });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Mock data
-    return c.json({ 
+    return c.json({
       progress: {
         total_points: 150,
         exercises_completed: 3,
         current_streak: 5,
         level: 2,
         achievements: [
-          { id: "1", name: "First Steps", earned_at: "2025-01-01" }
+          { id: "1", name: "First Steps", earned_at: "2025-01-01" },
         ],
         categories: {
           characters: { completed: 2, total: 12 },
@@ -322,8 +346,8 @@ app.get("/progress", async (c) => {
           dialogue: { completed: 0, total: 10 },
           worldbuilding: { completed: 0, total: 8 },
           plot: { completed: 0, total: 14 },
-        }
-      }
+        },
+      },
     });
   }
 });
@@ -339,19 +363,19 @@ app.get("/progress", async (c) => {
 app.get("/achievements", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   try {
     const response = await databases.listDocuments(
       GYM_DB_ID,
-      ACHIEVEMENTS_COLLECTION
+      ACHIEVEMENTS_COLLECTION,
     );
-    
+
     return c.json({ achievements: response.documents });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Mock data
     const mockAchievements = [
       {
@@ -368,7 +392,11 @@ app.get("/achievements", async (c) => {
         description: "Complete 10 character exercises",
         icon: "👤",
         points: 50,
-        requirement: { type: "category_completed", category: "characters", count: 10 },
+        requirement: {
+          type: "category_completed",
+          category: "characters",
+          count: 10,
+        },
       },
       {
         id: "week-warrior",
@@ -384,7 +412,11 @@ app.get("/achievements", async (c) => {
         description: "Write 5000 words of dialogue",
         icon: "💬",
         points: 75,
-        requirement: { type: "words_written", category: "dialogue", count: 5000 },
+        requirement: {
+          type: "words_written",
+          category: "dialogue",
+          count: 5000,
+        },
       },
       {
         id: "perfectionist",
@@ -395,7 +427,7 @@ app.get("/achievements", async (c) => {
         requirement: { type: "perfect_scores", count: 10 },
       },
     ];
-    
+
     return c.json({ achievements: mockAchievements });
   }
 });
@@ -411,55 +443,55 @@ app.get("/achievements", async (c) => {
 app.get("/categories", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   try {
     const response = await databases.listDocuments(
       GYM_DB_ID,
-      CATEGORIES_COLLECTION
+      CATEGORIES_COLLECTION,
     );
-    
+
     return c.json({ categories: response.documents });
-  } catch (error: any) {
+  } catch (_error: any) {
     // Mock data
     const categories = [
-      { 
-        id: "characters", 
+      {
+        id: "characters",
         name: "Character Development",
         description: "Build compelling characters with depth",
         icon: "👤",
         count: 12,
         color: "#FF6B6B",
       },
-      { 
-        id: "scenes", 
+      {
+        id: "scenes",
         name: "Scene Writing",
         description: "Master the art of scene construction",
         icon: "🎬",
         count: 15,
         color: "#4ECDC4",
       },
-      { 
-        id: "dialogue", 
+      {
+        id: "dialogue",
         name: "Dialogue",
         description: "Write natural, engaging dialogue",
         icon: "💬",
         count: 10,
         color: "#45B7D1",
       },
-      { 
-        id: "worldbuilding", 
+      {
+        id: "worldbuilding",
         name: "Worldbuilding",
         description: "Create immersive worlds and settings",
         icon: "🌍",
         count: 8,
         color: "#96CEB4",
       },
-      { 
-        id: "plot", 
+      {
+        id: "plot",
         name: "Plot Structure",
         description: "Structure compelling narratives",
         icon: "📊",
@@ -475,7 +507,7 @@ app.get("/categories", async (c) => {
         color: "#DDA0DD",
       },
     ];
-    
+
     return c.json({ categories });
   }
 });
@@ -491,16 +523,16 @@ app.get("/categories", async (c) => {
 app.get("/daily", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
-  const today = new Date().toISOString().split('T')[0];
-  
+
+  const today = new Date().toISOString().split("T")[0];
+
   try {
     // TODO: Get daily challenge from DB based on date
-    return c.json({ 
+    return c.json({
       challenge: {
         id: "daily-" + today,
         title: "Daily Challenge: Write a Twist",
@@ -509,9 +541,10 @@ app.get("/daily", async (c) => {
         difficulty: "medium",
         points: 75,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        instructions: "Write a 1-page scene where the reader discovers something unexpected.",
+        instructions:
+          "Write a 1-page scene where the reader discovers something unexpected.",
         tips: ["Misdirection is key", "Set up early", "Pay off late"],
-      }
+      },
     });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -529,19 +562,20 @@ app.get("/daily", async (c) => {
 app.post("/ai/generate", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
   const { category, difficulty, focus } = body;
-  
+
   try {
     // Import AI service
     const { chat } = await import("../_shared/ai-service");
-    
-    const systemPrompt = `You are a creative writing exercise generator for Scriptony Gym.
+
+    const systemPrompt =
+      `You are a creative writing exercise generator for Scriptony Gym.
 Generate a unique, engaging writing exercise with the following structure:
 {
   "title": "Exercise title (catchy)",
@@ -557,15 +591,19 @@ Be creative and specific. Focus on actionable exercises.`;
     const messages = [
       {
         role: "user" as const,
-        content: `Generate a ${difficulty || "medium"} difficulty ${category || "characters"} exercise${focus ? ` focusing on ${focus}` : ""}. Make it unique and engaging.`,
+        content: `Generate a ${difficulty || "medium"} difficulty ${
+          category || "characters"
+        } exercise${
+          focus ? ` focusing on ${focus}` : ""
+        }. Make it unique and engaging.`,
       },
     ];
-    
+
     const response = await chat(userId, messages, "creative_gym", {
       systemPrompt,
       temperature: 0.9,
     });
-    
+
     // Parse AI response as JSON
     let exercise;
     try {
@@ -581,15 +619,15 @@ Be creative and specific. Focus on actionable exercises.`;
         points: 50,
       };
     }
-    
-    return c.json({ 
+
+    return c.json({
       exercise: {
         id: "ai-" + Date.now(),
         category: category || "characters",
         difficulty: difficulty || "medium",
         ...exercise,
         is_ai_generated: true,
-      }
+      },
     });
   } catch (error: any) {
     console.error("AI generate error:", error);
@@ -604,22 +642,23 @@ Be creative and specific. Focus on actionable exercises.`;
 app.post("/ai/feedback", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
-  const { exercise_id, submission } = body;
-  
+  const { exercise_id: _exercise_id, submission } = body;
+
   if (!submission) {
     return c.json({ error: "Submission required" }, 400);
   }
-  
+
   try {
     const { chat } = await import("../_shared/ai-service");
-    
-    const systemPrompt = `You are a creative writing coach. Provide constructive, encouraging feedback.
+
+    const systemPrompt =
+      `You are a creative writing coach. Provide constructive, encouraging feedback.
 Your feedback should be structured as:
 {
   "score": 85,
@@ -634,15 +673,16 @@ Be specific, supportive, and actionable. Focus on growth.`;
     const messages = [
       {
         role: "user" as const,
-        content: `Please provide feedback on this writing submission:\n\n${submission}`,
+        content:
+          `Please provide feedback on this writing submission:\n\n${submission}`,
       },
     ];
-    
+
     const response = await chat(userId, messages, "creative_gym", {
       systemPrompt,
       temperature: 0.7,
     });
-    
+
     let feedback;
     try {
       feedback = JSON.parse(response.content);
@@ -655,7 +695,7 @@ Be specific, supportive, and actionable. Focus on growth.`;
         next_steps: ["Try another exercise"],
       };
     }
-    
+
     return c.json({ feedback });
   } catch (error: any) {
     console.error("AI feedback error:", error);
@@ -670,18 +710,19 @@ Be specific, supportive, and actionable. Focus on growth.`;
 app.post("/ai/suggest", async (c) => {
   const authHeader = c.req.header("Authorization");
   const userId = await getUserIdFromAuth(authHeader);
-  
+
   if (!userId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   const body = await c.req.json();
   const { progress, interests } = body;
-  
+
   try {
     const { chat } = await import("../_shared/ai-service");
-    
-    const systemPrompt = `You are a creative writing coach. Suggest personalized exercises.
+
+    const systemPrompt =
+      `You are a creative writing coach. Suggest personalized exercises.
 Return 3 exercise suggestions as:
 [
   {
@@ -695,16 +736,20 @@ Return 3 exercise suggestions as:
     const messages = [
       {
         role: "user" as const,
-        content: `Suggest exercises for a writer with this progress: ${JSON.stringify(progress || {})}
+        content: `Suggest exercises for a writer with this progress: ${
+          JSON.stringify(
+            progress || {},
+          )
+        }
 Interests: ${interests?.join(", ") || "general improvement"}`,
       },
     ];
-    
+
     const response = await chat(userId, messages, "creative_gym", {
       systemPrompt,
       temperature: 0.8,
     });
-    
+
     let suggestions;
     try {
       suggestions = JSON.parse(response.content);
@@ -718,7 +763,7 @@ Interests: ${interests?.join(", ") || "general improvement"}`,
         },
       ];
     }
-    
+
     return c.json({ suggestions });
   } catch (error: any) {
     console.error("AI suggest error:", error);

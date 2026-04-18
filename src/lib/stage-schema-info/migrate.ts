@@ -1,6 +1,6 @@
 /**
- * Schema-Migrationen zwischen Versionen — aktuell Identität (v1 only).
- * Später: migrateStageDocumentV1ToV2 o. Ä. hier einhängen.
+ * Schema-Migrationen zwischen Versionen; aktuell Identitaet (v1 only).
+ * Spaeter: migrateStageDocumentV1ToV2 oder aehnliche Schritte hier einhaengen.
  */
 import { STAGE_SCHEMA_VERSION_LATEST } from "./constants";
 import type { StageDocument } from "./envelope";

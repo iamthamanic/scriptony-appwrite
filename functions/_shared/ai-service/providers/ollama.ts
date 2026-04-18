@@ -1,6 +1,6 @@
 /**
  * Ollama Provider Implementation (Local)
- * 
+ *
  * Ollama runs models locally on your machine.
  * Supports:
  * - Text: Llama 3.1, Mistral, Qwen, Gemma, etc.
@@ -8,7 +8,7 @@
  * - Audio TTS: Piper (via bark or similar)
  * - Image: Stable Diffusion, LLaVA (vision)
  * - Embeddings: nomic-embed-text, etc.
- * 
+ *
  * Note: Requires Ollama to be running locally.
  */
 
@@ -17,18 +17,19 @@ import type {
   ChatMessage,
   ChatOptions,
   ChatResponse,
+  EmbeddingOptions,
+  EmbeddingResponse,
+  ImageOptions,
+  ImageResponse,
   STTOptions,
   STTResponse,
   TTSOptions,
   TTSResponse,
-  ImageOptions,
-  ImageResponse,
-  EmbeddingOptions,
-  EmbeddingResponse,
 } from "./base";
 import * as http from "node:http";
 import * as https from "node:https";
 import { OLLAMA_CLOUD_ORIGIN } from "../../ai-feature-profile";
+import { Buffer } from "node:buffer";
 
 function trimSlash(value: string): string {
   return value.replace(/\/+$/, "");
@@ -70,14 +71,18 @@ function requestOllamaCloud(
   path: string,
   baseUrl: string,
   headers: Record<string, string>,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): Promise<OllamaCloudImageResult> {
   const urlStr = `${trimSlash(baseUrl)}${path}`;
   let u: URL;
   try {
     u = new URL(urlStr);
   } catch {
-    return Promise.resolve({ ok: false, status: 0, error: `Invalid URL: ${urlStr}` });
+    return Promise.resolve({
+      ok: false,
+      status: 0,
+      error: `Invalid URL: ${urlStr}`,
+    });
   }
 
   const lib = u.protocol === "https:" ? https : http;
@@ -124,12 +129,20 @@ function requestOllamaCloud(
             });
           }
         });
-      }
+      },
     );
 
     req.on("timeout", () => {
       req.destroy();
-      resolve({ ok: false, status: 0, error: `Provider timeout after ${Math.round(REQUEST_TIMEOUT_MS / 1000)}s` });
+      resolve({
+        ok: false,
+        status: 0,
+        error: `Provider timeout after ${
+          Math.round(
+            REQUEST_TIMEOUT_MS / 1000,
+          )
+        }s`,
+      });
     });
     req.on("error", (err: Error) => {
       resolve({ ok: false, status: 0, error: err.message || "Network error" });
@@ -142,17 +155,26 @@ function requestOllamaCloud(
 function requestOllamaCloudChat(
   baseUrl: string,
   headers: Record<string, string>,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): Promise<OllamaCloudChatResult> {
-  return requestOllamaCloud("/v1/chat/completions", baseUrl, headers, body).then((r) => {
+  return requestOllamaCloud(
+    "/v1/chat/completions",
+    baseUrl,
+    headers,
+    body,
+  ).then((r) => {
     if (!r.ok) return r;
-    return { ok: true, status: r.status, payload: r.payload as OllamaCloudChatPayload };
+    return {
+      ok: true,
+      status: r.status,
+      payload: r.payload as OllamaCloudChatPayload,
+    };
   });
 }
 
 export class OllamaProvider implements AIProvider {
   readonly name = "ollama";
-  
+
   readonly capabilities = {
     text: true,
     audio_stt: true,
@@ -161,10 +183,10 @@ export class OllamaProvider implements AIProvider {
     video: false,
     embeddings: true,
   };
-  
+
   private baseUrl: string;
   private apiKey?: string;
-  
+
   constructor(baseUrl?: string, apiKey?: string) {
     this.baseUrl = baseUrl || "http://localhost:11434";
     this.apiKey = apiKey;
@@ -183,28 +205,39 @@ export class OllamaProvider implements AIProvider {
     }
     return headers;
   }
-  
-  async chat(messages: ChatMessage[], options: ChatOptions): Promise<ChatResponse> {
+
+  async chat(
+    messages: ChatMessage[],
+    options: ChatOptions,
+  ): Promise<ChatResponse> {
     const systemMessages = options.systemPrompt
       ? [{ role: "system" as const, content: options.systemPrompt }]
       : [];
 
     if (this.isCloudMode()) {
-      const result = await requestOllamaCloudChat(trimSlash(this.baseUrl), this.headers(), {
-        model: options.model || "llama3.1",
-        messages: [...systemMessages, ...messages],
-        temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens ?? 2000,
-        top_p: options.topP,
-        stream: false,
-      });
+      const result = await requestOllamaCloudChat(
+        trimSlash(this.baseUrl),
+        this.headers(),
+        {
+          model: options.model || "llama3.1",
+          messages: [...systemMessages, ...messages],
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens ?? 2000,
+          top_p: options.topP,
+          stream: false,
+        },
+      );
 
       if (!result.ok) {
-        throw new Error(`Ollama cloud chat error: ${result.status} - ${result.error}`);
+        throw new Error(
+          `Ollama cloud chat error: ${result.status} - ${result.error}`,
+        );
       }
       const data = result.payload;
       const assistantMessage = data.choices?.[0]?.message;
-      const content = assistantMessage?.content?.trim() || assistantMessage?.reasoning?.trim() || "";
+      const content = assistantMessage?.content?.trim() ||
+        assistantMessage?.reasoning?.trim() ||
+        "";
 
       return {
         content,
@@ -238,7 +271,7 @@ export class OllamaProvider implements AIProvider {
       throw new Error(`Ollama chat error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    await response.json();
 
     return {
       content: data.message.content,
@@ -251,15 +284,18 @@ export class OllamaProvider implements AIProvider {
       finishReason: data.done ? "stop" : "length",
     };
   }
-  
-  async transcribe(audioUrl: string, options: STTOptions): Promise<STTResponse> {
+
+  async transcribe(
+    audioUrl: string,
+    options: STTOptions,
+  ): Promise<STTResponse> {
     // Download audio file
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
       throw new Error(`Failed to download audio: ${audioResponse.status}`);
     }
-    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
-    
+    await audioResponse.arrayBuffer();
+
     // Ollama doesn't have direct STT, but we can use whisper model
     // This is a simplified implementation
     const response = await fetch(`${this.baseUrl}/api/generate`, {
@@ -271,18 +307,18 @@ export class OllamaProvider implements AIProvider {
         stream: false,
       }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Ollama STT error: ${response.status}`);
     }
-    
-    const data = await response.json();
-    
+
+    await response.json();
+
     return {
       text: data.response,
     };
   }
-  
+
   async synthesize(text: string, options: TTSOptions): Promise<TTSResponse> {
     // Ollama doesn't have direct TTS, but some models support audio generation
     // This is a placeholder for models like bark or similar
@@ -295,21 +331,24 @@ export class OllamaProvider implements AIProvider {
         stream: false,
       }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Ollama TTS error: ${response.status}`);
     }
-    
-    const data = await response.json();
-    
+
+    await response.json();
+
     // This would need actual audio generation support
     return {
       audioBuffer: Buffer.from([]),
       format: "wav",
     };
   }
-  
-  async generateImage(prompt: string, options: ImageOptions): Promise<ImageResponse> {
+
+  async generateImage(
+    prompt: string,
+    options: ImageOptions,
+  ): Promise<ImageResponse> {
     const model = options.model || "stable-diffusion";
 
     if (this.isCloudMode()) {
@@ -318,11 +357,23 @@ export class OllamaProvider implements AIProvider {
       const path = useNative ? "/api/generate" : "/v1/images/generations";
       const body: Record<string, unknown> = useNative
         ? { model, prompt, stream: false }
-        : { model, prompt, size: options.size || "800x1200", response_format: "b64_json" };
+        : {
+          model,
+          prompt,
+          size: options.size || "800x1200",
+          response_format: "b64_json",
+        };
 
-      const result = await requestOllamaCloud(path, trimSlash(this.baseUrl), this.headers(), body);
+      const result = await requestOllamaCloud(
+        path,
+        trimSlash(this.baseUrl),
+        this.headers(),
+        body,
+      );
       if (!result.ok) {
-        throw new Error(`Ollama cloud image error: ${result.status} - ${result.error}`);
+        throw new Error(
+          `Ollama cloud image error: ${result.status} - ${result.error}`,
+        );
       }
 
       const data = result.payload as Record<string, unknown>;
@@ -361,8 +412,11 @@ export class OllamaProvider implements AIProvider {
       b64Json: data.response,
     };
   }
-  
-  async createEmbedding(text: string, options: EmbeddingOptions): Promise<EmbeddingResponse> {
+
+  async createEmbedding(
+    text: string,
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResponse> {
     const response = await fetch(`${this.baseUrl}/api/embeddings`, {
       method: "POST",
       headers: this.headers(),
@@ -371,14 +425,14 @@ export class OllamaProvider implements AIProvider {
         prompt: text,
       }),
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Ollama embedding error: ${response.status} - ${error}`);
     }
-    
+
     const data = await response.json();
-    
+
     return {
       embedding: data.embedding,
       usage: {
@@ -387,30 +441,34 @@ export class OllamaProvider implements AIProvider {
       },
     };
   }
-  
+
   async healthCheck(): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
-        headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : undefined,
+        headers: this.apiKey
+          ? { Authorization: `Bearer ${this.apiKey}` }
+          : undefined,
       });
       return response.ok;
     } catch {
       return false;
     }
   }
-  
+
   // Get available models
   async getModels(): Promise<string[]> {
     const response = await fetch(`${this.baseUrl}/api/tags`, {
-      headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : undefined,
+      headers: this.apiKey
+        ? { Authorization: `Bearer ${this.apiKey}` }
+        : undefined,
     });
-    
+
     if (!response.ok) {
       throw new Error("Failed to fetch models");
     }
-    
+
     const data = await response.json();
-    
+
     return data.models.map((m: any) => m.name);
   }
 }
