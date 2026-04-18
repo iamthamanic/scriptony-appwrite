@@ -202,27 +202,28 @@ Status: ✅ erledigt
 - Dockerfile + .env.example
 - 29 Unit-Tests (alle grün), TypeCheck sauber, Build erfolgreich
 
-#### Ticket 10: Blender Addon
+#### Ticket 10: Blender Addon — erledigt
 
-Priorität: mittel
+Priorität: mittel → erledigt
 
-Warum nach Ticket 7 und 9:
+6-Dateien-Architektur (SOLID/DRY/KISS-hardened):
 
-- das Addon braucht stabile Sync-Endpunkte und ein klares Auth-Modell
+- `constants.py` — Single source of truth (Endpoints, Timeouts, Forbidden Fields)
+- `api.py` — Cloud HTTP Client (Retry, Auth, Validation, Forbidden-Field Guard)
+- `server.py` — Local HTTP Server (Port 9876, /health, /bridge/render-accepted|rejected)
+- `__init__.py` — Manifest, Preferences (API-Key in UserPrefs, nicht in .blend), Health-Timer
+- `operators.py` — 7 Blender Operators (bind, sync-state, preview, guides, glb, view-state, freshness)
+- `ui.py` — 2 Panels (Main + Freshness), keine Produkt-Entscheidungen im UI
 
-Was konkret gebaut werden sollte:
-
-- Shot Binding
-- Sync Shot State
-- Publish Preview
-- Publish Guides
-- API Key/Auth
-- Statusanzeige
-
-Definition of done:
-
-- Addon publiziert Daten, entscheidet aber nichts
-- alle produktrelevanten Entscheidungen bleiben im Backend
+Hardening:
+- API-Key in AddonPreferences (PASSWORD subtype) — landet nicht in .blend-Dateien
+- Request-Timeout 10s, Exponential Backoff Retry (3x, 1s→30s)
+- Client-seitiger Forbidden-Field Guard (mirrors server-side)
+- Path-Traversal-Prevention in shotId
+- Payload-Size-Limits (1MB, viewState 64KB)
+- Thread-safe Event-Queue für Bridge-Notifications
+- Periodic Health-Check (Blender Timer, 60s)
+- Nur stdlib — kein pip, kein async
 
 ## Konkrete Reihenfolge für die Umsetzung
 
