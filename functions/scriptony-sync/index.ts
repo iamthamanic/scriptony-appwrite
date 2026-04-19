@@ -20,32 +20,32 @@ import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { getUserOrganizationIds } from "../_shared/scriptony";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import {
+  getShotFreshness,
   syncGlbPreview,
   syncGuides,
   syncPreview,
   syncShotState,
-  getShotFreshness,
 } from "./sync-service";
 import { userCanAccessShot } from "../_shared/puppet-helpers";
 
 function getPathname(req: RequestLike): string {
-  const direct =
-    (typeof req?.path === "string" && req.path) ||
+  const direct = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://"))
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
       return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -92,7 +92,11 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       try {
-        const freshness = await getShotFreshness(shotId, userId, organizationIds);
+        const freshness = await getShotFreshness(
+          shotId,
+          userId,
+          organizationIds,
+        );
         sendJson(res, 200, { shotId, freshness });
       } catch (error) {
         sendServerError(res, error);
@@ -133,7 +137,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
             blenderSyncRevision: body.blenderSyncRevision,
           },
           userId,
-          organizationIds
+          organizationIds,
         );
         sendJson(res, 200, result);
       } catch (error) {
@@ -177,7 +181,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
             metadata: body.metadata,
           },
           userId,
-          organizationIds
+          organizationIds,
         );
         sendJson(res, 200, result);
       } catch (error) {
@@ -217,7 +221,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
             lastPreviewAt: body.lastPreviewAt,
           },
           userId,
-          organizationIds
+          organizationIds,
         );
         sendJson(res, 200, result);
       } catch (error) {
@@ -257,7 +261,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
             glbPreviewFileId: body.glbPreviewFileId,
           },
           userId,
-          organizationIds
+          organizationIds,
         );
         sendJson(res, 200, result);
       } catch (error) {

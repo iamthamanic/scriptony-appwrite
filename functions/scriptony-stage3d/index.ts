@@ -16,6 +16,8 @@ import { getUserOrganizationIds } from "../_shared/scriptony";
 import { userCanAccessShot } from "../_shared/puppet-helpers";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendConflict,
   sendJson,
@@ -23,8 +25,6 @@ import {
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import {
   ConflictError,
@@ -36,13 +36,13 @@ import {
 } from "./stage3d-service";
 
 function getPathname(req: RequestLike): string {
-  const direct =
-    (typeof req?.path === "string" && req.path) ||
+  const direct = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://"))
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
       return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -75,7 +75,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     // -------------------------------------------------------------------------
     // PUT /stage3d/documents/:shotId/view-state
     // -------------------------------------------------------------------------
-    const viewStateMatch = pathname.match(/^\/stage3d\/documents\/([^/]+)\/view-state$/);
+    const viewStateMatch = pathname.match(
+      /^\/stage3d\/documents\/([^/]+)\/view-state$/,
+    );
     if (viewStateMatch) {
       if (req.method !== "PUT") {
         sendMethodNotAllowed(res, ["PUT"]);
@@ -91,7 +93,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       const rawBody = await readJsonBody(req);
       const parsed = updateViewStateBodySchema.safeParse(rawBody);
       if (!parsed.success) {
-        sendBadRequest(res, parsed.error.flatten().formErrors.join("; ") || "Invalid viewState");
+        sendBadRequest(
+          res,
+          parsed.error.flatten().formErrors.join("; ") || "Invalid viewState",
+        );
         return;
       }
 
@@ -102,11 +107,17 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendJson(res, 200, { document: doc });
       } catch (error) {
         if (error instanceof ConflictError) {
-          sendConflict(res, "Document was modified concurrently — retry the request");
+          sendConflict(
+            res,
+            "Document was modified concurrently — retry the request",
+          );
           return;
         }
         if (error instanceof Error && error.message.includes("not found")) {
-          sendNotFound(res, "Stage3D document not found — call GET /stage3d/documents/:shotId first");
+          sendNotFound(
+            res,
+            "Stage3D document not found — call GET /stage3d/documents/:shotId first",
+          );
           return;
         }
         throw error;

@@ -10,16 +10,19 @@ import {
 } from "../../../../../_shared/observability";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -39,14 +42,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const payload = await getProjectStatsPayload(projectId);
-    const durations = payload.shots.map(toDurationSeconds).filter((value) => value > 0);
+    const durations = payload.shots
+      .map(toDurationSeconds)
+      .filter((value) => value > 0);
     const durationStats = durations.length
       ? {
-          average: Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length),
-          min: Math.min(...durations),
-          max: Math.max(...durations),
-          total: durations.reduce((sum, value) => sum + value, 0),
-        }
+        average: Math.round(
+          durations.reduce((sum, value) => sum + value, 0) / durations.length,
+        ),
+        min: Math.min(...durations),
+        max: Math.max(...durations),
+        total: durations.reduce((sum, value) => sum + value, 0),
+      }
       : { average: 0, min: 0, max: 0, total: 0 };
 
     sendJson(res, 200, {

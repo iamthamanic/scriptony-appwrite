@@ -56,7 +56,9 @@ export type ShotFreshnessResult = {
 // ---------------------------------------------------------------------------
 
 function toInt(value: unknown, fallback = 0): number {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
   if (typeof value === "string" && value.trim()) {
     const n = Number(value);
     if (Number.isFinite(n)) return Math.trunc(n);
@@ -132,7 +134,9 @@ export function calcPreviewStale(shot: ShotFreshnessInput): FreshnessStatus {
  * Compute the full freshness result for a shot.
  * Pure function — no side effects, no DB access.
  */
-export function computeFreshness(shot: ShotFreshnessInput): ShotFreshnessResult {
+export function computeFreshness(
+  shot: ShotFreshnessInput,
+): ShotFreshnessResult {
   const guidesStale = calcGuidesStale(shot);
   const renderStale = calcRenderStale(shot);
   const previewStale = calcPreviewStale(shot);
@@ -142,11 +146,12 @@ export function computeFreshness(shot: ShotFreshnessInput): ShotFreshnessResult 
   if (renderStale === "stale") reasons.push("render_stale");
   if (previewStale === "stale") reasons.push("preview_stale");
 
-  const anyStale = guidesStale === "stale" || renderStale === "stale" || previewStale === "stale";
-  const anyUnknown =
-    (guidesStale === "unknown" && guidesStale !== "stale") ||
-    (renderStale === "unknown" && renderStale !== "stale") ||
-    (previewStale === "unknown" && previewStale !== "stale");
+  const anyStale = guidesStale === "stale" ||
+    renderStale === "stale" ||
+    previewStale === "stale";
+  const anyUnknown = guidesStale === "unknown" ||
+    renderStale === "unknown" ||
+    previewStale === "unknown";
 
   let overall: FreshnessStatus;
   if (anyStale) {

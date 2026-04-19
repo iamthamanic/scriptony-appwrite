@@ -17,14 +17,14 @@ import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { getUserOrganizationIds } from "../_shared/scriptony";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import {
   addLayer,
@@ -40,13 +40,13 @@ import {
 import { userCanAccessShot } from "../_shared/puppet-helpers";
 
 function getPathname(req: RequestLike): string {
-  const direct =
-    (typeof req?.path === "string" && req.path) ||
+  const direct = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://"))
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
       return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -56,13 +56,14 @@ function getPathname(req: RequestLike): string {
 
 function getQueryParam(req: RequestLike, key: string): string {
   const fromQuery = req?.query?.[key];
-  if (typeof fromQuery === "string" && fromQuery.trim()) return fromQuery.trim();
+  if (typeof fromQuery === "string" && fromQuery.trim()) {
+    return fromQuery.trim();
+  }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url =
-      raw.startsWith("http://") || raw.startsWith("https://")
-        ? new URL(raw)
-        : new URL(raw, "http://local");
+    const url = raw.startsWith("http://") || raw.startsWith("https://")
+      ? new URL(raw)
+      : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
@@ -290,7 +291,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           });
           sendJson(res, 200, { document: doc });
         } catch (error) {
-          sendBadRequest(res, error instanceof Error ? error.message : "Update failed");
+          sendBadRequest(
+            res,
+            error instanceof Error ? error.message : "Update failed",
+          );
         }
         return;
       }

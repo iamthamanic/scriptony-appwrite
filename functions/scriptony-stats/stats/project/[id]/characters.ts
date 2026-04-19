@@ -3,19 +3,25 @@
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { getProjectStatsPayload, getShotCharacterCounts } from "../../../../../_shared/observability";
+import {
+  getProjectStatsPayload,
+  getShotCharacterCounts,
+} from "../../../../../_shared/observability";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -43,7 +49,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       total_characters: payload.characters.length,
       appearances,
       most_featured: appearances[0] || null,
-      least_featured: appearances.length ? appearances[appearances.length - 1] : null,
+      least_featured: appearances.length
+        ? appearances[appearances.length - 1]
+        : null,
     });
   } catch (error) {
     sendServerError(res, error);

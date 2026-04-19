@@ -7,16 +7,19 @@ import { requestGraphql } from "../../../../../_shared/graphql-compat";
 import { getProjectStatsPayload } from "../../../../../_shared/observability";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -49,11 +52,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { projectId }
+        { projectId },
       ),
     ]);
 
-    const images = payload.shots.filter((shot) => shot.image_url || shot.storyboard_url).length;
+    const images = payload.shots.filter(
+      (shot) => shot.image_url || shot.storyboard_url,
+    ).length;
 
     sendJson(res, 200, {
       audio_files: audioCount.shot_audio_aggregate.aggregate?.count || 0,

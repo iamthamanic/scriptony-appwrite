@@ -7,18 +7,26 @@ import { requestGraphql } from "../../../../../_shared/graphql-compat";
 import { toDurationSeconds } from "../../../../../_shared/observability";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../../_shared/http";
-import { getAllProjectNodes, getNodeById, getShotById, getShots } from "../../../../../_shared/timeline";
+import {
+  getAllProjectNodes,
+  getNodeById,
+  getShotById,
+  getShots,
+} from "../../../../../_shared/timeline";
 
-function collectDescendants(nodes: Array<Record<string, any>>, rootId: string): Array<Record<string, any>> {
+function collectDescendants(
+  nodes: Array<Record<string, any>>,
+  rootId: string,
+): Array<Record<string, any>> {
   const byParent = new Map<string | null, Array<Record<string, any>>>();
   for (const node of nodes) {
     const key = node.parent_id ?? null;
@@ -36,7 +44,10 @@ function collectDescendants(nodes: Array<Record<string, any>>, rootId: string): 
   return result;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -64,7 +75,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       }
 
       sendJson(res, 200, {
-        characters: Array.isArray(shot.shot_characters) ? shot.shot_characters.length : 0,
+        characters: Array.isArray(shot.shot_characters)
+          ? shot.shot_characters.length
+          : 0,
         duration: toDurationSeconds(shot),
         has_dialog: Boolean(shot.dialog),
         has_notes: Boolean(shot.notes),
@@ -88,14 +101,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     const allNodes = await getAllProjectNodes(node.project_id);
     const descendants = collectDescendants(allNodes, id);
-    const descendantScenes =
-      nodeType === "scene"
-        ? [node]
-        : descendants.filter((entry) => entry.level === 3);
+    const descendantScenes = nodeType === "scene"
+      ? [node]
+      : descendants.filter((entry) => entry.level === 3);
     const shots = descendantScenes.length
-      ? await Promise.all(descendantScenes.map((scene) => getShots({ sceneId: scene.id }))).then((rows) =>
-          rows.flat()
-        )
+      ? await Promise.all(
+        descendantScenes.map((scene) => getShots({ sceneId: scene.id })),
+      ).then((rows) => rows.flat())
       : [];
 
     const durations = shots.map(toDurationSeconds);
@@ -118,7 +130,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         scenes: descendants.filter((entry) => entry.level === 3).length,
         shots: shots.length,
         total_duration: totalDuration,
-        average_duration: shots.length ? Math.round(totalDuration / shots.length) : 0,
+        average_duration: shots.length
+          ? Math.round(totalDuration / shots.length)
+          : 0,
         created_at: node.created_at,
         updated_at: node.updated_at,
       });
@@ -136,14 +150,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { shotIds: shots.map((shot) => shot.id) }
+        { shotIds: shots.map((shot) => shot.id) },
       );
 
       sendJson(res, 200, {
         shots: shots.length,
         total_duration: totalDuration,
-        average_duration: shots.length ? Math.round(totalDuration / shots.length) : 0,
-        characters: new Set(characters.shot_characters.map((entry) => entry.character_id)).size,
+        average_duration: shots.length
+          ? Math.round(totalDuration / shots.length)
+          : 0,
+        characters: new Set(
+          characters.shot_characters.map((entry) => entry.character_id),
+        ).size,
         created_at: node.created_at,
         updated_at: node.updated_at,
       });

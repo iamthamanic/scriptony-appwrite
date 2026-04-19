@@ -216,6 +216,7 @@ Priorität: mittel → erledigt
 - `ui.py` — 2 Panels (Main + Freshness), keine Produkt-Entscheidungen im UI
 
 Hardening:
+
 - API-Key in AddonPreferences (PASSWORD subtype) — landet nicht in .blend-Dateien
 - Request-Timeout 10s, Exponential Backoff Retry (3x, 1s→30s)
 - Client-seitiger Forbidden-Field Guard (mirrors server-side)
