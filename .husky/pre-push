@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# shimwrappercheck pre-push hook: run checks before push.
+# If any check fails, the push is aborted.
+echo "shimwrappercheck: Running checks before push..."
+bash scripts/run-checks.sh
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+  echo "shimwrappercheck: Checks FAILED. Push aborted. Fix issues and try again."
+  exit 1
+fi
+echo "shimwrappercheck: All checks passed. Pushing..."
+exit 0
