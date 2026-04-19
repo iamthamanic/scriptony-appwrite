@@ -9,7 +9,7 @@ Status: Verbindliche Entscheidungsgrundlage fuer Ticket 03 aus [docs/INTEGRATION
 Im aktuellen Workspace wurden zwei gekoppelte Architekturthemen gleichzeitig angefasst:
 
 - der Browser ruft Functions lokal ueber `Functions.createExecution(...)` auf, siehe [src/lib/api-gateway.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/src/lib/api-gateway.ts)
-- die Functions lesen Auth nicht mehr nur aus `Authorization`, sondern ueber `requireUserBootstrap(req)`, siehe [functions/_shared/auth.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/_shared/auth.ts)
+- die Functions lesen Auth nicht mehr nur aus `Authorization`, sondern ueber `requireUserBootstrap(req)`, siehe [functions/\_shared/auth.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/_shared/auth.ts)
 
 Parallel dazu ist die bestehende Repo-Dokumentation bereits auf direkte Function-Domains und `VITE_BACKEND_FUNCTION_DOMAIN_MAP` als Browser-Pfad ausgerichtet, siehe [docs/DEPLOYMENT.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/DEPLOYMENT.md) und [functions/README.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/README.md).
 
@@ -93,7 +93,7 @@ Wichtige Regel:
 
 ### B. Functions
 
-- Handler verwenden zentral [functions/_shared/auth.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/_shared/auth.ts).
+- Handler verwenden zentral [functions/\_shared/auth.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/_shared/auth.ts).
 - Handler duplizieren keine eigene Auth-Logik.
 - `requireUserBootstrap(req)` bleibt zulaessig und sinnvoll, aber der erwartete Browser-Eingang ist `Authorization`.
 - `x-appwrite-user-jwt` ist nur ein serverseitiger Kompatibilitaetskanal.
@@ -108,12 +108,12 @@ Wichtige Regel:
 
 ## Erwartete Header- und Kontextmatrix
 
-| Aufrufer | Transport | Erwarteter Auth-Eingang im Handler | Status |
-| --- | --- | --- | --- |
-| SPA, eingeloggter User | direkte Function-Domain oder Dev-Proxy | `Authorization: Bearer <appwrite-jwt>` | primaer und verbindlich |
-| externe Integration | direkte Function-Domain | `Authorization: Bearer <integration-token>` | erlaubt fuer definierte Endpunkte |
-| Appwrite-interne Execution | `createExecution` | `x-appwrite-user-jwt` oder trusted execution headers | nur Sonderpfad |
-| Gast/Public Health | direkte Function-Domain | keine User-Auth | nur fuer oeffentliche Health-/Info-Routen |
+| Aufrufer                   | Transport                              | Erwarteter Auth-Eingang im Handler                   | Status                                    |
+| -------------------------- | -------------------------------------- | ---------------------------------------------------- | ----------------------------------------- |
+| SPA, eingeloggter User     | direkte Function-Domain oder Dev-Proxy | `Authorization: Bearer <appwrite-jwt>`               | primaer und verbindlich                   |
+| externe Integration        | direkte Function-Domain                | `Authorization: Bearer <integration-token>`          | erlaubt fuer definierte Endpunkte         |
+| Appwrite-interne Execution | `createExecution`                      | `x-appwrite-user-jwt` oder trusted execution headers | nur Sonderpfad                            |
+| Gast/Public Health         | direkte Function-Domain                | keine User-Auth                                      | nur fuer oeffentliche Health-/Info-Routen |
 
 ## Appwrite- und Hosting-Annahmen
 
@@ -121,7 +121,7 @@ Dieser Vertrag ist auf die aktuelle Repo- und Runtime-Lage bezogen:
 
 - self-hosted Appwrite `1.8.1`, dokumentiert in [DOCKER_SETUP.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/DOCKER_SETUP.md) und [infra/appwrite/docker-compose.yml](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/infra/appwrite/docker-compose.yml)
 - Browser-Routing ueber Function-Domains ist bereits Repo-Standard, siehe [docs/DEPLOYMENT.md](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/docs/DEPLOYMENT.md)
-- Functions validieren JWT serverseitig gegen die Function-Env, siehe [functions/_shared/env.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/_shared/env.ts)
+- Functions validieren JWT serverseitig gegen die Function-Env, siehe [functions/\_shared/env.ts](/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/scriptony-appwrite/functions/_shared/env.ts)
 
 Praktische Konsequenz:
 

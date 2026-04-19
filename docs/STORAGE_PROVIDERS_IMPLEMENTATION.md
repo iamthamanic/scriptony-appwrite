@@ -16,13 +16,13 @@ Option A: **Backend nutzt nur Scriptony Cloud (Appwrite).** Alle anderen Anbiete
 
 Pro **Nutzer** ein **Stammordner** (z.B. `Scriptony`), darunter pro **Projekt** ein Ordner. In jedem Projektordner:
 
-| Inhalt | Format | Beispiel |
-|--------|--------|----------|
-| **Projekt-Metadaten** | JSON | `project.json` (Titel, Typ, Logline, Erstellungsdatum, …) |
-| **Struktur (Acts/Scenes/Nodes)** | JSON | `structure.json` oder in `project.json` integriert |
-| **Beats** | JSON | `beats.json` |
-| **Bilder** | Dateien | `assets/images/<id>.<ext>` (Cover, Shot-Bilder, …) |
-| **Audio** | Dateien | `assets/audio/<id>.<ext>` |
+| Inhalt                           | Format  | Beispiel                                                  |
+| -------------------------------- | ------- | --------------------------------------------------------- |
+| **Projekt-Metadaten**            | JSON    | `project.json` (Titel, Typ, Logline, Erstellungsdatum, …) |
+| **Struktur (Acts/Scenes/Nodes)** | JSON    | `structure.json` oder in `project.json` integriert        |
+| **Beats**                        | JSON    | `beats.json`                                              |
+| **Bilder**                       | Dateien | `assets/images/<id>.<ext>` (Cover, Shot-Bilder, …)        |
+| **Audio**                        | Dateien | `assets/audio/<id>.<ext>`                                 |
 
 Optional: Welten, Characters etc. als weitere JSON-Dateien oder in einem `data/`-Unterordner.
 
@@ -139,15 +139,15 @@ Gemeinsam für alle (außer Scriptony Cloud):
 
 Wenn ein Anbieter verbunden ist, kann die App die **belegte Speichermenge** anzeigen. Dafür implementiert der Adapter optional `getStorageUsage(): Promise<StorageUsageInfo>` (Typ in `src/lib/storage-provider/types.ts`: `usedBytes`, optional `totalBytes`, `fileCount`).
 
-| Anbieter | Wie die Nutzung ermittelt wird |
-|----------|---------------------------------|
-| **Scriptony Cloud** | Bereits umgesetzt: Backend-API `/storage/usage` liefert Gesamtgröße und Dateianzahl. |
-| **Google Drive** | [About – storageQuota](https://developers.google.com/drive/api/reference/v3/about#resource-representations): `storageQuota.limit` und `storageQuota.usage` (in Bytes). Oder nur unser Scriptony-Ordner: `listFiles` rekursiv und Größen summieren. |
-| **Dropbox** | [space_usage](https://www.dropbox.com/developers/documentation/http/documentation#users-space_usage): `used` und `allocation.allocated` (in Bytes). Optional nur unser Ordner: Dateien auflisten und summieren. |
-| **OneDrive** | [Drive quota](https://learn.microsoft.com/en-us/graph/api/drive-get?view=graph-rest-1.0): `quota.used` und `quota.total`. |
-| **KDrive** | Laut KDrive-API-Doku: Quota-/Usage-Endpunkt nutzen oder eigene Dateien auflisten und Größen summieren. |
-| **Hetzner (S3)** | Kein Kontingent im klassischen Sinn. Nur **von Scriptony belegt**: Liste aller Objekte unter Prefix `Scriptony/` und Summe der `ContentLength` → „Scriptony belegt X MB“. |
-| **Lokal** | File System Access: Größe des gewählten Ordners (rekursiv summieren) oder geschätzt. IndexedDB: `navigator.storage.estimate().usage` oder Summe der gespeicherten Blob-Größen. |
+| Anbieter            | Wie die Nutzung ermittelt wird                                                                                                                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scriptony Cloud** | Bereits umgesetzt: Backend-API `/storage/usage` liefert Gesamtgröße und Dateianzahl.                                                                                                                                                               |
+| **Google Drive**    | [About – storageQuota](https://developers.google.com/drive/api/reference/v3/about#resource-representations): `storageQuota.limit` und `storageQuota.usage` (in Bytes). Oder nur unser Scriptony-Ordner: `listFiles` rekursiv und Größen summieren. |
+| **Dropbox**         | [space_usage](https://www.dropbox.com/developers/documentation/http/documentation#users-space_usage): `used` und `allocation.allocated` (in Bytes). Optional nur unser Ordner: Dateien auflisten und summieren.                                    |
+| **OneDrive**        | [Drive quota](https://learn.microsoft.com/en-us/graph/api/drive-get?view=graph-rest-1.0): `quota.used` und `quota.total`.                                                                                                                          |
+| **KDrive**          | Laut KDrive-API-Doku: Quota-/Usage-Endpunkt nutzen oder eigene Dateien auflisten und Größen summieren.                                                                                                                                             |
+| **Hetzner (S3)**    | Kein Kontingent im klassischen Sinn. Nur **von Scriptony belegt**: Liste aller Objekte unter Prefix `Scriptony/` und Summe der `ContentLength` → „Scriptony belegt X MB“.                                                                          |
+| **Lokal**           | File System Access: Größe des gewählten Ordners (rekursiv summieren) oder geschätzt. IndexedDB: `navigator.storage.estimate().usage` oder Summe der gespeicherten Blob-Größen.                                                                     |
 
 Die UI im Speicher-Tab zeigt bei Scriptony Cloud die aktuelle Nutzung; bei anderen Anbietern einen Hinweis, dass die Nutzung angezeigt wird, sobald der Anbieter verbunden ist. Sobald ein Adapter `getStorageUsage()` implementiert und der Nutzer verbunden ist, kann dieselbe Anzeige („X verwendet von Y“, Fortschrittsbalken, Dateianzahl) für diesen Anbieter genutzt werden.
 

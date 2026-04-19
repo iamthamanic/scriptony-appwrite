@@ -10,7 +10,10 @@ const MAX_REDIRECT_URI_LENGTH = 2048;
 function getAllowedOrigins(): string[] {
   const list = getOptionalEnv("scriptony_oauth_allowed_redirect_origins");
   if (list) {
-    return list.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    return list
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
   }
   const single = getOptionalEnv("VITE_APP_WEB_URL");
   if (single) {

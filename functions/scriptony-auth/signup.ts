@@ -14,22 +14,29 @@ import {
 } from "../_shared/appwrite-users";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "POST") {
     sendMethodNotAllowed(res, ["POST"]);
     return;
   }
 
   try {
-    const body = await readJsonBody<{ email?: string; password?: string; name?: string }>(req);
+    const body = await readJsonBody<{
+      email?: string;
+      password?: string;
+      name?: string;
+    }>(req);
     if (!body.email || !body.password) {
       sendBadRequest(res, "Email and password are required");
       return;

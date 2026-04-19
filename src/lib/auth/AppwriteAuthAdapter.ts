@@ -185,7 +185,7 @@ export class AppwriteAuthAdapter implements AuthClient {
   async signUp(
     email: string,
     password: string,
-    options?: Record<string, unknown>
+    options?: Record<string, unknown>,
   ): Promise<AuthSession | null> {
     const displayName =
       typeof options?.displayName === "string"
@@ -204,7 +204,7 @@ export class AppwriteAuthAdapter implements AuthClient {
     } catch (e) {
       console.warn(
         "[AppwriteAuthAdapter] signUp: session not created (verification or policy):",
-        e
+        e,
       );
       return null;
     }
@@ -215,13 +215,12 @@ export class AppwriteAuthAdapter implements AuthClient {
 
   async signInWithPassword(
     email: string,
-    password: string
+    password: string,
   ): Promise<AuthSession> {
     try {
       await this.account.createEmailPasswordSession({ email, password });
     } catch (e) {
-      const msg =
-        e instanceof AppwriteException ? e.message : String(e ?? "");
+      const msg = e instanceof AppwriteException ? e.message : String(e ?? "");
       if (
         e instanceof AppwriteException &&
         (msg.includes("session is active") ||
@@ -250,7 +249,7 @@ export class AppwriteAuthAdapter implements AuthClient {
 
   async signInWithOAuth(
     provider: string,
-    options?: Record<string, unknown>
+    options?: Record<string, unknown>,
   ): Promise<void> {
     const oauthProvider = resolveOAuthProvider(provider);
     const success =
@@ -276,7 +275,8 @@ export class AppwriteAuthAdapter implements AuthClient {
   }
 
   async updateUser(patch: Record<string, unknown>): Promise<void> {
-    const password = typeof patch?.password === "string" ? patch.password : null;
+    const password =
+      typeof patch?.password === "string" ? patch.password : null;
     const oldPassword =
       typeof patch?.oldPassword === "string" ? patch.oldPassword : undefined;
     const dataPatch =
@@ -305,7 +305,7 @@ export class AppwriteAuthAdapter implements AuthClient {
 
   async resetPasswordForEmail(
     email: string,
-    redirectTo?: string
+    redirectTo?: string,
   ): Promise<void> {
     const url = redirectTo || getPasswordResetRedirectUrl();
     await this.account.createRecovery({ email, url });

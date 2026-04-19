@@ -1,6 +1,8 @@
-import postgres from 'postgres';
+import postgres from "postgres";
 
-const connectionString = process.env.DATABASE_URL || 'postgres://scriptony:scriptony_secret@localhost:5432/scriptony';
+const connectionString =
+  process.env.DATABASE_URL ||
+  "postgres://scriptony:scriptony_secret@localhost:5432/scriptony";
 
 export interface User {
   id: string;
@@ -17,7 +19,7 @@ export class Database {
     this.sql = postgres(connectionString);
   }
 
-  async createUser(user: Omit<User, 'created_at'>): Promise<void> {
+  async createUser(user: Omit<User, "created_at">): Promise<void> {
     await this.sql`
       INSERT INTO auth_users (id, email, password, role)
       VALUES (${user.id}, ${user.email}, ${user.password}, ${user.role})

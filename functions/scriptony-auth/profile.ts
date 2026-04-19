@@ -6,16 +6,19 @@ import { requireUserBootstrap } from "../_shared/auth";
 import { requestGraphql } from "../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -52,7 +55,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { userId: bootstrap.user.id }
+        { userId: bootstrap.user.id },
       );
 
       sendJson(res, 200, {
@@ -69,7 +72,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           name: body.name,
           avatar_url: body.avatar_url ?? body.avatar,
           bio: body.bio,
-        }).filter(([_, value]) => value !== undefined)
+        }).filter(([_, value]) => value !== undefined),
       );
 
       if (!Object.keys(updatePayload).length) {
@@ -96,7 +99,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           userId: bootstrap.user.id,
           changes: updatePayload,
-        }
+        },
       );
 
       sendJson(res, 200, {

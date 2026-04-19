@@ -1,4 +1,9 @@
-import { createAppwriteHandler, getPathname, sendRouteNotFound, withParams } from "../_shared/appwrite-handler";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
 import rootHandler from "./index";
 import healthHandler from "./health";
 import signupHandler from "./signup";
@@ -43,7 +48,10 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
   }
   const organizationByIdMatch = pathname.match(/^\/organizations\/([^/]+)$/);
   if (organizationByIdMatch) {
-    await organizationByIdHandler(withParams(req, { id: organizationByIdMatch[1] }), res);
+    await organizationByIdHandler(
+      withParams(req, { id: organizationByIdMatch[1] }),
+      res,
+    );
     return;
   }
   if (pathname === "/integration-tokens") {
@@ -52,7 +60,10 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
   }
   const tokenByIdMatch = pathname.match(/^\/integration-tokens\/([^/]+)$/);
   if (tokenByIdMatch) {
-    await integrationTokenByIdHandler(withParams(req, { id: tokenByIdMatch[1] }), res);
+    await integrationTokenByIdHandler(
+      withParams(req, { id: tokenByIdMatch[1] }),
+      res,
+    );
     return;
   }
   if (pathname === "/storage/upload") {

@@ -1,6 +1,6 @@
 /**
  * Auth Client Interface
- * 
+ *
  * Provider-agnostic authentication interface.
  * Allows switching between Supabase, Auth0, Clerk, etc.
  */
@@ -30,7 +30,11 @@ export interface AuthClient {
   /**
    * Sign up with email and password
    */
-  signUp(email: string, password: string, options?: Record<string, any>): Promise<AuthSession | null>;
+  signUp(
+    email: string,
+    password: string,
+    options?: Record<string, any>,
+  ): Promise<AuthSession | null>;
 
   /**
    * Sign in with email and password
@@ -40,7 +44,10 @@ export interface AuthClient {
   /**
    * Sign in with OAuth provider (Google, GitHub, etc.)
    */
-  signInWithOAuth(provider: string, options?: Record<string, any>): Promise<void>;
+  signInWithOAuth(
+    provider: string,
+    options?: Record<string, any>,
+  ): Promise<void>;
 
   /**
    * Sign out the current user

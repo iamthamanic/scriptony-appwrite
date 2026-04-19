@@ -4,19 +4,22 @@
  */
 
 import { randomBytes } from "crypto";
-import { requireUserBootstrap, hashIntegrationToken } from "../../_shared/auth";
+import { hashIntegrationToken, requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -26,7 +29,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     if (req.method === "GET") {
       const data = await requestGraphql<{
-        user_integration_tokens: Array<{ id: string; name: string; created_at: string }>;
+        user_integration_tokens: Array<{
+          id: string;
+          name: string;
+          created_at: string;
+        }>;
       }>(
         `
           query ListIntegrationTokens($userId: uuid!) {
@@ -40,7 +47,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { userId: bootstrap.user.id }
+        { userId: bootstrap.user.id },
       );
 
       sendJson(res, 200, {
@@ -51,13 +58,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     if (req.method === "POST") {
       const body = await readJsonBody<{ name?: string }>(req);
-      const name = (body.name ?? "External Tool").trim().slice(0, 100) || "External Tool";
+      const name = (body.name ?? "External Tool").trim().slice(0, 100) ||
+        "External Tool";
 
       const plainToken = randomBytes(32).toString("hex");
       const tokenHash = hashIntegrationToken(plainToken);
 
       const inserted = await requestGraphql<{
-        insert_user_integration_tokens_one: { id: string; name: string; created_at: string } | null;
+        insert_user_integration_tokens_one: {
+          id: string;
+          name: string;
+          created_at: string;
+        } | null;
       }>(
         `
           mutation CreateIntegrationToken(
@@ -76,7 +88,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             token_hash: tokenHash,
             name,
           },
-        }
+        },
       );
 
       const row = inserted?.insert_user_integration_tokens_one;

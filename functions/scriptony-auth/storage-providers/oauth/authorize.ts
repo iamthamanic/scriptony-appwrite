@@ -9,17 +9,23 @@ import { getOptionalEnv } from "../../../_shared/env";
 import { isRedirectUriAllowed } from "../../../_shared/oauth-redirect";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendMethodNotAllowed,
   sendRedirect,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
 } from "../../../_shared/http";
+import { Buffer } from "node:buffer";
 
 const PROVIDERS: Record<
   string,
-  { authUrl: string; scope: string; clientIdEnv: string; extraParams?: Record<string, string> }
+  {
+    authUrl: string;
+    scope: string;
+    clientIdEnv: string;
+    extraParams?: Record<string, string>;
+  }
 > = {
   google_drive: {
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -46,10 +52,16 @@ const PROVIDERS: Record<
 };
 
 function buildState(redirectUri: string, provider: string): string {
-  return Buffer.from(JSON.stringify({ redirect_uri: redirectUri, provider }), "utf8").toString("base64url");
+  return Buffer.from(
+    JSON.stringify({ redirect_uri: redirectUri, provider }),
+    "utf8",
+  ).toString("base64url");
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;

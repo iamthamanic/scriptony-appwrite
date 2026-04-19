@@ -7,15 +7,15 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendForbidden,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 
 async function getMembership(orgId: string, userId: string) {
@@ -43,7 +43,7 @@ async function getMembership(orgId: string, userId: string) {
         }
       }
     `,
-    { orgId, userId }
+    { orgId, userId },
   );
 
   return {
@@ -52,7 +52,10 @@ async function getMembership(orgId: string, userId: string) {
   };
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -91,7 +94,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         Object.entries({
           name: body.name,
           slug: body.slug,
-        }).filter(([_, value]) => value !== undefined)
+        }).filter(([_, value]) => value !== undefined),
       );
 
       if (!Object.keys(changes).length) {
@@ -116,7 +119,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           orgId,
           changes,
-        }
+        },
       );
 
       sendJson(res, 200, {
@@ -139,7 +142,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { orgId }
+        { orgId },
       );
 
       sendJson(res, 200, { success: true });

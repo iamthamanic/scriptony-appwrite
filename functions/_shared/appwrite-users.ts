@@ -1,6 +1,10 @@
 import { AppwriteException, Client, ID, Models, Users } from "node-appwrite";
 import type { AuthUser } from "./auth";
-import { getAppwriteApiKey, getAppwriteEndpoint, getAppwriteProjectId } from "./env";
+import {
+  getAppwriteApiKey,
+  getAppwriteEndpoint,
+  getAppwriteProjectId,
+} from "./env";
 
 type AppwriteUser = Models.User<Models.DefaultPreferences>;
 
@@ -13,7 +17,7 @@ function getUsersService(): Users {
     new Client()
       .setEndpoint(getAppwriteEndpoint())
       .setProject(getAppwriteProjectId())
-      .setKey(getAppwriteApiKey())
+      .setKey(getAppwriteApiKey()),
   );
 }
 
@@ -26,7 +30,9 @@ export function isAppwriteConflictError(error: unknown): boolean {
   return code === 409;
 }
 
-export async function findUserByEmail(email: string): Promise<AppwriteUser | null> {
+export async function findUserByEmail(
+  email: string,
+): Promise<AppwriteUser | null> {
   const normalizedEmail = email.trim().toLowerCase();
   const result = await getUsersService().list({
     search: normalizedEmail,
@@ -34,7 +40,9 @@ export async function findUserByEmail(email: string): Promise<AppwriteUser | nul
   });
 
   return (
-    result.users.find((user) => (user.email || "").trim().toLowerCase() === normalizedEmail) || null
+    result.users.find(
+      (user) => (user.email || "").trim().toLowerCase() === normalizedEmail,
+    ) || null
   );
 }
 
@@ -52,7 +60,7 @@ export async function createEmailPasswordUser(options: {
 }
 
 export async function createJwtSessionForUser(
-  userId: string
+  userId: string,
 ): Promise<AppwriteSessionWithAccessToken> {
   const users = getUsersService();
   const session = await users.createSession({ userId });
@@ -74,8 +82,8 @@ export function toAuthUser(user: AppwriteUser): AuthUser {
     defaultRole: user.labels?.includes("superadmin")
       ? "superadmin"
       : user.labels?.includes("admin")
-        ? "admin"
-        : "user",
+      ? "admin"
+      : "user",
     metadata: { ...prefs, labels: user.labels },
   };
 }

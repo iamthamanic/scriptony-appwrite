@@ -10,19 +10,32 @@ import organizationsHandler from "./organizations/index";
 import organizationByIdHandler from "./organizations/[id]";
 import integrationTokensHandler from "./integration-tokens/index";
 import integrationTokenByIdHandler from "./integration-tokens/[id]";
-import { sendNotFound, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendNotFound,
+} from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
-  } catch { /* fallback */ }
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
+  } catch {
+    /* fallback */
+  }
   const q = direct.indexOf("?");
   return q >= 0 ? direct.slice(0, q) : direct;
 }
 
-function withParams(req: RequestLike, params: Record<string, string>): RequestLike {
+function withParams(
+  req: RequestLike,
+  params: Record<string, string>,
+): RequestLike {
   req.params = { ...(req.params || {}), ...params };
   return req;
 }
@@ -57,7 +70,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
   const orgByIdMatch = pathname.match(/^\/organizations\/([^/]+)$/);
   if (orgByIdMatch) {
-    await organizationByIdHandler(withParams(req, { id: orgByIdMatch[1] }), res);
+    await organizationByIdHandler(
+      withParams(req, { id: orgByIdMatch[1] }),
+      res,
+    );
     return;
   }
 
@@ -68,7 +84,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
   const tokenByIdMatch = pathname.match(/^\/integration-tokens\/([^/]+)$/);
   if (tokenByIdMatch) {
-    await integrationTokenByIdHandler(withParams(req, { id: tokenByIdMatch[1] }), res);
+    await integrationTokenByIdHandler(
+      withParams(req, { id: tokenByIdMatch[1] }),
+      res,
+    );
     return;
   }
 

@@ -10,7 +10,8 @@ import {
   getAppwriteProjectId,
   getPublicAppwriteEndpoint,
 } from "./env";
-import { sendBadRequest, type RequestLike, type ResponseLike } from "./http";
+import { type RequestLike, type ResponseLike, sendBadRequest } from "./http";
+import { Buffer } from "node:buffer";
 
 type JsonRecord = Record<string, any>;
 
@@ -19,7 +20,7 @@ function getStorageService(): Storage {
     new Client()
       .setEndpoint(getAppwriteEndpoint())
       .setProject(getAppwriteProjectId())
-      .setKey(getAppwriteApiKey())
+      .setKey(getAppwriteApiKey()),
   );
 }
 
@@ -38,7 +39,9 @@ function asArray<T>(value: T | T[] | undefined | null): T[] {
   return value ? [value] : [];
 }
 
-function bufferToUint8Array(value: Buffer | Uint8Array | ArrayBuffer): Uint8Array {
+function bufferToUint8Array(
+  value: Buffer | Uint8Array | ArrayBuffer,
+): Uint8Array {
   if (typeof Buffer !== "undefined" && Buffer.isBuffer(value)) {
     return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
   }
@@ -52,17 +55,27 @@ function bufferToUint8Array(value: Buffer | Uint8Array | ArrayBuffer): Uint8Arra
 }
 
 /** Create a File-like duck-typed object that works in Node 16+ (no global File). */
-function makeFileLike(data: Uint8Array | ArrayBuffer, name: string, type: string): File {
+function makeFileLike(
+  data: Uint8Array | ArrayBuffer,
+  name: string,
+  type: string,
+): File {
   const buf = data instanceof Uint8Array ? data : new Uint8Array(data);
   return {
     name,
     type,
     size: buf.byteLength,
-    arrayBuffer: () => Promise.resolve(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)),
+    arrayBuffer: () =>
+      Promise.resolve(
+        buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+      ),
   } as unknown as File;
 }
 
-function normalizeIncomingFile(candidate: any, fallbackName = "upload.bin"): File | null {
+function normalizeIncomingFile(
+  candidate: any,
+  fallbackName = "upload.bin",
+): File | null {
   if (!candidate) {
     return null;
   }
@@ -72,16 +85,18 @@ function normalizeIncomingFile(candidate: any, fallbackName = "upload.bin"): Fil
   }
 
   if (typeof Blob !== "undefined" && candidate instanceof Blob) {
-    return makeFileLike(new Uint8Array(0), fallbackName, candidate.type || "application/octet-stream");
+    return makeFileLike(
+      new Uint8Array(0),
+      fallbackName,
+      candidate.type || "application/octet-stream",
+    );
   }
 
-  const name =
-    candidate.originalname ||
+  const name = candidate.originalname ||
     candidate.filename ||
     candidate.name ||
     fallbackName;
-  const type =
-    candidate.mimetype ||
+  const type = candidate.mimetype ||
     candidate.mimeType ||
     candidate.type ||
     "application/octet-stream";
@@ -101,7 +116,10 @@ function normalizeIncomingFile(candidate: any, fallbackName = "upload.bin"): Fil
   return null;
 }
 
-export function getMultipartField(req: RequestLike, field: string): string | null {
+export function getMultipartField(
+  req: RequestLike,
+  field: string,
+): string | null {
   const source = req.body || {};
   const value = source[field];
   if (typeof value === "string" && value.trim()) {
@@ -113,7 +131,10 @@ export function getMultipartField(req: RequestLike, field: string): string | nul
   return null;
 }
 
-export function extractUploadedFile(req: RequestLike, field = "file"): File | null {
+export function extractUploadedFile(
+  req: RequestLike,
+  field = "file",
+): File | null {
   // Base64 JSON upload: { fileBase64, fileName, mimeType }
   // Note: Node 16 has no global File — use a duck-typed object instead.
   const b64 = req.body?.fileBase64;
@@ -125,7 +146,10 @@ export function extractUploadedFile(req: RequestLike, field = "file"): File | nu
       name,
       type,
       size: buf.byteLength,
-      arrayBuffer: () => Promise.resolve(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)),
+      arrayBuffer: () =>
+        Promise.resolve(
+          buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+        ),
     } as unknown as File;
   }
 
@@ -165,7 +189,7 @@ export function ensureFile(
     maxSizeBytes?: number;
     accept?: string[];
     message?: string;
-  }
+  },
 ): File | null {
   const field = options?.field || "file";
   const file = extractUploadedFile(req, field);
@@ -177,13 +201,21 @@ export function ensureFile(
   if (options?.maxSizeBytes && file.size > options?.maxSizeBytes) {
     sendBadRequest(
       res,
-      `File too large: ${(file.size / 1024 / 1024).toFixed(2)} MB (max ${(options.maxSizeBytes / 1024 / 1024).toFixed(0)} MB)`
+      `File too large: ${(file.size / 1024 / 1024).toFixed(2)} MB (max ${
+        (
+          options.maxSizeBytes /
+          1024 /
+          1024
+        ).toFixed(0)
+      } MB)`,
     );
     return null;
   }
 
   if (options?.accept?.length) {
-    const isAccepted = options.accept.some((prefix) => file.type.startsWith(prefix));
+    const isAccepted = options.accept.some((prefix) =>
+      file.type.startsWith(prefix)
+    );
     if (!isAccepted) {
       sendBadRequest(res, `Unsupported file type: ${file.type || "unknown"}`);
       return null;
@@ -207,10 +239,11 @@ export async function uploadFileToStorage(options: {
     options.bucketId,
     ID.unique(),
     input,
-    [Permission.read(Role.any())]
+    [Permission.read(Role.any())],
   );
   const project = getAppwriteProjectId();
-  const url = `${getPublicAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
+  const url =
+    `${getPublicAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
 
   return {
     id: created.$id,
@@ -229,7 +262,9 @@ export function extractStorageFileId(fileUrl?: string | null): string | null {
   return m?.[1] || null;
 }
 
-export async function deleteStorageFileByUrl(fileUrl?: string | null): Promise<void> {
+export async function deleteStorageFileByUrl(
+  fileUrl?: string | null,
+): Promise<void> {
   const fileId = extractStorageFileId(fileUrl);
   if (!fileId) {
     return;

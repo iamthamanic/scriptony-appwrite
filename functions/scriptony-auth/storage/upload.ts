@@ -5,16 +5,23 @@
 import { requireUserBootstrap } from "../../_shared/auth";
 import { getStorageBucketId } from "../../_shared/env";
 import {
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { ensureFile, getMultipartField, uploadFileToStorage } from "../../_shared/storage";
+import {
+  ensureFile,
+  getMultipartField,
+  uploadFileToStorage,
+} from "../../_shared/storage";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {

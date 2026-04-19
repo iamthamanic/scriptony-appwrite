@@ -2,15 +2,27 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Separator } from "../ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Alert, AlertDescription } from "../ui/alert";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { toast } from "sonner@2.0.3";
 import { Loader2, Mail, AlertCircle, Eye, EyeOff } from "lucide-react";
-import scriptonyLogo from '../../assets/scriptony-logo.png';
+import scriptonyLogo from "../../assets/scriptony-logo.png";
 
 export function AuthPage() {
   const [email, setEmail] = useState("");
@@ -26,7 +38,7 @@ export function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error(t("common.error"), {
         description: "Email und Passwort sind erforderlich",
@@ -49,11 +61,9 @@ export function AuthPage() {
     }
   };
 
-
-
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!resetEmail) {
       toast.error("Fehler", {
         description: "Bitte E-Mail-Adresse eingeben",
@@ -72,7 +82,8 @@ export function AuthPage() {
     } catch (error: any) {
       console.error("Password reset error:", error);
       toast.error("Fehler", {
-        description: error.message || "Reset-E-Mail konnte nicht gesendet werden",
+        description:
+          error.message || "Reset-E-Mail konnte nicht gesendet werden",
       });
     } finally {
       setResetLoading(false);
@@ -84,18 +95,14 @@ export function AuthPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center">
-            <img 
+            <img
               src={scriptonyLogo}
               alt="Scriptony Logo"
               className="w-full h-full object-contain"
             />
           </div>
-          <CardTitle className="text-2xl">
-            {t("auth.welcome")}
-          </CardTitle>
-          <CardDescription>
-            {t("auth.loginSubtitle")}
-          </CardDescription>
+          <CardTitle className="text-2xl">{t("auth.welcome")}</CardTitle>
+          <CardDescription>{t("auth.loginSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Email/Password Form */}
@@ -142,7 +149,9 @@ export function AuthPage() {
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded"
                   tabIndex={-1}
-                  aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                  aria-label={
+                    showPassword ? "Passwort verbergen" : "Passwort anzeigen"
+                  }
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -153,11 +162,7 @@ export function AuthPage() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-11"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full h-11" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -177,7 +182,8 @@ export function AuthPage() {
           <DialogHeader>
             <DialogTitle>Passwort zurücksetzen</DialogTitle>
             <DialogDescription>
-              Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Zurücksetzen deines Passworts.
+              Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum
+              Zurücksetzen deines Passworts.
             </DialogDescription>
           </DialogHeader>
 
@@ -186,10 +192,13 @@ export function AuthPage() {
               <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
-                  ⚠️ <strong>Wichtig:</strong> Ein E-Mail-Server muss in Supabase konfiguriert sein, 
-                  damit die Reset-E-Mail verschickt wird. Ohne Konfiguration funktioniert dieser Flow nicht.
-                  <br /><br />
-                  <strong>Alternative:</strong> Admins können Passwörter im Superadmin-Panel zurücksetzen.
+                  ⚠️ <strong>Wichtig:</strong> Ein E-Mail-Server muss in
+                  Supabase konfiguriert sein, damit die Reset-E-Mail verschickt
+                  wird. Ohne Konfiguration funktioniert dieser Flow nicht.
+                  <br />
+                  <br />
+                  <strong>Alternative:</strong> Admins können Passwörter im
+                  Superadmin-Panel zurücksetzen.
                 </AlertDescription>
               </Alert>
 
@@ -244,11 +253,13 @@ export function AuthPage() {
                 <AlertDescription className="text-green-800 dark:text-green-200">
                   <strong>E-Mail versendet!</strong>
                   <br />
-                  Prüfe deinen Posteingang und klicke auf den Link zum Zurücksetzen deines Passworts.
-                  <br /><br />
+                  Prüfe deinen Posteingang und klicke auf den Link zum
+                  Zurücksetzen deines Passworts.
+                  <br />
+                  <br />
                   <small className="text-xs">
-                    Keine E-Mail erhalten? Prüfe deinen Spam-Ordner oder stelle sicher, 
-                    dass der E-Mail-Server in Supabase konfiguriert ist.
+                    Keine E-Mail erhalten? Prüfe deinen Spam-Ordner oder stelle
+                    sicher, dass der E-Mail-Server in Supabase konfiguriert ist.
                   </small>
                 </AlertDescription>
               </Alert>

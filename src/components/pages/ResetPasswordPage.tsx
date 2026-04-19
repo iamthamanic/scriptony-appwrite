@@ -2,12 +2,18 @@ import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner@2.0.3";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import scriptonyLogo from '../../assets/scriptony-logo.png';
+import scriptonyLogo from "../../assets/scriptony-logo.png";
 
 interface ResetPasswordPageProps {
   onNavigate: (page: string) => void;
@@ -26,7 +32,7 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
   useEffect(() => {
     // Check URL hash for access token (Supabase redirect)
     const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
+    if (hash && hash.includes("access_token")) {
       setHasToken(true);
     } else {
       setHasToken(false);
@@ -35,7 +41,7 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newPassword || !confirmPassword) {
       toast.error("Fehler", {
         description: "Bitte beide Passwort-Felder ausfüllen",
@@ -63,7 +69,7 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
       await updatePassword(newPassword);
       setSuccess(true);
       toast.success("Passwort erfolgreich geändert!");
-      
+
       // Redirect to home after 2 seconds
       setTimeout(() => {
         onNavigate("home");
@@ -84,15 +90,13 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-2 text-center">
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center">
-              <img 
+              <img
                 src={scriptonyLogo}
                 alt="Scriptony Logo"
                 className="w-full h-full object-contain"
               />
             </div>
-            <CardTitle className="text-2xl">
-              Ungültiger Link
-            </CardTitle>
+            <CardTitle className="text-2xl">Ungültiger Link</CardTitle>
             <CardDescription>
               Dieser Link ist ungültig oder abgelaufen
             </CardDescription>
@@ -104,11 +108,8 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
                 Bitte fordere einen neuen Passwort-Reset Link an.
               </AlertDescription>
             </Alert>
-            
-            <Button
-              className="w-full mt-4"
-              onClick={() => onNavigate("auth")}
-            >
+
+            <Button className="w-full mt-4" onClick={() => onNavigate("auth")}>
               Zurück zum Login
             </Button>
           </CardContent>
@@ -125,9 +126,7 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center">
               <CheckCircle2 className="w-full h-full text-green-500" />
             </div>
-            <CardTitle className="text-2xl">
-              Passwort geändert!
-            </CardTitle>
+            <CardTitle className="text-2xl">Passwort geändert!</CardTitle>
             <CardDescription>
               Dein Passwort wurde erfolgreich aktualisiert
             </CardDescription>
@@ -150,15 +149,13 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center">
-            <img 
+            <img
               src={scriptonyLogo}
               alt="Scriptony Logo"
               className="w-full h-full object-contain"
             />
           </div>
-          <CardTitle className="text-2xl">
-            Neues Passwort setzen
-          </CardTitle>
+          <CardTitle className="text-2xl">Neues Passwort setzen</CardTitle>
           <CardDescription>
             Wähle ein sicheres neues Passwort für deinen Account
           </CardDescription>
@@ -193,11 +190,7 @@ export function ResetPasswordPage({ onNavigate }: ResetPasswordPageProps) {
               />
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-11"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full h-11" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

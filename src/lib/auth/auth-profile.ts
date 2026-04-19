@@ -15,7 +15,7 @@ function coerceRole(value: unknown): AuthUserProfile["role"] {
 }
 
 export function buildAuthProfileFromSession(
-  session: AuthSession | null
+  session: AuthSession | null,
 ): AuthUserProfile | null {
   if (!session?.profile) {
     return null;

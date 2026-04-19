@@ -13,6 +13,7 @@ import {
 } from "./env";
 import { requestGraphql } from "./graphql-compat";
 import type { RequestLike } from "./http";
+import { Buffer } from "node:buffer";
 
 export interface AuthUser {
   id: string;
@@ -74,9 +75,15 @@ function decodeJwtSessionClaims(token: string): JwtSessionClaims | null {
     if (parts.length < 2) {
       return null;
     }
-    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as Record<string, unknown>;
-    const userId = typeof payload.userId === "string" ? payload.userId.trim() : "";
-    const sessionId = typeof payload.sessionId === "string" ? payload.sessionId.trim() : "";
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf8"),
+    ) as Record<string, unknown>;
+    const userId = typeof payload.userId === "string"
+      ? payload.userId.trim()
+      : "";
+    const sessionId = typeof payload.sessionId === "string"
+      ? payload.sessionId.trim()
+      : "";
     const exp = typeof payload.exp === "number" ? payload.exp : undefined;
     if (!userId || !sessionId) {
       return null;
@@ -87,7 +94,9 @@ function decodeJwtSessionClaims(token: string): JwtSessionClaims | null {
   }
 }
 
-async function getUserFromSessionFallback(token: string): Promise<AuthUser | null> {
+async function getUserFromSessionFallback(
+  token: string,
+): Promise<AuthUser | null> {
   const claims = decodeJwtSessionClaims(token);
   if (!claims) {
     return null;
@@ -104,8 +113,13 @@ async function getUserFromSessionFallback(token: string): Promise<AuthUser | nul
 
   try {
     const users = new Users(client);
-    const sessions = await users.listSessions({ userId: claims.userId, total: false });
-    const activeSession = sessions.sessions.find((session) => session.$id === claims.sessionId);
+    const sessions = await users.listSessions({
+      userId: claims.userId,
+      total: false,
+    });
+    const activeSession = sessions.sessions.find(
+      (session) => session.$id === claims.sessionId,
+    );
     if (!activeSession) {
       return null;
     }
@@ -149,7 +163,9 @@ function getAuthCandidateEndpoints(): string[] {
   return endpoints;
 }
 
-export async function getUserFromToken(token: string): Promise<AuthUser | null> {
+export async function getUserFromToken(
+  token: string,
+): Promise<AuthUser | null> {
   /**
    * Validate JWT via the Appwrite account API.
    * Try runtime-injected internal endpoints first; fall back to the public URL only when needed.
@@ -172,8 +188,8 @@ export async function getUserFromToken(token: string): Promise<AuthUser | null> 
         defaultRole: u.labels?.includes("superadmin")
           ? "superadmin"
           : u.labels?.includes("admin")
-            ? "admin"
-            : "user",
+          ? "admin"
+          : "user",
         metadata: { ...prefs, labels: u.labels },
       };
     } catch (error: unknown) {
@@ -208,7 +224,9 @@ export async function getUserFromToken(token: string): Promise<AuthUser | null> 
   return null;
 }
 
-export async function getUserFromAuthHeader(authHeader?: string): Promise<AuthUser | null> {
+export async function getUserFromAuthHeader(
+  authHeader?: string,
+): Promise<AuthUser | null> {
   const token = getBearerToken(authHeader);
   if (!token) {
     return null;
@@ -236,7 +254,10 @@ function getRequestHeaderValue(value: unknown): string | undefined {
   return undefined;
 }
 
-function getRequestHeader(req: RequestLike | undefined, name: string): string | undefined {
+function getRequestHeader(
+  req: RequestLike | undefined,
+  name: string,
+): string | undefined {
   if (!req || typeof req !== "object") {
     return undefined;
   }
@@ -285,7 +306,10 @@ function getRequestHeader(req: RequestLike | undefined, name: string): string | 
           continue;
         }
         const [headerName, headerValue] = entry;
-        if (typeof headerName === "string" && headerName.toLowerCase() === normalizedName) {
+        if (
+          typeof headerName === "string" &&
+          headerName.toLowerCase() === normalizedName
+        ) {
           return getRequestHeaderValue(headerValue);
         }
       }
@@ -303,7 +327,9 @@ function getRequestHeader(req: RequestLike | undefined, name: string): string | 
   return undefined;
 }
 
-export function getAuthorizationFromRequest(authSource: AuthSource): string | undefined {
+export function getAuthorizationFromRequest(
+  authSource: AuthSource,
+): string | undefined {
   if (typeof authSource === "string") {
     const trimmed = authSource.trim();
     return trimmed || undefined;
@@ -322,7 +348,9 @@ export function getAuthorizationFromRequest(authSource: AuthSource): string | un
   return undefined;
 }
 
-export function getTrustedExecutionUserId(authSource: AuthSource): string | null {
+export function getTrustedExecutionUserId(
+  authSource: AuthSource,
+): string | null {
   if (!authSource || typeof authSource === "string") {
     return null;
   }
@@ -336,7 +364,9 @@ export function getTrustedExecutionUserId(authSource: AuthSource): string | null
   return userId;
 }
 
-export async function resolveAuthenticatedUser(authSource: AuthSource): Promise<AuthUser | null> {
+export async function resolveAuthenticatedUser(
+  authSource: AuthSource,
+): Promise<AuthUser | null> {
   const authHeader = getAuthorizationFromRequest(authSource);
 
   let user = await getUserFromAuthHeader(authHeader);
@@ -358,18 +388,34 @@ export async function resolveAuthenticatedUser(authSource: AuthSource): Promise<
   return null;
 }
 
-function authDiagnostics(authSource: AuthSource): Record<string, boolean | string | null> {
-  const authorization =
-    typeof authSource === "string"
-      ? authSource.trim() || undefined
-      : getRequestHeader(authSource, "authorization");
+function authDiagnostics(
+  authSource: AuthSource,
+): Record<string, boolean | string | null> {
+  const authorization = typeof authSource === "string"
+    ? authSource.trim() || undefined
+    : getRequestHeader(authSource, "authorization");
 
   return {
     hasAuthorization: Boolean(authorization),
     authorizationScheme: authorization?.split(/\s+/, 1)[0] || null,
-    hasAppwriteUserJwt: Boolean(getRequestHeader(authSource as RequestLike | undefined, "x-appwrite-user-jwt")),
-    hasTrustedExecutionId: Boolean(getRequestHeader(authSource as RequestLike | undefined, "x-appwrite-execution-id")),
-    hasTrustedUserId: Boolean(getRequestHeader(authSource as RequestLike | undefined, "x-appwrite-user-id")),
+    hasAppwriteUserJwt: Boolean(
+      getRequestHeader(
+        authSource as RequestLike | undefined,
+        "x-appwrite-user-jwt",
+      ),
+    ),
+    hasTrustedExecutionId: Boolean(
+      getRequestHeader(
+        authSource as RequestLike | undefined,
+        "x-appwrite-execution-id",
+      ),
+    ),
+    hasTrustedUserId: Boolean(
+      getRequestHeader(
+        authSource as RequestLike | undefined,
+        "x-appwrite-user-id",
+      ),
+    ),
   };
 }
 
@@ -384,14 +430,21 @@ function logAuthResolutionFailure(authSource: AuthSource, scope: string): void {
     return;
   }
 
-  console.warn(`[${scope}] Unable to resolve user from auth source`, diagnostics);
+  console.warn(
+    `[${scope}] Unable to resolve user from auth source`,
+    diagnostics,
+  );
 }
 
-export async function getUserFromRequest(authSource: AuthSource): Promise<AuthUser | null> {
+export async function getUserFromRequest(
+  authSource: AuthSource,
+): Promise<AuthUser | null> {
   return resolveAuthenticatedUser(authSource);
 }
 
-export async function requireAuthenticatedUser(authSource?: AuthSource): Promise<AuthUser | null> {
+export async function requireAuthenticatedUser(
+  authSource?: AuthSource,
+): Promise<AuthUser | null> {
   const user = await resolveAuthenticatedUser(authSource);
   if (!user) {
     logAuthResolutionFailure(authSource, "requireAuthenticatedUser");
@@ -404,7 +457,9 @@ export function hashIntegrationToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
-export async function resolveIntegrationToken(token: string): Promise<AuthUser | null> {
+export async function resolveIntegrationToken(
+  token: string,
+): Promise<AuthUser | null> {
   if (!token || token.length < 16) {
     return null;
   }
@@ -423,7 +478,7 @@ export async function resolveIntegrationToken(token: string): Promise<AuthUser |
           }
         }
       `,
-      { tokenHash }
+      { tokenHash },
     );
     const row = data?.user_integration_tokens?.[0];
     if (!row?.user_id) {
@@ -447,7 +502,7 @@ export async function resolveIntegrationToken(token: string): Promise<AuthUser |
           }
         }
       `,
-      { userId: row.user_id }
+      { userId: row.user_id },
     );
     const u = profile?.users_by_pk;
     if (!u) {
@@ -464,7 +519,9 @@ export async function resolveIntegrationToken(token: string): Promise<AuthUser |
   }
 }
 
-export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResult> {
+export async function ensureUserBootstrap(
+  user: AuthUser,
+): Promise<BootstrapResult> {
   const data = await requestGraphql<{
     users_by_pk: { id: string } | null;
     organization_members: Array<{ organization_id: string }>;
@@ -482,15 +539,13 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
         }
       }
     `,
-    { userId: user.id }
+    { userId: user.id },
   );
 
-  let organizationId =
-    data.organization_members[0]?.organization_id || null;
+  let organizationId = data.organization_members[0]?.organization_id || null;
 
   if (!organizationId) {
-    const displayName =
-      user.displayName ||
+    const displayName = user.displayName ||
       (typeof user.metadata?.name === "string" ? user.metadata.name : "") ||
       user.email?.split("@")[0] ||
       "Scriptony User";
@@ -511,7 +566,7 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
           slug: `${slugify(displayName)}-${user.id.slice(0, 8)}`,
           owner_user_id: user.id,
         },
-      }
+      },
     );
 
     organizationId = createdOrg.insert_organizations_one.id;
@@ -530,12 +585,11 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
           user_id: user.id,
           role: "owner",
         },
-      }
+      },
     );
   }
 
-  const profileName =
-    user.displayName ||
+  const profileName = user.displayName ||
     (typeof user.metadata?.name === "string" ? user.metadata.name : "") ||
     user.email?.split("@")[0] ||
     "User";
@@ -561,13 +615,15 @@ export async function ensureUserBootstrap(user: AuthUser): Promise<BootstrapResu
         email: user.email || null,
         avatar_url: user.avatarUrl || null,
       },
-    }
+    },
   );
 
   return { user, organizationId };
 }
 
-export async function requireUserBootstrap(authSource?: AuthSource): Promise<BootstrapResult | null> {
+export async function requireUserBootstrap(
+  authSource?: AuthSource,
+): Promise<BootstrapResult | null> {
   const user = await requireAuthenticatedUser(authSource);
   if (!user) {
     return null;

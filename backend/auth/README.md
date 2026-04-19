@@ -13,13 +13,13 @@ Lucia Auth Service für das Scriptony-Repo (scriptony-appwrite).
 
 ## API Endpunkte
 
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| POST | `/auth/register` | Benutzer registrieren |
-| POST | `/auth/login` | Benutzer einloggen |
-| POST | `/auth/logout` | Benutzer ausloggen |
-| GET | `/auth/me` | Aktuellen Benutzer abrufen |
-| GET | `/health` | Health Check |
+| Methode | Endpoint         | Beschreibung               |
+| ------- | ---------------- | -------------------------- |
+| POST    | `/auth/register` | Benutzer registrieren      |
+| POST    | `/auth/login`    | Benutzer einloggen         |
+| POST    | `/auth/logout`   | Benutzer ausloggen         |
+| GET     | `/auth/me`       | Aktuellen Benutzer abrufen |
+| GET     | `/health`        | Health Check               |
 
 ## Entwicklung
 
@@ -43,8 +43,8 @@ docker run -p 3001:3001 -e DATABASE_URL=postgres://... scriptony-auth
 
 ## Umgebungsvariablen
 
-| Variable | Beschreibung | Default |
-|----------|--------------|---------|
-| DATABASE_URL | PostgreSQL Connection String | - |
-| PORT | Server Port | 3001 |
-| NODE_ENV | Environment | development |
+| Variable     | Beschreibung                 | Default     |
+| ------------ | ---------------------------- | ----------- |
+| DATABASE_URL | PostgreSQL Connection String | -           |
+| PORT         | Server Port                  | 3001        |
+| NODE_ENV     | Environment                  | development |
