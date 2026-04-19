@@ -23,6 +23,8 @@ include:
 
 services:
   # ── Scriptony Local Bridge ──────────────────────────────────────────────
+  # Connects Appwrite Realtime → ComfyUI + Blender (both on host).
+  # Internal Docker network for Appwrite; host.docker.internal for host services.
   bridge:
     build:
       context: ./local-bridge
@@ -34,7 +36,7 @@ services:
     environment:
       BRIDGE_APPWRITE_ENDPOINT: "http://appwrite:80/v1"
       BRIDGE_APPWRITE_PROJECT_ID: ${BRIDGE_APPWRITE_PROJECT_ID:-scriptony}
-      BRIDGE_APPWRITE_API_KEY: ${BRIDGE_APPWRITE_API_KEY:?Set BRIDGE_APPWRITE_API_KEY in .env}
+      BRIDGE_APPWRITE_API_KEY: ${BRIDGE_APPWRITE_API_KEY:-}
       BRIDGE_APPWRITE_DATABASE_ID: ${BRIDGE_APPWRITE_DATABASE_ID:-scriptony}
       BRIDGE_COMFYUI_URL: "http://host.docker.internal:8188"
       BRIDGE_BLENDER_URL: "http://host.docker.internal:9876"
@@ -60,7 +62,3 @@ services:
       - appwrite
     depends_on:
       - bridge
-
-networks:
-  appwrite:
-    external: true

@@ -8,6 +8,8 @@ import {
   Server,
   Cpu,
   Monitor,
+  Download,
+  Info,
 } from "lucide-react";
 import {
   Card,
@@ -18,25 +20,89 @@ import {
 } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { backendConfig } from "../lib/env";
+import { fetchBridgeHealth, type BridgeHealth } from "../lib/bridge-health";
 
-interface BridgeHealth {
-  status: string;
-  service: string;
-  connections: {
-    appwriteRealtime: boolean;
-    comfyUI: boolean;
-    blender: boolean;
+const HOST_PORT_DEFAULTS = {
+  comfyui: 8188,
+  blender: 9876,
+  bridge: 9877,
+} as const;
+
+type HostPortKeys = keyof typeof HOST_PORT_DEFAULTS;
+type HostPorts = Record<HostPortKeys, number>;
+
+function isValidPort(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v > 0 && v < 65536;
+}
+
+function parseStoredPorts(raw: string | null): Partial<HostPorts> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const result: Partial<HostPorts> = {};
+    for (const key of Object.keys(HOST_PORT_DEFAULTS)) {
+      if (isValidPort(parsed[key])) {
+        result[key as HostPortKeys] = parsed[key] as number;
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function useHostPorts() {
+  const [ports, setPorts] = useState<HostPorts>(() => {
+    const stored = localStorage.getItem("scriptony-host-ports");
+    return { ...HOST_PORT_DEFAULTS, ...parseStoredPorts(stored) };
+  });
+
+  const updatePort = (key: HostPortKeys, value: number) => {
+    setPorts((prev) => {
+      const next = { ...prev, [key]: value };
+      try {
+        localStorage.setItem("scriptony-host-ports", JSON.stringify(next));
+      } catch {
+        /* localStorage unavailable — ignore */
+      }
+      return next;
+    });
   };
-  concurrency: {
-    running: number;
-    queued: number;
-    activeJobs: number;
-  };
+
+  return { ports, updatePort };
+}
+
+interface ConnectionStatus {
+  label: string;
+  ok: boolean | null;
+}
+
+function PortInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <Input
+      type="number"
+      value={value}
+      onChange={(e) => {
+        const v = parseInt(e.target.value, 10);
+        if (!isNaN(v) && v > 0 && v < 65536) onChange(v);
+      }}
+      className="w-[4.5rem] h-7 text-xs px-2 py-0"
+    />
+  );
 }
 
 function StatusIcon({ ok }: { ok: boolean | null }) {
-  if (ok === null) return <HelpCircle className="size-4 text-muted-foreground" />;
+  if (ok === null)
+    return <HelpCircle className="size-4 text-muted-foreground" />;
   if (ok) return <CheckCircle2 className="size-4 text-green-500" />;
   return <XCircle className="size-4 text-red-500" />;
 }
@@ -64,21 +130,10 @@ function StatusBadge({ ok, label }: { ok: boolean | null; label: string }) {
   );
 }
 
-async function fetchBridgeHealth(): Promise<BridgeHealth | null> {
-  try {
-    const res = await fetch("/bridge/health", {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as BridgeHealth;
-  } catch {
-    return null;
-  }
-}
-
 export function SystemStatusSection() {
   const [bridgeHealth, setBridgeHealth] = useState<BridgeHealth | null>(null);
   const [loading, setLoading] = useState(false);
+  const { ports, updatePort } = useHostPorts();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -91,9 +146,12 @@ export function SystemStatusSection() {
     refresh();
   }, [refresh]);
 
-  const connections = bridgeHealth
+  const connections: ConnectionStatus[] = bridgeHealth
     ? [
-        { label: "Appwrite Realtime", ok: bridgeHealth.connections.appwriteRealtime },
+        {
+          label: "Appwrite Realtime",
+          ok: bridgeHealth.connections.appwriteRealtime,
+        },
         { label: "ComfyUI", ok: bridgeHealth.connections.comfyUI },
         { label: "Blender Addon", ok: bridgeHealth.connections.blender },
       ]
@@ -134,7 +192,7 @@ export function SystemStatusSection() {
                 <StatusIcon ok={true} />
                 <span className="text-sm font-medium">Bridge erreichbar</span>
                 <span className="text-xs text-muted-foreground ml-auto">
-                  Port 9877
+                  Port {ports.bridge}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -243,37 +301,167 @@ export function SystemStatusSection() {
       </Card>
 
       {/* Host Services */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Monitor className="size-4" />
-            Host-Services
-          </CardTitle>
-          <CardDescription>
-            ComfyUI und Blender laufen auf dem Host (GPU / Desktop)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">ComfyUI</span>
-            <code className="text-xs bg-muted px-2 py-0.5 rounded">
-              http://localhost:8188
-            </code>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Blender Addon</span>
-            <code className="text-xs bg-muted px-2 py-0.5 rounded">
-              http://localhost:9876
-            </code>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Bridge Health</span>
-            <code className="text-xs bg-muted px-2 py-0.5 rounded">
-              http://localhost:9877/health
-            </code>
-          </div>
-        </CardContent>
-      </Card>
+      <HostServicesCard ports={ports} updatePort={updatePort} />
     </div>
+  );
+}
+
+function HostServicesCard({
+  ports,
+  updatePort,
+}: {
+  ports: HostPorts;
+  updatePort: (key: HostPortKeys, value: number) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Monitor className="size-4" />
+          Host-Services
+        </CardTitle>
+        <CardDescription>
+          ComfyUI und Blender laufen auf dem Host (GPU / Desktop)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-3 items-center">
+          {/* ComfyUI — label */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">ComfyUI</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="size-3.5 text-muted-foreground shrink-0 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-left">
+                <p className="font-medium mb-1">ComfyUI — Bildgenerierung</p>
+                <p>
+                  ComfyUI muss lokal auf dem Host gestartet werden, da es
+                  direkten GPU-Zugriff benötigt. Standard-Port ist 8188.
+                </p>
+                <p className="mt-1">
+                  Start:{" "}
+                  <code className="bg-muted/20 px-1 rounded">
+                    python main.py --listen 0.0.0.0 --port 8188
+                  </code>
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          {/* ComfyUI — value */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              localhost:
+            </span>
+            <PortInput
+              value={ports.comfyui}
+              onChange={(v) => updatePort("comfyui", v)}
+            />
+          </div>
+
+          {/* Blender Addon — label */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">Blender Addon</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="size-3.5 text-muted-foreground shrink-0 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-left">
+                <p className="font-medium mb-1">Scriptony Blender Addon</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Legacy- oder Extension-ZIP herunterladen</li>
+                  <li>Blender öffnen</li>
+                  <li>Edit → Preferences → Add-ons</li>
+                  <li>
+                    Legacy: Install… → `scriptony_blender_addon.zip` auswählen
+                  </li>
+                  <li>Extension: Blender 4.2+ Extensions-Flow nutzen</li>
+                  <li>Nach &quot;Scriptony&quot; suchen → Häkchen setzen</li>
+                  <li>3D Viewport → Sidebar (N-Taste) → Scriptony Panel</li>
+                  <li>Cloud-URL + Integration-Token eintragen</li>
+                </ol>
+                <p className="mt-1">
+                  Token erstellen: Einstellungen → Integrationen
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          {/* Blender Addon — value */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              localhost:
+            </span>
+            <PortInput
+              value={ports.blender}
+              onChange={(v) => updatePort("blender", v)}
+            />
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <a
+                href="/scriptony-blender-addon.zip"
+                download
+                title="Legacy Blender add-on ZIP herunterladen"
+                aria-label="Legacy Blender add-on ZIP herunterladen"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-primary hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
+              >
+                <Download className="size-3" />
+                Legacy ZIP
+              </a>
+              <a
+                href="/scriptony_blender_extension.zip"
+                download
+                title="Blender Extension ZIP herunterladen"
+                aria-label="Blender Extension ZIP herunterladen"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-primary hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
+              >
+                <Download className="size-3" />
+                Extension ZIP
+              </a>
+            </div>
+          </div>
+
+          {/* Bridge Health — label */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">Bridge Health</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="size-3.5 text-muted-foreground shrink-0 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-left">
+                <p className="font-medium mb-1">
+                  Local Bridge — Dienst-Verbindung
+                </p>
+                <p>
+                  Die Bridge ist ein Docker-Container, der ComfyUI und Blender
+                  mit Appwrite verbindet. Sie vermittelt Render-Jobs und
+                  Sync-Daten zwischen den Services.
+                </p>
+                <p className="mt-1">
+                  Health-Check:{" "}
+                  <code className="bg-muted/20 px-1 rounded">
+                    http://localhost:{ports.bridge}/health
+                  </code>
+                </p>
+                <p className="mt-1">
+                  Start:{" "}
+                  <code className="bg-muted/20 px-1 rounded">
+                    docker compose up -d
+                  </code>
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          {/* Bridge Health — value */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              localhost:
+            </span>
+            <PortInput
+              value={ports.bridge}
+              onChange={(v) => updatePort("bridge", v)}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

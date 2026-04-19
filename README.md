@@ -33,6 +33,35 @@ npm run build
 
 Output: `build/` — see `vercel.json` and `easyploy.json`.
 
+## Blender Add-on
+
+Build both distributable ZIPs:
+
+```bash
+npm run addon:zip:all
+```
+
+Legacy ZIP for immediate use in Blender Preferences:
+
+```bash
+npm run addon:zip
+```
+
+1. Build `scriptony_blender_addon.zip` or use the compatibility alias `scriptony-blender-addon.zip`.
+2. In Blender open `Edit > Preferences > Add-ons > Install from Disk`.
+3. Select the ZIP, search for `Scriptony`, and enable the add-on.
+4. Open the `Scriptony` tab in the 3D View sidebar and enter `Cloud Base URL` plus `Integration Token`.
+
+Extension ZIP for Blender 4.2+:
+
+```bash
+npm run addon:zip:extension
+```
+
+1. Build `scriptony_blender_extension.zip`.
+2. Install it through Blender's Extensions flow on Blender 4.2+.
+3. Use this as the default distributable for new Blender 4.2+ setups.
+
 ## Docker (optional local backend)
 
 - **Appwrite** (matches `infra/appwrite/`): `npm run docker:appwrite:up` → Traefik on **8080**; copy `infra/appwrite/.env.example` → `infra/appwrite/.env` first.
@@ -46,10 +75,10 @@ npm run docker:appwrite:down
 
 ## Docs
 
-| Doc | Purpose |
-|-----|---------|
-| [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md) | Local dev steps |
-| [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) | Canonical architecture |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Env vars, Vercel, security |
-| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Own hosting |
-| [functions/README.md](functions/README.md) | Backend functions + `APPWRITE_*` |
+| Doc                                                | Purpose                          |
+| -------------------------------------------------- | -------------------------------- |
+| [docs/EXACT_STEPS.md](docs/EXACT_STEPS.md)         | Local dev steps                  |
+| [docs/SOURCE_OF_TRUTH.md](docs/SOURCE_OF_TRUTH.md) | Canonical architecture           |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)           | Env vars, Vercel, security       |
+| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)       | Own hosting                      |
+| [functions/README.md](functions/README.md)         | Backend functions + `APPWRITE_*` |

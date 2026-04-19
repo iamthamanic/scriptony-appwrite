@@ -1,22 +1,14 @@
-"""Blender operators for the Scriptony addon.
-
-Each operator: read prefs → validate → call api → update status.
-Never touches HTTP directly — all cloud calls go through api.py (DIP).
-"""
+"""Blender operators for the Scriptony add-on."""
 
 import json
 from datetime import datetime, timezone
 
 import bpy
-from bpy.types import Operator
 from bpy.props import StringProperty
+from bpy.types import Operator
 
 from . import api
 
-
-# ---------------------------------------------------------------------------
-# Helpers (DRY)
-# ---------------------------------------------------------------------------
 
 def _get_prefs(context):
     return context.preferences.addons[__package__].preferences
@@ -26,7 +18,13 @@ def _get_shot_id(context):
     return context.scene.scriptony_shot_id.strip()
 
 
+def _ensure_online_access():
+    if not bool(getattr(bpy.app, "online_access", True)):
+        raise api.ValidationError("Enable Blender Online Access to sync with Scriptony")
+
+
 def _get_auth(context):
+    _ensure_online_access()
     prefs = _get_prefs(context)
     base_url = prefs.cloud_base_url.strip()
     token = prefs.integration_token.strip()
@@ -37,32 +35,28 @@ def _get_auth(context):
     return base_url, token
 
 
-def _update_status(context, error_msg=""):
+def _update_status(context, error_message: str = ""):
     status = context.window_manager.scriptony_status
-    if error_msg:
-        status.last_error = error_msg
-    else:
-        status.last_error = ""
-        status.last_sync_at = datetime.now(timezone.utc).isoformat()[:19]
+    if error_message:
+        status.last_error = error_message
+        return
+    status.last_error = ""
+    status.last_sync_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _update_freshness(context, result: dict):
     status = context.window_manager.scriptony_status
-    f = result.get("freshness", {})
-    for prop, key in [
+    freshness = result.get("freshness", {})
+    for prop_name, key in (
         ("freshness_guides", "guidesStale"),
         ("freshness_render", "renderStale"),
         ("freshness_preview", "previewStale"),
         ("freshness_overall", "overall"),
-    ]:
-        val = f.get(key, "unknown")
-        if val in ("fresh", "stale", "unknown"):
-            setattr(status, prop, val)
+    ):
+        value = freshness.get(key, "unknown")
+        if value in {"fresh", "stale", "unknown"}:
+            setattr(status, prop_name, value)
 
-
-# ---------------------------------------------------------------------------
-# Operators
-# ---------------------------------------------------------------------------
 
 class SCRIPTONY_OT_bind_shot(Operator):
     bl_idname = "scriptony.bind_shot"
@@ -76,14 +70,15 @@ class SCRIPTONY_OT_bind_shot(Operator):
         if not shot_id:
             self.report({"ERROR"}, "Shot ID must not be empty")
             return {"CANCELLED"}
-        if any(c in shot_id for c in "/\\"):
+        if any(char in shot_id for char in "/\\"):
             self.report({"ERROR"}, "Shot ID must not contain path separators")
             return {"CANCELLED"}
+
         context.scene.scriptony_shot_id = shot_id
         self.report({"INFO"}, f"Bound to shot {shot_id}")
         return {"FINISHED"}
 
-    def invoke(self, context, event):
+    def invoke(self, context, _event):
         return context.window_manager.invoke_props_dialog(self)
 
 
@@ -100,21 +95,18 @@ class SCRIPTONY_OT_sync_shot_state(Operator):
         shot_id = _get_shot_id(context)
         try:
             base_url, token = _get_auth(context)
-        except api.ValidationError as e:
-            self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-
-        try:
             api.sync_shot_state(
-                base_url, token, shot_id,
+                base_url,
+                token,
+                shot_id,
                 blender_source_version=bpy.app.version_string,
             )
             _update_status(context)
             self.report({"INFO"}, "Shot state synced")
             return {"FINISHED"}
-        except (api.ApiError, api.ValidationError) as e:
-            _update_status(context, str(e))
-            self.report({"ERROR"}, str(e))
+        except (api.ApiError, api.ValidationError) as error:
+            _update_status(context, str(error))
+            self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
 
@@ -131,18 +123,13 @@ class SCRIPTONY_OT_publish_preview(Operator):
         shot_id = _get_shot_id(context)
         try:
             base_url, token = _get_auth(context)
-        except api.ValidationError as e:
-            self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-
-        try:
             api.sync_preview(base_url, token, shot_id)
             _update_status(context)
             self.report({"INFO"}, "Preview timestamp published")
             return {"FINISHED"}
-        except (api.ApiError, api.ValidationError) as e:
-            _update_status(context, str(e))
-            self.report({"ERROR"}, str(e))
+        except (api.ApiError, api.ValidationError) as error:
+            _update_status(context, str(error))
+            self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
 
@@ -162,22 +149,19 @@ class SCRIPTONY_OT_publish_guides(Operator):
         shot_id = _get_shot_id(context)
         try:
             base_url, token = _get_auth(context)
-        except api.ValidationError as e:
-            self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-
-        try:
             api.sync_guides(
-                base_url, token, shot_id,
+                base_url,
+                token,
+                shot_id,
                 files=self.guide_files,
                 metadata=self.guide_metadata,
             )
             _update_status(context)
             self.report({"INFO"}, "Guides published")
             return {"FINISHED"}
-        except (api.ApiError, api.ValidationError) as e:
-            _update_status(context, str(e))
-            self.report({"ERROR"}, str(e))
+        except (api.ApiError, api.ValidationError) as error:
+            _update_status(context, str(error))
+            self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
 
@@ -194,24 +178,20 @@ class SCRIPTONY_OT_publish_glb_preview(Operator):
 
     def execute(self, context):
         shot_id = _get_shot_id(context)
-        try:
-            base_url, token = _get_auth(context)
-        except api.ValidationError as e:
-            self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-
-        if not self.glb_file_id.strip():
+        glb_file_id = self.glb_file_id.strip()
+        if not glb_file_id:
             self.report({"ERROR"}, "GLB File ID must not be empty")
             return {"CANCELLED"}
 
         try:
-            api.sync_glb_preview(base_url, token, shot_id, self.glb_file_id.strip())
+            base_url, token = _get_auth(context)
+            api.sync_glb_preview(base_url, token, shot_id, glb_file_id)
             _update_status(context)
             self.report({"INFO"}, "GLB preview published")
             return {"FINISHED"}
-        except (api.ApiError, api.ValidationError) as e:
-            _update_status(context, str(e))
-            self.report({"ERROR"}, str(e))
+        except (api.ApiError, api.ValidationError) as error:
+            _update_status(context, str(error))
+            self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
 
@@ -226,25 +206,20 @@ class SCRIPTONY_OT_put_view_state(Operator):
 
     def execute(self, context):
         shot_id = _get_shot_id(context)
-        try:
-            base_url, token = _get_auth(context)
-        except api.ValidationError as e:
-            self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-
         view_state = _serialize_viewport_state(context)
         if not view_state:
             self.report({"ERROR"}, "Could not serialize viewport state")
             return {"CANCELLED"}
 
         try:
+            base_url, token = _get_auth(context)
             api.put_view_state(base_url, token, shot_id, view_state)
             _update_status(context)
             self.report({"INFO"}, "View state pushed")
             return {"FINISHED"}
-        except (api.ApiError, api.ValidationError) as e:
-            _update_status(context, str(e))
-            self.report({"ERROR"}, str(e))
+        except (api.ApiError, api.ValidationError) as error:
+            _update_status(context, str(error))
+            self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
 
@@ -261,24 +236,15 @@ class SCRIPTONY_OT_refresh_freshness(Operator):
         shot_id = _get_shot_id(context)
         try:
             base_url, token = _get_auth(context)
-        except api.ValidationError as e:
-            self.report({"ERROR"}, str(e))
-            return {"CANCELLED"}
-
-        try:
             result = api.get_freshness(base_url, token, shot_id)
             _update_freshness(context, result)
             self.report({"INFO"}, "Freshness updated")
             return {"FINISHED"}
-        except (api.ApiError, api.ValidationError) as e:
-            _update_status(context, str(e))
-            self.report({"ERROR"}, str(e))
+        except (api.ApiError, api.ValidationError) as error:
+            _update_status(context, str(error))
+            self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
-
-# ---------------------------------------------------------------------------
-# Viewport serialization
-# ---------------------------------------------------------------------------
 
 def _serialize_viewport_state(context) -> str:
     space = context.space_data
@@ -289,17 +255,17 @@ def _serialize_viewport_state(context) -> str:
     if region_data is None:
         return ""
 
-    state = {
+    state: dict[str, object] = {
         "isPerspective": region_data.is_perspective,
         "distance": region_data.view_distance,
     }
 
-    cam = context.scene.camera
-    if cam:
-        state["cameraName"] = cam.name
-        loc = cam.location
-        rot = cam.rotation_euler
-        state["cameraLocation"] = [loc.x, loc.y, loc.z]
-        state["cameraRotation"] = [rot.x, rot.y, rot.z]
+    camera = context.scene.camera
+    if camera is not None:
+        state["cameraName"] = camera.name
+        location = camera.location
+        rotation = camera.rotation_euler
+        state["cameraLocation"] = [location.x, location.y, location.z]
+        state["cameraRotation"] = [rotation.x, rotation.y, rotation.z]
 
     return json.dumps(state, separators=(",", ":"))

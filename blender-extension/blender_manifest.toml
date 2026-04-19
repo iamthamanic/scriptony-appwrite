@@ -1,0 +1,12 @@
+schema_version = "1.0.0"
+id = "scriptony_blender_addon"
+version = "1.0.0"
+name = "Scriptony"
+tagline = "Connect Blender to the Scriptony cloud and local bridge"
+maintainer = "Scriptony"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+network = "Syncs shot metadata with Scriptony and listens for local bridge events"
