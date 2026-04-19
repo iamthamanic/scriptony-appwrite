@@ -1,6 +1,24 @@
 import { useState, useEffect } from "react";
-import { Clock, Quote, ChevronRight, Film, Globe, Layers, Tv, Book, Headphones, List, LayoutGrid } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Clock,
+  Quote,
+  ChevronRight,
+  Film,
+  Globe,
+  Layers,
+  Tv,
+  Book,
+  Headphones,
+  List,
+  LayoutGrid,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { LoadingSpinner } from "../LoadingSpinner";
@@ -16,7 +34,7 @@ type RecentItem = {
   title: string;
   description: string;
   lastEdited: Date;
-  type: 'project' | 'world';
+  type: "project" | "world";
   thumbnailUrl?: string;
   genre?: string;
   projectType?: string;
@@ -58,9 +76,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
           items.push({
             id: p.id,
             title: p.title,
-            description: p.logline || '',
+            description: p.logline || "",
             lastEdited: new Date(p.last_edited || p.created_at),
-            type: 'project',
+            type: "project",
             thumbnailUrl: p.cover_image_url, // ✅ Map DB column to frontend property
             genre: p.genre,
             projectType: p.type,
@@ -73,9 +91,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
           items.push({
             id: w.id,
             title: w.name,
-            description: w.description || '',
+            description: w.description || "",
             lastEdited: new Date(w.updated_at || w.created_at),
-            type: 'world',
+            type: "world",
             thumbnailUrl: w.cover_image_url, // ✅ Map DB column to frontend property
           });
         });
@@ -97,8 +115,6 @@ export function HomePage({ onNavigate }: HomePageProps) {
     }
   };
 
-
-
   const quote = {
     text: "The scariest moment is always just before you start.",
     author: "Stephen King",
@@ -116,9 +132,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
     <div className="min-h-screen pb-24">
       {/* Header - Mobile optimiert */}
       <div className="px-4 py-6 bg-gradient-to-b from-primary/5 to-transparent">
-        <p className="text-muted-foreground">
-          Willkommen zurück! 👋
-        </p>
+        <p className="text-muted-foreground">Willkommen zurück! 👋</p>
       </div>
 
       {/* Recent Items */}
@@ -141,11 +155,34 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 className="size-3.5"
               >
                 {/* Left rectangle - smaller */}
-                <rect x="1" y="4" width="3" height="8" rx="0.5" fill="currentColor" opacity="0.6" />
+                <rect
+                  x="1"
+                  y="4"
+                  width="3"
+                  height="8"
+                  rx="0.5"
+                  fill="currentColor"
+                  opacity="0.6"
+                />
                 {/* Center rectangle - larger */}
-                <rect x="6" y="2" width="4" height="12" rx="0.5" fill="currentColor" />
+                <rect
+                  x="6"
+                  y="2"
+                  width="4"
+                  height="12"
+                  rx="0.5"
+                  fill="currentColor"
+                />
                 {/* Right rectangle - smaller */}
-                <rect x="12" y="4" width="3" height="8" rx="0.5" fill="currentColor" opacity="0.6" />
+                <rect
+                  x="12"
+                  y="4"
+                  width="3"
+                  height="8"
+                  rx="0.5"
+                  fill="currentColor"
+                  opacity="0.6"
+                />
               </svg>
               <span className="text-xs hidden sm:inline">Carousel</span>
             </Button>
@@ -164,7 +201,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
         {recentItems.length === 0 ? (
           <Card className="mx-4">
             <CardContent className="p-8 text-center text-muted-foreground">
-              Noch keine Inhalte. Erstelle dein erstes Projekt oder deine erste Welt!
+              Noch keine Inhalte. Erstelle dein erstes Projekt oder deine erste
+              Welt!
             </CardContent>
           </Card>
         ) : viewMode === "carousel" ? (
@@ -176,39 +214,51 @@ export function HomePage({ onNavigate }: HomePageProps) {
         ) : (
           <div className="space-y-3 px-4">
             {recentItems.map((item, index) => (
-              <Card 
+              <Card
                 key={item.id}
                 className="active:scale-[0.99] transition-transform cursor-pointer overflow-hidden hover:border-primary/30 relative"
-                onClick={() => onNavigate(item.type === 'project' ? 'projekte' : 'worldbuilding', item.id)}
+                onClick={() =>
+                  onNavigate(
+                    item.type === "project" ? "projekte" : "worldbuilding",
+                    item.id,
+                  )
+                }
               >
                 {/* "Zuletzt bearbeitet" Badge - ONLY first item - TOP RIGHT */}
                 {index === 0 && (
-                  <Badge variant="default" className="absolute top-2 right-2 z-10 text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md">
+                  <Badge
+                    variant="default"
+                    className="absolute top-2 right-2 z-10 text-[9px] h-4 px-1.5 flex items-center gap-0.5 shadow-md"
+                  >
                     <Clock className="size-2" />
                     Zuletzt bearbeitet
                   </Badge>
                 )}
-                
+
                 <div className="flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-primary/20 border-2 border-transparent hover:border-primary/30">
                   {/* Thumbnail Left - Portrait 2:3 Ratio */}
-                  <div 
+                  <div
                     className="w-[67px] h-[100px] rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden shrink-0"
-                    style={item.thumbnailUrl ? { 
-                      backgroundImage: `url(${item.thumbnailUrl})`, 
-                      backgroundSize: 'cover', 
-                      backgroundPosition: 'center',
-                      backgroundBlendMode: 'overlay'
-                    } : {}}
+                    style={
+                      item.thumbnailUrl
+                        ? {
+                            backgroundImage: `url(${item.thumbnailUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            backgroundBlendMode: "overlay",
+                          }
+                        : {}
+                    }
                   >
                     {!item.thumbnailUrl && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {item.type === 'project' ? (
+                        {item.type === "project" ? (
                           // Show icon based on project type
-                          item.projectType === 'book' ? (
+                          item.projectType === "book" ? (
                             <Book className="size-5 text-primary/40" />
-                          ) : item.projectType === 'series' ? (
+                          ) : item.projectType === "series" ? (
                             <Tv className="size-5 text-primary/40" />
-                          ) : item.projectType === 'audio' ? (
+                          ) : item.projectType === "audio" ? (
                             <Headphones className="size-5 text-primary/40" />
                           ) : (
                             <Film className="size-5 text-primary/40" />
@@ -228,7 +278,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       </h3>
                       <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />
                     </div>
-                    
+
                     {item.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
                         {item.description}
@@ -236,8 +286,13 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     )}
 
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant={item.type === 'project' ? 'secondary' : 'outline'} className="text-[10px] h-5 px-1.5 flex items-center gap-1">
-                        {item.type === 'project' ? (
+                      <Badge
+                        variant={
+                          item.type === "project" ? "secondary" : "outline"
+                        }
+                        className="text-[10px] h-5 px-1.5 flex items-center gap-1"
+                      >
+                        {item.type === "project" ? (
                           <>
                             <Layers className="size-2.5" />
                             Projekt
@@ -250,17 +305,25 @@ export function HomePage({ onNavigate }: HomePageProps) {
                         )}
                       </Badge>
                       {item.projectType && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 flex items-center gap-1">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-5 px-1.5 flex items-center gap-1"
+                        >
                           {(() => {
-                            const typeMap: Record<string, { label: string; Icon: any }> = {
+                            const typeMap: Record<
+                              string,
+                              { label: string; Icon: any }
+                            > = {
                               film: { label: "Film", Icon: Film },
                               series: { label: "Serie", Icon: Tv },
                               book: { label: "Buch", Icon: Book },
                               audio: { label: "Hörspiel", Icon: Headphones },
                             };
-                            const typeInfo = typeMap[item.projectType] || { 
-                              label: item.projectType?.charAt(0).toUpperCase() + item.projectType?.slice(1) || '', 
-                              Icon: Film 
+                            const typeInfo = typeMap[item.projectType] || {
+                              label:
+                                item.projectType?.charAt(0).toUpperCase() +
+                                  item.projectType?.slice(1) || "",
+                              Icon: Film,
                             };
                             const Icon = typeInfo.Icon;
                             return (
@@ -273,20 +336,25 @@ export function HomePage({ onNavigate }: HomePageProps) {
                         </Badge>
                       )}
                       {item.genre && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-5 px-1.5"
+                        >
                           {item.genre}
                         </Badge>
                       )}
                       <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Clock className="size-3" />
                         <span>
-                          {item.lastEdited.toLocaleDateString("de-DE", { 
-                            day: "2-digit", 
+                          {item.lastEdited.toLocaleDateString("de-DE", {
+                            day: "2-digit",
                             month: "2-digit",
-                            year: "numeric"
-                          })}, {item.lastEdited.toLocaleTimeString("de-DE", { 
-                            hour: "2-digit", 
-                            minute: "2-digit" 
+                            year: "numeric",
+                          })}
+                          ,{" "}
+                          {item.lastEdited.toLocaleTimeString("de-DE", {
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
                         </span>
                       </div>

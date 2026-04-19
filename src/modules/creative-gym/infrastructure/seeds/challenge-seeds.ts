@@ -20,12 +20,15 @@ const R = [
   "Timer respektieren; Qualität entsteht durch Wiederholung, nicht durch Editieren.",
 ];
 
-const S = ["Mindestens eine neue Passage ist sichtbar.", "Du hast das Medium respektiert."];
+const S = [
+  "Mindestens eine neue Passage ist sichtbar.",
+  "Du hast das Medium respektiert.",
+];
 
 function mr(
   medium: CreativeMedium,
   instruction: string,
-  outputHint: string
+  outputHint: string,
 ): MediumChallengeRenderer {
   return {
     medium,
@@ -40,7 +43,7 @@ function four(
   p: string,
   sc: string,
   ad: string,
-  fv: string
+  fv: string,
 ): NonNullable<ChallengeTemplate["renderers"]> {
   return {
     prose: mr("prose", p, "Fließtext, Absätze"),
@@ -50,8 +53,16 @@ function four(
   };
 }
 
-const mut = (id: string, label: string, description: string) => ({ id, label, description });
-const res = (id: string, label: string, promptHint: string) => ({ id, label, promptHint });
+const mut = (id: string, label: string, description: string) => ({
+  id,
+  label,
+  description,
+});
+const res = (id: string, label: string, promptHint: string) => ({
+  id,
+  label,
+  promptHint,
+});
 
 function ch(
   id: string,
@@ -67,7 +78,7 @@ function ch(
   outputType: OutputType,
   tags: string[],
   category: ChallengeTemplate["challengeCategory"],
-  renderers: NonNullable<ChallengeTemplate["renderers"]>
+  renderers: NonNullable<ChallengeTemplate["renderers"]>,
 ): ChallengeTemplate {
   return {
     id,
@@ -122,8 +133,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Schreibe 12–20 Sätze, die sofort im Problem landen.",
       "INT. ORT — TAG\n\nBeginne mit der stärksten Spannung.",
       "[Szene]\n\nÖffne mit Geräusch + erstem Satz.",
-      "3–5 Shots: Hook → Störung → Reaktion."
-    )
+      "3–5 Shots: Hook → Störung → Reaktion.",
+    ),
   ),
   ch(
     "cg-ub-02",
@@ -143,8 +154,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Satz 1 = Versprechen; Absatz 2–3 liefern Folge.",
       "ACTION: Eine Zeile Versprechen. Dann Szene.",
       "[Studio]\n\nVersprechen → erste Reaktion.",
-      "Shot 1: Objekt/Versprechen. Shot 2: Konsequenz."
-    )
+      "Shot 1: Objekt/Versprechen. Shot 2: Konsequenz.",
+    ),
   ),
   ch(
     "cg-ub-03",
@@ -164,8 +175,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Monolog oder Brief aus Sicht des Gegners.",
       "Szene: nur der Antagonist spricht/handelt sichtbar.",
       "Szene: Antagonist als Sprecher/Kommentar.",
-      "Storyboard: Antagonist-Perspektive der Shots."
-    )
+      "Storyboard: Antagonist-Perspektive der Shots.",
+    ),
   ),
   ch(
     "cg-ub-04",
@@ -185,8 +196,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Absatz 1 frei, dann: nur Sätze mit max. 8 Wörtern.",
       "Seite 1 normal; Seite 2 nur Ein-Satz-Blöcke.",
       "Szene: erste Minute frei, dann nur Fragen.",
-      "Shots: erst normal, dann nur feste Brennweite notieren."
-    )
+      "Shots: erst normal, dann nur feste Brennweite notieren.",
+    ),
   ),
   ch(
     "cg-ub-05",
@@ -206,8 +217,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Nenne die Emotion oben; schreibe nur ihre Spuren.",
       "Szene: Emotion als Regiehinweis in jeder Zeile.",
       "[Emotion]\n\nSound → Stimme → Stille.",
-      "Shotliste: Emotion pro Shot als ein Wort."
-    )
+      "Shotliste: Emotion pro Shot als ein Wort.",
+    ),
   ),
   ch(
     "cg-ub-06",
@@ -227,8 +238,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Ein Satz → fünf Neuformulierungen mit unterschiedlicher Wirkung.",
       "Eine Dialogzeile → fünf subtext-lastige Versionen.",
       "Ein Satz → fünf Mikro-Szenen à 1 Zeile.",
-      "Ein Beat → fünf visuelle Umsetzungen."
-    )
+      "Ein Beat → fünf visuelle Umsetzungen.",
+    ),
   ),
   ch(
     "cg-ex-01",
@@ -248,8 +259,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Liste 3 What-ifs; entwickle das stärkste in 200 Wörtern.",
       "3 Loglines; eine als Mini-Outline.",
       "3 Setting-What-ifs; eines als Hörspiel-Szene.",
-      "3 visuelle What-ifs; eines als Shot-Folge."
-    )
+      "3 visuelle What-ifs; eines als Shot-Folge.",
+    ),
   ),
   ch(
     "cg-ex-02",
@@ -269,8 +280,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Kurzgeschichte: zwei Genre-Tropes kollidieren.",
       "Szene mit Genre-A/B in Slug/Format.",
       "Genre-Klang in Bühne + Stimme.",
-      "Genre A Look / Genre B Rhythmus in Shots."
-    )
+      "Genre A Look / Genre B Rhythmus in Shots.",
+    ),
   ),
   ch(
     "cg-ex-03",
@@ -290,8 +301,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Wähle Objekt; jeder Absatz berührt es.",
       "Szene: Objekt im Slug; Action kreist darum.",
       "Objekt als Sound-Motiv.",
-      "Objekt als zentraler Shot; Variationen."
-    )
+      "Objekt als zentraler Shot; Variationen.",
+    ),
   ),
   ch(
     "cg-ex-04",
@@ -311,8 +322,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Dialog mit zwei verdeckten Zielen.",
       "Szene: nur Action/Dialog, Ziele nie genannt.",
       "Hörspiel: Subtext in Pausen/Tonlage.",
-      "Shot-Plan: Subtext pro Shot notieren."
-    )
+      "Shot-Plan: Subtext pro Shot notieren.",
+    ),
   ),
   ch(
     "cg-ex-05",
@@ -332,8 +343,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "200 Wörter Ort/Kultur nur über Handlung.",
       "Szene ohne Erklärung; Regeln nur durch Tun.",
       "Klangwelt in 90 Sekunden Szene.",
-      "Visuelle Regeln in 4 Shots zeigen."
-    )
+      "Visuelle Regeln in 4 Shots zeigen.",
+    ),
   ),
   ch(
     "cg-ex-06",
@@ -353,8 +364,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Zwei Kapitelchen parallel; letzter Satz fusioniert.",
       "INTERCUT: zwei Orte; letzte Zeile = Wendung.",
       "Zwei Spuren; letzter Sound = Merge.",
-      "Parallel montage; midpoint twist."
-    )
+      "Parallel montage; midpoint twist.",
+    ),
   ),
   ch(
     "cg-cr-01",
@@ -374,8 +385,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Nimm einen Dialogblock; komprimiere aggressiv.",
       "Szene: gleiche Handlung, weniger Zeilen.",
       "Hörspiel: Stille statt Füllwörter.",
-      "Dialog-Zeilen → kurze Bildimpulse."
-    )
+      "Dialog-Zeilen → kurze Bildimpulse.",
+    ),
   ),
   ch(
     "cg-cr-02",
@@ -395,8 +406,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "4 Absätze; Absatzende = Mini-Twist.",
       "4 Mini-Szenen; jeweils Turn vor CUT.",
       "4 Audio-Beats; Klangwendung.",
-      "4 Shot-Cluster; letzter Shot = Turn."
-    )
+      "4 Shot-Cluster; letzter Shot = Turn.",
+    ),
   ),
   ch(
     "cg-cr-03",
@@ -416,8 +427,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Sehen/Hören/Fühlen/Riechen rotieren.",
       "Szene: Sinn pro Action-Block.",
       "Kanal pro Replik/Stage direction.",
-      "Shot: ein Sinn dominant."
-    )
+      "Shot: ein Sinn dominant.",
+    ),
   ),
   ch(
     "cg-cr-04",
@@ -437,8 +448,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Szene mit klarer Machtumkehr in der Mitte.",
       "SCREENPLAY: Midpoint-Reversal markieren.",
       "Audio: Stimmbruch/Musikflip.",
-      "Storyboard: Midpoint als Bildwechsel."
-    )
+      "Storyboard: Midpoint als Bildwechsel.",
+    ),
   ),
   ch(
     "cg-cr-05",
@@ -458,8 +469,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Thema verboten; nur Metaphern.",
       "Szene: Tabuwortliste oben anlegen.",
       "Hörspiel: Thema nur über Nebengeräusche.",
-      "Shots: Thema nur über Bildsymbole."
-    )
+      "Shots: Thema nur über Bildsymbole.",
+    ),
   ),
   ch(
     "cg-cr-06",
@@ -479,8 +490,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Satzlängen: kurz, kurz, lang, mittel — wiederholen.",
       "Szene: Blocklängen nach Schema.",
       "Rhythmusschema für Repliken.",
-      "Shotlängen: Schema als Notation."
-    )
+      "Shotlängen: Schema als Notation.",
+    ),
   ),
   ch(
     "cg-fn-01",
@@ -500,8 +511,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Letzte Seite: Setup für Finale + letzter Beat.",
       "Final Scene + letztes Bild.",
       "Outro-Szene mit letztem Klang.",
-      "Finale Shot-Sequenz."
-    )
+      "Finale Shot-Sequenz.",
+    ),
   ),
   ch(
     "cg-fn-02",
@@ -521,8 +532,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Liste 3 Payoffs; schreibe Verknüpfungsparagraph.",
       "Szene: drei Payoffs in Action.",
       "Audio: drei Motive lösen auf.",
-      "Shot: drei frühere Motive zahlen aus."
-    )
+      "Shot: drei frühere Motive zahlen aus.",
+    ),
   ),
   ch(
     "cg-fn-03",
@@ -542,8 +553,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Charakter-Tick → finaler Moment.",
       "Szene: Tick sichtbar; letzter Beat schließt.",
       "Tick als Sound-Callback.",
-      "Visueller Callback im letzten Shot."
-    )
+      "Visueller Callback im letzten Shot.",
+    ),
   ),
   ch(
     "cg-fn-04",
@@ -563,8 +574,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Claustrophobic finale: nur vorhandene Fakten.",
       "INT. EIN RAUM — kontinuierlich.",
       "Ein Ort; keine neuen Figuren.",
-      "Ein Set; Kamera nur innen."
-    )
+      "Ein Set; Kamera nur innen.",
+    ),
   ),
   ch(
     "cg-fn-05",
@@ -584,8 +595,8 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Kurzer Epilog; letztes Wort = Haken.",
       "Epilog-Szene; Sting in letzter Zeile.",
       "Kurzer Nachspann; Sound-Sting.",
-      "Post-Credit Shot-Idee."
-    )
+      "Post-Credit Shot-Idee.",
+    ),
   ),
   ch(
     "cg-fn-06",
@@ -605,7 +616,7 @@ export const CHALLENGE_SEEDS: ChallengeTemplate[] = [
       "Prosa-Szene → nummerierte Schritte für Set.",
       "Script → Shot-Liste + Übergänge.",
       "Szene → Misch-Notizen.",
-      "Shot-Liste finalisieren mit Linsen/Move."
-    )
+      "Shot-Liste finalisieren mit Linsen/Move.",
+    ),
   ),
 ];

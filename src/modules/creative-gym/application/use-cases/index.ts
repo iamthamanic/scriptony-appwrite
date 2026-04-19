@@ -21,7 +21,9 @@ import { mergeCompletedSession } from "../../domain/services/progress-from-sessi
 
 function newId(): string {
   const c = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
-  return c?.randomUUID ? c.randomUUID() : `cg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return c?.randomUUID
+    ? c.randomUUID()
+    : `cg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export interface StartSessionInput {
@@ -39,7 +41,7 @@ export interface StartSessionInput {
 
 export async function startCreativeSession(
   deps: CreativeGymDeps,
-  input: StartSessionInput
+  input: StartSessionInput,
 ): Promise<CreativeSession> {
   const tpl = await deps.challenges.getById(input.challengeTemplateId);
   if (!tpl) throw new Error("Challenge nicht gefunden");
@@ -79,7 +81,7 @@ export async function startCreativeSession(
 
 export async function resumeCreativeSession(
   deps: CreativeGymDeps,
-  sessionId: string
+  sessionId: string,
 ): Promise<CreativeSession | null> {
   return deps.sessions.getById(sessionId);
 }
@@ -94,7 +96,7 @@ export interface CompleteSessionInput {
 
 export async function completeCreativeSession(
   deps: CreativeGymDeps,
-  input: CompleteSessionInput
+  input: CompleteSessionInput,
 ): Promise<{ session: CreativeSession; profile: SkillProfile }> {
   const session = await deps.sessions.getById(input.sessionId);
   if (!session) throw new Error("Session nicht gefunden");
@@ -103,7 +105,7 @@ export async function completeCreativeSession(
   const ended = new Date().toISOString();
   const durationSec = Math.max(
     0,
-    Math.round((Date.now() - input.startedAtMs) / 1000)
+    Math.round((Date.now() - input.startedAtMs) / 1000),
   );
 
   const updated: CreativeSession = {
@@ -146,7 +148,7 @@ export async function completeCreativeSession(
       profile,
       tpl.skillFocus,
       input.review.usefulness,
-      input.review.transferReady
+      input.review.transferReady,
     );
     const today = new Date().toISOString().slice(0, 10);
     const last = profile.lastSessionDate?.slice(0, 10);
@@ -171,7 +173,7 @@ export async function completeCreativeSession(
 export async function retrySessionWithMutation(
   deps: CreativeGymDeps,
   sessionId: string,
-  mutationId: string
+  mutationId: string,
 ): Promise<{ session: CreativeSession; hint: string }> {
   const session = await deps.sessions.getById(sessionId);
   if (!session) throw new Error("Session nicht gefunden");
@@ -195,7 +197,9 @@ export async function retrySessionWithMutation(
       ...session.content,
       body:
         session.content.body +
-        (result.appendedInstruction ? `\n\n---\n${result.appendedInstruction}` : ""),
+        (result.appendedInstruction
+          ? `\n\n---\n${result.appendedInstruction}`
+          : ""),
     },
   };
 
@@ -206,8 +210,11 @@ export async function retrySessionWithMutation(
 export async function runRescueAction(
   deps: CreativeGymDeps,
   sessionId: string,
-  rescueVariantId: string
-): Promise<{ session: CreativeSession; output: import("../../domain/types").RescueOutput }> {
+  rescueVariantId: string,
+): Promise<{
+  session: CreativeSession;
+  output: import("../../domain/types").RescueOutput;
+}> {
   const session = await deps.sessions.getById(sessionId);
   if (!session) throw new Error("Session nicht gefunden");
 
@@ -231,13 +238,13 @@ export async function runRescueAction(
 
 export async function listChallengesUseCase(
   deps: CreativeGymDeps,
-  filters?: ChallengeFilter
+  filters?: ChallengeFilter,
 ): Promise<ChallengeTemplate[]> {
   return deps.challenges.list(filters);
 }
 
 export async function getDailyChallengeUseCase(
-  deps: CreativeGymDeps
+  deps: CreativeGymDeps,
 ): Promise<ChallengeTemplate | null> {
   return deps.challenges.getDailyChallenge(deps.userId);
 }
@@ -255,7 +262,7 @@ export async function getRecommendationsUseCase(deps: CreativeGymDeps) {
 
 export async function buildArtifactFromSessionUseCase(
   deps: CreativeGymDeps,
-  sessionId: string
+  sessionId: string,
 ): Promise<CreativeArtifact> {
   const session = await deps.sessions.getById(sessionId);
   if (!session || session.status !== "completed") {
@@ -285,7 +292,7 @@ export async function transferArtifactUseCase(
   deps: CreativeGymDeps,
   artifactId: string,
   projectId: string,
-  target: TransferTargetType
+  target: TransferTargetType,
 ): Promise<import("../../domain/types").TransferResult> {
   const art = await deps.artifacts.getById(artifactId);
   if (!art) return { ok: false, message: "Artifact fehlt" };
@@ -312,7 +319,7 @@ export async function transferArtifactUseCase(
 export async function transferArtifactToCapsuleUseCase(
   deps: CreativeGymDeps,
   artifactId: string,
-  capsuleId: string
+  capsuleId: string,
 ): Promise<void> {
   await deps.capsuleBridge.saveArtifactToCapsule({
     userId: deps.userId,

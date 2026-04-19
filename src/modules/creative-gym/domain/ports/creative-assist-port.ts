@@ -11,6 +11,8 @@ import type {
 } from "../types";
 
 export interface CreativeAssistPort {
-  generateChallengeMutation(input: MutationInput): Promise<ChallengeMutationResult>;
+  generateChallengeMutation(
+    input: MutationInput,
+  ): Promise<ChallengeMutationResult>;
   generateRescuePrompt(input: RescueInput): Promise<RescueOutput>;
 }

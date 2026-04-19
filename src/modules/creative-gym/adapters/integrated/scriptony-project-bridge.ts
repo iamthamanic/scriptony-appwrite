@@ -18,11 +18,13 @@ const MARK = (id: string) =>
 export class ScriptonyProjectBridge implements ProjectBridgePort {
   async listProjects(_userId: string): Promise<ProjectSummary[]> {
     const list = await projectsApi.getAll();
-    return (Array.isArray(list) ? list : []).map((p: { id: string; title?: string; type?: string }) => ({
-      id: p.id,
-      title: p.title ?? "Ohne Titel",
-      type: p.type,
-    }));
+    return (Array.isArray(list) ? list : []).map(
+      (p: { id: string; title?: string; type?: string }) => ({
+        id: p.id,
+        title: p.title ?? "Ohne Titel",
+        type: p.type,
+      }),
+    );
   }
 
   async getProjectContext(projectId: string): Promise<ProjectContext | null> {
@@ -39,12 +41,18 @@ export class ScriptonyProjectBridge implements ProjectBridgePort {
     }
   }
 
-  async transferArtifact(params: TransferArtifactToProjectInput): Promise<TransferResult> {
+  async transferArtifact(
+    params: TransferArtifactToProjectInput,
+  ): Promise<TransferResult> {
     const { projectId, target, artifactId, title, content } = params;
     const body = `${MARK(artifactId)}${content}`;
 
     try {
-      if (target === "scene_list" || target === "project" || target === "outline_area") {
+      if (
+        target === "scene_list" ||
+        target === "project" ||
+        target === "outline_area"
+      ) {
         const scene = await scenesApi.create(projectId, {
           title: title.slice(0, 120) || "Creative Gym",
           content: body,
@@ -56,7 +64,12 @@ export class ScriptonyProjectBridge implements ProjectBridgePort {
         };
       }
 
-      if (target === "idea_bank" || target === "character_area" || target === "worldbuilding_area" || target === "production_board") {
+      if (
+        target === "idea_bank" ||
+        target === "character_area" ||
+        target === "worldbuilding_area" ||
+        target === "production_board"
+      ) {
         const scene = await scenesApi.create(projectId, {
           title: `[CG ${target}] ${title.slice(0, 80)}`,
           content: body,

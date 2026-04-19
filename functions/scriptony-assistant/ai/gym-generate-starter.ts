@@ -6,16 +6,19 @@
 
 import { chat } from "../../_shared/ai-service/services/text";
 import { requireUserBootstrap } from "../../_shared/auth";
-import { getCharactersByProject, getProjectIfAccessible } from "../../_shared/timeline";
+import {
+  getCharactersByProject,
+  getProjectIfAccessible,
+} from "../../_shared/timeline";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { CHALLENGE_SEEDS } from "../../../src/modules/creative-gym/infrastructure/seeds/challenge-seeds";
 
@@ -23,7 +26,11 @@ type GymMedium = "prose" | "screenplay" | "audio_drama" | "film_visual";
 
 const gymRate = new Map<string, { n: number; windowStart: number }>();
 
-function allowGymRate(userId: string, maxPerWindow = 40, windowMs = 60_000): boolean {
+function allowGymRate(
+  userId: string,
+  maxPerWindow = 40,
+  windowMs = 60_000,
+): boolean {
   const now = Date.now();
   const e = gymRate.get(userId);
   if (!e || now - e.windowStart > windowMs) {
@@ -37,7 +44,7 @@ function allowGymRate(userId: string, maxPerWindow = 40, windowMs = 60_000): boo
 
 function languageBlock(
   json: { output_language?: string; custom_locale?: string },
-  uiLanguage?: string
+  uiLanguage?: string,
 ): string {
   const ol = json.output_language ?? "ui";
   if (ol === "de") return "Sprache: Deutsch.";
@@ -49,7 +56,10 @@ function languageBlock(
   return "Sprache: Deutsch.";
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -75,14 +85,21 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       ui_language?: string;
     }>(req);
 
-    const challengeId = typeof body.challenge_template_id === "string" ? body.challenge_template_id.trim() : "";
+    const challengeId = typeof body.challenge_template_id === "string"
+      ? body.challenge_template_id.trim()
+      : "";
     if (!challengeId) {
       sendBadRequest(res, "challenge_template_id is required");
       return;
     }
 
     const medium = (body.medium ?? "prose") as GymMedium;
-    const validMedia: GymMedium[] = ["prose", "screenplay", "audio_drama", "film_visual"];
+    const validMedia: GymMedium[] = [
+      "prose",
+      "screenplay",
+      "audio_drama",
+      "film_visual",
+    ];
     if (!validMedia.includes(medium)) {
       sendBadRequest(res, "invalid medium");
       return;
@@ -101,15 +118,26 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     let projectContext = "";
-    const projectId = typeof body.source_project_id === "string" ? body.source_project_id.trim() : "";
+    const projectId = typeof body.source_project_id === "string"
+      ? body.source_project_id.trim()
+      : "";
     if (projectId) {
       const p = await getProjectIfAccessible(projectId);
       if (p) {
         const title = typeof p.title === "string" ? p.title : "";
-        const logline = typeof (p as { logline?: string }).logline === "string" ? (p as { logline: string }).logline : "";
-        const description = typeof (p as { description?: string }).description === "string" ? (p as { description: string }).description : "";
-        const blurb = [logline, description].filter(Boolean).join("\n").slice(0, 1500);
-        projectContext = `\n\nProjekt-Kontext (optional nutzen):\nTitel: ${title}\nKurz: ${blurb}`;
+        const logline = typeof (p as { logline?: string }).logline === "string"
+          ? (p as { logline: string }).logline
+          : "";
+        const description =
+          typeof (p as { description?: string }).description === "string"
+            ? (p as { description: string }).description
+            : "";
+        const blurb = [logline, description]
+          .filter(Boolean)
+          .join("\n")
+          .slice(0, 1500);
+        projectContext =
+          `\n\nProjekt-Kontext (optional nutzen):\nTitel: ${title}\nKurz: ${blurb}`;
       }
 
       const chars = await getCharactersByProject(projectId);
@@ -139,9 +167,14 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       .filter(Boolean)
       .join("\n");
 
-    const result = await chat(bootstrap.user.id, [{ role: "user", content: userPrompt }], "creative_gym", {
-      temperature: 0.8,
-    });
+    const result = await chat(
+      bootstrap.user.id,
+      [{ role: "user", content: userPrompt }],
+      "creative_gym",
+      {
+        temperature: 0.8,
+      },
+    );
 
     sendJson(res, 200, {
       text: result.content,

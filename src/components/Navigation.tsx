@@ -1,6 +1,24 @@
-import { Home, Film, Globe, Dumbbell, Upload, ShieldCheck, Settings, Moon, Sun, User, Presentation, Layers, Database, Trash2, Loader2, Undo2, Redo2 } from "lucide-react";
+import {
+  Home,
+  Film,
+  Globe,
+  Dumbbell,
+  Upload,
+  ShieldCheck,
+  Settings,
+  Moon,
+  Sun,
+  User,
+  Presentation,
+  Layers,
+  Database,
+  Trash2,
+  Loader2,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 import { Button } from "./ui/button";
-import scriptonyLogo from '../assets/scriptony-logo.png';
+import scriptonyLogo from "../assets/scriptony-logo.png";
 import { useState } from "react";
 import { toast } from "sonner@2.0.3";
 import { getAuthToken } from "../lib/auth/getAuthToken";
@@ -23,83 +41,107 @@ interface NavigationProps {
   currentProjectId?: string | null; // Project ID when on project detail page
 }
 
-export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, userRole, currentProjectId }: NavigationProps) {
+export function Navigation({
+  currentPage,
+  onNavigate,
+  theme,
+  onToggleTheme,
+  userRole,
+  currentProjectId,
+}: NavigationProps) {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isCleaningBeats, setIsCleaningBeats] = useState(false);
   const isMobile = useIsMobile();
   const { canUndo, canRedo, undo, redo } = useAppUndo();
 
   const handleRecalculateWordCounts = async () => {
-    console.log('🚨🚨🚨 NEUER CODE LÄUFT! WC Button geklickt! 🚨🚨🚨');
-    console.log('🔥 WC Button clicked! Starting word count recalculation...');
+    console.log("🚨🚨🚨 NEUER CODE LÄUFT! WC Button geklickt! 🚨🚨🚨");
+    console.log("🔥 WC Button clicked! Starting word count recalculation...");
     setIsRecalculating(true);
-    
+
     try {
-      console.log('🔑 Getting auth token...');
+      console.log("🔑 Getting auth token...");
       const token = await getAuthToken();
-      console.log('✅ Auth token:', token ? 'EXISTS' : 'NULL');
-      
+      console.log("✅ Auth token:", token ? "EXISTS" : "NULL");
+
       if (!token) {
-        console.log('❌ No auth token!');
+        console.log("❌ No auth token!");
         toast.error("Nicht authentifiziert", {
-          description: "Bitte melde dich an, um diese Aktion auszuführen."
+          description: "Bitte melde dich an, um diese Aktion auszuführen.",
         });
         setIsRecalculating(false);
         return;
       }
-      
-      console.log('📞 Fetching projects...');
+
+      console.log("📞 Fetching projects...");
       // Get all book projects
       const response = await fetch(
         buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/projects"),
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
-      
-      console.log('📊 Response status:', response.status);
-      
+
+      console.log("📊 Response status:", response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('❌ Response error:', errorText);
-        throw new Error(`Failed to fetch projects: ${response.status} ${errorText}`);
+        console.log("❌ Response error:", errorText);
+        throw new Error(
+          `Failed to fetch projects: ${response.status} ${errorText}`,
+        );
       }
-      
+
       const projects = await response.json();
-      console.log('📚 Total projects:', projects.length);
-      console.log('🔍 All project types:', projects.map((p: any) => ({ title: p.title, type: p.type })));
-      const bookProjects = projects.filter((p: any) => p.type === 'book');
-      console.log('📖 Book projects:', bookProjects.length, bookProjects.map((p: any) => p.title));
-      
+      console.log("📚 Total projects:", projects.length);
+      console.log(
+        "🔍 All project types:",
+        projects.map((p: any) => ({ title: p.title, type: p.type })),
+      );
+      const bookProjects = projects.filter((p: any) => p.type === "book");
+      console.log(
+        "📖 Book projects:",
+        bookProjects.length,
+        bookProjects.map((p: any) => p.title),
+      );
+
       if (bookProjects.length === 0) {
-        console.log('⚠️ No book projects found');
+        console.log("⚠️ No book projects found");
         toast.info("Keine Buch-Projekte gefunden", {
-          description: "Es gibt keine Buch-Projekte zum Aktualisieren."
+          description: "Es gibt keine Buch-Projekte zum Aktualisieren.",
         });
         setIsRecalculating(false);
         return;
       }
-      
+
       let totalUpdated = 0;
-      
+
       // Recalculate word counts for each book project
       for (const project of bookProjects) {
-        console.log(`🔄 Recalculating for project: ${project.title} (${project.id})`);
-        const recalcResponse = await fetch(
-          buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, `/projects/${project.id}/recalculate-word-counts`),
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-          }
+        console.log(
+          `🔄 Recalculating for project: ${project.title} (${project.id})`,
         );
-        
-        console.log(`📊 Recalc response status for ${project.title}:`, recalcResponse.status);
-        
+        const recalcResponse = await fetch(
+          buildFunctionRouteUrl(
+            EDGE_FUNCTIONS.MAIN_SERVER,
+            `/projects/${project.id}/recalculate-word-counts`,
+          ),
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        console.log(
+          `📊 Recalc response status for ${project.title}:`,
+          recalcResponse.status,
+        );
+
         if (recalcResponse.ok) {
           const result = await recalcResponse.json();
           console.log(`✅ Result for ${project.title}:`, result);
@@ -109,51 +151,55 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
           console.log(`❌ Recalc error for ${project.title}:`, errorText);
         }
       }
-      
-      console.log('🎉 Total updated:', totalUpdated);
+
+      console.log("🎉 Total updated:", totalUpdated);
       toast.success("Word Counts aktualisiert!", {
-        description: `${totalUpdated} Szenen in ${bookProjects.length} Buch-Projekt(en) aktualisiert.`
+        description: `${totalUpdated} Szenen in ${bookProjects.length} Buch-Projekt(en) aktualisiert.`,
       });
     } catch (error: any) {
-      console.error('❌ Word count recalculation error:', error);
+      console.error("❌ Word count recalculation error:", error);
       toast.error("Fehler beim Aktualisieren", {
-        description: error.message
+        description: error.message,
       });
     } finally {
-      console.log('🏁 Finished, setting isRecalculating to false');
+      console.log("🏁 Finished, setting isRecalculating to false");
       setIsRecalculating(false);
     }
   };
 
   const handleCleanBeats = async () => {
     if (!currentProjectId) {
-      toast.error('Kein Projekt ausgewählt', {
-        description: 'Bitte öffne ein Projekt, um Beats zu bereinigen.'
+      toast.error("Kein Projekt ausgewählt", {
+        description: "Bitte öffne ein Projekt, um Beats zu bereinigen.",
       });
       return;
     }
 
-    if (!confirm('⚠️ Dies wird alle duplizierten Beats löschen und nur einen Beat pro Label behalten. Fortfahren?')) {
+    if (
+      !confirm(
+        "⚠️ Dies wird alle duplizierten Beats löschen und nur einen Beat pro Label behalten. Fortfahren?",
+      )
+    ) {
       return;
     }
 
     setIsCleaningBeats(true);
-    console.log('🧹 Starting cleanup for project:', currentProjectId);
+    console.log("🧹 Starting cleanup for project:", currentProjectId);
 
     try {
-      console.log('📡 Fetching beats through API...');
+      console.log("📡 Fetching beats through API...");
       const beats = await BeatsAPI.getBeats(currentProjectId);
 
       console.log(`📊 Found ${beats?.length || 0} beats total`);
 
       if (!beats || beats.length === 0) {
-        toast.info('Keine Beats gefunden');
+        toast.info("Keine Beats gefunden");
         return;
       }
 
       // Group by label to find duplicates
       const beatsByLabel: Record<string, typeof beats> = {};
-      beats.forEach(beat => {
+      beats.forEach((beat) => {
         if (!beatsByLabel[beat.label]) beatsByLabel[beat.label] = [];
         beatsByLabel[beat.label].push(beat);
       });
@@ -163,25 +209,33 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
 
       for (const [label, labelBeats] of Object.entries(beatsByLabel)) {
         if (labelBeats.length > 1) {
-          console.log(`🔍 Found ${labelBeats.length} beats with label "${label}"`);
-
-          // Keep first (oldest by created_at), delete rest
-          const sortedBeats = [...labelBeats].sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          console.log(
+            `🔍 Found ${labelBeats.length} beats with label "${label}"`,
           );
 
-          console.log(`  ✅ Keeping: ${sortedBeats[0].id} (created: ${sortedBeats[0].created_at})`);
+          // Keep first (oldest by created_at), delete rest
+          const sortedBeats = [...labelBeats].sort(
+            (a, b) =>
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime(),
+          );
+
+          console.log(
+            `  ✅ Keeping: ${sortedBeats[0].id} (created: ${sortedBeats[0].created_at})`,
+          );
 
           for (let i = 1; i < sortedBeats.length; i++) {
             const beatToDelete = sortedBeats[i];
-            console.log(`  ❌ Will delete: ${beatToDelete.id} (created: ${beatToDelete.created_at})`);
+            console.log(
+              `  ❌ Will delete: ${beatToDelete.id} (created: ${beatToDelete.created_at})`,
+            );
             idsToDelete.push(beatToDelete.id);
           }
         }
       }
 
       if (idsToDelete.length === 0) {
-        toast.info('Keine Duplikate gefunden');
+        toast.info("Keine Duplikate gefunden");
         return;
       }
 
@@ -189,19 +243,24 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
 
       await Promise.all(idsToDelete.map((id) => BeatsAPI.deleteBeat(id)));
 
-      console.log(`✅ Cleanup complete! Deleted ${idsToDelete.length} duplicate beats`);
-      console.log(`📊 Remaining: ${beats.length - idsToDelete.length} unique beats`);
+      console.log(
+        `✅ Cleanup complete! Deleted ${idsToDelete.length} duplicate beats`,
+      );
+      console.log(
+        `📊 Remaining: ${beats.length - idsToDelete.length} unique beats`,
+      );
 
-      toast.success(`${idsToDelete.length} duplizierte Beats gelöscht! ${beats.length - idsToDelete.length} Beats verbleiben.`);
+      toast.success(
+        `${idsToDelete.length} duplizierte Beats gelöscht! ${beats.length - idsToDelete.length} Beats verbleiben.`,
+      );
 
       // Reload page after a short delay
       setTimeout(() => {
         window.location.reload();
       }, 1500);
-
     } catch (error) {
-      console.error('❌ Cleanup failed:', error);
-      toast.error('Fehler beim Löschen der duplizierten Beats');
+      console.error("❌ Cleanup failed:", error);
+      toast.error("Fehler beim Löschen der duplizierten Beats");
     } finally {
       setIsCleaningBeats(false);
     }
@@ -214,12 +273,13 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
     { id: "gym", label: "Gym", icon: Dumbbell },
     { id: "stage", label: "Stage", icon: Presentation },
   ];
-  
-  const navItems = userRole === "superadmin" 
-    ? [...baseNavItems, { id: "admin", label: "Admin", icon: ShieldCheck }]
-    : userRole === "admin"
-    ? [...baseNavItems, { id: "admin", label: "Admin", icon: ShieldCheck }]
-    : baseNavItems;
+
+  const navItems =
+    userRole === "superadmin"
+      ? [...baseNavItems, { id: "admin", label: "Admin", icon: ShieldCheck }]
+      : userRole === "admin"
+        ? [...baseNavItems, { id: "admin", label: "Admin", icon: ShieldCheck }]
+        : baseNavItems;
 
   // Map page IDs to display titles
   const pageTitles: { [key: string]: string } = {
@@ -250,7 +310,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
               {/* Logo */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 flex items-center justify-center">
-                  <img 
+                  <img
                     src={scriptonyLogo}
                     alt="Scriptony Logo"
                     className="w-full h-full object-contain"
@@ -264,25 +324,30 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentPage === item.id;
-                  
+
                   return (
                     <button
                       key={item.id}
                       onClick={() => onNavigate(item.id)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                        isActive 
-                          ? "bg-primary text-primary-foreground" 
+                        isActive
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
                     >
-                      <Icon className="size-4" strokeWidth={isActive ? 2.5 : 2} />
-                      <span className={isActive ? 'font-medium' : ''}>{item.label}</span>
+                      <Icon
+                        className="size-4"
+                        strokeWidth={isActive ? 2.5 : 2}
+                      />
+                      <span className={isActive ? "font-medium" : ""}>
+                        {item.label}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
-            
+
             {/* Right Actions */}
             <div className="flex items-center gap-1">
               <Button
@@ -323,7 +388,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
               >
                 <Settings className="size-4" />
               </Button>
-              
+
               {/* Theme Toggle */}
               <Button
                 variant="ghost"
@@ -337,7 +402,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
                   <Moon className="size-4" />
                 )}
               </Button>
-              
+
               {userRole === "superadmin" && (
                 <Button
                   variant="ghost"
@@ -364,7 +429,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
           {/* Logo */}
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 flex items-center justify-center">
-              <img 
+              <img
                 src={scriptonyLogo}
                 alt="Scriptony Logo"
                 className="w-full h-full object-contain"
@@ -372,10 +437,9 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
             </div>
             <span className="font-bold">{currentPageTitle}</span>
           </div>
-          
+
           {/* Right Actions */}
           <div className="flex items-center gap-1">
-
             {/* Removed 🎨 Proto button */}
             <Button
               type="button"
@@ -415,7 +479,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
             >
               <Settings className="size-4" />
             </Button>
-            
+
             {/* Theme Toggle */}
             <Button
               variant="ghost"
@@ -429,7 +493,7 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
                 <Moon className="size-4" />
               )}
             </Button>
-            
+
             {userRole === "superadmin" && (
               <Button
                 variant="ghost"
@@ -450,21 +514,25 @@ export function Navigation({ currentPage, onNavigate, theme, onToggleTheme, user
           {navItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
-            
+
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
                 className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl min-w-[64px] transition-all ${
-                  isActive 
-                    ? "text-primary" 
+                  isActive
+                    ? "text-primary"
                     : "text-muted-foreground active:scale-95"
                 }`}
               >
-                <div className={`transition-all ${isActive ? 'scale-110' : ''}`}>
+                <div
+                  className={`transition-all ${isActive ? "scale-110" : ""}`}
+                >
                   <Icon className="size-5" strokeWidth={isActive ? 2.5 : 2} />
                 </div>
-                <span className={`text-[10px] ${isActive ? 'font-medium' : ''}`}>
+                <span
+                  className={`text-[10px] ${isActive ? "font-medium" : ""}`}
+                >
                   {item.label}
                 </span>
               </button>

@@ -4,7 +4,10 @@
  */
 
 import type { RecommendationPort } from "../../domain/ports/recommendation-port";
-import type { RecommendationInput, TrainingRecommendation } from "../../domain/types";
+import type {
+  RecommendationInput,
+  TrainingRecommendation,
+} from "../../domain/types";
 import { CHALLENGE_SEEDS } from "../seeds/challenge-seeds";
 
 const FOCUS_KEYS = [
@@ -20,11 +23,13 @@ const FOCUS_KEYS = [
 ] as const;
 
 export class HeuristicRecommendationPort implements RecommendationPort {
-  async getRecommendations(input: RecommendationInput): Promise<TrainingRecommendation[]> {
+  async getRecommendations(
+    input: RecommendationInput,
+  ): Promise<TrainingRecommendation[]> {
     const profile = input.skillProfile;
     const recent = new Set(input.recentChallengeIds);
 
-    let weakest: typeof FOCUS_KEYS[number] = "originality";
+    let weakest: (typeof FOCUS_KEYS)[number] = "originality";
     let min = 999;
     if (profile) {
       for (const k of FOCUS_KEYS) {
@@ -39,7 +44,8 @@ export class HeuristicRecommendationPort implements RecommendationPort {
     const pool = CHALLENGE_SEEDS.filter(
       (c) =>
         !recent.has(c.id) &&
-        (c.skillFocus.some((s) => s === mapWeakestToSkillFocus(weakest)) || !profile)
+        (c.skillFocus.some((s) => s === mapWeakestToSkillFocus(weakest)) ||
+          !profile),
     );
 
     const source = pool.length > 0 ? pool : CHALLENGE_SEEDS;
@@ -56,9 +62,12 @@ export class HeuristicRecommendationPort implements RecommendationPort {
 }
 
 function mapWeakestToSkillFocus(
-  w: (typeof FOCUS_KEYS)[number]
+  w: (typeof FOCUS_KEYS)[number],
 ): import("../../domain/types").SkillFocus {
-  const map: Record<(typeof FOCUS_KEYS)[number], import("../../domain/types").SkillFocus> = {
+  const map: Record<
+    (typeof FOCUS_KEYS)[number],
+    import("../../domain/types").SkillFocus
+  > = {
     originality: "originality",
     conflict: "conflict",
     perspective: "perspective",

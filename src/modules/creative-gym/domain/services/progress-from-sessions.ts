@@ -14,7 +14,7 @@ function clamp(n: number): number {
 export function bumpSkillForFocuses(
   profile: SkillProfile,
   focuses: SkillFocus[],
-  amount: number
+  amount: number,
 ): SkillProfile {
   const next = { ...profile };
   const a = amount;
@@ -59,7 +59,7 @@ export function mergeCompletedSession(
   profile: SkillProfile,
   focuses: SkillFocus[],
   usefulness: 1 | 2 | 3 | 4 | 5,
-  transferReady: boolean
+  transferReady: boolean,
 ): SkillProfile {
   const amount = (usefulness / 5) * 1.8;
   let next = bumpSkillForFocuses(profile, focuses, amount * 0.12);

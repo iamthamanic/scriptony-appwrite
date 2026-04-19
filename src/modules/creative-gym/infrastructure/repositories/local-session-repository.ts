@@ -48,13 +48,16 @@ export class LocalSessionRepository implements SessionRepository {
   async listByUser(userId: string): Promise<CreativeSession[]> {
     if (userId !== this.userId) return [];
     return [...this.load()].sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+      (a, b) =>
+        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
   }
 
   async getLastActive(userId: string): Promise<CreativeSession | null> {
     const list = await this.listByUser(userId);
-    const active = list.find((s) => s.status === "active" || s.status === "draft");
+    const active = list.find(
+      (s) => s.status === "active" || s.status === "draft",
+    );
     if (active) return active;
     return list[0] ?? null;
   }

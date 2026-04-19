@@ -6,5 +6,7 @@
 import type { RecommendationInput, TrainingRecommendation } from "../types";
 
 export interface RecommendationPort {
-  getRecommendations(input: RecommendationInput): Promise<TrainingRecommendation[]>;
+  getRecommendations(
+    input: RecommendationInput,
+  ): Promise<TrainingRecommendation[]>;
 }

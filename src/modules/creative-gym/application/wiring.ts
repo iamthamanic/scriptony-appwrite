@@ -18,7 +18,7 @@ import { StubCreativeAssistPort } from "../infrastructure/providers/stub-creativ
 
 export function createCreativeGymDeps(
   userId: string,
-  mode: CreativeGymMode
+  mode: CreativeGymMode,
 ): CreativeGymDeps {
   return {
     userId,
@@ -28,7 +28,9 @@ export function createCreativeGymDeps(
     skills: new LocalSkillProfileRepository(userId),
     recommendations: new HeuristicRecommendationPort(),
     projectBridge:
-      mode === "integrated" ? new ScriptonyProjectBridge() : new NullProjectBridge(),
+      mode === "integrated"
+        ? new ScriptonyProjectBridge()
+        : new NullProjectBridge(),
     capsuleBridge: new LocalCapsuleBridge(),
     assist: new StubCreativeAssistPort(),
   };

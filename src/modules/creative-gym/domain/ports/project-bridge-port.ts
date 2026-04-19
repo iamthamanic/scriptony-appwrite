@@ -13,5 +13,7 @@ import type {
 export interface ProjectBridgePort {
   listProjects(userId: string): Promise<ProjectSummary[]>;
   getProjectContext(projectId: string): Promise<ProjectContext | null>;
-  transferArtifact(params: TransferArtifactToProjectInput): Promise<TransferResult>;
+  transferArtifact(
+    params: TransferArtifactToProjectInput,
+  ): Promise<TransferResult>;
 }

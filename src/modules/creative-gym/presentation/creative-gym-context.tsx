@@ -27,7 +27,9 @@ export type GymUserDisplay = {
   avatar?: string;
 };
 
-export type GymProgressOverview = Awaited<ReturnType<typeof UC.getProgressOverviewUseCase>>;
+export type GymProgressOverview = Awaited<
+  ReturnType<typeof UC.getProgressOverviewUseCase>
+>;
 
 const Ctx = createContext<{
   deps: CreativeGymDeps;
@@ -57,9 +59,13 @@ export function CreativeGymProvider({
     setModeState(m);
   }, []);
 
-  const deps = useMemo(() => createCreativeGymDeps(userId, mode), [userId, mode]);
+  const deps = useMemo(
+    () => createCreativeGymDeps(userId, mode),
+    [userId, mode],
+  );
 
-  const [progressOverview, setProgressOverview] = useState<GymProgressOverview | null>(null);
+  const [progressOverview, setProgressOverview] =
+    useState<GymProgressOverview | null>(null);
 
   useEffect(() => {
     void UC.getProgressOverviewUseCase(deps).then(setProgressOverview);
@@ -73,7 +79,7 @@ export function CreativeGymProvider({
       gymUser,
       progressOverview,
     }),
-    [deps, mode, setMode, gymUser, progressOverview]
+    [deps, mode, setMode, gymUser, progressOverview],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -20,10 +20,13 @@ export class NullProjectBridge implements ProjectBridgePort {
     return null;
   }
 
-  async transferArtifact(_params: TransferArtifactToProjectInput): Promise<TransferResult> {
+  async transferArtifact(
+    _params: TransferArtifactToProjectInput,
+  ): Promise<TransferResult> {
     return {
       ok: false,
-      message: "Projekt-Transfer ist im Standalone-Modus nicht verfügbar. Nutze Capsules.",
+      message:
+        "Projekt-Transfer ist im Standalone-Modus nicht verfügbar. Nutze Capsules.",
     };
   }
 }

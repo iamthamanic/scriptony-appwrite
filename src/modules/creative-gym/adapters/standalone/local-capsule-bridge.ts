@@ -24,7 +24,8 @@ function uid(): string {
 export class LocalCapsuleBridge implements CapsuleBridgePort {
   async listCapsules(userId: string): Promise<Capsule[]> {
     return [...loadCapsules(userId)].sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
   }
 
@@ -44,7 +45,9 @@ export class LocalCapsuleBridge implements CapsuleBridgePort {
     return c;
   }
 
-  async saveArtifactToCapsule(input: SaveArtifactToCapsuleInput): Promise<void> {
+  async saveArtifactToCapsule(
+    input: SaveArtifactToCapsuleInput,
+  ): Promise<void> {
     const list = loadCapsules(input.userId);
     const i = list.findIndex((c) => c.id === input.capsuleId);
     if (i === -1) return;

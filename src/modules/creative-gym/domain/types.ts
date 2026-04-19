@@ -5,11 +5,7 @@
 
 export type CreativeGymMode = "integrated" | "standalone";
 
-export type CreativeIntent =
-  | "unblock"
-  | "explore"
-  | "train"
-  | "project_extend";
+export type CreativeIntent = "unblock" | "explore" | "train" | "project_extend";
 
 export type CreativeMedium =
   | "prose"
