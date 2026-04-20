@@ -36,18 +36,24 @@ export function FeatureToggleBadge({
         variant="outline"
         asChild
         style={{
-          backgroundColor: checked ? "rgba(16,185,129,0.16)" : "rgba(239,68,68,0.16)",
+          backgroundColor: checked
+            ? "rgba(16,185,129,0.16)"
+            : "rgba(239,68,68,0.16)",
           borderColor: checked ? "rgba(16,185,129,0.6)" : "rgba(239,68,68,0.6)",
           color: checked ? "rgb(236,253,245)" : "rgb(254,242,242)",
         }}
         className={cn(
           "h-auto min-h-8 shrink-0 gap-0 py-2 pl-3.5 pr-2.5 font-normal shadow-none",
-          checked && "border-emerald-500/55 bg-emerald-500/15 text-emerald-950 dark:text-emerald-50",
-          offState && "border-red-500/55 bg-red-500/15 text-red-950 dark:text-red-50"
+          checked &&
+            "border-emerald-500/55 bg-emerald-500/15 text-emerald-950 dark:text-emerald-50",
+          offState &&
+            "border-red-500/55 bg-red-500/15 text-red-950 dark:text-red-50",
         )}
       >
         <div className="flex items-center gap-4 sm:gap-5">
-          <span className="max-w-[6.5rem] shrink-0 truncate text-xs font-medium leading-none">{label}</span>
+          <span className="max-w-[6.5rem] shrink-0 truncate text-xs font-medium leading-none">
+            {label}
+          </span>
           <Switch
             id={id}
             style={{
@@ -55,7 +61,7 @@ export function FeatureToggleBadge({
             }}
             className={cn(
               "ml-0.5 shrink-0",
-              "data-[state=checked]:!bg-emerald-600 data-[state=unchecked]:!bg-red-500/80 dark:data-[state=unchecked]:!bg-red-500/75"
+              "data-[state=checked]:!bg-emerald-600 data-[state=unchecked]:!bg-red-500/80 dark:data-[state=unchecked]:!bg-red-500/75",
             )}
             checked={checked}
             disabled={disabled}

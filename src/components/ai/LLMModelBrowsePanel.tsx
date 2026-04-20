@@ -5,7 +5,13 @@
  */
 
 import { useMemo, useState } from "react";
-import { Search, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
+import {
+  Search,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+} from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -41,7 +47,10 @@ function formatContext(n: number): string {
   return String(n);
 }
 
-function capBadgeMeta(v?: CapabilityState): { label: string; className: string } {
+function capBadgeMeta(v?: CapabilityState): {
+  label: string;
+  className: string;
+} {
   if (v === "true") {
     return {
       label: "yes",
@@ -78,12 +87,13 @@ export function LLMModelBrowsePanel({
         (m) =>
           m.id.toLowerCase().includes(qq) ||
           m.name.toLowerCase().includes(qq) ||
-          m.hint?.bestFor.some((t) => t.toLowerCase().includes(qq))
+          m.hint?.bestFor.some((t) => t.toLowerCase().includes(qq)),
       );
     }
     list.sort((a, b) => {
       const mul = sortDesc ? -1 : 1;
-      if (sortKey === "context") return (a.context_window - b.context_window) * mul;
+      if (sortKey === "context")
+        return (a.context_window - b.context_window) * mul;
       return a.id.localeCompare(b.id) * mul;
     });
     return list;
@@ -115,7 +125,11 @@ export function LLMModelBrowsePanel({
   );
 
   if (!models.length) {
-    return <p className="text-xs text-muted-foreground">Keine Modelle in der Antwort.</p>;
+    return (
+      <p className="text-xs text-muted-foreground">
+        Keine Modelle in der Antwort.
+      </p>
+    );
   }
 
   return (
@@ -151,74 +165,115 @@ export function LLMModelBrowsePanel({
 
         <div className="max-h-[min(22rem,50vh)] overflow-auto rounded border border-border/60 bg-card/40">
           <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 z-[1] border-b border-border bg-card/95 backdrop-blur-sm">
-            <tr>
-              <th className="px-2 py-1.5">
-                <SortBtn k="id" label="Modell" />
-              </th>
-              <th className="px-2 py-1.5">
-                <SortBtn k="context" label="Kontext" />
-              </th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Provider</th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Image</th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Vision</th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Tools</th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Thinking</th>
-              <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Video</th>
-              {onSelectModel ? <th className="w-20 px-2 py-1.5" /> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((m) => (
-              <tr
-                key={m.id}
-                className={`border-b border-border/40 last:border-0 hover:bg-muted/30 ${
-                  selectedModelId === m.id ? "bg-primary/5" : ""
-                }`}
-              >
-                <td className="px-2 py-1.5 font-mono text-[0.7rem] leading-tight">{m.id}</td>
-                <td className="px-2 py-1.5 text-muted-foreground">
-                  {m.context_window > 0 ? formatContext(m.context_window) : "—"}
-                </td>
-                <td className="px-2 py-1.5 text-muted-foreground">{m.provider || m.hint?.bestFor?.[0] || "—"}</td>
-                <td className="px-2 py-1.5">
-                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.image_gen).className}`}>
-                    {capBadgeMeta(m.image_gen).label}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.vision).className}`}>
-                    {capBadgeMeta(m.vision).label}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.tools).className}`}>
-                    {capBadgeMeta(m.tools).label}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.thinking).className}`}>
-                    {capBadgeMeta(m.thinking).label}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge variant="outline" className={`text-[0.62rem] ${capBadgeMeta(m.video_gen).className}`}>
-                    {capBadgeMeta(m.video_gen).label}
-                  </Badge>
-                </td>
-                {onSelectModel ? (
-                  <td className="px-2 py-1.5 text-right">
-                    <Button type="button" variant="outline" size="sm" className="h-7 text-[0.65rem]" onClick={() => onSelectModel(m.id)}>
-                      Wählen
-                    </Button>
-                  </td>
-                ) : null}
+            <thead className="sticky top-0 z-[1] border-b border-border bg-card/95 backdrop-blur-sm">
+              <tr>
+                <th className="px-2 py-1.5">
+                  <SortBtn k="id" label="Modell" />
+                </th>
+                <th className="px-2 py-1.5">
+                  <SortBtn k="context" label="Kontext" />
+                </th>
+                <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Provider
+                </th>
+                <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Image
+                </th>
+                <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Vision
+                </th>
+                <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Tools
+                </th>
+                <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Thinking
+                </th>
+                <th className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Video
+                </th>
+                {onSelectModel ? <th className="w-20 px-2 py-1.5" /> : null}
               </tr>
-            ))}
-          </tbody>
+            </thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr
+                  key={m.id}
+                  className={`border-b border-border/40 last:border-0 hover:bg-muted/30 ${
+                    selectedModelId === m.id ? "bg-primary/5" : ""
+                  }`}
+                >
+                  <td className="px-2 py-1.5 font-mono text-[0.7rem] leading-tight">
+                    {m.id}
+                  </td>
+                  <td className="px-2 py-1.5 text-muted-foreground">
+                    {m.context_window > 0
+                      ? formatContext(m.context_window)
+                      : "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-muted-foreground">
+                    {m.provider || m.hint?.bestFor?.[0] || "—"}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[0.62rem] ${capBadgeMeta(m.image_gen).className}`}
+                    >
+                      {capBadgeMeta(m.image_gen).label}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[0.62rem] ${capBadgeMeta(m.vision).className}`}
+                    >
+                      {capBadgeMeta(m.vision).label}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[0.62rem] ${capBadgeMeta(m.tools).className}`}
+                    >
+                      {capBadgeMeta(m.tools).label}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[0.62rem] ${capBadgeMeta(m.thinking).className}`}
+                    >
+                      {capBadgeMeta(m.thinking).label}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[0.62rem] ${capBadgeMeta(m.video_gen).className}`}
+                    >
+                      {capBadgeMeta(m.video_gen).label}
+                    </Badge>
+                  </td>
+                  {onSelectModel ? (
+                    <td className="px-2 py-1.5 text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[0.65rem]"
+                        onClick={() => onSelectModel(m.id)}
+                      >
+                        Wählen
+                      </Button>
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
-        <p className="text-[0.6rem] leading-snug text-muted-foreground">Capabilities: yes / no / unknown (provider metadata + probes).</p>
+        <p className="text-[0.6rem] leading-snug text-muted-foreground">
+          Capabilities: yes / no / unknown (provider metadata + probes).
+        </p>
       </div>
     </details>
   );

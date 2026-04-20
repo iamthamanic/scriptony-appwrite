@@ -1,6 +1,6 @@
 /**
  * Base AI Provider Interface
- * 
+ *
  * All AI providers must implement this interface.
  * Provides abstraction for different AI modalities:
  * - Text (Chat/Completion)
@@ -10,6 +10,7 @@
  * - Embeddings (Vector representations)
  */
 
+import { Buffer } from "node:buffer";
 export type MessageRole = "system" | "user" | "assistant";
 
 export interface ChatMessage {
@@ -132,7 +133,7 @@ export interface EmbeddingResponse {
 
 /**
  * AI Provider Interface
- * 
+ *
  * All providers must implement at least the text() method.
  * Other methods are optional based on provider capabilities.
  */
@@ -146,28 +147,31 @@ export interface AIProvider {
     video: boolean;
     embeddings: boolean;
   };
-  
+
   // Text/Chat
   chat(messages: ChatMessage[], options: ChatOptions): Promise<ChatResponse>;
-  
+
   // Audio - Speech-to-Text
   transcribe?(audioUrl: string, options: STTOptions): Promise<STTResponse>;
-  
+
   // Audio - Text-to-Speech
   synthesize?(text: string, options: TTSOptions): Promise<TTSResponse>;
-  
+
   // Image Generation
   generateImage?(prompt: string, options: ImageOptions): Promise<ImageResponse>;
-  
+
   // Video Generation
   generateVideo?(prompt: string, options: VideoOptions): Promise<VideoResponse>;
-  
+
   // Video Status Check
   getVideoStatus?(videoId: string): Promise<VideoResponse>;
-  
+
   // Embeddings
-  createEmbedding?(text: string, options: EmbeddingOptions): Promise<EmbeddingResponse>;
-  
+  createEmbedding?(
+    text: string,
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResponse>;
+
   // Health Check
   healthCheck?(): Promise<boolean>;
 }
@@ -175,86 +179,87 @@ export interface AIProvider {
 /**
  * Provider capabilities registry
  */
-export const PROVIDER_CAPABILITIES: Record<string, AIProvider['capabilities']> = {
-  openai: {
-    text: true,
-    audio_stt: true,
-    audio_tts: true,
-    image: true,
-    video: false,
-    embeddings: true,
-  },
-  anthropic: {
-    text: true,
-    audio_stt: false,
-    audio_tts: false,
-    image: false,
-    video: false,
-    embeddings: false,
-  },
-  google: {
-    text: true,
-    audio_stt: false,
-    audio_tts: false,
-    image: true,
-    video: true,
-    embeddings: true,
-  },
-  deepseek: {
-    text: true,
-    audio_stt: false,
-    audio_tts: false,
-    image: false,
-    video: false,
-    embeddings: true,
-  },
-  openrouter: {
-    text: true,
-    audio_stt: false,
-    audio_tts: false,
-    image: true,
-    video: true,
-    embeddings: true,
-  },
-  elevenlabs: {
-    text: false,
-    audio_stt: false,
-    audio_tts: true,
-    image: false,
-    video: false,
-    embeddings: false,
-  },
-  /** @deprecated Prefer ollama_local / ollama_cloud; kept for existing feature_config rows. */
-  ollama: {
-    text: true,
-    audio_stt: true,
-    audio_tts: true,
-    image: true,
-    video: true,
-    embeddings: true,
-  },
-  ollama_local: {
-    text: true,
-    audio_stt: true,
-    audio_tts: true,
-    image: true,
-    video: true,
-    embeddings: true,
-  },
-  ollama_cloud: {
-    text: true,
-    audio_stt: true,
-    audio_tts: true,
-    image: true,
-    video: true,
-    embeddings: true,
-  },
-  huggingface: {
-    text: true,
-    audio_stt: true,
-    audio_tts: true,
-    image: true,
-    video: true,
-    embeddings: true,
-  },
-};
+export const PROVIDER_CAPABILITIES: Record<string, AIProvider["capabilities"]> =
+  {
+    openai: {
+      text: true,
+      audio_stt: true,
+      audio_tts: true,
+      image: true,
+      video: false,
+      embeddings: true,
+    },
+    anthropic: {
+      text: true,
+      audio_stt: false,
+      audio_tts: false,
+      image: false,
+      video: false,
+      embeddings: false,
+    },
+    google: {
+      text: true,
+      audio_stt: false,
+      audio_tts: false,
+      image: true,
+      video: true,
+      embeddings: true,
+    },
+    deepseek: {
+      text: true,
+      audio_stt: false,
+      audio_tts: false,
+      image: false,
+      video: false,
+      embeddings: true,
+    },
+    openrouter: {
+      text: true,
+      audio_stt: false,
+      audio_tts: false,
+      image: true,
+      video: true,
+      embeddings: true,
+    },
+    elevenlabs: {
+      text: false,
+      audio_stt: false,
+      audio_tts: true,
+      image: false,
+      video: false,
+      embeddings: false,
+    },
+    /** @deprecated Prefer ollama_local / ollama_cloud; kept for existing feature_config rows. */
+    ollama: {
+      text: true,
+      audio_stt: true,
+      audio_tts: true,
+      image: true,
+      video: true,
+      embeddings: true,
+    },
+    ollama_local: {
+      text: true,
+      audio_stt: true,
+      audio_tts: true,
+      image: true,
+      video: true,
+      embeddings: true,
+    },
+    ollama_cloud: {
+      text: true,
+      audio_stt: true,
+      audio_tts: true,
+      image: true,
+      video: true,
+      embeddings: true,
+    },
+    huggingface: {
+      text: true,
+      audio_stt: true,
+      audio_tts: true,
+      image: true,
+      video: true,
+      embeddings: true,
+    },
+  };

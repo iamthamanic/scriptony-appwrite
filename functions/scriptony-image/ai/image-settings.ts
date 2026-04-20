@@ -6,19 +6,25 @@
  * Location: functions/scriptony-image/ai/image-settings.ts
  */
 
-import { getAISettings, updateFeatureConfig } from "../../_shared/ai-service/config/settings";
+import {
+  getAISettings,
+  updateFeatureConfig,
+} from "../../_shared/ai-service/config/settings";
 import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const user = await requireAuthenticatedUser(req);
     if (!user) {
@@ -33,7 +39,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "PUT" || req.method === "POST") {
-      const body = await readJsonBody<{ provider?: string; model?: string; voice?: string }>(req);
+      const body = await readJsonBody<{
+        provider?: string;
+        model?: string;
+        voice?: string;
+      }>(req);
       if (body.provider || body.model) {
         await updateFeatureConfig(user.id, "image_generation", {
           provider: body.provider || "",

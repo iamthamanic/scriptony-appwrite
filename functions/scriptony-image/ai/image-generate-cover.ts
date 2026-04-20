@@ -10,16 +10,19 @@ import { generateImage } from "../../_shared/ai-service/services/image";
 import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const user = await requireAuthenticatedUser(req);
     if (!user) {
@@ -31,7 +34,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const body = await readJsonBody<{ prompt?: string; projectId?: string }>(req);
+    const body = await readJsonBody<{ prompt?: string; projectId?: string }>(
+      req,
+    );
     const prompt = body.prompt?.trim() || "";
     if (!prompt) {
       sendBadRequest(res, "prompt is required");
@@ -48,7 +53,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     if (!b64 && !url) {
       sendJson(res, 502, {
-        error: "Provider-Antwort enthält kein Bild (erwartet b64_json oder url).",
+        error:
+          "Provider-Antwort enthält kein Bild (erwartet b64_json oder url).",
       });
       return;
     }
@@ -68,7 +74,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
     if (/no.*api.key|key.*required|key.*missing/i.test(message)) {
-      sendJson(res, 400, { error: "Kein API-Key für die Bildgenerierung hinterlegt." });
+      sendJson(res, 400, {
+        error: "Kein API-Key für die Bildgenerierung hinterlegt.",
+      });
       return;
     }
     sendServerError(res, error);

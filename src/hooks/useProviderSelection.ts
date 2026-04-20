@@ -52,14 +52,19 @@ export const INACTIVE_CHECKBOX_STYLE = {
   color: "rgba(148, 163, 184, 0.7)",
 } as const;
 
-function featureProviderCacheKey(featureKey: FeatureKey, providerId: string): string {
+function featureProviderCacheKey(
+  featureKey: FeatureKey,
+  providerId: string,
+): string {
   return `${featureKey}:${providerId}`;
 }
 
 interface UseProviderSelectionOptions {
   featureKey: FeatureKey;
   featureDrafts: Record<FeatureKey, FeatureConfig> | null;
-  setFeatureDrafts: React.Dispatch<React.SetStateAction<Record<FeatureKey, FeatureConfig> | null>>;
+  setFeatureDrafts: React.Dispatch<
+    React.SetStateAction<Record<FeatureKey, FeatureConfig> | null>
+  >;
   featureProviderKeyIndex: Record<string, boolean>;
   providerById: Record<string, AIProvider>;
   ollamaModesByFeature: Record<FeatureKey, OllamaUiMode>;
@@ -81,7 +86,9 @@ interface ProviderSelectionResult {
   /** Prüft ob ein spezifischer Provider aktiviert werden kann */
   canProviderActivate: (providerId: string) => boolean;
   /** Aktiviert einen spezifischen Provider (für Callbacks) */
-  activateSpecificProvider: (providerId: string) => (e: React.MouseEvent) => void;
+  activateSpecificProvider: (
+    providerId: string,
+  ) => (e: React.MouseEvent) => void;
   /** Styles für Badges */
   styles: {
     keySaved: typeof KEY_SAVED_BADGE_STYLE;
@@ -103,20 +110,23 @@ export function useProviderSelection({
   providerById,
   ollamaModesByFeature,
 }: UseProviderSelectionOptions): ProviderSelectionResult {
-  
   const currentDraft = featureDrafts?.[featureKey];
   const currentProvider = currentDraft?.provider || "";
   const ollamaMode = ollamaModesByFeature[featureKey] ?? "local";
-  
+
   const effectiveProviderId = useMemo(() => {
-    if (normalizeProviderIdForUi(currentProvider) !== CANONICAL_OLLAMA_PROVIDER_ID) {
+    if (
+      normalizeProviderIdForUi(currentProvider) !== CANONICAL_OLLAMA_PROVIDER_ID
+    ) {
       return currentProvider;
     }
     return providerIdForOllamaMode(ollamaMode);
   }, [currentProvider, ollamaMode]);
 
   const currentProviderLabel = useMemo(() => {
-    if (normalizeProviderIdForUi(currentProvider) === CANONICAL_OLLAMA_PROVIDER_ID) {
+    if (
+      normalizeProviderIdForUi(currentProvider) === CANONICAL_OLLAMA_PROVIDER_ID
+    ) {
       return "Ollama";
     }
     return providerById[currentProvider]?.name || currentProvider;
@@ -130,38 +140,52 @@ export function useProviderSelection({
         normalizeProviderIdForUi(providerId)
       );
     },
-    [featureDrafts, featureKey]
+    [featureDrafts, featureKey],
   );
 
   const hasProviderSavedKey = useCallback(
     (providerId: string): boolean => {
-      if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID) {
+      if (
+        normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
+      ) {
         return Boolean(
-          featureProviderKeyIndex[featureProviderCacheKey(featureKey, providerIdForOllamaMode("cloud"))] ||
-            featureProviderKeyIndex[featureProviderCacheKey(featureKey, CANONICAL_OLLAMA_PROVIDER_ID)]
+          featureProviderKeyIndex[
+            featureProviderCacheKey(
+              featureKey,
+              providerIdForOllamaMode("cloud"),
+            )
+          ] ||
+          featureProviderKeyIndex[
+            featureProviderCacheKey(featureKey, CANONICAL_OLLAMA_PROVIDER_ID)
+          ],
         );
       }
-      return Boolean(featureProviderKeyIndex[featureProviderCacheKey(featureKey, providerId)]);
+      return Boolean(
+        featureProviderKeyIndex[
+          featureProviderCacheKey(featureKey, providerId)
+        ],
+      );
     },
-    [featureProviderKeyIndex, featureKey]
+    [featureProviderKeyIndex, featureKey],
   );
 
   const canProviderActivate = useCallback(
     (providerId: string): boolean => {
       const hasKey = hasProviderSavedKey(providerId);
       const requiresKey = providerById[providerId]?.requiresApiKey !== false;
-      const isOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
-      
+      const isOllama =
+        normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+
       // Für Ollama: Local braucht keinen Key, Cloud schon
       if (isOllama) {
         const mode = ollamaModesByFeature[featureKey] ?? "local";
         if (mode === "local") return true;
         return hasKey;
       }
-      
+
       return hasKey || !requiresKey;
     },
-    [hasProviderSavedKey, providerById, ollamaModesByFeature, featureKey]
+    [hasProviderSavedKey, providerById, ollamaModesByFeature, featureKey],
   );
 
   const isActive = isProviderActive(currentProvider);
@@ -174,7 +198,8 @@ export function useProviderSelection({
         if (!prev) return prev;
         const current = prev[featureKey];
         const sameProvider =
-          normalizeProviderIdForUi(current.provider) === normalizeProviderIdForUi(providerId);
+          normalizeProviderIdForUi(current.provider) ===
+          normalizeProviderIdForUi(providerId);
         return {
           ...prev,
           [featureKey]: {
@@ -185,7 +210,7 @@ export function useProviderSelection({
         };
       });
     },
-    [setFeatureDrafts, featureKey]
+    [setFeatureDrafts, featureKey],
   );
 
   const activateSpecificProvider = useCallback(
@@ -194,7 +219,7 @@ export function useProviderSelection({
       e.stopPropagation();
       activateProvider(providerId);
     },
-    [activateProvider]
+    [activateProvider],
   );
 
   return {

@@ -18,7 +18,11 @@ export type OllamaUiMode = "local" | "cloud";
 export const CANONICAL_OLLAMA_PROVIDER_ID = "ollama" as const;
 
 /** Ollama API variants (legacy runtime/provider ids). */
-export const OLLAMA_FAMILY_PROVIDER_IDS = ["ollama", "ollama_local", "ollama_cloud"] as const;
+export const OLLAMA_FAMILY_PROVIDER_IDS = [
+  "ollama",
+  "ollama_local",
+  "ollama_cloud",
+] as const;
 
 export function isOllamaFamilyProviderId(id: string): boolean {
   return (OLLAMA_FAMILY_PROVIDER_IDS as readonly string[]).includes(id);
@@ -41,26 +45,31 @@ export function inferOllamaModeFromProviderId(id: string): OllamaUiMode {
 export function inferOllamaModeForFeature(
   providerId: string,
   featureKey: string,
-  featureProviderKeyIndex: Record<string, boolean>
+  featureProviderKeyIndex: Record<string, boolean>,
 ): OllamaUiMode {
   if (providerId === "ollama_cloud") return "cloud";
   if (providerId === "ollama_local") return "local";
   // For plain "ollama", check if a cloud key exists
   const cloudKeySlot = `${featureKey}:ollama_cloud`;
   const canonicalKeySlot = `${featureKey}:ollama`;
-  if (featureProviderKeyIndex[cloudKeySlot] || featureProviderKeyIndex[canonicalKeySlot]) {
+  if (
+    featureProviderKeyIndex[cloudKeySlot] ||
+    featureProviderKeyIndex[canonicalKeySlot]
+  ) {
     return "cloud";
   }
   return "local";
 }
 
-export function providerIdForOllamaMode(mode: OllamaUiMode): "ollama_local" | "ollama_cloud" {
+export function providerIdForOllamaMode(
+  mode: OllamaUiMode,
+): "ollama_local" | "ollama_cloud" {
   return mode === "cloud" ? "ollama_cloud" : "ollama_local";
 }
 
-export function collapseProvidersForFeature<T extends { id: string; name?: string }>(
-  providerIdsWithCapability: T[]
-): T[] {
+export function collapseProvidersForFeature<
+  T extends { id: string; name?: string },
+>(providerIdsWithCapability: T[]): T[] {
   const collapsed: T[] = [];
   let ollamaSeen = false;
 
@@ -90,7 +99,10 @@ export function collapseProvidersForFeature<T extends { id: string; name?: strin
  * compatibility with existing feature_config rows. Once the migration in
  * functions/scriptony-ai/migrate-ollama-provider-ids.mjs has been run, these can be removed.
  */
-export const AI_FEATURE_PROVIDER_ALLOWLIST: Record<AiFeatureKey, readonly string[]> = {
+export const AI_FEATURE_PROVIDER_ALLOWLIST: Record<
+  AiFeatureKey,
+  readonly string[]
+> = {
   assistant_chat: [
     "openai",
     "anthropic",
@@ -131,17 +143,39 @@ export const AI_FEATURE_PROVIDER_ALLOWLIST: Record<AiFeatureKey, readonly string
     "ollama_local",
     "ollama_cloud",
   ],
-  video_generation: ["openrouter", "huggingface", "ollama", "ollama_local", "ollama_cloud"],
-  audio_stt: ["openai", "openrouter", "huggingface", "ollama", "ollama_local", "ollama_cloud"],
-  audio_tts: ["elevenlabs", "openrouter", "huggingface", "ollama", "ollama_local", "ollama_cloud"],
+  video_generation: [
+    "openrouter",
+    "huggingface",
+    "ollama",
+    "ollama_local",
+    "ollama_cloud",
+  ],
+  audio_stt: [
+    "openai",
+    "openrouter",
+    "huggingface",
+    "ollama",
+    "ollama_local",
+    "ollama_cloud",
+  ],
+  audio_tts: [
+    "elevenlabs",
+    "openrouter",
+    "huggingface",
+    "ollama",
+    "ollama_local",
+    "ollama_cloud",
+  ],
 };
 
 export function filterProvidersForFeature<T extends { id: string }>(
   featureKey: string,
-  providerIdsWithCapability: T[]
+  providerIdsWithCapability: T[],
 ): T[] {
   const list = AI_FEATURE_PROVIDER_ALLOWLIST[featureKey as AiFeatureKey];
   if (!list) return providerIdsWithCapability;
   const allow = new Set(list);
-  return collapseProvidersForFeature(providerIdsWithCapability.filter((p) => allow.has(p.id)));
+  return collapseProvidersForFeature(
+    providerIdsWithCapability.filter((p) => allow.has(p.id)),
+  );
 }

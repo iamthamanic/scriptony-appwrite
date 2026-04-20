@@ -38,11 +38,16 @@ export function featureKeyToRegistryFeature(featureKey: string): string {
   return out;
 }
 
-export function isDiscoverableFeatureKey(key: string): key is DiscoverableFeatureKey {
+export function isDiscoverableFeatureKey(
+  key: string,
+): key is DiscoverableFeatureKey {
   return (DISCOVERABLE_FEATURE_KEYS as readonly string[]).includes(key);
 }
 
-function registryMatchesProvider(regProvider: string, providerId: string): boolean {
+function registryMatchesProvider(
+  regProvider: string,
+  providerId: string,
+): boolean {
   if (regProvider === providerId) return true;
   const ollamaIds = new Set(["ollama", "ollama_local", "ollama_cloud"]);
   return ollamaIds.has(providerId) && regProvider === "ollama";
@@ -52,7 +57,7 @@ function registryMatchesProvider(regProvider: string, providerId: string): boole
 export function enrichWithRegistry(
   models: ModelInfo[],
   providerId: string,
-  registryFeature: string
+  registryFeature: string,
 ): ModelInfo[] {
   return models.map((m) => {
     const reg = getModelInfo(m.id);
@@ -87,16 +92,30 @@ function dedupeById(models: ModelInfo[]): ModelInfo[] {
 }
 
 /** Exported for tests: OpenAI `/v1/models` id list filtering. */
-export function filterOpenAIModelIdsForFeature(ids: string[], registryFeature: string): string[] {
+export function filterOpenAIModelIdsForFeature(
+  ids: string[],
+  registryFeature: string,
+): string[] {
   const id = (s: string) => s.toLowerCase();
   return ids.filter((raw) => {
     const s = id(raw);
-    if (s.includes("dall-e") || s.includes("dall_e")) return registryFeature === "image";
+    if (s.includes("dall-e") || s.includes("dall_e")) {
+      return registryFeature === "image";
+    }
     if (s.includes("whisper")) return registryFeature === "audio_stt";
-    if (s.startsWith("tts-") || s.includes("tts-hd")) return registryFeature === "audio_tts";
-    if (s.includes("embedding") || s.includes("embed")) return registryFeature === "embeddings";
+    if (s.startsWith("tts-") || s.includes("tts-hd")) {
+      return registryFeature === "audio_tts";
+    }
+    if (s.includes("embedding") || s.includes("embed")) {
+      return registryFeature === "embeddings";
+    }
     if (registryFeature === "text") {
-      if (s.includes("dall-e") || s.includes("whisper") || s.includes("tts-") || s.includes("embedding")) {
+      if (
+        s.includes("dall-e") ||
+        s.includes("whisper") ||
+        s.includes("tts-") ||
+        s.includes("embedding")
+      ) {
         return false;
       }
       return (
@@ -110,27 +129,35 @@ export function filterOpenAIModelIdsForFeature(ids: string[], registryFeature: s
         s.includes("babbage")
       );
     }
-    return registryFeature === "video" && (s.includes("sora") || s.includes("video"));
+    return (
+      registryFeature === "video" && (s.includes("sora") || s.includes("video"))
+    );
   });
 }
 
 /** Exported for tests: Ollama model name classification. */
-export function classifyOllamaModelForFeature(name: string, registryFeature: string): boolean {
+export function classifyOllamaModelForFeature(
+  name: string,
+  registryFeature: string,
+): boolean {
   const n = name.toLowerCase();
-  const registryMatch = getModelsForProviderFeature("ollama", registryFeature).some(
-    (m: ModelInfo) => m.id === name || m.id === name.split(":")[0]
-  );
+  const registryMatch = getModelsForProviderFeature(
+    "ollama",
+    registryFeature,
+  ).some((m: ModelInfo) => m.id === name || m.id === name.split(":")[0]);
   if (registryMatch) return true;
 
   const textHints =
     /llama|mistral|qwen|gemma|phi|codellama|vicuna|orca|neural-chat|deepseek|mixtral|solar|yi-|falcon|starling|dolphin/i;
   const embedHints = /embed|nomic-embed|mxbai|bge-|e5-|snowflake/i;
-  const imageHints = /flux|sdxl|stable|sd-|diffusion|llava|dreamshaper|animagine|playground|kandinsky|realvis|juggernaut/i;
+  const imageHints =
+    /flux|sdxl|stable|sd-|diffusion|llava|dreamshaper|animagine|playground|kandinsky|realvis|juggernaut/i;
   const sttHints = /whisper|faster-whisper|parakeet/i;
   const ttsHints = /bark|piper|speech|tts|xtts|coqui/i;
   const videoHints = /video|svd|zeroscope|ltx|animate|hunyuan|i2v|t2v/i;
 
-  const isObviousChat = textHints.test(n) && !embedHints.test(n) && !imageHints.test(n);
+  const isObviousChat = textHints.test(n) && !embedHints.test(n) &&
+    !imageHints.test(n);
 
   switch (registryFeature) {
     case "text":
@@ -157,7 +184,10 @@ type OpenRouterRow = {
 };
 
 /** Exported for tests. */
-export function filterOpenRouterRowsForFeature(rows: OpenRouterRow[], registryFeature: string): OpenRouterRow[] {
+export function filterOpenRouterRowsForFeature(
+  rows: OpenRouterRow[],
+  registryFeature: string,
+): OpenRouterRow[] {
   const modalityMap: Record<string, string[]> = {
     text: ["text", "multimodal"],
     embeddings: ["text", "embeddings"],
@@ -171,28 +201,53 @@ export function filterOpenRouterRowsForFeature(rows: OpenRouterRow[], registryFe
   return rows.filter((row) => {
     const mod = (row.architecture?.modality ?? "").toLowerCase();
     if (mod) {
-      if (registryFeature === "text") return mod === "text" || mod === "multimodal";
-      if (registryFeature === "embeddings") return mod.includes("embed") || row.id.includes("embed");
-      if (registryFeature === "image") return mod === "image" || mod === "multimodal";
-      if (registryFeature === "video") return mod === "video" || row.id.includes("video");
+      if (registryFeature === "text") {
+        return mod === "text" || mod === "multimodal";
+      }
+      if (registryFeature === "embeddings") {
+        return mod.includes("embed") || row.id.includes("embed");
+      }
+      if (registryFeature === "image") {
+        return mod === "image" || mod === "multimodal";
+      }
+      if (registryFeature === "video") {
+        return mod === "video" || row.id.includes("video");
+      }
       return want.some((w) => mod.includes(w));
     }
     // No modality: fall back to id/name heuristics
     const id = row.id.toLowerCase();
     if (registryFeature === "text") {
-      return !id.includes("dall-e") && !id.includes("flux") && !id.includes("stable-diffusion");
+      return (
+        !id.includes("dall-e") &&
+        !id.includes("flux") &&
+        !id.includes("stable-diffusion")
+      );
     }
     if (registryFeature === "image") {
-      return id.includes("dall-e") || id.includes("flux") || id.includes("stable") || id.includes("midjourney");
+      return (
+        id.includes("dall-e") ||
+        id.includes("flux") ||
+        id.includes("stable") ||
+        id.includes("midjourney")
+      );
     }
     if (registryFeature === "video") {
-      return id.includes("video") || id.includes("runway") || id.includes("luma") || id.includes("kling");
+      return (
+        id.includes("video") ||
+        id.includes("runway") ||
+        id.includes("luma") ||
+        id.includes("kling")
+      );
     }
     return true;
   });
 }
 
-async function fetchOpenAIModels(apiKey: string, baseUrl = "https://api.openai.com/v1"): Promise<ModelInfo[]> {
+async function fetchOpenAIModels(
+  apiKey: string,
+  baseUrl = "https://api.openai.com/v1",
+): Promise<ModelInfo[]> {
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/models`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
@@ -212,7 +267,7 @@ async function fetchOpenAIModels(apiKey: string, baseUrl = "https://api.openai.c
 
 async function fetchOllamaModelNames(
   baseUrl: string,
-  opts: { apiKey?: string; cloud?: boolean } = {}
+  opts: { apiKey?: string; cloud?: boolean } = {},
 ): Promise<string[]> {
   const headers: Record<string, string> = {};
   if (opts.apiKey?.trim()) {
@@ -231,7 +286,9 @@ async function fetchOllamaModelNames(
       }
     } else {
       errors.push(
-        v1.status > 0 ? `Ollama Cloud /v1/models: ${v1.status} ${v1.error}` : `Ollama Cloud /v1/models: ${v1.error}`
+        v1.status > 0
+          ? `Ollama Cloud /v1/models: ${v1.status} ${v1.error}`
+          : `Ollama Cloud /v1/models: ${v1.error}`,
       );
     }
   }
@@ -243,7 +300,11 @@ async function fetchOllamaModelNames(
       if (name) modelNames.add(name);
     }
   } else {
-    errors.push(tags.status > 0 ? `Ollama tags: ${tags.status} ${tags.error}` : `Ollama tags: ${tags.error}`);
+    errors.push(
+      tags.status > 0
+        ? `Ollama tags: ${tags.status} ${tags.error}`
+        : `Ollama tags: ${tags.error}`,
+    );
   }
 
   if (modelNames.size === 0) {
@@ -266,7 +327,11 @@ async function fetchOpenRouterModels(apiKey: string): Promise<OpenRouterRow[]> {
 }
 
 async function fetchGoogleModels(apiKey: string): Promise<ModelInfo[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${
+    encodeURIComponent(
+      apiKey,
+    )
+  }`;
   const response = await fetch(url);
   if (!response.ok) {
     const t = await response.text();
@@ -360,7 +425,7 @@ export interface DiscoverModelsOptions {
 export async function discoverModels(
   providerId: string,
   featureKey: string,
-  opts: DiscoverModelsOptions = {}
+  opts: DiscoverModelsOptions = {},
 ): Promise<ModelInfo[]> {
   if (!isDiscoverableFeatureKey(featureKey)) {
     throw new Error(`Invalid feature: ${featureKey}`);
@@ -378,10 +443,9 @@ export async function discoverModels(
     case "ollama":
     case "ollama_local":
     case "ollama_cloud": {
-      const defaultBase =
-        providerId === "ollama_cloud"
-          ? OLLAMA_CLOUD_ORIGIN
-          : "http://127.0.0.1:11434";
+      const defaultBase = providerId === "ollama_cloud"
+        ? OLLAMA_CLOUD_ORIGIN
+        : "http://127.0.0.1:11434";
       const base = opts.baseUrl?.trim() || defaultBase;
       const names = await fetchOllamaModelNames(base, {
         apiKey: opts.apiKey,
@@ -415,7 +479,7 @@ export async function discoverModels(
       if (!opts.apiKey) throw new Error("API key required for Anthropic");
       if (registryFeature !== "text") {
         throw new Error(
-          "Live-Modellliste für Anthropic ist nur für Chat/Text verfügbar."
+          "Live-Modellliste für Anthropic ist nur für Chat/Text verfügbar.",
         );
       }
       raw = await fetchAnthropicModels(opts.apiKey);
@@ -425,7 +489,7 @@ export async function discoverModels(
       if (!opts.apiKey) throw new Error("API key required for DeepSeek");
       if (registryFeature !== "text" && registryFeature !== "embeddings") {
         throw new Error(
-          "DeepSeek liefert über die API nur Text-/Embedding-Modelle; diese Funktion passt nicht."
+          "DeepSeek liefert über die API nur Text-/Embedding-Modelle; diese Funktion passt nicht.",
         );
       }
       raw = await fetchDeepSeekModels(opts.apiKey);
@@ -435,7 +499,7 @@ export async function discoverModels(
       if (!opts.apiKey) throw new Error("API key required for ElevenLabs");
       if (registryFeature !== "audio_tts") {
         throw new Error(
-          "ElevenLabs liefert nur Sprachmodelle; diese Funktion passt nicht."
+          "ElevenLabs liefert nur Sprachmodelle; diese Funktion passt nicht.",
         );
       }
       raw = await fetchElevenLabsModels(opts.apiKey);
@@ -443,7 +507,7 @@ export async function discoverModels(
     }
     case "huggingface": {
       throw new Error(
-        "Keine Live-Modellliste für Hugging Face — bitte Modell-ID manuell setzen oder anderen Anbieter wählen."
+        "Keine Live-Modellliste für Hugging Face — bitte Modell-ID manuell setzen oder anderen Anbieter wählen.",
       );
     }
     default:

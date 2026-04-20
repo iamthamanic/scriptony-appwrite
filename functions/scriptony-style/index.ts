@@ -6,17 +6,20 @@
 
 import { requireUserBootstrap } from "../_shared/auth";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
-import { getAccessibleProject, getUserOrganizationIds } from "../_shared/scriptony";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../_shared/scriptony";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import {
   applyStyleProfileBodySchema,
@@ -29,8 +32,8 @@ import {
 import {
   applyStyleProfileToShot,
   createStyleProfile,
-  getStyleShotById,
   getStyleProfileById,
+  getStyleShotById,
   listStyleProfilesForProject,
   listStyleProfilesForUser,
   removeStyleProfile,
@@ -42,9 +45,13 @@ import {
 } from "./style-service";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -54,10 +61,14 @@ function getPathname(req: RequestLike): string {
 
 function getQueryParam(req: RequestLike, key: string): string {
   const fromQuery = req?.query?.[key];
-  if (typeof fromQuery === "string" && fromQuery.trim()) return fromQuery.trim();
+  if (typeof fromQuery === "string" && fromQuery.trim()) {
+    return fromQuery.trim();
+  }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url = raw.startsWith("http://") || raw.startsWith("https://") ? new URL(raw) : new URL(raw, "http://local");
+    const url = raw.startsWith("http://") || raw.startsWith("https://")
+      ? new URL(raw)
+      : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
@@ -94,24 +105,36 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       if (req.method === "GET") {
         const projectId = getQueryParam(req, "projectId");
         if (projectId) {
-          const project = await getAccessibleProject(projectId, userId, organizationIds);
+          const project = await getAccessibleProject(
+            projectId,
+            userId,
+            organizationIds,
+          );
           if (!project) {
             sendNotFound(res, "Project not found");
             return;
           }
-          sendJson(res, 200, { profiles: await listStyleProfilesForProject(projectId) });
+          sendJson(res, 200, {
+            profiles: await listStyleProfilesForProject(projectId),
+          });
           return;
         }
-        sendJson(res, 200, { profiles: await listStyleProfilesForUser(userId) });
+        sendJson(res, 200, {
+          profiles: await listStyleProfilesForUser(userId),
+        });
         return;
       }
 
       if (req.method === "POST") {
         const body = normalizeStyleProfileCreateBody(
-          createStyleProfileBodySchema.parse(await readJsonBody(req))
+          createStyleProfileBodySchema.parse(await readJsonBody(req)),
         );
         if (body.projectId) {
-          const project = await getAccessibleProject(body.projectId, userId, organizationIds);
+          const project = await getAccessibleProject(
+            body.projectId,
+            userId,
+            organizationIds,
+          );
           if (!project) {
             sendNotFound(res, "Project not found");
             return;
@@ -147,7 +170,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       const body = normalizeApplyStyleProfileBody(
-        applyStyleProfileBodySchema.parse(await readJsonBody(req))
+        applyStyleProfileBodySchema.parse(await readJsonBody(req)),
       );
       const shotRow = await getStyleShotById(body.shotId);
       if (!shotRow) {
@@ -166,19 +189,29 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           sendNotFound(res, "Style profile not found");
           return;
         }
-        if (!(await userCanAccessStyleProfile(profileRow, userId, organizationIds))) {
+        if (
+          !(await userCanAccessStyleProfile(
+            profileRow,
+            userId,
+            organizationIds,
+          ))
+        ) {
           sendNotFound(res, "Style profile not found");
           return;
         }
-        const profileProjectId =
-          typeof profileRow.projectId === "string" && profileRow.projectId.trim()
-            ? profileRow.projectId.trim()
-            : null;
+        const profileProjectId = typeof profileRow.projectId === "string" &&
+            profileRow.projectId.trim()
+          ? profileRow.projectId.trim()
+          : null;
         const shotProjectId =
           typeof shotRow.project_id === "string" && shotRow.project_id.trim()
             ? shotRow.project_id.trim()
             : null;
-        if (profileProjectId && shotProjectId && profileProjectId !== shotProjectId) {
+        if (
+          profileProjectId &&
+          shotProjectId &&
+          profileProjectId !== shotProjectId
+        ) {
           sendBadRequest(res, "Style profile belongs to a different project");
           return;
         }
@@ -189,7 +222,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const shotProfileMatch = pathname.match(/^\/ai\/style\/shot\/([^/]+)\/profile$/);
+    const shotProfileMatch = pathname.match(
+      /^\/ai\/style\/shot\/([^/]+)\/profile$/,
+    );
     if (shotProfileMatch) {
       const shotId = shotProfileMatch[1];
       const shotRow = await getStyleShotById(shotId);
@@ -201,7 +236,11 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendNotFound(res, "Shot not found");
         return;
       }
-      sendJson(res, 200, await resolveShotStyleProfile(shotRow, userId, organizationIds));
+      sendJson(
+        res,
+        200,
+        await resolveShotStyleProfile(shotRow, userId, organizationIds),
+      );
       return;
     }
 
@@ -225,10 +264,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
       if (req.method === "PUT") {
         const body = normalizeStyleProfileUpdateBody(
-          updateStyleProfileBodySchema.parse(await readJsonBody(req))
+          updateStyleProfileBodySchema.parse(await readJsonBody(req)),
         );
-        const hasUpdate =
-          body.name !== undefined ||
+        const hasUpdate = body.name !== undefined ||
           body.projectId !== undefined ||
           body.previewImageId !== undefined ||
           body.config !== undefined;
@@ -237,7 +275,11 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           return;
         }
         if (body.projectId) {
-          const project = await getAccessibleProject(body.projectId, userId, organizationIds);
+          const project = await getAccessibleProject(
+            body.projectId,
+            userId,
+            organizationIds,
+          );
           if (!project) {
             sendNotFound(res, "Project not found");
             return;

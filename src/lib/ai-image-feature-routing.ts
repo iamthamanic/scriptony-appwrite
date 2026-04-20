@@ -18,13 +18,18 @@ export interface AiImageRoutingParsed {
     provider?: ImageProviderId;
     model?: string;
     enabled_features?: ImageFeatureId[];
-    feature_profiles?: Partial<Record<ImageFeatureId, ImageFeatureProfileOverride | null>>;
+    feature_profiles?: Partial<
+      Record<ImageFeatureId, ImageFeatureProfileOverride | null>
+    >;
     provider_models?: Partial<Record<ImageProviderId, string>>;
     ollama?: { mode?: "cloud" } | null;
   } | null;
 }
 
-export const IMAGE_ROUTABLE_FEATURES: ReadonlyArray<{ id: ImageFeatureId; label: string }> = [
+export const IMAGE_ROUTABLE_FEATURES: ReadonlyArray<{
+  id: ImageFeatureId;
+  label: string;
+}> = [
   { id: "cover", label: "Cover" },
   { id: "stage2d", label: "2DStage" },
 ] as const;
@@ -35,7 +40,7 @@ export const IMAGE_FEATURE_TOGGLE_TITLES: Record<ImageFeatureId, string> = {
 };
 
 export function getImageFeatureFlags(
-  parsed: AiImageRoutingParsed | undefined
+  parsed: AiImageRoutingParsed | undefined,
 ): Record<ImageFeatureId, boolean> {
   const ef = parsed?.image?.enabled_features;
   if (ef === undefined) {
@@ -49,7 +54,7 @@ export function getImageFeatureFlags(
 
 export function getRoutedImageProviderForFeature(
   parsed: AiImageRoutingParsed | undefined,
-  fid: ImageFeatureId
+  fid: ImageFeatureId,
 ): ImageProviderId | undefined {
   const p = parsed?.image?.feature_profiles?.[fid]?.provider;
   if (p === "openrouter" || p === "ollama") return p;
@@ -58,7 +63,7 @@ export function getRoutedImageProviderForFeature(
 
 export function getEffectiveImageProviderForFeature(
   parsed: AiImageRoutingParsed | undefined,
-  fid: ImageFeatureId
+  fid: ImageFeatureId,
 ): ImageProviderId | undefined {
   const explicit = getRoutedImageProviderForFeature(parsed, fid);
   if (explicit) return explicit;
@@ -69,7 +74,7 @@ export function getEffectiveImageProviderForFeature(
 
 export function getEffectiveImageModelForFeature(
   parsed: AiImageRoutingParsed | undefined,
-  fid: ImageFeatureId
+  fid: ImageFeatureId,
 ): string {
   const img = parsed?.image;
   if (!img) return "";

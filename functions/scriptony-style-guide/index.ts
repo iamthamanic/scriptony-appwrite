@@ -5,22 +5,30 @@
 
 import { ID } from "node-appwrite";
 import { requireUserBootstrap } from "../_shared/auth";
-import { C, createDocument, deleteDocument, updateDocument } from "../_shared/appwrite-db";
+import {
+  C,
+  createDocument,
+  deleteDocument,
+  updateDocument,
+} from "../_shared/appwrite-db";
 import { getStorageBucketId } from "../_shared/env";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
-import { uploadFileToStorage, extractUploadedFile } from "../_shared/storage";
-import { getAccessibleProject, getUserOrganizationIds } from "../_shared/scriptony";
+import { extractUploadedFile, uploadFileToStorage } from "../_shared/storage";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../_shared/scriptony";
 import {
   createReferenceBodySchema,
   extractPaletteBodySchema,
@@ -31,8 +39,8 @@ import {
 } from "../_shared/style-guide-schema";
 import {
   compileExportPayload,
-  getOrCreateStyleRoot,
   getItemById,
+  getOrCreateStyleRoot,
   itemRowToApi,
   listItemsForStyle,
   maxOrderIndex,
@@ -41,9 +49,13 @@ import {
 } from "./style-guide-service";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
   } catch {
     /* noop */
   }
@@ -54,7 +66,7 @@ function getPathname(req: RequestLike): string {
 async function requireProjectAccess(
   req: RequestLike,
   res: ResponseLike,
-  projectId: string
+  projectId: string,
 ): Promise<{ userId: string; organizationIds: string[] } | null> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
@@ -62,7 +74,11 @@ async function requireProjectAccess(
     return null;
   }
   const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-  const project = await getAccessibleProject(projectId, bootstrap.user.id, organizationIds);
+  const project = await getAccessibleProject(
+    projectId,
+    bootstrap.user.id,
+    organizationIds,
+  );
   if (!project) {
     sendNotFound(res, "Project not found");
     return null;
@@ -76,7 +92,11 @@ async function loadStyleBundle(projectId: string, userId: string) {
   return { root, items };
 }
 
-async function handleGetStyleGuide(req: RequestLike, res: ResponseLike, projectId: string): Promise<void> {
+async function handleGetStyleGuide(
+  req: RequestLike,
+  res: ResponseLike,
+  projectId: string,
+): Promise<void> {
   const access = await requireProjectAccess(req, res, projectId);
   if (!access) return;
   const { root, items } = await loadStyleBundle(projectId, access.userId);
@@ -88,7 +108,11 @@ async function handleGetStyleGuide(req: RequestLike, res: ResponseLike, projectI
   });
 }
 
-async function handlePatchStyleGuide(req: RequestLike, res: ResponseLike, projectId: string): Promise<void> {
+async function handlePatchStyleGuide(
+  req: RequestLike,
+  res: ResponseLike,
+  projectId: string,
+): Promise<void> {
   const access = await requireProjectAccess(req, res, projectId);
   if (!access) return;
   if (req.method !== "PATCH") {
@@ -118,7 +142,11 @@ async function handlePatchStyleGuide(req: RequestLike, res: ResponseLike, projec
   });
 }
 
-async function handlePostReference(req: RequestLike, res: ResponseLike, projectId: string): Promise<void> {
+async function handlePostReference(
+  req: RequestLike,
+  res: ResponseLike,
+  projectId: string,
+): Promise<void> {
   const access = await requireProjectAccess(req, res, projectId);
   if (!access) return;
   if (req.method !== "POST") {
@@ -135,9 +163,14 @@ async function handlePostReference(req: RequestLike, res: ResponseLike, projectI
       kind: "image",
       title: (req.body as any)?.title ?? "",
       caption: (req.body as any)?.caption ?? "",
-      tags: typeof (req.body as any)?.tags === "string" ? JSON.parse((req.body as any).tags || "[]") : (req.body as any)?.tags,
-      influence: (req.body as any)?.influence != null ? Number((req.body as any).influence) : undefined,
-      pinned: (req.body as any)?.pinned === true || (req.body as any)?.pinned === "true",
+      tags: typeof (req.body as any)?.tags === "string"
+        ? JSON.parse((req.body as any).tags || "[]")
+        : (req.body as any)?.tags,
+      influence: (req.body as any)?.influence != null
+        ? Number((req.body as any).influence)
+        : undefined,
+      pinned: (req.body as any)?.pinned === true ||
+        (req.body as any)?.pinned === "true",
     };
   } else {
     body = await readJsonBody(req);
@@ -150,15 +183,26 @@ async function handlePostReference(req: RequestLike, res: ResponseLike, projectI
   }
   const data = parsed.data;
 
-  if (data.kind === "image" && !file && !(data.image_url && String(data.image_url).trim())) {
+  if (
+    data.kind === "image" &&
+    !file &&
+    !(data.image_url && String(data.image_url).trim())
+  ) {
     sendBadRequest(res, "Image reference requires a file upload or image_url");
     return;
   }
-  if (data.kind === "link" && !(data.source_url && String(data.source_url).trim())) {
+  if (
+    data.kind === "link" &&
+    !(data.source_url && String(data.source_url).trim())
+  ) {
     sendBadRequest(res, "Link reference requires source_url");
     return;
   }
-  if (data.kind === "text" && !(data.text_body && String(data.text_body).trim()) && !(data.caption && String(data.caption).trim())) {
+  if (
+    data.kind === "text" &&
+    !(data.text_body && String(data.text_body).trim()) &&
+    !(data.caption && String(data.caption).trim())
+  ) {
     sendBadRequest(res, "Text reference requires text_body or caption");
     return;
   }
@@ -172,7 +216,11 @@ async function handlePostReference(req: RequestLike, res: ResponseLike, projectI
     const uploaded = await uploadFileToStorage({
       file,
       bucketId: getStorageBucketId("projectImages"),
-      name: `${projectId}-style-ref-${Date.now()}.${(file.name.split(".").pop() || "jpg").slice(0, 8)}`,
+      name: `${projectId}-style-ref-${Date.now()}.${
+        (
+          file.name.split(".").pop() || "jpg"
+        ).slice(0, 8)
+      }`,
       metadata: {
         entity: "style_guide_item",
         projectId,
@@ -186,10 +234,9 @@ async function handlePostReference(req: RequestLike, res: ResponseLike, projectI
   }
 
   const orderIndex = await maxOrderIndex(root.id);
-  const caption =
-    data.kind === "text"
-      ? String(data.text_body ?? data.caption ?? "").slice(0, 8000)
-      : String(data.caption ?? "").slice(0, 8000);
+  const caption = data.kind === "text"
+    ? String(data.text_body ?? data.caption ?? "").slice(0, 8000)
+    : String(data.caption ?? "").slice(0, 8000);
 
   const itemRow = {
     visual_style_id: root.id,
@@ -214,7 +261,11 @@ async function handlePostReference(req: RequestLike, res: ResponseLike, projectI
     license_note: String(data.license_note ?? "").slice(0, 4000),
   };
 
-  const created = await createDocument(C.project_visual_style_items, ID.unique(), itemRow);
+  const created = await createDocument(
+    C.project_visual_style_items,
+    ID.unique(),
+    itemRow,
+  );
   const items = await listItemsForStyle(root.id);
   const rootFresh = await getOrCreateStyleRoot(projectId, access.userId);
   const refreshedRoot = await persistCompiledOutputs(root.id, rootFresh, items);
@@ -227,7 +278,11 @@ async function handlePostReference(req: RequestLike, res: ResponseLike, projectI
   });
 }
 
-async function handlePatchReference(req: RequestLike, res: ResponseLike, referenceId: string): Promise<void> {
+async function handlePatchReference(
+  req: RequestLike,
+  res: ResponseLike,
+  referenceId: string,
+): Promise<void> {
   if (req.method !== "PATCH") {
     sendMethodNotAllowed(res, ["PATCH"]);
     return;
@@ -251,8 +306,9 @@ async function handlePatchReference(req: RequestLike, res: ResponseLike, referen
   const row: Record<string, unknown> = {};
   if (d.kind !== undefined) row.kind = d.kind;
   if (d.title !== undefined) row.title = d.title;
-  if (d.text_body !== undefined && String(item.kind) === "text") row.caption = d.text_body;
-  else if (d.caption !== undefined) row.caption = d.caption;
+  if (d.text_body !== undefined && String(item.kind) === "text") {
+    row.caption = d.text_body;
+  } else if (d.caption !== undefined) row.caption = d.caption;
   if (d.image_url !== undefined) row.image_url = d.image_url;
   if (d.source_url !== undefined) row.source_url = d.source_url;
   if (d.source_name !== undefined) row.source_name = d.source_name;
@@ -267,7 +323,11 @@ async function handlePatchReference(req: RequestLike, res: ResponseLike, referen
     return;
   }
 
-  const updated = await updateDocument(C.project_visual_style_items, referenceId, row);
+  const updated = await updateDocument(
+    C.project_visual_style_items,
+    referenceId,
+    row,
+  );
   const root = await getOrCreateStyleRoot(projectId, access.userId);
   const items = await listItemsForStyle(root.id);
   const merged = await persistCompiledOutputs(root.id, root, items);
@@ -280,7 +340,11 @@ async function handlePatchReference(req: RequestLike, res: ResponseLike, referen
   });
 }
 
-async function handleDeleteReference(req: RequestLike, res: ResponseLike, referenceId: string): Promise<void> {
+async function handleDeleteReference(
+  req: RequestLike,
+  res: ResponseLike,
+  referenceId: string,
+): Promise<void> {
   if (req.method !== "DELETE") {
     sendMethodNotAllowed(res, ["DELETE"]);
     return;
@@ -306,7 +370,11 @@ async function handleDeleteReference(req: RequestLike, res: ResponseLike, refere
   });
 }
 
-async function handleReorder(req: RequestLike, res: ResponseLike, projectId: string): Promise<void> {
+async function handleReorder(
+  req: RequestLike,
+  res: ResponseLike,
+  projectId: string,
+): Promise<void> {
   const access = await requireProjectAccess(req, res, projectId);
   if (!access) return;
   if (req.method !== "POST") {
@@ -328,7 +396,9 @@ async function handleReorder(req: RequestLike, res: ResponseLike, projectId: str
       sendBadRequest(res, `Invalid reference id in order: ${ids[i]}`);
       return;
     }
-    await updateDocument(C.project_visual_style_items, ids[i], { order_index: i });
+    await updateDocument(C.project_visual_style_items, ids[i], {
+      order_index: i,
+    });
   }
 
   const items = await listItemsForStyle(root.id);
@@ -341,7 +411,11 @@ async function handleReorder(req: RequestLike, res: ResponseLike, projectId: str
   });
 }
 
-async function handleExtractPalette(req: RequestLike, res: ResponseLike, referenceId: string): Promise<void> {
+async function handleExtractPalette(
+  req: RequestLike,
+  res: ResponseLike,
+  referenceId: string,
+): Promise<void> {
   if (req.method !== "POST") {
     sendMethodNotAllowed(res, ["POST"]);
     return;
@@ -362,9 +436,13 @@ async function handleExtractPalette(req: RequestLike, res: ResponseLike, referen
     return;
   }
 
-  const updated = await updateDocument(C.project_visual_style_items, referenceId, {
-    extracted_palette_json: JSON.stringify(parsed.data.colors),
-  });
+  const updated = await updateDocument(
+    C.project_visual_style_items,
+    referenceId,
+    {
+      extracted_palette_json: JSON.stringify(parsed.data.colors),
+    },
+  );
 
   const root = await getOrCreateStyleRoot(projectId, access.userId);
   const items = await listItemsForStyle(root.id);
@@ -378,7 +456,11 @@ async function handleExtractPalette(req: RequestLike, res: ResponseLike, referen
   });
 }
 
-async function handleBuildPrompt(req: RequestLike, res: ResponseLike, projectId: string): Promise<void> {
+async function handleBuildPrompt(
+  req: RequestLike,
+  res: ResponseLike,
+  projectId: string,
+): Promise<void> {
   const access = await requireProjectAccess(req, res, projectId);
   if (!access) return;
   if (req.method !== "POST") {
@@ -397,7 +479,11 @@ async function handleBuildPrompt(req: RequestLike, res: ResponseLike, projectId:
   });
 }
 
-async function handleExport(req: RequestLike, res: ResponseLike, projectId: string): Promise<void> {
+async function handleExport(
+  req: RequestLike,
+  res: ResponseLike,
+  projectId: string,
+): Promise<void> {
   const access = await requireProjectAccess(req, res, projectId);
   if (!access) return;
   if (req.method !== "POST") {
@@ -431,13 +517,17 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   try {
-    const reorderMatch = pathname.match(/^\/style-guide\/([^/]+)\/references\/reorder$/);
+    const reorderMatch = pathname.match(
+      /^\/style-guide\/([^/]+)\/references\/reorder$/,
+    );
     if (reorderMatch) {
       await handleReorder(req, res, reorderMatch[1]);
       return;
     }
 
-    const refCreateMatch = pathname.match(/^\/style-guide\/([^/]+)\/references$/);
+    const refCreateMatch = pathname.match(
+      /^\/style-guide\/([^/]+)\/references$/,
+    );
     if (refCreateMatch) {
       await handlePostReference(req, res, refCreateMatch[1]);
       return;
@@ -455,7 +545,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const extractMatch = pathname.match(/^\/style-guide\/references\/([^/]+)\/extract-palette$/);
+    const extractMatch = pathname.match(
+      /^\/style-guide\/references\/([^/]+)\/extract-palette$/,
+    );
     if (extractMatch) {
       await handleExtractPalette(req, res, extractMatch[1]);
       return;

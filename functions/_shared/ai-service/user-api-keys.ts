@@ -32,7 +32,7 @@ export async function getApiKeyForUserFeature(
   databases: Databases,
   userId: string,
   feature: string,
-  provider: string
+  provider: string,
 ): Promise<string | null> {
   const dbId = getAiServiceDatabaseId();
   const scoped = await databases.listDocuments(dbId, AI_API_KEYS_COLLECTION, [
@@ -66,7 +66,7 @@ export async function upsertApiKeyForFeature(
   userId: string,
   feature: string,
   provider: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<void> {
   const dbId = getAiServiceDatabaseId();
   const existing = await databases.listDocuments(dbId, AI_API_KEYS_COLLECTION, [
@@ -76,9 +76,14 @@ export async function upsertApiKeyForFeature(
   ]);
 
   if (existing.documents.length > 0) {
-    await databases.updateDocument(dbId, AI_API_KEYS_COLLECTION, existing.documents[0].$id, {
-      api_key: apiKey,
-    });
+    await databases.updateDocument(
+      dbId,
+      AI_API_KEYS_COLLECTION,
+      existing.documents[0].$id,
+      {
+        api_key: apiKey,
+      },
+    );
     return;
   }
 
@@ -94,7 +99,7 @@ export async function deleteApiKeyForFeature(
   databases: Databases,
   userId: string,
   feature: string,
-  provider: string
+  provider: string,
 ): Promise<boolean> {
   const dbId = getAiServiceDatabaseId();
   const existing = await databases.listDocuments(dbId, AI_API_KEYS_COLLECTION, [
@@ -103,7 +108,11 @@ export async function deleteApiKeyForFeature(
     Query.equal("provider", provider),
   ]);
   if (existing.documents.length > 0) {
-    await databases.deleteDocument(dbId, AI_API_KEYS_COLLECTION, existing.documents[0].$id);
+    await databases.deleteDocument(
+      dbId,
+      AI_API_KEYS_COLLECTION,
+      existing.documents[0].$id,
+    );
     return true;
   }
 

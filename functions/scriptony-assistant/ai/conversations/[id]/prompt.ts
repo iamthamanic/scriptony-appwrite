@@ -7,16 +7,19 @@ import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -35,7 +38,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const body = await readJsonBody<{ system_prompt?: string; prompt?: string }>(req);
+    const body = await readJsonBody<{
+      system_prompt?: string;
+      prompt?: string;
+    }>(req);
     const systemPrompt = body.system_prompt ?? body.prompt ?? "";
 
     const updated = await requestGraphql<{
@@ -57,7 +63,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         }
       `,
-      { id: conversationId, systemPrompt }
+      { id: conversationId, systemPrompt },
     );
 
     sendJson(res, 200, { conversation: updated.update_ai_conversations_by_pk });

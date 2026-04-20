@@ -4,7 +4,8 @@
  * Location: src/lib/ai-settings-updated.ts
  */
 
-export const SCRIPTONY_AI_SETTINGS_UPDATED_EVENT = "scriptony-ai-settings-updated";
+export const SCRIPTONY_AI_SETTINGS_UPDATED_EVENT =
+  "scriptony-ai-settings-updated";
 
 export function notifyAiSettingsConsumers(): void {
   if (typeof window === "undefined") return;

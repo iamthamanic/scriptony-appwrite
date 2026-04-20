@@ -6,9 +6,9 @@
 
 import {
   fetch as undiciFetch,
+  Headers as UndiciHeaders,
   Request as UndiciRequest,
   Response as UndiciResponse,
-  Headers as UndiciHeaders,
 } from "undici";
 
 const g = globalThis as typeof globalThis & {

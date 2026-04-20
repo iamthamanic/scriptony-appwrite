@@ -1,6 +1,6 @@
 /**
  * Text-to-Speech Service (TTS)
- * 
+ *
  * Synthesizes text to audio using configured provider.
  */
 
@@ -9,7 +9,7 @@ import { getProvider, type TTSOptions, type TTSResponse } from "../providers";
 
 /**
  * Synthesize text to speech
- * 
+ *
  * @param userId - User ID
  * @param text - Text to synthesize
  * @param options - TTS options (voice, speed, etc.)
@@ -18,17 +18,19 @@ import { getProvider, type TTSOptions, type TTSResponse } from "../providers";
 export async function synthesize(
   userId: string,
   text: string,
-  options?: Partial<TTSOptions>
+  options?: Partial<TTSOptions>,
 ): Promise<TTSResponse> {
   const runtime = await resolveFeatureRuntime(userId, "audio_tts");
   const provider = getProvider(runtime.config.provider, {
     apiKey: runtime.apiKey || undefined,
     baseUrl: runtime.baseUrl,
   });
-  
+
   // Check capability
   if (!provider.capabilities.audio_tts || !provider.synthesize) {
-    throw new Error(`Provider "${runtime.config.provider}" does not support text-to-speech`);
+    throw new Error(
+      `Provider "${runtime.config.provider}" does not support text-to-speech`,
+    );
   }
 
   const { model: _ignoredModel, voice: _ignoredVoice, ...rest } = options || {};
@@ -41,27 +43,29 @@ export async function synthesize(
 
 /**
  * Get available voices for TTS
- * 
+ *
  * @param userId - User ID
  * @returns List of available voices
  */
 export async function getVoices(
   userId: string,
-  options?: { provider?: string }
+  options?: { provider?: string },
 ): Promise<Array<{ id: string; name: string }>> {
   const runtime = await resolveFeatureRuntime(userId, "audio_tts");
-  const providerName = (options?.provider as typeof runtime.config.provider | undefined) || runtime.config.provider;
+  const providerName =
+    (options?.provider as typeof runtime.config.provider | undefined) ||
+    runtime.config.provider;
   const provider = getProvider(providerName, {
     apiKey: runtime.apiKey || undefined,
     baseUrl: runtime.baseUrl,
   });
-  
+
   // Check if provider has voice selection
   if (provider.name === "elevenlabs" && "getVoices" in provider) {
     const elevenlabs = provider as any;
     return elevenlabs.getVoices();
   }
-  
+
   // Default voices for other providers
   if (providerName === "openai") {
     return [
@@ -73,6 +77,6 @@ export async function getVoices(
       { id: "shimmer", name: "Shimmer" },
     ];
   }
-  
+
   return [{ id: "default", name: "Default" }];
 }

@@ -5,14 +5,17 @@
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendJson,
   sendMethodNotAllowed,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -24,11 +27,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return;
   }
 
-  const body = await readJsonBody<{ text?: string; messages?: Array<{ content?: string }> }>(req);
+  const body = await readJsonBody<{
+    text?: string;
+    messages?: Array<{ content?: string }>;
+  }>(req);
   const messageText = Array.isArray(body.messages)
     ? body.messages.map((entry) => entry.content || "").join(" ")
     : body.text || "";
-  const tokens = messageText.trim() ? messageText.trim().split(/\s+/).length : 0;
+  const tokens = messageText.trim()
+    ? messageText.trim().split(/\s+/).length
+    : 0;
 
   sendJson(res, 200, {
     token_count: tokens,

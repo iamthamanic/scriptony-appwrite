@@ -37,7 +37,7 @@ export function ImageFeatureToggleBadges({
       data-provider={providerId}
       className={cn(
         "flex flex-wrap items-center justify-start border-l border-border/60 pl-4",
-        className
+        className,
       )}
       style={{
         gap: "0.75rem 1.5rem",

@@ -6,7 +6,10 @@
 
 import { cn } from "../ui/utils";
 import type { LlmProviderId } from "../../lib/llm-provider-registry";
-import { AI_ROUTABLE_FEATURES, type AiFeatureId } from "../../lib/ai-feature-routing";
+import {
+  AI_ROUTABLE_FEATURES,
+  type AiFeatureId,
+} from "../../lib/ai-feature-routing";
 import { FeatureToggleBadge } from "./FeatureToggleBadge";
 
 export interface ProviderFeatureToggleBadgesProps {
@@ -34,7 +37,7 @@ export function ProviderFeatureToggleBadges({
       data-provider={providerId}
       className={cn(
         "flex flex-wrap items-center justify-start border-l border-border/60 pl-4",
-        className
+        className,
       )}
       style={{
         // Explizit per style: Flex-Gap bleibt zuverlässig (Tailwind-Merge kann gap-* in manchen Setups verlieren).

@@ -3,7 +3,10 @@
  * Location: functions/scriptony-assistant/ai/fetch-dynamic-models.ts
  */
 
-import { discoverModels, type ModelInfo } from "../../_shared/ai-service/model-discovery";
+import {
+  discoverModels,
+  type ModelInfo,
+} from "../../_shared/ai-service/model-discovery";
 import { getModelsForProvider } from "../../_shared/ai-service/config/models";
 
 type LegacyModelRow = { id: string; name: string; context_window: number };
@@ -18,7 +21,11 @@ function modelInfoToLegacy(models: ModelInfo[]): LegacyModelRow[] {
 
 export async function listRemoteModels(
   provider: string,
-  opts: { apiKey?: string; ollamaBaseUrl?: string; ollamaMode?: "local" | "cloud" }
+  opts: {
+    apiKey?: string;
+    ollamaBaseUrl?: string;
+    ollamaMode?: "local" | "cloud";
+  },
 ): Promise<{ models: LegacyModelRow[]; source: "remote" | "registry" }> {
   const fallback = modelInfoToLegacy(getModelsForProvider(provider));
   try {
@@ -37,7 +44,11 @@ export async function listRemoteModels(
 
 export async function listRemoteModelsWithCapabilities(
   provider: string,
-  opts: { apiKey?: string; ollamaBaseUrl?: string; ollamaMode?: "local" | "cloud" }
+  opts: {
+    apiKey?: string;
+    ollamaBaseUrl?: string;
+    ollamaMode?: "local" | "cloud";
+  },
 ): Promise<{ models: ModelInfo[]; source: "remote" | "registry" }> {
   try {
     const discovered = await discoverModels(provider, "assistant_chat", {

@@ -21,7 +21,11 @@ export function AssistantParticleLoader({
   ariaLabel?: string;
 }) {
   return (
-    <div className={`assistant-pl-root ${className}`.trim()} role="status" aria-label={ariaLabel}>
+    <div
+      className={`assistant-pl-root ${className}`.trim()}
+      role="status"
+      aria-label={ariaLabel}
+    >
       <div className="assistant-pl-wrapper">
         {Array.from({ length: PARTICLE_COUNT }, (_, i) => {
           const angle = (i / PARTICLE_COUNT) * 720;

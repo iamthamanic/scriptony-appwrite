@@ -55,7 +55,9 @@ export function ProviderSelectItem({
             onClick={onActivate(provider.id)}
             className="flex size-4 items-center justify-center rounded-[4px] border cursor-pointer"
             style={isActive ? ACTIVE_CHECKBOX_STYLE : INACTIVE_CHECKBOX_STYLE}
-            title={isActive ? "Aktiver Provider" : "Als aktiven Provider setzen"}
+            title={
+              isActive ? "Aktiver Provider" : "Als aktiven Provider setzen"
+            }
           >
             {isActive ? <Check className="size-3" /> : null}
           </button>

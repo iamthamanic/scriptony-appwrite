@@ -1,10 +1,10 @@
 /**
  * DeepSeek Provider Implementation
- * 
+ *
  * Supports:
  * - Text: DeepSeek Chat, DeepSeek Coder
  * - Embeddings: DeepSeek Embedding
- * 
+ *
  * Note: DeepSeek specializes in coding and reasoning models.
  */
 
@@ -19,7 +19,7 @@ import type {
 
 export class DeepSeekProvider implements AIProvider {
   readonly name = "deepseek";
-  
+
   readonly capabilities = {
     text: true,
     audio_stt: false,
@@ -28,25 +28,28 @@ export class DeepSeekProvider implements AIProvider {
     video: false,
     embeddings: true,
   };
-  
+
   private apiKey: string;
   private baseUrl: string;
-  
+
   constructor(apiKey: string, baseUrl?: string) {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl || "https://api.deepseek.com/v1";
   }
-  
-  async chat(messages: ChatMessage[], options: ChatOptions): Promise<ChatResponse> {
+
+  async chat(
+    messages: ChatMessage[],
+    options: ChatOptions,
+  ): Promise<ChatResponse> {
     const systemMessages = options.systemPrompt
       ? [{ role: "system" as const, content: options.systemPrompt }]
       : [];
-    
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: options.model || "deepseek-chat",
@@ -57,14 +60,14 @@ export class DeepSeekProvider implements AIProvider {
         stream: false,
       }),
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`DeepSeek chat error: ${response.status} - ${error}`);
     }
-    
+
     const data = await response.json();
-    
+
     return {
       content: data.choices[0].message.content,
       usage: {
@@ -76,27 +79,32 @@ export class DeepSeekProvider implements AIProvider {
       finishReason: data.choices[0].finish_reason,
     };
   }
-  
-  async createEmbedding(text: string, options: EmbeddingOptions): Promise<EmbeddingResponse> {
+
+  async createEmbedding(
+    text: string,
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResponse> {
     const response = await fetch(`${this.baseUrl}/embeddings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: options.model || "deepseek-embed",
         input: text,
       }),
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`DeepSeek embedding error: ${response.status} - ${error}`);
+      throw new Error(
+        `DeepSeek embedding error: ${response.status} - ${error}`,
+      );
     }
-    
+
     const data = await response.json();
-    
+
     return {
       embedding: data.data[0].embedding,
       usage: {
@@ -105,12 +113,12 @@ export class DeepSeekProvider implements AIProvider {
       },
     };
   }
-  
+
   async healthCheck(): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/models`, {
         headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
       });
       return response.ok;

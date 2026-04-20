@@ -112,7 +112,9 @@ export function ProviderSecretInput({
             size="icon"
             className="pointer-events-auto h-8 w-8 text-muted-foreground hover:text-foreground"
             disabled={disabled || (!hasStored && d.length === 0)}
-            aria-label={revealStored ? "Zugangsdaten verbergen" : "Zugangsdaten anzeigen"}
+            aria-label={
+              revealStored ? "Zugangsdaten verbergen" : "Zugangsdaten anzeigen"
+            }
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -130,7 +132,11 @@ export function ProviderSecretInput({
               }
             }}
           >
-            {revealStored ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {revealStored ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
           </Button>
         </div>
       ) : null}

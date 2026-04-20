@@ -18,20 +18,41 @@ import {
 } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 
-import { apiDelete, apiGet, apiPost, apiPut, unwrapApiResult } from "../lib/api-client";
+import {
+  apiDelete,
+  apiGet,
+  apiPost,
+  apiPut,
+  unwrapApiResult,
+} from "../lib/api-client";
 import { notifyAiSettingsConsumers } from "../lib/ai-settings-updated";
 import { hasFunctionConfigured } from "../lib/env";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Slider } from "./ui/slider";
 import { Switch } from "./ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { FeatureModelPicker, type DiscoveredModelInfo } from "./ai/FeatureModelPicker";
+import {
+  FeatureModelPicker,
+  type DiscoveredModelInfo,
+} from "./ai/FeatureModelPicker";
 import { ProviderSelectItem } from "./ai/ProviderSelectItem";
 import { ProviderBadges } from "./ai/ProviderBadges";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -51,7 +72,13 @@ import {
   type OllamaUiMode,
 } from "../lib/ai-provider-allowlist";
 
-type CapabilityKey = "text" | "embeddings" | "image" | "audio_stt" | "audio_tts" | "video";
+type CapabilityKey =
+  | "text"
+  | "embeddings"
+  | "image"
+  | "audio_stt"
+  | "audio_tts"
+  | "video";
 
 // FeatureKey wird aus useProviderSelection importiert
 
@@ -122,13 +149,15 @@ const FEATURE_META: Record<
   },
   assistant_embeddings: {
     label: "Assistant Embeddings",
-    description: "Vektor-Embeddings fuer Suche, RAG und semantische Aehnlichkeit.",
+    description:
+      "Vektor-Embeddings fuer Suche, RAG und semantische Aehnlichkeit.",
     capability: "embeddings",
     icon: BrainCircuit,
   },
   creative_gym: {
     label: "Creative Gym",
-    description: "Textmodelle fuer Uebungen, Feedback und kreative Herausforderungen.",
+    description:
+      "Textmodelle fuer Uebungen, Feedback und kreative Herausforderungen.",
     capability: "text",
     icon: Sparkles,
   },
@@ -173,8 +202,18 @@ const INTEGRATION_TABS: {
     featureKeys: ["assistant_chat", "assistant_embeddings"],
     tabIcon: Bot,
   },
-  { id: "video", label: "Video", featureKeys: ["video_generation"], tabIcon: Video },
-  { id: "image", label: "Bild", featureKeys: ["image_generation"], tabIcon: ImageIcon },
+  {
+    id: "video",
+    label: "Video",
+    featureKeys: ["video_generation"],
+    tabIcon: Video,
+  },
+  {
+    id: "image",
+    label: "Bild",
+    featureKeys: ["image_generation"],
+    tabIcon: ImageIcon,
+  },
   {
     id: "audio",
     label: "Audio",
@@ -189,31 +228,35 @@ function parseDiscoveredModels(raw: unknown): DiscoveredModelInfo[] {
   const models: DiscoveredModelInfo[] = [];
   for (const entry of raw) {
     if (!entry || typeof entry !== "object" || !("id" in entry)) continue;
-      const id = String((entry as { id: unknown }).id);
-      const name =
-        "name" in entry && typeof (entry as { name?: unknown }).name === "string"
-          ? (entry as { name: string }).name
-          : id;
-      const provider =
-        "provider" in entry && typeof (entry as { provider?: unknown }).provider === "string"
-          ? (entry as { provider: string }).provider
-          : "";
-      const features = Array.isArray((entry as { features?: unknown }).features)
-        ? ((entry as { features: string[] }).features)
-        : [];
-      const cw = (entry as { contextWindow?: unknown }).contextWindow;
-      models.push({
-        id,
-        name,
-        provider,
-        features,
-        contextWindow: typeof cw === "number" ? cw : undefined,
-      });
+    const id = String((entry as { id: unknown }).id);
+    const name =
+      "name" in entry && typeof (entry as { name?: unknown }).name === "string"
+        ? (entry as { name: string }).name
+        : id;
+    const provider =
+      "provider" in entry &&
+      typeof (entry as { provider?: unknown }).provider === "string"
+        ? (entry as { provider: string }).provider
+        : "";
+    const features = Array.isArray((entry as { features?: unknown }).features)
+      ? (entry as { features: string[] }).features
+      : [];
+    const cw = (entry as { contextWindow?: unknown }).contextWindow;
+    models.push({
+      id,
+      name,
+      provider,
+      features,
+      contextWindow: typeof cw === "number" ? cw : undefined,
+    });
   }
   return models;
 }
 
-function featureProviderCacheKey(featureKey: FeatureKey, providerId: string): string {
+function featureProviderCacheKey(
+  featureKey: FeatureKey,
+  providerId: string,
+): string {
   return `${featureKey}:${providerId}`;
 }
 
@@ -235,7 +278,9 @@ const KEY_SAVED_BADGE_STYLE = {
   color: "#ddd6fe",
 } as const;
 
-function buildDefaultOllamaModes(mode: OllamaUiMode = "local"): Record<FeatureKey, OllamaUiMode> {
+function buildDefaultOllamaModes(
+  mode: OllamaUiMode = "local",
+): Record<FeatureKey, OllamaUiMode> {
   return {
     assistant_chat: mode,
     assistant_embeddings: mode,
@@ -250,7 +295,7 @@ function buildDefaultOllamaModes(mode: OllamaUiMode = "local"): Record<FeatureKe
 function normalizeFeatureConfigsForUi(
   features: Record<FeatureKey, FeatureConfig>,
   defaultMode: OllamaUiMode,
-  featureProviderKeyIndex: Record<string, boolean> = {}
+  featureProviderKeyIndex: Record<string, boolean> = {},
 ): {
   features: Record<FeatureKey, FeatureConfig>;
   ollamaModes: Record<FeatureKey, OllamaUiMode>;
@@ -258,7 +303,9 @@ function normalizeFeatureConfigsForUi(
   const normalized = {} as Record<FeatureKey, FeatureConfig>;
   const ollamaModes = buildDefaultOllamaModes(defaultMode);
 
-  for (const [featureKey, config] of Object.entries(features) as Array<[FeatureKey, FeatureConfig]>) {
+  for (const [featureKey, config] of Object.entries(features) as Array<
+    [FeatureKey, FeatureConfig]
+  >) {
     if (isOllamaFamilyProviderId(config.provider)) {
       normalized[featureKey] = {
         ...config,
@@ -266,7 +313,11 @@ function normalizeFeatureConfigsForUi(
       };
       // For explicit ollama_cloud/ollama_local, infer from provider ID.
       // For plain "ollama", check if a cloud key exists for this feature.
-      ollamaModes[featureKey] = inferOllamaModeForFeature(config.provider, featureKey, featureProviderKeyIndex);
+      ollamaModes[featureKey] = inferOllamaModeForFeature(
+        config.provider,
+        featureKey,
+        featureProviderKeyIndex,
+      );
       continue;
     }
 
@@ -279,62 +330,94 @@ function normalizeFeatureConfigsForUi(
   return { features: normalized, ollamaModes };
 }
 
-function providerDisplayName(providerById: Record<string, AIProvider>, providerId: string): string {
-  if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID) return "Ollama";
+function providerDisplayName(
+  providerById: Record<string, AIProvider>,
+  providerId: string,
+): string {
+  if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID)
+    return "Ollama";
   return providerById[providerId]?.name || providerId;
 }
 
 function hasSavedKeyForFeatureProvider(
   featureKey: FeatureKey,
   providerId: string,
-  featureProviderKeys: Record<string, boolean>
+  featureProviderKeys: Record<string, boolean>,
 ): boolean {
   if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID) {
     return Boolean(
-      featureProviderKeys[featureProviderCacheKey(featureKey, providerIdForOllamaMode("cloud"))] ||
-        featureProviderKeys[featureProviderCacheKey(featureKey, CANONICAL_OLLAMA_PROVIDER_ID)]
+      featureProviderKeys[
+        featureProviderCacheKey(featureKey, providerIdForOllamaMode("cloud"))
+      ] ||
+      featureProviderKeys[
+        featureProviderCacheKey(featureKey, CANONICAL_OLLAMA_PROVIDER_ID)
+      ],
     );
   }
 
-  return Boolean(featureProviderKeys[featureProviderCacheKey(featureKey, providerId)]);
+  return Boolean(
+    featureProviderKeys[featureProviderCacheKey(featureKey, providerId)],
+  );
 }
 
 export function AIIntegrationsSection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [assistantSettings, setAssistantSettings] = useState<AssistantSettings | null>(null);
+  const [assistantSettings, setAssistantSettings] =
+    useState<AssistantSettings | null>(null);
   const [providers, setProviders] = useState<AIProvider[]>([]);
-  const [featureDrafts, setFeatureDrafts] = useState<Record<FeatureKey, FeatureConfig> | null>(null);
-  const [savedFeatures, setSavedFeatures] = useState<Record<FeatureKey, FeatureConfig> | null>(null);
-  const [ollamaModesByFeature, setOllamaModesByFeature] = useState<Record<FeatureKey, OllamaUiMode>>(
-    buildDefaultOllamaModes()
-  );
-  const [savedOllamaModesByFeature, setSavedOllamaModesByFeature] = useState<Record<FeatureKey, OllamaUiMode>>(
-    buildDefaultOllamaModes()
-  );
-  const [modelsByFeatureProvider, setModelsByFeatureProvider] = useState<Record<string, DiscoveredModelInfo[]>>(
-    {}
-  );
-  const [discoveringFeatureKey, setDiscoveringFeatureKey] = useState<FeatureKey | null>(null);
+  const [featureDrafts, setFeatureDrafts] = useState<Record<
+    FeatureKey,
+    FeatureConfig
+  > | null>(null);
+  const [savedFeatures, setSavedFeatures] = useState<Record<
+    FeatureKey,
+    FeatureConfig
+  > | null>(null);
+  const [ollamaModesByFeature, setOllamaModesByFeature] = useState<
+    Record<FeatureKey, OllamaUiMode>
+  >(buildDefaultOllamaModes());
+  const [savedOllamaModesByFeature, setSavedOllamaModesByFeature] = useState<
+    Record<FeatureKey, OllamaUiMode>
+  >(buildDefaultOllamaModes());
+  const [modelsByFeatureProvider, setModelsByFeatureProvider] = useState<
+    Record<string, DiscoveredModelInfo[]>
+  >({});
+  const [discoveringFeatureKey, setDiscoveringFeatureKey] =
+    useState<FeatureKey | null>(null);
   const [savedOllamaLocalBaseUrl, setSavedOllamaLocalBaseUrl] = useState("");
   const [ollamaBaseUrls, setOllamaBaseUrls] = useState<Record<string, string>>({
     ollama: "http://127.0.0.1:11434",
     ollama_local: "http://127.0.0.1:11434",
     ollama_cloud: "https://ollama.com",
   });
-  const [showKeyForSlot, setShowKeyForSlot] = useState<Record<string, boolean>>({});
+  const [showKeyForSlot, setShowKeyForSlot] = useState<Record<string, boolean>>(
+    {},
+  );
   /** Drafts keyed by `feature::provider` */
-  const [providerKeyDrafts, setProviderKeyDrafts] = useState<Record<string, string>>({});
+  const [providerKeyDrafts, setProviderKeyDrafts] = useState<
+    Record<string, string>
+  >({});
   const [savingKeySlot, setSavingKeySlot] = useState<string | null>(null);
-  const [featureProviderKeyIndex, setFeatureProviderKeyIndex] = useState<Record<string, boolean>>({});
-  const [lastDiscoveryTime, setLastDiscoveryTime] = useState<Record<string, string>>({});
-  const [savingFeatureKey, setSavingFeatureKey] = useState<FeatureKey | null>(null);
+  const [featureProviderKeyIndex, setFeatureProviderKeyIndex] = useState<
+    Record<string, boolean>
+  >({});
+  const [lastDiscoveryTime, setLastDiscoveryTime] = useState<
+    Record<string, string>
+  >({});
+  const [savingFeatureKey, setSavingFeatureKey] = useState<FeatureKey | null>(
+    null,
+  );
   const [advancedAiError, setAdvancedAiError] = useState<string | null>(null);
   const [savingAssistantPrefs, setSavingAssistantPrefs] = useState(false);
   /** Local slider values while dragging (synced from server after save). */
-  const [assistantTempSlide, setAssistantTempSlide] = useState<number | null>(null);
-  const [assistantMaxSlide, setAssistantMaxSlide] = useState<number | null>(null);
+  const [assistantTempSlide, setAssistantTempSlide] = useState<number | null>(
+    null,
+  );
+  const [assistantMaxSlide, setAssistantMaxSlide] = useState<number | null>(
+    null,
+  );
 
   /** scriptony-ai: gateway routes `/ai/*`, `/settings`, `/providers`, `/api-keys`, `/features` (see api-gateway). */
   const scriptonyAiAvailable = hasFunctionConfigured("scriptony-ai");
@@ -351,7 +434,7 @@ export function AIIntegrationsSection() {
         await apiPut<{
           settings: AssistantSettings;
           provider_keys_configured?: Record<string, boolean>;
-        }>("/ai/settings", updates)
+        }>("/ai/settings", updates),
       );
       if (data.settings) {
         setAssistantSettings({
@@ -361,7 +444,9 @@ export function AIIntegrationsSection() {
       }
       toast.success("Chat-Einstellungen gespeichert");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+      toast.error(
+        err instanceof Error ? err.message : "Speichern fehlgeschlagen",
+      );
     } finally {
       setSavingAssistantPrefs(false);
     }
@@ -377,7 +462,7 @@ export function AIIntegrationsSection() {
 
   const discoverModelsForFeature = async (
     featureKey: FeatureKey,
-    providerId: string
+    providerId: string,
   ): Promise<DiscoveredModelInfo[]> => {
     const effectiveProviderId = getEffectiveProviderId(featureKey, providerId);
     const cacheKey = featureProviderCacheKey(featureKey, effectiveProviderId);
@@ -385,7 +470,9 @@ export function AIIntegrationsSection() {
     try {
       const body: Record<string, string> = { feature: featureKey };
       if (isOllamaFamilyProviderId(effectiveProviderId)) {
-        body.base_url = getOllamaBaseUrlForMode(getOllamaModeForFeature(featureKey));
+        body.base_url = getOllamaBaseUrlForMode(
+          getOllamaModeForFeature(featureKey),
+        );
       }
       const slot = featureProviderCacheKey(featureKey, effectiveProviderId);
       const draftKey = providerKeyDrafts[slot];
@@ -396,28 +483,30 @@ export function AIIntegrationsSection() {
       const payload = unwrapApiResult(
         await apiPost<{ models?: unknown; error?: string }>(
           `/providers/${effectiveProviderId}/models/discover`,
-          body
-        )
+          body,
+        ),
       );
 
       const models = parseDiscoveredModels(payload?.models);
       setModelsByFeatureProvider((prev) => ({ ...prev, [cacheKey]: models }));
-      
+
       // Speichere Zeitstempel der letzten Prüfung
       const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const seconds = String(now.getSeconds()).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const month = String(now.getMonth() + 1).padStart(2, "0");
       const year = now.getFullYear();
       const timestamp = `${hours}:${minutes}:${seconds} - ${day}.${month}.${year}`;
-      
+
       setLastDiscoveryTime((prev) => ({ ...prev, [cacheKey]: timestamp }));
       return models;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Modelle konnten nicht geladen werden.";
+        err instanceof Error
+          ? err.message
+          : "Modelle konnten nicht geladen werden.";
       toast.error(message);
       return [];
     } finally {
@@ -430,11 +519,11 @@ export function AIIntegrationsSection() {
     options?: {
       draftOverrides?: Partial<Record<FeatureKey, FeatureConfig>>;
       ollamaModeOverrides?: Partial<Record<FeatureKey, OllamaUiMode>>;
-    }
+    },
   ) => {
     if (!scriptonyAiAvailable) {
       setError(
-        "scriptony-ai ist nicht konfiguriert. Setze VITE_BACKEND_FUNCTION_DOMAIN_MAP (scriptony-ai) oder VITE_APPWRITE_FUNCTIONS_BASE_URL."
+        "scriptony-ai ist nicht konfiguriert. Setze VITE_BACKEND_FUNCTION_DOMAIN_MAP (scriptony-ai) oder VITE_APPWRITE_FUNCTIONS_BASE_URL.",
       );
       setLoading(false);
       return;
@@ -469,15 +558,18 @@ export function AIIntegrationsSection() {
 
       try {
         const settingsPayload = unwrapApiResult(
-          await apiGet<AIServiceSettingsResponse>("/settings")
+          await apiGet<AIServiceSettingsResponse>("/settings"),
         );
-        const persistedOllamaLocalBaseUrl = settingsPayload.user?.ollama_base_url?.trim() || "";
+        const persistedOllamaLocalBaseUrl =
+          settingsPayload.user?.ollama_base_url?.trim() || "";
         const defaultOllamaMode =
-          settingsPayload.user?.settings_json_parsed?.ollama?.mode === "cloud" ? "cloud" : "local";
+          settingsPayload.user?.settings_json_parsed?.ollama?.mode === "cloud"
+            ? "cloud"
+            : "local";
         const normalizedSettings = normalizeFeatureConfigsForUi(
           settingsPayload.features,
           defaultOllamaMode,
-          featureProviderKeyIndex
+          featureProviderKeyIndex,
         );
         const normalizedOllamaModes = {
           ...normalizedSettings.ollamaModes,
@@ -509,21 +601,28 @@ export function AIIntegrationsSection() {
             }
             return acc;
           },
-          {}
+          {},
         );
         setProviderKeyDrafts((prev) => {
           const next = { ...prev };
           const keyedSlotNames = new Set(Object.keys(keyedSlots));
 
           for (const [slot, value] of Object.entries(prev)) {
-            if (!keyedSlotNames.has(slot) && value === CONFIGURED_KEY_SENTINEL) {
+            if (
+              !keyedSlotNames.has(slot) &&
+              value === CONFIGURED_KEY_SENTINEL
+            ) {
               delete next[slot];
             }
           }
 
           for (const slot of keyedSlotNames) {
             const existing = prev[slot];
-            if (!existing || existing === "" || existing === CONFIGURED_KEY_SENTINEL) {
+            if (
+              !existing ||
+              existing === "" ||
+              existing === CONFIGURED_KEY_SENTINEL
+            ) {
               next[slot] = CONFIGURED_KEY_SENTINEL;
             }
           }
@@ -544,7 +643,9 @@ export function AIIntegrationsSection() {
       }
     } catch (loadError) {
       const message =
-        loadError instanceof Error ? loadError.message : "AI-Integrationen konnten nicht geladen werden.";
+        loadError instanceof Error
+          ? loadError.message
+          : "AI-Integrationen konnten nicht geladen werden.";
       setError(message);
     } finally {
       setLoading(false);
@@ -562,14 +663,18 @@ export function AIIntegrationsSection() {
         acc[provider.id] = provider;
         return acc;
       }, {}),
-    [providers]
+    [providers],
   );
 
   const getOllamaModeForFeature = (featureKey: FeatureKey): OllamaUiMode =>
     ollamaModesByFeature[featureKey] ?? "local";
 
-  const getEffectiveProviderId = (featureKey: FeatureKey, providerId: string): string => {
-    if (normalizeProviderIdForUi(providerId) !== CANONICAL_OLLAMA_PROVIDER_ID) return providerId;
+  const getEffectiveProviderId = (
+    featureKey: FeatureKey,
+    providerId: string,
+  ): string => {
+    if (normalizeProviderIdForUi(providerId) !== CANONICAL_OLLAMA_PROVIDER_ID)
+      return providerId;
     return providerIdForOllamaMode(getOllamaModeForFeature(featureKey));
   };
 
@@ -582,54 +687,70 @@ export function AIIntegrationsSection() {
     );
   };
 
-  const isProviderActiveForFeature = (featureKey: FeatureKey, providerId: string): boolean => {
+  const isProviderActiveForFeature = (
+    featureKey: FeatureKey,
+    providerId: string,
+  ): boolean => {
     if (!featureDrafts || !savedFeatures) return false;
     // Provider ist "active" wenn er im SAVED Features ist (also gespeichert wurde)
     const savedProvider = savedFeatures[featureKey]?.provider;
-    const isSelected = normalizeProviderIdForUi(savedProvider || "") ===
+    const isSelected =
+      normalizeProviderIdForUi(savedProvider || "") ===
       normalizeProviderIdForUi(providerId);
     if (!isSelected) return false;
-    
+
     // Prüfe ob Key vorhanden oder nicht nötig
     const hasKey = hasSavedKeyBadgeForFeature(featureKey, providerId);
     const requiresKey = providerById[providerId]?.requiresApiKey !== false;
-    const isOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+    const isOllama =
+      normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
     const ollamaMode = getOllamaModeForFeature(featureKey);
-    const canBeActive = hasKey || (!requiresKey && !isOllama) || (isOllama && ollamaMode === "local");
-    
+    const canBeActive =
+      hasKey ||
+      (!requiresKey && !isOllama) ||
+      (isOllama && ollamaMode === "local");
+
     return canBeActive;
   };
 
-  const hasSavedKeyBadgeForFeature = (featureKey: FeatureKey, providerId: string): boolean => {
+  const hasSavedKeyBadgeForFeature = (
+    featureKey: FeatureKey,
+    providerId: string,
+  ): boolean => {
     return hasSavedKeyForFeatureProvider(
       featureKey,
       providerId,
-      featureProviderKeyIndex
+      featureProviderKeyIndex,
     );
   };
 
   const buildFeatureSnapshot = (
     featureKey: FeatureKey,
     config: FeatureConfig | undefined,
-    ollamaModes: Record<FeatureKey, OllamaUiMode>
+    ollamaModes: Record<FeatureKey, OllamaUiMode>,
   ): string =>
     JSON.stringify({
       provider: config?.provider || "",
       model: config?.model || "",
       voice: config?.voice || "",
       ollamaMode:
-        normalizeProviderIdForUi(config?.provider || "") === CANONICAL_OLLAMA_PROVIDER_ID
-          ? ollamaModes[featureKey] ?? "local"
+        normalizeProviderIdForUi(config?.provider || "") ===
+        CANONICAL_OLLAMA_PROVIDER_ID
+          ? (ollamaModes[featureKey] ?? "local")
           : "",
     });
 
-  const handleFeatureProviderChange = (feature: FeatureKey, providerId: string) => {
+  const handleFeatureProviderChange = (
+    feature: FeatureKey,
+    providerId: string,
+  ) => {
     // Nur Provider auswählen, aber NICHT aktivieren (kein Key-Check nötig)
     setFeatureDrafts((prev) => {
       if (!prev) return prev;
       const current = prev[feature];
       const sameProvider =
-        normalizeProviderIdForUi(current.provider) === normalizeProviderIdForUi(providerId);
+        normalizeProviderIdForUi(current.provider) ===
+        normalizeProviderIdForUi(providerId);
       return {
         ...prev,
         [feature]: {
@@ -648,7 +769,10 @@ export function AIIntegrationsSection() {
     setSavingFeatureKey(feature);
 
     try {
-      if (normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID) {
+      if (
+        normalizeProviderIdForUi(draft.provider) ===
+        CANONICAL_OLLAMA_PROVIDER_ID
+      ) {
         const ollamaMode = getOllamaModeForFeature(feature);
         unwrapApiResult(
           await apiPut("/settings", {
@@ -658,7 +782,7 @@ export function AIIntegrationsSection() {
             ...(ollamaMode === "local"
               ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
               : {}),
-          })
+          }),
         );
       }
 
@@ -667,7 +791,7 @@ export function AIIntegrationsSection() {
           provider: effectiveProviderId,
           model: draft.model,
           ...(draft.voice ? { voice: draft.voice } : {}),
-        })
+        }),
       );
 
       setSavedFeatures((prev) => (prev ? { ...prev, [feature]: draft } : prev));
@@ -680,23 +804,35 @@ export function AIIntegrationsSection() {
       notifyAiSettingsConsumers();
     } catch (saveError) {
       const message =
-        saveError instanceof Error ? saveError.message : "Feature-Konfiguration konnte nicht gespeichert werden.";
+        saveError instanceof Error
+          ? saveError.message
+          : "Feature-Konfiguration konnte nicht gespeichert werden.";
       toast.error(message);
     } finally {
       setSavingFeatureKey(null);
     }
   };
 
-  const handleStoreFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
+  const handleStoreFeatureProviderKey = async (
+    featureKey: FeatureKey,
+    providerId: string,
+  ) => {
     const effectiveProviderId = getEffectiveProviderId(featureKey, providerId);
     const slot = featureProviderCacheKey(featureKey, effectiveProviderId);
     const apiKeyDraft = providerKeyDrafts[slot];
     const apiKey =
-      apiKeyDraft && apiKeyDraft !== CONFIGURED_KEY_SENTINEL ? apiKeyDraft.trim() : "";
-    const isCanonicalOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+      apiKeyDraft && apiKeyDraft !== CONFIGURED_KEY_SENTINEL
+        ? apiKeyDraft.trim()
+        : "";
+    const isCanonicalOllama =
+      normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
     const ollamaMode = getOllamaModeForFeature(featureKey);
     const hasStoredKey = Boolean(featureProviderKeyIndex[slot]);
-    if ((!isCanonicalOllama || ollamaMode === "cloud") && !apiKey && !hasStoredKey) {
+    if (
+      (!isCanonicalOllama || ollamaMode === "cloud") &&
+      !apiKey &&
+      !hasStoredKey
+    ) {
       toast.error("Bitte zuerst einen API Key eingeben.");
       return;
     }
@@ -713,13 +849,13 @@ export function AIIntegrationsSection() {
       const validationPayload = unwrapApiResult(
         await apiPost<{ valid?: boolean; error?: string }>(
           `/providers/${effectiveProviderId}/validate`,
-          requestBody
-        )
+          requestBody,
+        ),
       );
       if (validationPayload?.valid === false) {
         throw new Error(
           validationPayload?.error ||
-            `${providerDisplayName(providerById, providerId)} konnte nicht validiert werden.`
+            `${providerDisplayName(providerById, providerId)} konnte nicht validiert werden.`,
         );
       }
 
@@ -732,7 +868,7 @@ export function AIIntegrationsSection() {
             ...(ollamaMode === "local"
               ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
               : {}),
-          })
+          }),
         );
       }
 
@@ -742,18 +878,21 @@ export function AIIntegrationsSection() {
             feature: featureKey,
             provider: effectiveProviderId,
             api_key: apiKey,
-          })
+          }),
         );
       }
 
       toast.success(
         isCanonicalOllama
           ? `Ollama (${ollamaMode === "cloud" ? "Cloud" : "Lokal"}): Verbindung geprueft.`
-          : `${providerDisplayName(providerById, providerId)}: Zugang gespeichert.`
+          : `${providerDisplayName(providerById, providerId)}: Zugang gespeichert.`,
       );
       setProviderKeyDrafts((prev) => ({
         ...prev,
-        [slot]: ollamaMode === "cloud" || !isCanonicalOllama ? CONFIGURED_KEY_SENTINEL : "",
+        [slot]:
+          ollamaMode === "cloud" || !isCanonicalOllama
+            ? CONFIGURED_KEY_SENTINEL
+            : "",
       }));
       await loadData(true, {
         draftOverrides: featureDrafts
@@ -767,26 +906,31 @@ export function AIIntegrationsSection() {
       });
     } catch (saveError) {
       const message =
-        saveError instanceof Error ? saveError.message : "API Key konnte nicht gespeichert werden.";
+        saveError instanceof Error
+          ? saveError.message
+          : "API Key konnte nicht gespeichert werden.";
       toast.error(message);
     } finally {
       setSavingKeySlot(null);
     }
   };
 
-  const handleDeleteFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
+  const handleDeleteFeatureProviderKey = async (
+    featureKey: FeatureKey,
+    providerId: string,
+  ) => {
     const effectiveProviderId = getEffectiveProviderId(featureKey, providerId);
     const slot = featureProviderCacheKey(featureKey, effectiveProviderId);
     setSavingKeySlot(slot);
     try {
       unwrapApiResult(
         await apiDelete(
-          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(effectiveProviderId)}`
-        )
+          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(effectiveProviderId)}`,
+        ),
       );
 
       toast.success(
-        `${providerDisplayName(providerById, providerId)} API Key fuer dieses Feature entfernt.`
+        `${providerDisplayName(providerById, providerId)} API Key fuer dieses Feature entfernt.`,
       );
       setProviderKeyDrafts((prev) => ({ ...prev, [slot]: "" }));
       await loadData(true, {
@@ -801,7 +945,9 @@ export function AIIntegrationsSection() {
       });
     } catch (deleteError) {
       const message =
-        deleteError instanceof Error ? deleteError.message : "API Key konnte nicht geloescht werden.";
+        deleteError instanceof Error
+          ? deleteError.message
+          : "API Key konnte nicht geloescht werden.";
       toast.error(message);
     } finally {
       setSavingKeySlot(null);
@@ -826,8 +972,9 @@ export function AIIntegrationsSection() {
           <AlertCircle className="size-4" />
           <AlertTitle>Backend nicht konfiguriert</AlertTitle>
           <AlertDescription>
-            Setze <code>VITE_BACKEND_FUNCTION_DOMAIN_MAP</code> oder <code>VITE_APPWRITE_FUNCTIONS_BASE_URL</code>,
-            damit diese Seite Daten laden kann.
+            Setze <code>VITE_BACKEND_FUNCTION_DOMAIN_MAP</code> oder{" "}
+            <code>VITE_APPWRITE_FUNCTIONS_BASE_URL</code>, damit diese Seite
+            Daten laden kann.
           </AlertDescription>
         </Alert>
       )}
@@ -843,7 +990,9 @@ export function AIIntegrationsSection() {
       {advancedAiError && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
-          <AlertTitle>Provider- und Feature-Daten konnten nicht geladen werden</AlertTitle>
+          <AlertTitle>
+            Provider- und Feature-Daten konnten nicht geladen werden
+          </AlertTitle>
           <AlertDescription>{advancedAiError}</AlertDescription>
         </Alert>
       )}
@@ -870,7 +1019,11 @@ export function AIIntegrationsSection() {
                   onClick={() => void loadData(true)}
                   disabled={refreshing}
                 >
-                  {refreshing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                  {refreshing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4" />
+                  )}
                   Aktualisieren
                 </Button>
               </div>
@@ -882,7 +1035,11 @@ export function AIIntegrationsSection() {
                 {INTEGRATION_TABS.map((tab) => {
                   const TabIcon = tab.tabIcon;
                   return (
-                    <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className="gap-1.5"
+                    >
                       <TabIcon className="size-3.5 shrink-0" />
                       {tab.label}
                     </TabsTrigger>
@@ -890,44 +1047,84 @@ export function AIIntegrationsSection() {
                 })}
               </TabsList>
               {INTEGRATION_TABS.map((tab) => (
-                <TabsContent key={tab.id} value={tab.id} className="mt-4 space-y-4">
+                <TabsContent
+                  key={tab.id}
+                  value={tab.id}
+                  className="mt-4 space-y-4"
+                >
                   <div className="grid gap-4 xl:grid-cols-2">
                     {tab.featureKeys.map((featureKey) => {
                       const meta = FEATURE_META[featureKey];
                       const draft = featureDrafts[featureKey];
                       const saved = savedFeatures?.[featureKey];
                       const ollamaMode = getOllamaModeForFeature(featureKey);
-                      const effectiveProviderId = getEffectiveProviderId(featureKey, draft.provider);
-                      const modelCacheKey = featureProviderCacheKey(featureKey, effectiveProviderId);
-                      const models = modelsByFeatureProvider[modelCacheKey] || [];
+                      const effectiveProviderId = getEffectiveProviderId(
+                        featureKey,
+                        draft.provider,
+                      );
+                      const modelCacheKey = featureProviderCacheKey(
+                        featureKey,
+                        effectiveProviderId,
+                      );
+                      const models =
+                        modelsByFeatureProvider[modelCacheKey] || [];
                       const supportedProviders = filterProvidersForFeature(
                         featureKey,
-                        providers.filter((provider) => provider.capabilities[meta.capability])
+                        providers.filter(
+                          (provider) => provider.capabilities[meta.capability],
+                        ),
                       );
                       const isDirty =
-                        buildFeatureSnapshot(featureKey, draft, ollamaModesByFeature) !==
-                        buildFeatureSnapshot(featureKey, saved, savedOllamaModesByFeature);
+                        buildFeatureSnapshot(
+                          featureKey,
+                          draft,
+                          ollamaModesByFeature,
+                        ) !==
+                        buildFeatureSnapshot(
+                          featureKey,
+                          saved,
+                          savedOllamaModesByFeature,
+                        );
                       const Icon = meta.icon;
-                      const fpSlot = featureProviderCacheKey(featureKey, effectiveProviderId);
-                      const selectedProviderLabel = providerDisplayName(providerById, draft.provider);
-                      const selectedProviderActive = isProviderActiveForFeature(featureKey, draft.provider);
-                      const selectedProviderKeySaved = hasSavedKeyBadgeForFeature(featureKey, draft.provider);
+                      const fpSlot = featureProviderCacheKey(
+                        featureKey,
+                        effectiveProviderId,
+                      );
+                      const selectedProviderLabel = providerDisplayName(
+                        providerById,
+                        draft.provider,
+                      );
+                      const selectedProviderActive = isProviderActiveForFeature(
+                        featureKey,
+                        draft.provider,
+                      );
+                      const selectedProviderKeySaved =
+                        hasSavedKeyBadgeForFeature(featureKey, draft.provider);
                       const isOllamaSelected =
-                        normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID;
+                        normalizeProviderIdForUi(draft.provider) ===
+                        CANONICAL_OLLAMA_PROVIDER_ID;
                       const requiresKeyForProvider = isOllamaSelected
                         ? ollamaMode === "cloud"
-                        : providerById[effectiveProviderId]?.requiresApiKey !== false;
+                        : providerById[effectiveProviderId]?.requiresApiKey !==
+                          false;
 
                       return (
-                        <div key={featureKey} className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                        <div
+                          key={featureKey}
+                          className="rounded-lg border bg-muted/20 p-4 space-y-4"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-3">
                               <div className="mt-0.5 rounded-md bg-primary/10 p-2 text-primary">
                                 <Icon className="size-4" />
                               </div>
                               <div>
-                                <p className="text-sm font-medium">{meta.label}</p>
-                                <p className="text-xs text-muted-foreground">{meta.description}</p>
+                                <p className="text-sm font-medium">
+                                  {meta.label}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {meta.description}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -937,18 +1134,28 @@ export function AIIntegrationsSection() {
                               <Label>Provider</Label>
                               <Select
                                 value={draft.provider}
-                                onValueChange={(value) => handleFeatureProviderChange(featureKey, value)}
+                                onValueChange={(value) =>
+                                  handleFeatureProviderChange(featureKey, value)
+                                }
                               >
                                 <SelectTrigger>
                                   <div className="flex min-w-0 items-center gap-2">
-                                    <span className="truncate">{selectedProviderLabel}</span>
+                                    <span className="truncate">
+                                      {selectedProviderLabel}
+                                    </span>
                                     {selectedProviderKeySaved && (
-                                      <Badge variant="outline" style={KEY_SAVED_BADGE_STYLE}>
+                                      <Badge
+                                        variant="outline"
+                                        style={KEY_SAVED_BADGE_STYLE}
+                                      >
                                         Key Saved
                                       </Badge>
                                     )}
                                     {selectedProviderActive && (
-                                      <Badge variant="outline" style={ACTIVE_BADGE_STYLE}>
+                                      <Badge
+                                        variant="outline"
+                                        style={ACTIVE_BADGE_STYLE}
+                                      >
                                         Active
                                       </Badge>
                                     )}
@@ -959,16 +1166,31 @@ export function AIIntegrationsSection() {
                                     <SelectItem
                                       key={provider.id}
                                       value={provider.id}
-                                      textValue={providerDisplayName(providerById, provider.id)}
+                                      textValue={providerDisplayName(
+                                        providerById,
+                                        provider.id,
+                                      )}
                                     >
                                       <div className="ml-auto flex items-center gap-2">
-                                        {hasSavedKeyBadgeForFeature(featureKey, provider.id) ? (
-                                          <Badge variant="outline" style={KEY_SAVED_BADGE_STYLE}>
+                                        {hasSavedKeyBadgeForFeature(
+                                          featureKey,
+                                          provider.id,
+                                        ) ? (
+                                          <Badge
+                                            variant="outline"
+                                            style={KEY_SAVED_BADGE_STYLE}
+                                          >
                                             Key Saved
                                           </Badge>
                                         ) : null}
-                                        {isProviderActiveForFeature(featureKey, provider.id) ? (
-                                          <Badge variant="outline" style={ACTIVE_BADGE_STYLE}>
+                                        {isProviderActiveForFeature(
+                                          featureKey,
+                                          provider.id,
+                                        ) ? (
+                                          <Badge
+                                            variant="outline"
+                                            style={ACTIVE_BADGE_STYLE}
+                                          >
                                             Active
                                           </Badge>
                                         ) : null}
@@ -985,9 +1207,12 @@ export function AIIntegrationsSection() {
                                 <div className="space-y-3 rounded-md border border-dashed bg-background/50 p-3">
                                   <div className="flex items-center justify-between gap-3">
                                     <div>
-                                      <Label className="text-xs">Ollama Modus</Label>
+                                      <Label className="text-xs">
+                                        Ollama Modus
+                                      </Label>
                                       <p className="text-xs text-muted-foreground">
-                                        Schaltet zwischen lokaler Instanz und Ollama Cloud um.
+                                        Schaltet zwischen lokaler Instanz und
+                                        Ollama Cloud um.
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs">
@@ -1005,7 +1230,9 @@ export function AIIntegrationsSection() {
                                         onCheckedChange={(checked) =>
                                           setOllamaModesByFeature((prev) => ({
                                             ...prev,
-                                            [featureKey]: checked ? "cloud" : "local",
+                                            [featureKey]: checked
+                                              ? "cloud"
+                                              : "local",
                                           }))
                                         }
                                       />
@@ -1054,15 +1281,20 @@ export function AIIntegrationsSection() {
                                             model: modelId,
                                           },
                                         }
-                                      : prev
+                                      : prev,
                                   )
                                 }
                                 onLoadModels={() => {
-                                  void discoverModelsForFeature(featureKey, draft.provider);
+                                  void discoverModelsForFeature(
+                                    featureKey,
+                                    draft.provider,
+                                  );
                                 }}
                                 loading={discoveringFeatureKey === featureKey}
                                 showDiscoverButton={false}
-                                lastDiscoveryTime={lastDiscoveryTime[modelCacheKey]}
+                                lastDiscoveryTime={
+                                  lastDiscoveryTime[modelCacheKey]
+                                }
                               />
                             </div>
                           </div>
@@ -1076,20 +1308,30 @@ export function AIIntegrationsSection() {
                                     : "Ollama Lokal Verbindung fuer dieses Feature"
                                   : `API Key fuer dieses Feature (${selectedProviderLabel})`}
                               </Label>
-                              {(!isOllamaSelected || ollamaMode === "cloud") && (
+                              {(!isOllamaSelected ||
+                                ollamaMode === "cloud") && (
                                 <>
                                   <div className="relative flex items-center gap-1">
                                     <Input
-                                      type={showKeyForSlot[fpSlot] ? "text" : "password"}
+                                      type={
+                                        showKeyForSlot[fpSlot]
+                                          ? "text"
+                                          : "password"
+                                      }
                                       placeholder={`${selectedProviderLabel} Key`}
                                       className="pr-10 font-mono text-xs"
                                       value={
-                                        providerKeyDrafts[fpSlot] === CONFIGURED_KEY_SENTINEL
+                                        providerKeyDrafts[fpSlot] ===
+                                        CONFIGURED_KEY_SENTINEL
                                           ? MASKED_API_KEY_VALUE
                                           : providerKeyDrafts[fpSlot] || ""
                                       }
                                       onFocus={() => {
-                                        if (providerKeyDrafts[fpSlot] !== CONFIGURED_KEY_SENTINEL) return;
+                                        if (
+                                          providerKeyDrafts[fpSlot] !==
+                                          CONFIGURED_KEY_SENTINEL
+                                        )
+                                          return;
                                         setProviderKeyDrafts((prev) => ({
                                           ...prev,
                                           [fpSlot]: "",
@@ -1113,7 +1355,11 @@ export function AIIntegrationsSection() {
                                           [fpSlot]: !prev[fpSlot],
                                         }))
                                       }
-                                      aria-label={showKeyForSlot[fpSlot] ? "Key verbergen" : "Key anzeigen"}
+                                      aria-label={
+                                        showKeyForSlot[fpSlot]
+                                          ? "Key verbergen"
+                                          : "Key anzeigen"
+                                      }
                                     >
                                       {showKeyForSlot[fpSlot] ? (
                                         <EyeOff className="size-4" />
@@ -1133,8 +1379,15 @@ export function AIIntegrationsSection() {
                                       variant="secondary"
                                       size="sm"
                                       className="gap-1.5"
-                                      disabled={discoveringFeatureKey === featureKey}
-                                      onClick={() => void discoverModelsForFeature(featureKey, draft.provider)}
+                                      disabled={
+                                        discoveringFeatureKey === featureKey
+                                      }
+                                      onClick={() =>
+                                        void discoverModelsForFeature(
+                                          featureKey,
+                                          draft.provider,
+                                        )
+                                      }
                                     >
                                       {discoveringFeatureKey === featureKey ? (
                                         <Loader2 className="size-4 animate-spin" />
@@ -1146,7 +1399,12 @@ export function AIIntegrationsSection() {
                                     <Button
                                       type="button"
                                       size="sm"
-                                      onClick={() => void handleStoreFeatureProviderKey(featureKey, draft.provider)}
+                                      onClick={() =>
+                                        void handleStoreFeatureProviderKey(
+                                          featureKey,
+                                          draft.provider,
+                                        )
+                                      }
                                       disabled={savingKeySlot === fpSlot}
                                     >
                                       {savingKeySlot === fpSlot ? (
@@ -1161,7 +1419,10 @@ export function AIIntegrationsSection() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() =>
-                                          void handleDeleteFeatureProviderKey(featureKey, draft.provider)
+                                          void handleDeleteFeatureProviderKey(
+                                            featureKey,
+                                            draft.provider,
+                                          )
                                         }
                                         disabled={savingKeySlot === fpSlot}
                                       >
@@ -1175,7 +1436,11 @@ export function AIIntegrationsSection() {
                                       onClick={() =>
                                         setProviderKeyDrafts((prev) => ({
                                           ...prev,
-                                          [fpSlot]: featureProviderKeyIndex[fpSlot] ? CONFIGURED_KEY_SENTINEL : "",
+                                          [fpSlot]: featureProviderKeyIndex[
+                                            fpSlot
+                                          ]
+                                            ? CONFIGURED_KEY_SENTINEL
+                                            : "",
                                         }))
                                       }
                                     >
@@ -1191,8 +1456,15 @@ export function AIIntegrationsSection() {
                                     variant="secondary"
                                     size="sm"
                                     className="gap-1.5"
-                                    disabled={discoveringFeatureKey === featureKey}
-                                    onClick={() => void discoverModelsForFeature(featureKey, draft.provider)}
+                                    disabled={
+                                      discoveringFeatureKey === featureKey
+                                    }
+                                    onClick={() =>
+                                      void discoverModelsForFeature(
+                                        featureKey,
+                                        draft.provider,
+                                      )
+                                    }
                                   >
                                     {discoveringFeatureKey === featureKey ? (
                                       <Loader2 className="size-4 animate-spin" />
@@ -1205,7 +1477,12 @@ export function AIIntegrationsSection() {
                                     type="button"
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => void handleStoreFeatureProviderKey(featureKey, draft.provider)}
+                                    onClick={() =>
+                                      void handleStoreFeatureProviderKey(
+                                        featureKey,
+                                        draft.provider,
+                                      )
+                                    }
                                     disabled={savingKeySlot === fpSlot}
                                   >
                                     {savingKeySlot === fpSlot ? (
@@ -1225,21 +1502,34 @@ export function AIIntegrationsSection() {
                                 <div>
                                   <p className="text-sm font-medium">RAG</p>
                                   <p className="text-xs text-muted-foreground">
-                                    Nutzt eure eingebundenen Dokumente fuer den Chat-Kontext.
+                                    Nutzt eure eingebundenen Dokumente fuer den
+                                    Chat-Kontext.
                                   </p>
                                 </div>
                                 <Switch
                                   checked={assistantSettings?.use_rag ?? false}
-                                  onCheckedChange={(v) => void patchAssistantSettings({ use_rag: v })}
-                                  disabled={savingAssistantPrefs || !scriptonyAiAvailable}
+                                  onCheckedChange={(v) =>
+                                    void patchAssistantSettings({ use_rag: v })
+                                  }
+                                  disabled={
+                                    savingAssistantPrefs ||
+                                    !scriptonyAiAvailable
+                                  }
                                 />
                               </div>
 
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <Label htmlFor="assistant-temperature" className="text-sm">
+                                  <Label
+                                    htmlFor="assistant-temperature"
+                                    className="text-sm"
+                                  >
                                     Temperatur:{" "}
-                                    {(assistantTempSlide ?? assistantSettings?.temperature ?? 0.7).toFixed(2)}
+                                    {(
+                                      assistantTempSlide ??
+                                      assistantSettings?.temperature ??
+                                      0.7
+                                    ).toFixed(2)}
                                   </Label>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1251,8 +1541,12 @@ export function AIIntegrationsSection() {
                                         <HelpCircle className="size-3.5" />
                                       </button>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-xs text-balance">
-                                      Steuert die Zufaelligkeit der Antworten: niedrig = konsistenter und naeher am
+                                    <TooltipContent
+                                      side="top"
+                                      className="max-w-xs text-balance"
+                                    >
+                                      Steuert die Zufaelligkeit der Antworten:
+                                      niedrig = konsistenter und naeher am
                                       Training, hoch = kreativer und variabler.
                                     </TooltipContent>
                                   </Tooltip>
@@ -1262,17 +1556,36 @@ export function AIIntegrationsSection() {
                                   min={0}
                                   max={2}
                                   step={0.1}
-                                  value={[assistantTempSlide ?? assistantSettings?.temperature ?? 0.7]}
-                                  onValueChange={([value]) => setAssistantTempSlide(value)}
-                                  onValueCommit={([value]) => void patchAssistantSettings({ temperature: value })}
-                                  disabled={savingAssistantPrefs || !scriptonyAiAvailable}
+                                  value={[
+                                    assistantTempSlide ??
+                                      assistantSettings?.temperature ??
+                                      0.7,
+                                  ]}
+                                  onValueChange={([value]) =>
+                                    setAssistantTempSlide(value)
+                                  }
+                                  onValueCommit={([value]) =>
+                                    void patchAssistantSettings({
+                                      temperature: value,
+                                    })
+                                  }
+                                  disabled={
+                                    savingAssistantPrefs ||
+                                    !scriptonyAiAvailable
+                                  }
                                 />
                               </div>
 
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <Label htmlFor="assistant-max-tokens" className="text-sm">
-                                    Max Tokens: {assistantMaxSlide ?? assistantSettings?.max_tokens ?? 2000}
+                                  <Label
+                                    htmlFor="assistant-max-tokens"
+                                    className="text-sm"
+                                  >
+                                    Max Tokens:{" "}
+                                    {assistantMaxSlide ??
+                                      assistantSettings?.max_tokens ??
+                                      2000}
                                   </Label>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1284,9 +1597,14 @@ export function AIIntegrationsSection() {
                                         <HelpCircle className="size-3.5" />
                                       </button>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-xs text-balance">
-                                      Obergrenze fuer die Antwortlaenge. Ein Token entspricht etwa 3–4 Zeichen;
-                                      zu niedrig bricht der Text ab, zu hoch verbraucht mehr Budget.
+                                    <TooltipContent
+                                      side="top"
+                                      className="max-w-xs text-balance"
+                                    >
+                                      Obergrenze fuer die Antwortlaenge. Ein
+                                      Token entspricht etwa 3–4 Zeichen; zu
+                                      niedrig bricht der Text ab, zu hoch
+                                      verbraucht mehr Budget.
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -1295,10 +1613,23 @@ export function AIIntegrationsSection() {
                                   min={500}
                                   max={4000}
                                   step={100}
-                                  value={[assistantMaxSlide ?? assistantSettings?.max_tokens ?? 2000]}
-                                  onValueChange={([value]) => setAssistantMaxSlide(value)}
-                                  onValueCommit={([value]) => void patchAssistantSettings({ max_tokens: value })}
-                                  disabled={savingAssistantPrefs || !scriptonyAiAvailable}
+                                  value={[
+                                    assistantMaxSlide ??
+                                      assistantSettings?.max_tokens ??
+                                      2000,
+                                  ]}
+                                  onValueChange={([value]) =>
+                                    setAssistantMaxSlide(value)
+                                  }
+                                  onValueCommit={([value]) =>
+                                    void patchAssistantSettings({
+                                      max_tokens: value,
+                                    })
+                                  }
+                                  disabled={
+                                    savingAssistantPrefs ||
+                                    !scriptonyAiAvailable
+                                  }
                                 />
                               </div>
                             </div>
@@ -1320,7 +1651,7 @@ export function AIIntegrationsSection() {
                                             voice: event.target.value,
                                           },
                                         }
-                                      : prev
+                                      : prev,
                                   )
                                 }
                               />
@@ -1333,7 +1664,9 @@ export function AIIntegrationsSection() {
                               type="button"
                               size="sm"
                               onClick={() => void handleFeatureSave(featureKey)}
-                              disabled={savingFeatureKey === featureKey || !isDirty}
+                              disabled={
+                                savingFeatureKey === featureKey || !isDirty
+                              }
                             >
                               {savingFeatureKey === featureKey ? (
                                 <Loader2 className="size-4 animate-spin" />
@@ -1345,14 +1678,22 @@ export function AIIntegrationsSection() {
 
                           {/* Badges unter dem Button */}
                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <Badge variant="outline">{selectedProviderLabel}</Badge>
+                            <Badge variant="outline">
+                              {selectedProviderLabel}
+                            </Badge>
                             {selectedProviderKeySaved && (
-                              <Badge variant="outline" style={KEY_SAVED_BADGE_STYLE}>
+                              <Badge
+                                variant="outline"
+                                style={KEY_SAVED_BADGE_STYLE}
+                              >
                                 Key Saved
                               </Badge>
                             )}
                             {selectedProviderActive && (
-                              <Badge variant="outline" style={ACTIVE_BADGE_STYLE}>
+                              <Badge
+                                variant="outline"
+                                style={ACTIVE_BADGE_STYLE}
+                              >
                                 Active
                               </Badge>
                             )}

@@ -15,15 +15,15 @@ Unter **KI & LLM** in den Einstellungen kannst du für jeden Anwendungsbereich e
 
 ### Woher bekomme ich API-Keys?
 
-| Provider | URL |
-|---|---|
-| OpenAI | https://platform.openai.com/api-keys |
-| Anthropic | https://console.anthropic.com/ |
-| Google | https://aistudio.google.com/apikey |
-| DeepSeek | https://platform.deepseek.com/ |
-| OpenRouter | https://openrouter.ai/keys |
-| HuggingFace | https://huggingface.co/settings/tokens |
-| ElevenLabs | https://elevenlabs.io/app/settings/api-keys |
+| Provider    | URL                                         |
+| ----------- | ------------------------------------------- |
+| OpenAI      | https://platform.openai.com/api-keys        |
+| Anthropic   | https://console.anthropic.com/              |
+| Google      | https://aistudio.google.com/apikey          |
+| DeepSeek    | https://platform.deepseek.com/              |
+| OpenRouter  | https://openrouter.ai/keys                  |
+| HuggingFace | https://huggingface.co/settings/tokens      |
+| ElevenLabs  | https://elevenlabs.io/app/settings/api-keys |
 
 ## Provider aktivieren
 
@@ -58,15 +58,15 @@ Mit dem Schalter **Lokal / Cloud** im Ollama-Bereich kannst du umschalten.
 
 Jeder Bereich hat eigene Provider/Model-Einstellungen:
 
-| Bereich | Beschreibung |
-|---|---|
-| Assistant Chat | Chatbot und Konversationen |
-| Embeddings | Vektor-Einbettungen für RAG |
-| Creative Gym | Kreative Schreib-Starter |
-| Bildgenerierung | Cover-Bilder generieren |
-| Speech-to-Text | Audio transkribieren |
-| Text-to-Speech | Text vorlesen lassen |
-| Video | Video generieren |
+| Bereich         | Beschreibung                |
+| --------------- | --------------------------- |
+| Assistant Chat  | Chatbot und Konversationen  |
+| Embeddings      | Vektor-Einbettungen für RAG |
+| Creative Gym    | Kreative Schreib-Starter    |
+| Bildgenerierung | Cover-Bilder generieren     |
+| Speech-to-Text  | Audio transkribieren        |
+| Text-to-Speech  | Text vorlesen lassen        |
+| Video           | Video generieren            |
 
 ## Key validieren
 
@@ -78,10 +78,10 @@ Klicke **Entfernen** neben einem gespeicherten Key. Der Provider wird deaktivier
 
 ## Fehlerbehebung
 
-| Problem | Lösung |
-|---|---|
-| 401 Unauthorized | JWT abgelaufen — Seite neu laden |
-| "Kein API-Key" | Key für den gewählten Provider hinterlegen |
-| Ollama Local nicht erreichbar | Ollama-Server laufen? Port 11434 offen? |
-| Key-Validierung fehlgeschlagen | Key korrekt? Richtiger Provider gewählt? |
-| Modell-Liste leer | Provider unterstützt kein Discovery — manuell eingeben |
+| Problem                        | Lösung                                                 |
+| ------------------------------ | ------------------------------------------------------ |
+| 401 Unauthorized               | JWT abgelaufen — Seite neu laden                       |
+| "Kein API-Key"                 | Key für den gewählten Provider hinterlegen             |
+| Ollama Local nicht erreichbar  | Ollama-Server laufen? Port 11434 offen?                |
+| Key-Validierung fehlgeschlagen | Key korrekt? Richtiger Provider gewählt?               |
+| Modell-Liste leer              | Provider unterstützt kein Discovery — manuell eingeben |

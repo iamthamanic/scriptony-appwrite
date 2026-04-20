@@ -6,17 +6,20 @@ import { requireUserBootstrap } from "../../../_shared/auth";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { mapShotAudio } from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -71,7 +74,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         }
       `,
-      { shotIds }
+      { shotIds },
     );
 
     const grouped = Object.fromEntries(shotIds.map((id) => [id, [] as any[]]));

@@ -29,23 +29,44 @@ const HINTS: Record<string, LlmModelHint> = {
     inputPerMUsd: 10,
     outputPerMUsd: 30,
   },
-  "o1-preview": { bestFor: ["Reasoning", "Mathe"], note: "ohne klassisches Tooling" },
-  "o1-mini": { bestFor: ["Reasoning", "günstiger"], note: "ohne klassisches Tooling" },
+  "o1-preview": {
+    bestFor: ["Reasoning", "Mathe"],
+    note: "ohne klassisches Tooling",
+  },
+  "o1-mini": {
+    bestFor: ["Reasoning", "günstiger"],
+    note: "ohne klassisches Tooling",
+  },
   "o3-mini": { bestFor: ["Reasoning", "Code"] },
-  "claude-opus-4": { bestFor: ["komplex", "Qualität"], inputPerMUsd: 15, outputPerMUsd: 75 },
+  "claude-opus-4": {
+    bestFor: ["komplex", "Qualität"],
+    inputPerMUsd: 15,
+    outputPerMUsd: 75,
+  },
   "claude-3-5-sonnet": {
     bestFor: ["Chat", "Code", "Balance"],
     inputPerMUsd: 3,
     outputPerMUsd: 15,
   },
-  "claude-3-5-haiku": { bestFor: ["schnell", "günstig"], inputPerMUsd: 0.8, outputPerMUsd: 4 },
+  "claude-3-5-haiku": {
+    bestFor: ["schnell", "günstig"],
+    inputPerMUsd: 0.8,
+    outputPerMUsd: 4,
+  },
   "gemini-2.0-flash": {
     bestFor: ["Chat", "schnell"],
     inputPerMUsd: 0.1,
     outputPerMUsd: 0.4,
   },
-  "gemini-2.5": { bestFor: ["Multimodal", "lang"], note: "Preise je nach Tier variieren" },
-  "deepseek-chat": { bestFor: ["Chat", "günstig"], inputPerMUsd: 0.14, outputPerMUsd: 0.28 },
+  "gemini-2.5": {
+    bestFor: ["Multimodal", "lang"],
+    note: "Preise je nach Tier variieren",
+  },
+  "deepseek-chat": {
+    bestFor: ["Chat", "günstig"],
+    inputPerMUsd: 0.14,
+    outputPerMUsd: 0.28,
+  },
   "deepseek-reasoner": { bestFor: ["Reasoning"], note: "höhere Latenz" },
   "deepseek-coder": { bestFor: ["Code"] },
   "llama3.2": { bestFor: ["lokal", "Experiment"], note: "Ollama / lokal" },
@@ -55,7 +76,9 @@ const HINTS: Record<string, LlmModelHint> = {
 export function getLlmModelHint(modelId: string): LlmModelHint | null {
   if (!modelId) return null;
   if (HINTS[modelId]) return HINTS[modelId];
-  const tail = modelId.includes("/") ? (modelId.split("/").pop() ?? modelId) : modelId;
+  const tail = modelId.includes("/")
+    ? (modelId.split("/").pop() ?? modelId)
+    : modelId;
   if (HINTS[tail]) return HINTS[tail];
   for (const key of Object.keys(HINTS)) {
     if (modelId.includes(key)) return HINTS[key]!;

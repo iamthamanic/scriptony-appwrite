@@ -13,7 +13,10 @@ import {
 } from "../_shared/appwrite-db";
 import { getAccessibleProject } from "../_shared/scriptony";
 import type { StyleProfileConfig } from "../_shared/style-profile-schema";
-import { parseStyleProfileConfig, serializeStyleProfileConfig } from "../_shared/style-profile-schema";
+import {
+  parseStyleProfileConfig,
+  serializeStyleProfileConfig,
+} from "../_shared/style-profile-schema";
 
 export type StyleProfileRow = Record<string, any>;
 
@@ -63,7 +66,7 @@ function normalizedInteger(value: unknown): number | null {
 function shotRowToStyleResolution(
   shotRow: Record<string, any>,
   profile: StyleProfileApi | null,
-  resolutionStatus: ShotStyleResolutionStatus
+  resolutionStatus: ShotStyleResolutionStatus,
 ): ShotStyleResolutionApi {
   return {
     shotId: String(shotRow.id),
@@ -83,14 +86,20 @@ export function styleProfileRowToApi(row: StyleProfileRow): StyleProfileApi {
     projectId: normalizedProjectId(row.projectId),
     name: String(row.name ?? "").trim(),
     previewImageId: normalizedProjectId(row.previewImageId),
-    version: typeof row.version === "number" ? row.version : Number(row.version || 1) || 1,
-    createdAt: String(row.createdAt ?? row.created_at ?? new Date().toISOString()),
+    version: typeof row.version === "number"
+      ? row.version
+      : Number(row.version || 1) || 1,
+    createdAt: String(
+      row.createdAt ?? row.created_at ?? new Date().toISOString(),
+    ),
     updatedAt: typeof row.updated_at === "string" ? row.updated_at : undefined,
     config: parseStyleProfileConfig(row.configJson),
   };
 }
 
-export async function listStyleProfilesForUser(userId: string): Promise<StyleProfileApi[]> {
+export async function listStyleProfilesForUser(
+  userId: string,
+): Promise<StyleProfileApi[]> {
   const rows = await listDocumentsFull(C.styleProfiles, [
     Query.equal("userId", userId),
     Query.orderDesc("createdAt"),
@@ -98,7 +107,9 @@ export async function listStyleProfilesForUser(userId: string): Promise<StylePro
   return rows.map(styleProfileRowToApi);
 }
 
-export async function listStyleProfilesForProject(projectId: string): Promise<StyleProfileApi[]> {
+export async function listStyleProfilesForProject(
+  projectId: string,
+): Promise<StyleProfileApi[]> {
   const rows = await listDocumentsFull(C.styleProfiles, [
     Query.equal("projectId", projectId),
     Query.orderDesc("createdAt"),
@@ -106,14 +117,16 @@ export async function listStyleProfilesForProject(projectId: string): Promise<St
   return rows.map(styleProfileRowToApi);
 }
 
-export async function getStyleProfileById(profileId: string): Promise<StyleProfileRow | null> {
+export async function getStyleProfileById(
+  profileId: string,
+): Promise<StyleProfileRow | null> {
   return getDocument(C.styleProfiles, profileId);
 }
 
 export async function userCanAccessStyleProfile(
   row: StyleProfileRow,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<boolean> {
   if (String(row.userId ?? "") === userId) {
     return true;
@@ -122,7 +135,9 @@ export async function userCanAccessStyleProfile(
   if (!projectId) {
     return false;
   }
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
+  return Boolean(
+    await getAccessibleProject(projectId, userId, organizationIds),
+  );
 }
 
 export async function createStyleProfile(input: {
@@ -152,10 +167,12 @@ export async function updateStyleProfile(
     projectId?: string | null;
     previewImageId?: string | null;
     config?: StyleProfileConfig;
-  }
+  },
 ): Promise<StyleProfileApi> {
   const nextVersion =
-    (typeof row.version === "number" ? row.version : Number(row.version || 1) || 1) + 1;
+    (typeof row.version === "number"
+      ? row.version
+      : Number(row.version || 1) || 1) + 1;
   const update: Record<string, unknown> = {
     version: nextVersion,
   };
@@ -179,26 +196,32 @@ export async function removeStyleProfile(profileId: string): Promise<void> {
   await deleteDocument(C.styleProfiles, profileId);
 }
 
-export async function getStyleShotById(shotId: string): Promise<Record<string, any> | null> {
+export async function getStyleShotById(
+  shotId: string,
+): Promise<Record<string, any> | null> {
   return getDocument(C.shots, shotId);
 }
 
 export async function userCanAccessShotStyle(
   shotRow: Record<string, any>,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<boolean> {
-  const projectId = normalizedProjectId(shotRow.project_id ?? shotRow.projectId);
+  const projectId = normalizedProjectId(
+    shotRow.project_id ?? shotRow.projectId,
+  );
   if (!projectId) {
     return false;
   }
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
+  return Boolean(
+    await getAccessibleProject(projectId, userId, organizationIds),
+  );
 }
 
 export async function resolveShotStyleProfile(
   shotRow: Record<string, any>,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<ShotStyleResolutionApi> {
   const styleProfileId = normalizedProjectId(shotRow.styleProfileId);
   if (!styleProfileId) {
@@ -213,18 +236,24 @@ export async function resolveShotStyleProfile(
     return shotRowToStyleResolution(shotRow, null, "missing");
   }
 
-  return shotRowToStyleResolution(shotRow, styleProfileRowToApi(profileRow), "resolved");
+  return shotRowToStyleResolution(
+    shotRow,
+    styleProfileRowToApi(profileRow),
+    "resolved",
+  );
 }
 
 export async function applyStyleProfileToShot(
   shotRow: Record<string, any>,
-  profileRow: StyleProfileRow | null
+  profileRow: StyleProfileRow | null,
 ): Promise<ShotStyleResolutionApi> {
   const nextProfile = profileRow ? styleProfileRowToApi(profileRow) : null;
   const nextStyleProfileId = nextProfile?.id ?? null;
   const nextStyleProfileRevision = nextProfile?.version ?? null;
   const currentStyleProfileId = normalizedProjectId(shotRow.styleProfileId);
-  const currentStyleProfileRevision = normalizedInteger(shotRow.styleProfileRevision);
+  const currentStyleProfileRevision = normalizedInteger(
+    shotRow.styleProfileRevision,
+  );
 
   if (
     currentStyleProfileId === nextStyleProfileId &&
@@ -233,7 +262,7 @@ export async function applyStyleProfileToShot(
     return shotRowToStyleResolution(
       shotRow,
       nextProfile,
-      nextProfile ? "resolved" : "unassigned"
+      nextProfile ? "resolved" : "unassigned",
     );
   }
 
@@ -245,6 +274,6 @@ export async function applyStyleProfileToShot(
   return shotRowToStyleResolution(
     updatedShot,
     nextProfile,
-    nextProfile ? "resolved" : "unassigned"
+    nextProfile ? "resolved" : "unassigned",
   );
 }

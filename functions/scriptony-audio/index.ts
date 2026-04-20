@@ -6,10 +6,10 @@ import "../_shared/fetch-polyfill";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { dispatchHonoApp } from "../_shared/hono-appwrite-handler";
 import {
-  sendJson,
-  sendNotFound,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendNotFound,
 } from "../_shared/http";
 import shotAudioHandler from "./shots/[id]/audio";
 import uploadAudioHandler from "./shots/[id]/upload-audio";
@@ -19,9 +19,13 @@ import { app as sttApp } from "./stt";
 import { app as ttsApp } from "./tts";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -29,7 +33,10 @@ function getPathname(req: RequestLike): string {
   return q >= 0 ? direct.slice(0, q) : direct;
 }
 
-function withParams(req: RequestLike, params: Record<string, string>): RequestLike {
+function withParams(
+  req: RequestLike,
+  params: Record<string, string>,
+): RequestLike {
   req.params = { ...(req.params || {}), ...params };
   return req;
 }
@@ -72,12 +79,17 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
   const shotAudioItemMatch = pathname.match(/^\/shots\/audio\/([^/]+)$/);
   if (shotAudioItemMatch) {
-    await shotAudioItemHandler(withParams(req, { id: shotAudioItemMatch[1] }), res);
+    await shotAudioItemHandler(
+      withParams(req, { id: shotAudioItemMatch[1] }),
+      res,
+    );
     return;
   }
 
   if (pathname === "/stt" || pathname.startsWith("/stt/")) {
-    const forwardedPath = pathname === "/stt" ? "/" : pathname.slice("/stt".length) || "/";
+    const forwardedPath = pathname === "/stt"
+      ? "/"
+      : pathname.slice("/stt".length) || "/";
     await dispatchHonoApp(sttApp, withPath(req, forwardedPath), {
       json: (body, status) => res.status(status || 200).json(body),
       text: (text, status) => res.status(status || 200).end(text),
@@ -86,7 +98,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/tts" || pathname.startsWith("/tts/")) {
-    const forwardedPath = pathname === "/tts" ? "/" : pathname.slice("/tts".length) || "/";
+    const forwardedPath = pathname === "/tts"
+      ? "/"
+      : pathname.slice("/tts".length) || "/";
     await dispatchHonoApp(ttsApp, withPath(req, forwardedPath), {
       json: (body, status) => res.status(status || 200).json(body),
       text: (text, status) => res.status(status || 200).end(text),

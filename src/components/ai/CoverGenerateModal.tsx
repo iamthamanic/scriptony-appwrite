@@ -6,7 +6,14 @@
  */
 
 import type { CoverVisualStyle } from "../../lib/cover-prompt";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
@@ -49,8 +56,8 @@ export function CoverGenerateModal({
         <DialogHeader className="shrink-0 space-y-2 px-6 pt-6 pr-14 text-left">
           <DialogTitle>Cover generieren</DialogTitle>
           <DialogDescription>
-            Prompt basiert auf Projektinformationen. Titel erscheint mittig auf dem Cover. Stil unten wählen — der
-            Prompt wird angepasst.
+            Prompt basiert auf Projektinformationen. Titel erscheint mittig auf
+            dem Cover. Stil unten wählen — der Prompt wird angepasst.
           </DialogDescription>
         </DialogHeader>
 
@@ -60,25 +67,39 @@ export function CoverGenerateModal({
               <Label className="text-sm font-medium">Illustrations-Stil</Label>
               <RadioGroup
                 value={visualStyle}
-                onValueChange={(v) => onVisualStyleChange(v as CoverVisualStyle)}
+                onValueChange={(v) =>
+                  onVisualStyleChange(v as CoverVisualStyle)
+                }
                 className="grid gap-2 sm:grid-cols-3"
               >
                 <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-                  <RadioGroupItem value="realistic" id="cover-style-realistic" disabled={generating} />
+                  <RadioGroupItem
+                    value="realistic"
+                    id="cover-style-realistic"
+                    disabled={generating}
+                  />
                   <span>Realistisch</span>
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-                  <RadioGroupItem value="comic" id="cover-style-comic" disabled={generating} />
+                  <RadioGroupItem
+                    value="comic"
+                    id="cover-style-comic"
+                    disabled={generating}
+                  />
                   <span>Comic</span>
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-                  <RadioGroupItem value="anime" id="cover-style-anime" disabled={generating} />
+                  <RadioGroupItem
+                    value="anime"
+                    id="cover-style-anime"
+                    disabled={generating}
+                  />
                   <span>Anime</span>
                 </label>
               </RadioGroup>
               <p className="text-xs text-muted-foreground">
-                Stil wechseln erzeugt den Prompt aus den aktuellen Projektinfos neu (manuelle Bearbeitung geht
-                verloren).
+                Stil wechseln erzeugt den Prompt aus den aktuellen Projektinfos
+                neu (manuelle Bearbeitung geht verloren).
               </p>
             </div>
             {/* Native textarea: shared <Textarea> uses field-sizing-content which ignores max-height and breaks layout */}
@@ -96,7 +117,7 @@ export function CoverGenerateModal({
                 className={cn(
                   "field-sizing-fixed box-border h-full max-h-full min-h-0 w-full resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm text-foreground",
                   "placeholder:text-muted-foreground focus:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                  "disabled:cursor-not-allowed disabled:opacity-60 read-only:opacity-100"
+                  "disabled:cursor-not-allowed disabled:opacity-60 read-only:opacity-100",
                 )}
               />
               {generating ? (
@@ -112,16 +133,27 @@ export function CoverGenerateModal({
               ) : null}
             </div>
             {!generating ? (
-              <p className="text-xs text-muted-foreground">Ausgabe: 800x1200 px (2:3 Portrait).</p>
+              <p className="text-xs text-muted-foreground">
+                Ausgabe: 800x1200 px (2:3 Portrait).
+              </p>
             ) : null}
           </div>
         </div>
 
         <DialogFooter className="shrink-0 border-t border-border bg-card px-6 py-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={generating}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={generating}
+          >
             Abbrechen
           </Button>
-          <Button type="button" onClick={onGenerate} disabled={generating || !prompt.trim()}>
+          <Button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating || !prompt.trim()}
+          >
             Bild generieren
           </Button>
         </DialogFooter>

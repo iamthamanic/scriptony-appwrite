@@ -7,20 +7,30 @@ import { getStorageBucketId } from "../../../_shared/env";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
-import { ensureFile, getMultipartField, uploadFileToStorage } from "../../../_shared/storage";
-import { getAccessibleProject, getUserOrganizationIds } from "../../../_shared/scriptony";
+import {
+  ensureFile,
+  getMultipartField,
+  uploadFileToStorage,
+} from "../../../_shared/storage";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
 import { getShotById, mapShotAudio } from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -46,7 +56,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-    const project = await getAccessibleProject(shot.project_id, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      shot.project_id,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Shot not found");
       return;
@@ -122,7 +136,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           fade_in: fadeInValue ? Number(fadeInValue) : 0,
           fade_out: fadeOutValue ? Number(fadeOutValue) : 0,
         },
-      }
+      },
     );
 
     sendJson(res, 200, { audio: mapShotAudio(created.insert_shot_audio_one) });

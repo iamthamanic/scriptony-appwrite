@@ -10,17 +10,25 @@ import { discoverModels } from "../../_shared/ai-service/model-discovery";
 import { requireAuthenticatedUser } from "../../_shared/auth";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../../_shared/http";
 
-const VALID_IMAGE_PROVIDERS = ["ollama", "ollama_local", "ollama_cloud", "openrouter"] as const;
+const VALID_IMAGE_PROVIDERS = [
+  "ollama",
+  "ollama_local",
+  "ollama_cloud",
+  "openrouter",
+] as const;
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const user = await requireAuthenticatedUser(req);
   if (!user) {
     sendUnauthorized(res);
@@ -45,20 +53,27 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   let valid = false;
   try {
     const prov = getProvider(provider, { apiKey: apiKey });
-    valid = await prov.healthCheck() ?? false;
+    valid = (await prov.healthCheck()) ?? false;
   } catch {
     valid = false;
   }
 
   if (!valid) {
-    sendJson(res, 200, { valid: false, provider, error: "Key validation failed" });
+    sendJson(res, 200, {
+      valid: false,
+      provider,
+      error: "Key validation failed",
+    });
     return;
   }
 
   // Discover models for image_generation
-  let discoveredModels: Array<{ id: string; name: string; provider: string }> = [];
+  let discoveredModels: Array<{ id: string; name: string; provider: string }> =
+    [];
   try {
-    const models = await discoverModels(provider, "image_generation", { apiKey });
+    const models = await discoverModels(provider, "image_generation", {
+      apiKey,
+    });
     discoveredModels = models.map((m) => ({
       id: m.id,
       name: m.name,

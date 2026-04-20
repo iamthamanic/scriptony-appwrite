@@ -37,7 +37,9 @@ async function ensureFetchPolyfillLoaded(): Promise<void> {
 }
 
 function getPathname(req: RequestLike): string {
-  const raw = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const raw = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
     if (raw.startsWith("http://") || raw.startsWith("https://")) {
       return new URL(raw).pathname || "/";
@@ -52,12 +54,20 @@ function getPathname(req: RequestLike): string {
 function matchAssistantLegacyRoute(pathname: string): LegacyRouteMatch | null {
   if (/^\/ai\/settings\/?$/.test(pathname)) return { handler: settingsHandler };
   if (/^\/ai\/models\/?$/.test(pathname)) return { handler: modelsHandler };
-  if (/^\/ai\/validate-key\/?$/.test(pathname)) return { handler: validateKeyHandler };
-  if (/^\/ai\/count-tokens\/?$/.test(pathname)) return { handler: countTokensHandler };
+  if (/^\/ai\/validate-key\/?$/.test(pathname)) {
+    return { handler: validateKeyHandler };
+  }
+  if (/^\/ai\/count-tokens\/?$/.test(pathname)) {
+    return { handler: countTokensHandler };
+  }
   if (/^\/ai\/rag\/sync\/?$/.test(pathname)) return { handler: ragSyncHandler };
-  if (/^\/ai\/conversations\/?$/.test(pathname)) return { handler: conversationsIndexHandler };
+  if (/^\/ai\/conversations\/?$/.test(pathname)) {
+    return { handler: conversationsIndexHandler };
+  }
 
-  const messagesMatch = pathname.match(/^\/ai\/conversations\/([^/]+)\/messages\/?$/);
+  const messagesMatch = pathname.match(
+    /^\/ai\/conversations\/([^/]+)\/messages\/?$/,
+  );
   if (messagesMatch) {
     return {
       handler: conversationMessagesHandler,
@@ -65,7 +75,9 @@ function matchAssistantLegacyRoute(pathname: string): LegacyRouteMatch | null {
     };
   }
 
-  const promptMatch = pathname.match(/^\/ai\/conversations\/([^/]+)\/prompt\/?$/);
+  const promptMatch = pathname.match(
+    /^\/ai\/conversations\/([^/]+)\/prompt\/?$/,
+  );
   if (promptMatch) {
     return {
       handler: conversationPromptHandler,
@@ -87,7 +99,7 @@ function routeNeedsFetchPolyfill(pathname: string): boolean {
 
 export async function dispatchAssistantLegacyRoute(
   req: RequestLike,
-  res: ResponseLike
+  res: ResponseLike,
 ): Promise<boolean> {
   const pathname = getPathname(req);
   const match = matchAssistantLegacyRoute(pathname);
@@ -105,7 +117,7 @@ export async function dispatchAssistantLegacyRoute(
         ...(match.params || {}),
       },
     },
-    res
+    res,
   );
   return true;
 }
@@ -113,7 +125,7 @@ export async function dispatchAssistantLegacyRoute(
 async function runLegacyHandler(
   c: Context,
   handler: (req: RequestLike, res: ResponseLike) => Promise<void>,
-  params: Record<string, string> = {}
+  params: Record<string, string> = {},
 ): Promise<Response> {
   const method = c.req.method;
   if (method === "OPTIONS") {
@@ -130,14 +142,13 @@ async function runLegacyHandler(
   }
 
   const requestHeaders: Record<string, string> = {};
-  const auth =
-    c.req.header("authorization") ?? c.req.header("Authorization");
-  const appwriteJwt =
-    c.req.header("x-appwrite-user-jwt") ?? c.req.header("X-Appwrite-User-Jwt");
-  const executionId =
-    c.req.header("x-appwrite-execution-id") ?? c.req.header("X-Appwrite-Execution-Id");
-  const userId =
-    c.req.header("x-appwrite-user-id") ?? c.req.header("X-Appwrite-User-Id");
+  const auth = c.req.header("authorization") ?? c.req.header("Authorization");
+  const appwriteJwt = c.req.header("x-appwrite-user-jwt") ??
+    c.req.header("X-Appwrite-User-Jwt");
+  const executionId = c.req.header("x-appwrite-execution-id") ??
+    c.req.header("X-Appwrite-Execution-Id");
+  const userId = c.req.header("x-appwrite-user-id") ??
+    c.req.header("X-Appwrite-User-Id");
 
   if (auth?.trim()) {
     requestHeaders.authorization = auth.trim();
@@ -200,12 +211,21 @@ export function mountAssistantLegacyRoutes(ai: Hono): void {
   ai.all("/validate-key", (c) => runLegacyHandler(c, validateKeyHandler));
   ai.all("/count-tokens", (c) => runLegacyHandler(c, countTokensHandler));
   ai.all("/rag/sync", (c) => runLegacyHandler(c, ragSyncHandler));
-  ai.all("/conversations", (c) => runLegacyHandler(c, conversationsIndexHandler));
-  ai.all("/conversations/:id/messages", (c) =>
-    runLegacyHandler(c, conversationMessagesHandler, { id: c.req.param("id") })
+  ai.all(
+    "/conversations",
+    (c) => runLegacyHandler(c, conversationsIndexHandler),
   );
-  ai.all("/conversations/:id/prompt", (c) =>
-    runLegacyHandler(c, conversationPromptHandler, { id: c.req.param("id") })
+  ai.all(
+    "/conversations/:id/messages",
+    (c) =>
+      runLegacyHandler(c, conversationMessagesHandler, {
+        id: c.req.param("id"),
+      }),
+  );
+  ai.all(
+    "/conversations/:id/prompt",
+    (c) =>
+      runLegacyHandler(c, conversationPromptHandler, { id: c.req.param("id") }),
   );
   ai.all("/chat", (c) => runLegacyHandler(c, chatHandler));
 }

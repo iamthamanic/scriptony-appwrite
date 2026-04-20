@@ -3,7 +3,14 @@
  * Location: src/components/ai/CoverActionModal.tsx
  */
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Button } from "../ui/button";
 
 interface CoverActionModalProps {
@@ -13,13 +20,20 @@ interface CoverActionModalProps {
   onGenerate: () => void;
 }
 
-export function CoverActionModal({ open, onOpenChange, onUpload, onGenerate }: CoverActionModalProps) {
+export function CoverActionModal({
+  open,
+  onOpenChange,
+  onUpload,
+  onGenerate,
+}: CoverActionModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md md:w-auto">
         <DialogHeader>
           <DialogTitle>Cover auswählen</DialogTitle>
-          <DialogDescription>Willst du ein Cover hochladen oder per KI generieren?</DialogDescription>
+          <DialogDescription>
+            Willst du ein Cover hochladen oder per KI generieren?
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           <Button
@@ -46,4 +60,3 @@ export function CoverActionModal({ open, onOpenChange, onUpload, onGenerate }: C
     </Dialog>
   );
 }
-

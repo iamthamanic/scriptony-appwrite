@@ -7,18 +7,21 @@ import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { deleteStorageFileByUrl } from "../../../_shared/storage";
 import { mapShotAudio } from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -45,7 +48,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       };
 
       const cleanedChanges = Object.fromEntries(
-        Object.entries(changes).filter(([, value]) => value !== undefined)
+        Object.entries(changes).filter(([, value]) => value !== undefined),
       );
 
       const updated = await requestGraphql<{
@@ -74,10 +77,14 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: audioId,
           changes: cleanedChanges,
-        }
+        },
       );
 
-      sendJson(res, 200, { audio: updated.update_shot_audio_by_pk ? mapShotAudio(updated.update_shot_audio_by_pk) : null });
+      sendJson(res, 200, {
+        audio: updated.update_shot_audio_by_pk
+          ? mapShotAudio(updated.update_shot_audio_by_pk)
+          : null,
+      });
       return;
     }
 
@@ -93,7 +100,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: audioId }
+        { id: audioId },
       );
 
       await requestGraphql(
@@ -104,7 +111,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: audioId }
+        { id: audioId },
       );
 
       await deleteStorageFileByUrl(existing.shot_audio_by_pk?.file_url);

@@ -3,10 +3,20 @@
  * Location: src/lib/llm-provider-registry.ts
  */
 
-export const LLM_PROVIDER_IDS = ["openai", "anthropic", "google", "openrouter", "deepseek", "ollama"] as const;
+export const LLM_PROVIDER_IDS = [
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+  "deepseek",
+  "ollama",
+] as const;
 export type LlmProviderId = (typeof LLM_PROVIDER_IDS)[number];
 
-export const MODELS_BY_PROVIDER: Record<LlmProviderId, { id: string; name: string }[]> = {
+export const MODELS_BY_PROVIDER: Record<
+  LlmProviderId,
+  { id: string; name: string }[]
+> = {
   openai: [
     { id: "gpt-4o-mini", name: "GPT-4o Mini" },
     { id: "gpt-4o", name: "GPT-4o" },
@@ -19,7 +29,10 @@ export const MODELS_BY_PROVIDER: Record<LlmProviderId, { id: string; name: strin
   google: [{ id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" }],
   openrouter: [
     { id: "openai/gpt-4o-mini", name: "OpenRouter: GPT-4o Mini" },
-    { id: "meta-llama/llama-3.3-70b-instruct", name: "OpenRouter: Llama 3.3 70B" },
+    {
+      id: "meta-llama/llama-3.3-70b-instruct",
+      name: "OpenRouter: Llama 3.3 70B",
+    },
     { id: "ollama/llama3.2", name: "OpenRouter → Ollama-Pfad (Beispiel)" },
   ],
   deepseek: [
@@ -41,7 +54,10 @@ export function defaultModelForProvider(pid: LlmProviderId): string {
 }
 
 /** Label for Select when id matches UI registry; otherwise return raw id. */
-export function resolveModelDisplayName(provider: string, modelId: string): string {
+export function resolveModelDisplayName(
+  provider: string,
+  modelId: string,
+): string {
   if (!modelId) return "";
   const list = MODELS_BY_PROVIDER[provider as LlmProviderId];
   const hit = list?.find((m) => m.id === modelId);

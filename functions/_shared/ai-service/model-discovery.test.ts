@@ -2,7 +2,7 @@
  * Unit tests for model-discovery helpers (no network).
  * Migrated from Deno to Vitest.
  */
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   classifyOllamaModelForFeature,
   enrichWithRegistry,
@@ -33,11 +33,27 @@ describe("model-discovery", () => {
 
   describe("filterOpenAIModelIdsForFeature", () => {
     it("filters text vs image models", () => {
-      const ids = ["gpt-4o", "gpt-4o-mini", "dall-e-3", "whisper-1", "tts-1", "text-embedding-3-small"];
-      expect(filterOpenAIModelIdsForFeature(ids, "text")).toEqual(["gpt-4o", "gpt-4o-mini"]);
-      expect(filterOpenAIModelIdsForFeature(ids, "image")).toEqual(["dall-e-3"]);
-      expect(filterOpenAIModelIdsForFeature(ids, "audio_stt")).toEqual(["whisper-1"]);
-      expect(filterOpenAIModelIdsForFeature(ids, "embeddings")).toEqual(["text-embedding-3-small"]);
+      const ids = [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "dall-e-3",
+        "whisper-1",
+        "tts-1",
+        "text-embedding-3-small",
+      ];
+      expect(filterOpenAIModelIdsForFeature(ids, "text")).toEqual([
+        "gpt-4o",
+        "gpt-4o-mini",
+      ]);
+      expect(filterOpenAIModelIdsForFeature(ids, "image")).toEqual([
+        "dall-e-3",
+      ]);
+      expect(filterOpenAIModelIdsForFeature(ids, "audio_stt")).toEqual([
+        "whisper-1",
+      ]);
+      expect(filterOpenAIModelIdsForFeature(ids, "embeddings")).toEqual([
+        "text-embedding-3-small",
+      ]);
     });
   });
 
@@ -45,7 +61,9 @@ describe("model-discovery", () => {
     it("classifies Ollama models by feature", () => {
       expect(classifyOllamaModelForFeature("llama3.1", "text")).toBe(true);
       expect(classifyOllamaModelForFeature("flux-schnell", "image")).toBe(true);
-      expect(classifyOllamaModelForFeature("nomic-embed-text", "embeddings")).toBe(true);
+      expect(
+        classifyOllamaModelForFeature("nomic-embed-text", "embeddings"),
+      ).toBe(true);
       expect(classifyOllamaModelForFeature("flux-schnell", "text")).toBe(false);
     });
   });
@@ -53,8 +71,16 @@ describe("model-discovery", () => {
   describe("filterOpenRouterRowsForFeature", () => {
     it("uses modality when present", () => {
       const rows = [
-        { id: "openai/gpt-4o", name: "GPT-4o", architecture: { modality: "text" } },
-        { id: "black-forest-labs/flux-1.1-pro", name: "Flux", architecture: { modality: "image" } },
+        {
+          id: "openai/gpt-4o",
+          name: "GPT-4o",
+          architecture: { modality: "text" },
+        },
+        {
+          id: "black-forest-labs/flux-1.1-pro",
+          name: "Flux",
+          architecture: { modality: "image" },
+        },
       ];
       const text = filterOpenRouterRowsForFeature(rows, "text");
       expect(text.length).toBe(1);
@@ -67,7 +93,14 @@ describe("model-discovery", () => {
 
   describe("enrichWithRegistry", () => {
     it("fills contextWindow from registry", () => {
-      const models = [{ id: "gpt-4o", name: "gpt-4o", provider: "openai", features: ["text"] }];
+      const models = [
+        {
+          id: "gpt-4o",
+          name: "gpt-4o",
+          provider: "openai",
+          features: ["text"],
+        },
+      ];
       const enriched = enrichWithRegistry(models, "openai", "text");
       expect(enriched[0].contextWindow).toBe(128000);
     });

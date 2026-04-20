@@ -12,14 +12,26 @@
   border-radius: 1rem;
   border: 1px solid hsl(var(--border));
   background:
-    radial-gradient(circle at 20% 20%, rgba(110, 89, 165, 0.18), transparent 52%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(236, 239, 244, 0.92));
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(110, 89, 165, 0.18),
+      transparent 52%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.95),
+      rgba(236, 239, 244, 0.92)
+    );
   box-shadow: 0 10px 24px rgba(23, 26, 31, 0.08);
 }
 
 .dark .assistant-orbit-root {
   background:
-    radial-gradient(circle at 20% 20%, rgba(142, 117, 209, 0.24), transparent 52%),
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(142, 117, 209, 0.24),
+      transparent 52%
+    ),
     linear-gradient(135deg, rgba(33, 38, 45, 0.96), rgba(24, 30, 37, 0.94));
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }

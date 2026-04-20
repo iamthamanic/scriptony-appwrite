@@ -14,11 +14,18 @@ import conversationsCollectionHandler from "./ai/conversations/index";
 import conversationMessagesHandler from "./ai/conversations/[id]/messages";
 import conversationPromptHandler from "./ai/conversations/[id]/prompt";
 import mcpToolsRegistryHandler from "./ai/mcp-tools-registry";
-import { sendJson, sendNotFound, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendNotFound,
+} from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   let p: string;
   try {
     if (direct.startsWith("http://") || direct.startsWith("https://")) {
@@ -41,7 +48,10 @@ function getPathname(req: RequestLike): string {
   return p;
 }
 
-function withParams(req: RequestLike, params: Record<string, string>): RequestLike {
+function withParams(
+  req: RequestLike,
+  params: Record<string, string>,
+): RequestLike {
   req.params = { ...(req.params || {}), ...params };
   return req;
 }
@@ -69,15 +79,23 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     return;
   }
 
-  const convMessages = pathname.match(/^\/ai\/conversations\/([^/]+)\/messages$/);
+  const convMessages = pathname.match(
+    /^\/ai\/conversations\/([^/]+)\/messages$/,
+  );
   if (convMessages) {
-    await conversationMessagesHandler(withParams(req, { id: convMessages[1] }), res);
+    await conversationMessagesHandler(
+      withParams(req, { id: convMessages[1] }),
+      res,
+    );
     return;
   }
 
   const convPrompt = pathname.match(/^\/ai\/conversations\/([^/]+)\/prompt$/);
   if (convPrompt) {
-    await conversationPromptHandler(withParams(req, { id: convPrompt[1] }), res);
+    await conversationPromptHandler(
+      withParams(req, { id: convPrompt[1] }),
+      res,
+    );
     return;
   }
 

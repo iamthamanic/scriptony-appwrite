@@ -8,7 +8,10 @@ import type { LlmProviderId } from "./llm-provider-registry";
 
 export type AiFeatureId = "assistant" | "gym" | "stage";
 
-export const AI_ROUTABLE_FEATURES: ReadonlyArray<{ id: AiFeatureId; label: string }> = [
+export const AI_ROUTABLE_FEATURES: ReadonlyArray<{
+  id: AiFeatureId;
+  label: string;
+}> = [
   { id: "assistant", label: "Assistant" },
   { id: "gym", label: "Gym" },
   { id: "stage", label: "Stage" },
@@ -18,11 +21,21 @@ export const AI_ROUTABLE_FEATURES: ReadonlyArray<{ id: AiFeatureId; label: strin
 export interface AiFeatureRoutingParsed {
   enabled_features?: AiFeatureId[];
   feature_profiles?: Partial<
-    Record<AiFeatureId, { provider?: LlmProviderId; model?: string; temperature?: number; max_tokens?: number }>
+    Record<
+      AiFeatureId,
+      {
+        provider?: LlmProviderId;
+        model?: string;
+        temperature?: number;
+        max_tokens?: number;
+      }
+    >
   >;
 }
 
-export function getAiFeatureFlags(parsed: AiFeatureRoutingParsed | undefined): Record<AiFeatureId, boolean> {
+export function getAiFeatureFlags(
+  parsed: AiFeatureRoutingParsed | undefined,
+): Record<AiFeatureId, boolean> {
   const ef = parsed?.enabled_features;
   if (ef === undefined) {
     return { assistant: true, gym: true, stage: true };
@@ -36,7 +49,7 @@ export function getAiFeatureFlags(parsed: AiFeatureRoutingParsed | undefined): R
 
 export function getRoutedProviderForFeature(
   parsed: AiFeatureRoutingParsed | undefined,
-  fid: AiFeatureId
+  fid: AiFeatureId,
 ): LlmProviderId | undefined {
   return parsed?.feature_profiles?.[fid]?.provider;
 }
@@ -48,10 +61,11 @@ export function getRoutedProviderForFeature(
 export function getEffectiveProviderForFeature(
   parsed: AiFeatureRoutingParsed | undefined,
   fid: AiFeatureId,
-  activeProvider: string | undefined
+  activeProvider: string | undefined,
 ): LlmProviderId | undefined {
   const explicit = parsed?.feature_profiles?.[fid]?.provider;
   if (explicit) return explicit;
-  if (activeProvider && activeProvider.length > 0) return activeProvider as LlmProviderId;
+  if (activeProvider && activeProvider.length > 0)
+    return activeProvider as LlmProviderId;
   return undefined;
 }

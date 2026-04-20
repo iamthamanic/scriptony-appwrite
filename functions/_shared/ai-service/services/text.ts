@@ -1,21 +1,28 @@
 /**
  * Text Service - Chat/Completion
- * 
+ *
  * High-level service for text generation (chat, completion).
  * Uses the provider registry to route to the correct provider.
  */
 
 import { resolveFeatureRuntime } from "../config/settings";
-import { getProvider, type ChatMessage, type ChatOptions, type ChatResponse } from "../providers";
+import {
+  type ChatMessage,
+  type ChatOptions,
+  type ChatResponse,
+  getProvider,
+} from "../providers";
 
-function toCanonicalTextFeature(feature: string): "assistant_chat" | "creative_gym" {
+function toCanonicalTextFeature(
+  feature: string,
+): "assistant_chat" | "creative_gym" {
   if (feature === "creative_gym" || feature === "gym") return "creative_gym";
   return "assistant_chat";
 }
 
 /**
  * Chat with AI using feature-specific configuration
- * 
+ *
  * @param userId - User ID
  * @param messages - Chat messages
  * @param feature - Feature name (assistant_chat, creative_gym, etc.)
@@ -26,17 +33,22 @@ export async function chat(
   userId: string,
   messages: ChatMessage[],
   feature: string,
-  options?: Partial<ChatOptions>
+  options?: Partial<ChatOptions>,
 ): Promise<ChatResponse> {
-  const runtime = await resolveFeatureRuntime(userId, toCanonicalTextFeature(feature));
+  const runtime = await resolveFeatureRuntime(
+    userId,
+    toCanonicalTextFeature(feature),
+  );
   const provider = getProvider(runtime.config.provider, {
     apiKey: runtime.apiKey || undefined,
     baseUrl: runtime.baseUrl,
   });
-  
+
   // Check capability
   if (!provider.capabilities.text) {
-    throw new Error(`Provider "${runtime.config.provider}" does not support text generation`);
+    throw new Error(
+      `Provider "${runtime.config.provider}" does not support text generation`,
+    );
   }
 
   const { model: _ignoredModel, ...rest } = options || {};
@@ -49,7 +61,7 @@ export async function chat(
 
 /**
  * Stream chat with AI (for real-time responses)
- * 
+ *
  * @param userId - User ID
  * @param messages - Chat messages
  * @param feature - Feature name
@@ -61,17 +73,22 @@ export async function streamChat(
   messages: ChatMessage[],
   feature: string,
   onChunk: (chunk: string) => void,
-  options?: Partial<ChatOptions>
+  options?: Partial<ChatOptions>,
 ): Promise<void> {
-  const runtime = await resolveFeatureRuntime(userId, toCanonicalTextFeature(feature));
+  const runtime = await resolveFeatureRuntime(
+    userId,
+    toCanonicalTextFeature(feature),
+  );
   const provider = getProvider(runtime.config.provider, {
     apiKey: runtime.apiKey || undefined,
     baseUrl: runtime.baseUrl,
   });
-  
+
   // Check capability
   if (!provider.capabilities.text) {
-    throw new Error(`Provider "${runtime.config.provider}" does not support text generation`);
+    throw new Error(
+      `Provider "${runtime.config.provider}" does not support text generation`,
+    );
   }
 
   const { model: _ignoredModel, ...rest } = options || {};
@@ -81,7 +98,7 @@ export async function streamChat(
     model: runtime.config.model,
     systemPrompt: options?.systemPrompt ?? runtime.userSettings.system_prompt,
   });
-  
+
   // For now, just return the full response
   // TODO: Implement actual streaming with SSE or similar
   onChunk(response.content);

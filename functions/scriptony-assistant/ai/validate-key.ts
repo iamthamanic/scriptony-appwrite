@@ -11,15 +11,24 @@ import { getModelsForProvider } from "../../_shared/ai-service/config/models";
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../../_shared/http";
 
-const KNOWN_PROVIDERS = ["openai", "anthropic", "google", "openrouter", "deepseek", "ollama", "ollama_local", "ollama_cloud"] as const;
+const KNOWN_PROVIDERS = [
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+  "deepseek",
+  "ollama",
+  "ollama_local",
+  "ollama_cloud",
+] as const;
 
 function detectProvider(apiKey: string): string | null {
   if (apiKey.startsWith("sk-ant-")) return "anthropic";
@@ -35,7 +44,10 @@ function resolveOllamaProviderId(mode: "local" | "cloud"): string {
   return mode === "cloud" ? "ollama_cloud" : "ollama_local";
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -56,11 +68,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const rawProvider = (body as { Provider?: string }).Provider ?? body.provider;
   const explicit = rawProvider?.trim().toLowerCase();
   let provider: string | null =
-    explicit && (KNOWN_PROVIDERS as readonly string[]).includes(explicit) ? explicit : null;
+    explicit && (KNOWN_PROVIDERS as readonly string[]).includes(explicit)
+      ? explicit
+      : null;
 
   const modeRaw = (
-    body.ollama_mode ??
-    (body as { ollamaMode?: string }).ollamaMode
+    body.ollama_mode ?? (body as { ollamaMode?: string }).ollamaMode
   )
     ?.trim()
     .toLowerCase();
@@ -91,7 +104,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   if (!provider) {
     sendJson(res, 200, {
       valid: false,
-      error: "Wähle den Anbieter in der Liste oder nutze ein Key-Format (z. B. sk-ant-… Anthropic, AIza… Google).",
+      error:
+        "Wähle den Anbieter in der Liste oder nutze ein Key-Format (z. B. sk-ant-… Anthropic, AIza… Google).",
     });
     return;
   }
@@ -100,8 +114,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const baseUrl = body.base_url?.trim().replace(/\/$/, "") || undefined;
   let valid = false;
   try {
-    const prov = getProvider(provider, { apiKey: apiKey || undefined, baseUrl });
-    valid = await prov.healthCheck() ?? false;
+    const prov = getProvider(provider, {
+      apiKey: apiKey || undefined,
+      baseUrl,
+    });
+    valid = (await prov.healthCheck()) ?? false;
   } catch {
     valid = false;
   }
@@ -117,20 +134,27 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   }
 
   // Discover models
-  let discoveredModels: Array<{ id: string; name: string; provider: string }> = [];
+  let discoveredModels: Array<{ id: string; name: string; provider: string }> =
+    [];
   try {
     const models = await discoverModels(provider, "assistant_chat", {
       apiKey: apiKey || undefined,
       baseUrl,
     });
-    discoveredModels = models.map((m) => ({ id: m.id, name: m.name, provider: m.provider }));
+    discoveredModels = models.map((m) => ({
+      id: m.id,
+      name: m.name,
+      provider: m.provider,
+    }));
   } catch {
     // Discovery optional — health check passed
   }
 
   const fallbackModels = getModelsForProvider(provider);
   const usedRemote = discoveredModels.length > 0;
-  const finalList = usedRemote ? discoveredModels : fallbackModels.map((m) => ({ id: m.id, name: m.name, provider }));
+  const finalList = usedRemote
+    ? discoveredModels
+    : fallbackModels.map((m) => ({ id: m.id, name: m.name, provider }));
 
   sendJson(res, 200, {
     valid: true,

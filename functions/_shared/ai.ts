@@ -11,7 +11,13 @@ type ChatMessage = {
 };
 
 export type ProviderSettings = {
-  provider: "openai" | "anthropic" | "google" | "openrouter" | "deepseek" | "ollama";
+  provider:
+    | "openai"
+    | "anthropic"
+    | "google"
+    | "openrouter"
+    | "deepseek"
+    | "ollama";
   model: string;
   apiKey: string;
   systemPrompt: string;
@@ -32,14 +38,20 @@ function estimateTokens(value: string): number {
 
 const PROVIDER_TIMEOUT_MS = 25_000;
 
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (error) {
     if ((error as Error)?.name === "AbortError") {
-      throw new Error(`Provider timeout after ${Math.round(PROVIDER_TIMEOUT_MS / 1000)}s`);
+      throw new Error(
+        `Provider timeout after ${Math.round(PROVIDER_TIMEOUT_MS / 1000)}s`,
+        { cause: error },
+      );
     }
     throw error;
   } finally {
@@ -51,7 +63,7 @@ async function callOpenAiCompatible(
   settings: ProviderSettings,
   messages: ChatMessage[],
   endpoint: string,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -73,15 +85,13 @@ async function callOpenAiCompatible(
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorMessage =
-      payload?.error?.message ||
+    const errorMessage = payload?.error?.message ||
       payload?.message ||
       `Provider request failed with status ${response.status}`;
     throw new Error(errorMessage);
   }
 
-  const text =
-    payload?.choices?.[0]?.message?.content ||
+  const text = payload?.choices?.[0]?.message?.content ||
     payload?.choices?.[0]?.text ||
     "";
 
@@ -92,7 +102,10 @@ async function callOpenAiCompatible(
   return text;
 }
 
-async function callAnthropic(settings: ProviderSettings, messages: ChatMessage[]) {
+async function callAnthropic(
+  settings: ProviderSettings,
+  messages: ChatMessage[],
+) {
   const system = settings.systemPrompt;
   const anthropicMessages = messages
     .filter((entry) => entry.role !== "system")
@@ -101,26 +114,28 @@ async function callAnthropic(settings: ProviderSettings, messages: ChatMessage[]
       content: entry.content,
     }));
 
-  const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": settings.apiKey,
-      "anthropic-version": "2023-06-01",
+  const response = await fetchWithTimeout(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": settings.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        system,
+        messages: anthropicMessages,
+        temperature: settings.temperature,
+        max_tokens: settings.maxTokens,
+      }),
     },
-    body: JSON.stringify({
-      model: settings.model,
-      system,
-      messages: anthropicMessages,
-      temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
-    }),
-  });
+  );
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorMessage =
-      payload?.error?.message ||
+    const errorMessage = payload?.error?.message ||
       payload?.message ||
       `Provider request failed with status ${response.status}`;
     throw new Error(errorMessage);
@@ -128,9 +143,9 @@ async function callAnthropic(settings: ProviderSettings, messages: ChatMessage[]
 
   const text = Array.isArray(payload?.content)
     ? payload.content
-        .map((entry: any) => entry?.text || "")
-        .join("\n")
-        .trim()
+      .map((entry: any) => entry?.text || "")
+      .join("\n")
+      .trim()
     : "";
 
   if (!text) {
@@ -149,9 +164,11 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
     }));
 
   const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      settings.model
-    )}:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${
+      encodeURIComponent(
+        settings.model,
+      )
+    }:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
     {
       method: "POST",
       headers: {
@@ -167,13 +184,12 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
           maxOutputTokens: settings.maxTokens,
         },
       }),
-    }
+    },
   );
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorMessage =
-      payload?.error?.message ||
+    const errorMessage = payload?.error?.message ||
       payload?.message ||
       `Provider request failed with status ${response.status}`;
     throw new Error(errorMessage);
@@ -181,9 +197,9 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
 
   const text = Array.isArray(payload?.candidates?.[0]?.content?.parts)
     ? payload.candidates[0].content.parts
-        .map((entry: any) => entry?.text || "")
-        .join("\n")
-        .trim()
+      .map((entry: any) => entry?.text || "")
+      .join("\n")
+      .trim()
     : "";
 
   if (!text) {
@@ -207,11 +223,12 @@ export async function generateAiResponse(input: {
   inputTokens: number;
   outputTokens: number;
 }> {
-  const rag = typeof input.retrievalContext === "string" ? input.retrievalContext.trim() : "";
-  const effectiveSystemPrompt =
-    rag.length > 0
-      ? `${input.settings.systemPrompt}${RAG_CONTEXT_SEPARATOR}${rag}`
-      : input.settings.systemPrompt;
+  const rag = typeof input.retrievalContext === "string"
+    ? input.retrievalContext.trim()
+    : "";
+  const effectiveSystemPrompt = rag.length > 0
+    ? `${input.settings.systemPrompt}${RAG_CONTEXT_SEPARATOR}${rag}`
+    : input.settings.systemPrompt;
 
   const settingsForCall: ProviderSettings = {
     ...input.settings,
@@ -237,13 +254,13 @@ export async function generateAiResponse(input: {
       {
         "HTTP-Referer": "https://scriptony.app",
         "X-Title": "Scriptony",
-      }
+      },
     );
   } else if (input.settings.provider === "deepseek") {
     content = await callOpenAiCompatible(
       settingsForCall,
       messages,
-      "https://api.deepseek.com/chat/completions"
+      "https://api.deepseek.com/chat/completions",
     );
   } else if (input.settings.provider === "ollama") {
     const base = (input.settings.ollamaBaseUrl || "").trim().replace(/\/$/, "");
@@ -253,19 +270,21 @@ export async function generateAiResponse(input: {
     content = await callOpenAiCompatible(
       settingsForCall,
       messages,
-      `${base}/v1/chat/completions`
+      `${base}/v1/chat/completions`,
     );
   } else {
     content = await callOpenAiCompatible(
       settingsForCall,
       messages,
-      "https://api.openai.com/v1/chat/completions"
+      "https://api.openai.com/v1/chat/completions",
     );
   }
 
   return {
     content,
-    inputTokens: estimateTokens(messages.map((entry) => entry.content).join("\n")),
+    inputTokens: estimateTokens(
+      messages.map((entry) => entry.content).join("\n"),
+    ),
     outputTokens: estimateTokens(content),
   };
 }

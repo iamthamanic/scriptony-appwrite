@@ -71,6 +71,7 @@ scriptony-gym/
 #### 2. **Keine Feature-Level-Konfiguration**
 
 User können nicht wählen:
+
 - "Für Assistant: GPT-4o"
 - "Für Gym: DeepSeek (billiger)"
 - "Für Embeddings: OpenAI Embeddings"
@@ -81,6 +82,7 @@ User können nicht wählen:
 #### 3. **API-Key Management verteilt**
 
 API-Keys sind in verschiedenen Collections/Tabellen verstreut:
+
 - User Settings
 - Assistant Settings
 - Environment Variables
@@ -92,11 +94,12 @@ API-Keys sind in verschiedenen Collections/Tabellen verstreut:
 ```typescript
 // VORHER: Direkter Fetch zu OpenAI
 const response = await fetch("https://api.openai.com/v1/chat/completions", {
-  headers: { "Authorization": `Bearer ${OPENAI_API_KEY}` }
+  headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
 });
 ```
 
-**Problem**: 
+**Problem**:
+
 - Wechsel zu anderem Provider = Code-Änderung
 - Keine Fallback-Option
 - Keine einheitliche Fehlerbehandlung
@@ -156,20 +159,20 @@ functions/
 
 export async function chat(messages: Message[], model: string) {
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-  
+
   // Direkter Fetch zu OpenAI
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
       model: model || "gpt-4o-mini",
       messages,
     }),
   });
-  
+
   return response.json();
 }
 ```
@@ -254,7 +257,7 @@ export async function handleChat(userId: string, messages: Message[]) {
   // 2. Richtigen Provider wählen
   // 3. API-Key aus User-Config holen
   // 4. Fallbacks (falls konfiguriert)
-  
+
   return await chat(userId, messages, "assistant_chat");
 }
 ```
@@ -265,19 +268,19 @@ export async function handleChat(userId: string, messages: Message[]) {
 export async function chat(
   userId: string,
   messages: ChatMessage[],
-  feature: string
+  feature: string,
 ): Promise<ChatResponse> {
   // 1. User Settings laden
   const settings = await getUserSettings(userId);
-  
+
   // 2. Feature-Config holen
   const featureConfig = settings.features[feature];
-  
+
   // 3. Provider instanziieren
   const provider = getProvider(featureConfig.provider, {
     apiKey: settings.api_keys[featureConfig.provider],
   });
-  
+
   // 4. Chat ausführen
   return provider.chat(messages, {
     model: featureConfig.model,
@@ -312,16 +315,19 @@ export interface AIProvider {
     video: boolean;
     embeddings: boolean;
   };
-  
+
   // Pflicht: Text/Chat
   chat(messages: ChatMessage[], options: ChatOptions): Promise<ChatResponse>;
-  
+
   // Optional: Andere Features
   transcribe?(audioUrl: string, options: STTOptions): Promise<STTResponse>;
   synthesize?(text: string, options: TTSOptions): Promise<TTSResponse>;
   generateImage?(prompt: string, options: ImageOptions): Promise<ImageResponse>;
   generateVideo?(prompt: string, options: VideoOptions): Promise<VideoResponse>;
-  createEmbedding?(text: string, options: EmbeddingOptions): Promise<EmbeddingResponse>;
+  createEmbedding?(
+    text: string,
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResponse>;
 }
 ```
 
@@ -368,17 +374,17 @@ export interface AISettings {
     deepseek?: string;
     elevenlabs?: string;
     huggingface?: string;
-    ollama_base_url?: string;  // Kein Key nötig für lokal
+    ollama_base_url?: string; // Kein Key nötig für lokal
   };
-  
+
   features: {
-    assistant_chat: FeatureConfig;      // z.B. OpenAI GPT-4o
+    assistant_chat: FeatureConfig; // z.B. OpenAI GPT-4o
     assistant_embeddings: FeatureConfig; // z.B. OpenAI Embeddings
-    creative_gym: FeatureConfig;         // z.B. DeepSeek (billiger)
-    image_generation: FeatureConfig;    // z.B. DALL·E 3
-    audio_stt: FeatureConfig;           // z.B. OpenAI Whisper
-    audio_tts: FeatureConfig;           // z.B. ElevenLabs
-    video_generation: FeatureConfig;    // z.B. OpenRouter/Runway
+    creative_gym: FeatureConfig; // z.B. DeepSeek (billiger)
+    image_generation: FeatureConfig; // z.B. DALL·E 3
+    audio_stt: FeatureConfig; // z.B. OpenAI Whisper
+    audio_tts: FeatureConfig; // z.B. ElevenLabs
+    video_generation: FeatureConfig; // z.B. OpenRouter/Runway
   };
 }
 
@@ -394,16 +400,16 @@ export interface FeatureConfig {
 
 ### Unterstützte Provider
 
-| Provider | Text | STT | TTS | Image | Video | Embeddings | API Key |
-|----------|------|-----|-----|-------|-------|------------|---------|
-| OpenAI | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | Ja |
-| Anthropic | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Ja |
-| Google | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | Ja |
-| OpenRouter | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | Ja |
-| DeepSeek | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Ja |
-| ElevenLabs | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | Ja |
-| Ollama | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | Nein (Lokal) |
-| HuggingFace | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Ja |
+| Provider    | Text | STT | TTS | Image | Video | Embeddings | API Key      |
+| ----------- | ---- | --- | --- | ----- | ----- | ---------- | ------------ |
+| OpenAI      | ✅   | ✅  | ✅  | ✅    | ❌    | ✅         | Ja           |
+| Anthropic   | ✅   | ❌  | ❌  | ❌    | ❌    | ❌         | Ja           |
+| Google      | ✅   | ❌  | ❌  | ✅    | ✅    | ✅         | Ja           |
+| OpenRouter  | ✅   | ❌  | ❌  | ✅    | ✅    | ✅         | Ja           |
+| DeepSeek    | ✅   | ❌  | ❌  | ❌    | ❌    | ✅         | Ja           |
+| ElevenLabs  | ❌   | ❌  | ✅  | ❌    | ❌    | ❌         | Ja           |
+| Ollama      | ✅   | ✅  | ✅  | ✅    | ❌    | ✅         | Nein (Lokal) |
+| HuggingFace | ✅   | ✅  | ✅  | ✅    | ✅    | ✅         | Ja           |
 
 ### Capability Check
 
@@ -431,7 +437,7 @@ Jeder Provider implementiert das `AIProvider` Interface:
 
 export class OpenAIProvider implements AIProvider {
   readonly name = "openai";
-  
+
   readonly capabilities = {
     text: true,
     audio_stt: true,
@@ -440,15 +446,21 @@ export class OpenAIProvider implements AIProvider {
     video: false,
     embeddings: true,
   };
-  
-  constructor(private apiKey: string, private baseUrl?: string) {}
-  
-  async chat(messages: ChatMessage[], options: ChatOptions): Promise<ChatResponse> {
+
+  constructor(
+    private apiKey: string,
+    private baseUrl?: string,
+  ) {}
+
+  async chat(
+    messages: ChatMessage[],
+    options: ChatOptions,
+  ): Promise<ChatResponse> {
     // OpenAI-spezifische Implementierung
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -457,10 +469,10 @@ export class OpenAIProvider implements AIProvider {
         temperature: options.temperature,
       }),
     });
-    
+
     return this.parseResponse(response);
   }
-  
+
   // ... andere Methoden
 }
 ```
@@ -478,19 +490,19 @@ export async function chat(
   userId: string,
   messages: ChatMessage[],
   feature: "assistant_chat" | "creative_gym",
-  options?: Partial<ChatOptions>
+  options?: Partial<ChatOptions>,
 ): Promise<ChatResponse> {
   // 1. User Settings laden
   const settings = await getUserSettings(userId);
-  
+
   // 2. Feature-Config holen
   const config = settings.features[feature];
-  
+
   // 3. Provider instanziieren
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   // 4. Chat ausführen
   return provider.chat(messages, {
     model: config.model,
@@ -507,19 +519,19 @@ export async function chat(
 export async function transcribe(
   userId: string,
   audioUrl: string,
-  options?: Partial<STTOptions>
+  options?: Partial<STTOptions>,
 ): Promise<STTResponse> {
   const settings = await getUserSettings(userId);
   const config = settings.features.audio_stt;
-  
+
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   if (!provider.capabilities.audio_stt || !provider.transcribe) {
     throw new Error(`Provider ${config.provider} does not support STT`);
   }
-  
+
   return provider.transcribe(audioUrl, {
     model: config.model,
     ...options,
@@ -535,22 +547,22 @@ export async function transcribe(
 export async function synthesize(
   userId: string,
   text: string,
-  options?: Partial<TTSOptions>
+  options?: Partial<TTSOptions>,
 ): Promise<TTSResponse> {
   const settings = await getUserSettings(userId);
   const config = settings.features.audio_tts;
-  
+
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   if (!provider.capabilities.audio_tts || !provider.synthesize) {
     throw new Error(`Provider ${config.provider} does not support TTS`);
   }
-  
+
   return provider.synthesize(text, {
     model: config.model,
-    voice: config.voice,  // z.B. ElevenLabs Voice-ID
+    voice: config.voice, // z.B. ElevenLabs Voice-ID
     ...options,
   });
 }
@@ -564,19 +576,21 @@ export async function synthesize(
 export async function generateImage(
   userId: string,
   prompt: string,
-  options?: Partial<ImageOptions>
+  options?: Partial<ImageOptions>,
 ): Promise<ImageResponse> {
   const settings = await getUserSettings(userId);
   const config = settings.features.image_generation;
-  
+
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   if (!provider.capabilities.image || !provider.generateImage) {
-    throw new Error(`Provider ${config.provider} does not support image generation`);
+    throw new Error(
+      `Provider ${config.provider} does not support image generation`,
+    );
   }
-  
+
   return provider.generateImage(prompt, {
     model: config.model,
     ...options,
@@ -592,19 +606,21 @@ export async function generateImage(
 export async function generateVideo(
   userId: string,
   prompt: string,
-  options?: Partial<VideoOptions>
+  options?: Partial<VideoOptions>,
 ): Promise<VideoResponse> {
   const settings = await getUserSettings(userId);
   const config = settings.features.video_generation;
-  
+
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   if (!provider.capabilities.video || !provider.generateVideo) {
-    throw new Error(`Provider ${config.provider} does not support video generation`);
+    throw new Error(
+      `Provider ${config.provider} does not support video generation`,
+    );
   }
-  
+
   return provider.generateVideo(prompt, {
     model: config.model,
     ...options,
@@ -614,15 +630,15 @@ export async function generateVideo(
 // Video-Generierung ist asynchron → Status-Check
 export async function getVideoStatus(
   userId: string,
-  videoId: string
+  videoId: string,
 ): Promise<VideoResponse> {
   const settings = await getUserSettings(userId);
   const config = settings.features.video_generation;
-  
+
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   return provider.getVideoStatus!(videoId);
 }
 ```
@@ -635,19 +651,19 @@ export async function getVideoStatus(
 export async function createEmbedding(
   userId: string,
   text: string,
-  options?: Partial<EmbeddingOptions>
+  options?: Partial<EmbeddingOptions>,
 ): Promise<EmbeddingResponse> {
   const settings = await getUserSettings(userId);
   const config = settings.features.assistant_embeddings;
-  
+
   const provider = getProvider(config.provider, {
     apiKey: settings.api_keys[config.provider],
   });
-  
+
   if (!provider.capabilities.embeddings || !provider.createEmbedding) {
     throw new Error(`Provider ${config.provider} does not support embeddings`);
   }
-  
+
   return provider.createEmbedding(text, {
     model: config.model,
     ...options,
@@ -693,7 +709,7 @@ export const DEFAULT_FEATURE_CONFIG = {
   audio_tts: {
     provider: "elevenlabs",
     model: "eleven_multilingual_v2",
-    voice: "21m00Tcm4TlvDq8ikWAM",  // Rachel
+    voice: "21m00Tcm4TlvDq8ikWAM", // Rachel
   },
   video_generation: {
     provider: "openrouter",
@@ -719,11 +735,11 @@ const apiKeys = {
 // Tab 2: Feature Configuration
 const features = {
   assistant_chat: {
-    provider: "anthropic",  // ← User wählt Claude
+    provider: "anthropic", // ← User wählt Claude
     model: "claude-3-5-sonnet-20241022",
   },
   creative_gym: {
-    provider: "deepseek",  // ← User wählt DeepSeek (billiger)
+    provider: "deepseek", // ← User wählt DeepSeek (billiger)
     model: "deepseek-chat",
   },
   audio_tts: {
@@ -739,12 +755,15 @@ const features = {
 
 ```typescript
 // Feature-Config validieren
-function validateFeatureConfig(feature: string, config: FeatureConfig): boolean {
+function validateFeatureConfig(
+  feature: string,
+  config: FeatureConfig,
+): boolean {
   // 1. Provider existiert?
   if (!PROVIDER_CAPABILITIES[config.provider]) {
     return false;
   }
-  
+
   // 2. Provider unterstützt Feature?
   const capabilityMap = {
     assistant_chat: "text",
@@ -755,7 +774,7 @@ function validateFeatureConfig(feature: string, config: FeatureConfig): boolean 
     audio_tts: "audio_tts",
     video_generation: "video",
   };
-  
+
   const capability = capabilityMap[feature];
   return PROVIDER_CAPABILITIES[config.provider][capability];
 }
@@ -826,10 +845,13 @@ export async function handleChat(req: Request) {
 ```typescript
 // VORHER: Direkter Whisper-Call
 export async function transcribeAudio(audioUrl: string) {
-  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    headers: { "Authorization": `Bearer ${OPENAI_API_KEY}` },
-    body: formData,
-  });
+  const response = await fetch(
+    "https://api.openai.com/v1/audio/transcriptions",
+    {
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: formData,
+    },
+  );
   return response.json();
 }
 
@@ -906,8 +928,8 @@ POST /ai/chat                        ← Refactored: Nutzt AI-Service
 {
   "$id": "unique()",
   "user_id": "string",
-  "feature": "string",   // assistant_chat, image_generation, assistant_embeddings, … (required for new writes)
-  "provider": "string",  // openai, anthropic, google, etc.
+  "feature": "string", // assistant_chat, image_generation, assistant_embeddings, … (required for new writes)
+  "provider": "string", // openai, anthropic, google, etc.
   "api_key": "string",
   "$createdAt": "datetime",
   "$updatedAt": "datetime"
@@ -925,12 +947,12 @@ Ohne das Attribut schlagen neue `createDocument`-Aufrufe fehl; ohne Migration la
 1. **`scriptony-ai`** deployen (enthält die Key-Logik).
 2. **Env:** Skripte lesen **Repo-Root `.env.local`** (und optional `.env.migration`). `VITE_APPWRITE_ENDPOINT` / `VITE_APPWRITE_PROJECT_ID` werden automatisch auf `APPWRITE_*` gemappt, falls gesetzt. **`APPWRITE_API_KEY`** muss in `.env.local` stehen (oder per `export`) — **nie** als `VITE_*` (kein Secret im Frontend).
 
-   | Variable | Hinweis |
-   |----------|---------|
-   | `APPWRITE_ENDPOINT` | aus `VITE_APPWRITE_ENDPOINT` möglich |
+   | Variable              | Hinweis                                |
+   | --------------------- | -------------------------------------- |
+   | `APPWRITE_ENDPOINT`   | aus `VITE_APPWRITE_ENDPOINT` möglich   |
    | `APPWRITE_PROJECT_ID` | aus `VITE_APPWRITE_PROJECT_ID` möglich |
-   | `APPWRITE_API_KEY` | nur Server; in Console erzeugen |
-   | `AI_DATABASE_ID` | optional; Standard ist `scriptony_ai` |
+   | `APPWRITE_API_KEY`    | nur Server; in Console erzeugen        |
+   | `AI_DATABASE_ID`      | optional; Standard ist `scriptony_ai`  |
 
    **Neue Umgebung:** Fehlt die Datenbank `scriptony_ai` oder die Collections `api_keys` / `feature_config`, einmal aus dem Repo-Root ausführen:
 
@@ -949,7 +971,6 @@ Ohne das Attribut schlagen neue `createDocument`-Aufrufe fehl; ohne Migration la
    (Wechselt intern nach `functions` und führt `setup:api-keys-feature` aus.)
 
    Einzeln, falls nötig:
-
    - Nur Schema: `cd functions && npm run appwrite:ensure-api-keys-feature`
    - Nur Datenmigration: `cd functions && npm run migrate:api-keys-feature`
 
@@ -963,10 +984,10 @@ Das Datenmigrationsskript setzt bei allen Dokumenten ohne `feature` den Wert **`
 {
   "$id": "unique()",
   "user_id": "string",
-  "feature": "string",     // assistant_chat, creative_gym, etc.
-  "provider": "string",    // openai, anthropic, etc.
-  "model": "string",       // gpt-4o-mini, claude-3-5-sonnet, etc.
-  "voice": "string?",      // Optional, für TTS
+  "feature": "string", // assistant_chat, creative_gym, etc.
+  "provider": "string", // openai, anthropic, etc.
+  "model": "string", // gpt-4o-mini, claude-3-5-sonnet, etc.
+  "voice": "string?", // Optional, für TTS
   "$createdAt": "datetime",
   "$updatedAt": "datetime"
 }
@@ -985,10 +1006,10 @@ import { OpenAIProvider } from "../../_shared/ai-service/providers/openai";
 
 Deno.test("OpenAI chat returns valid response", async () => {
   const provider = new OpenAIProvider("test-api-key");
-  const response = await provider.chat([
-    { role: "user", content: "Hello" }
-  ], { model: "gpt-4o-mini" });
-  
+  const response = await provider.chat([{ role: "user", content: "Hello" }], {
+    model: "gpt-4o-mini",
+  });
+
   assertEquals(response.content, "Hello! How can I help you?");
   assertEquals(response.model, "gpt-4o-mini");
 });
@@ -1002,10 +1023,12 @@ Deno.test("OpenAI chat returns valid response", async () => {
 import { chat } from "../../_shared/ai-service/services/text";
 
 Deno.test("Text service uses correct provider", async () => {
-  const response = await chat("test-user", [
-    { role: "user", content: "Hello" }
-  ], "assistant_chat");
-  
+  const response = await chat(
+    "test-user",
+    [{ role: "user", content: "Hello" }],
+    "assistant_chat",
+  );
+
   // Mock getUserSettings to return OpenAI config
   assertEquals(response.model, "gpt-4o-mini");
 });
@@ -1069,15 +1092,17 @@ Deno.test("Text service uses correct provider", async () => {
 ### API-Key Storage
 
 **Option A**: Plaintext in Appwrite (mit Appwrite Encryption)
+
 ```typescript
 // Einfach, aber weniger sicher
-api_key: "sk-..."  // Appwrite verschlüsselt automatisch
+api_key: "sk-..."; // Appwrite verschlüsselt automatisch
 ```
 
 **Option B**: Custom Encryption
+
 ```typescript
 // Mehr Kontrolle, aber komplexer
-api_key: await encrypt(apiKey, userKey)
+api_key: await encrypt(apiKey, userKey);
 ```
 
 **Empfehlung**: Option A (Appwrite Encryption reicht für MVP)
@@ -1095,6 +1120,7 @@ Was passiert wenn Provider-Call fehlschlägt?
 ### Rate Limiting
 
 **Wo implementieren?**
+
 - Provider-Level (jeder Provider throttlet selbst)
 - Service-Level (zentrales Rate Limiting)
 - Beides

@@ -6,7 +6,12 @@
 
 import { useMemo, useState } from "react";
 import { useCommandState } from "cmdk@1.1.1";
-import { Check, ChevronsUpDown, Loader2, RefreshCw } from "lucide-react@0.487.0";
+import {
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  RefreshCw,
+} from "lucide-react@0.487.0";
 
 import { cn } from "../ui/utils";
 import { Button } from "../ui/button";
@@ -52,11 +57,15 @@ const MODEL_GRID_STYLE = {
   gridTemplateColumns: "minmax(0, 1fr) 6.5rem minmax(0, 1fr)",
 } as const;
 
-function filterModelsBySearch(models: DiscoveredModelInfo[], search: string): DiscoveredModelInfo[] {
+function filterModelsBySearch(
+  models: DiscoveredModelInfo[],
+  search: string,
+): DiscoveredModelInfo[] {
   const q = search.trim().toLowerCase();
   if (!q) return models;
   return models.filter((m) => {
-    const hay = `${m.name} ${m.id} ${(m.features ?? []).join(" ")}`.toLowerCase();
+    const hay =
+      `${m.name} ${m.id} ${(m.features ?? []).join(" ")}`.toLowerCase();
     return hay.includes(q);
   });
 }
@@ -76,12 +85,17 @@ function FeatureModelPickerList({
   const search = useCommandState((s) => s.search) ?? "";
   const filteredModels = useMemo(
     () => filterModelsBySearch(models, search),
-    [models, search]
+    [models, search],
   );
 
   return (
-    <CommandList className="h-[200px] overflow-y-scroll" style={{ scrollbarWidth: 'thin' }}>
-      <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">Kein Treffer.</CommandEmpty>
+    <CommandList
+      className="h-[200px] overflow-y-scroll"
+      style={{ scrollbarWidth: "thin" }}
+    >
+      <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+        Kein Treffer.
+      </CommandEmpty>
       <div
         className="grid w-full min-w-0 gap-x-3 border-b bg-muted/40 px-2 py-1.5 sm:gap-x-4"
         style={MODEL_GRID_STYLE}
@@ -103,7 +117,7 @@ function FeatureModelPickerList({
             "w-full min-w-0 cursor-pointer rounded-none border-b px-2 py-0",
             "focus:bg-muted focus:text-foreground hover:bg-muted hover:text-foreground",
             "data-[selected=true]:!bg-muted data-[selected=true]:!text-foreground",
-            "dark:data-[selected=true]:!bg-muted/80"
+            "dark:data-[selected=true]:!bg-muted/80",
           )}
           value={`${m.name} ${m.id} ${(m.features ?? []).join(" ")}`}
           onSelect={() => {
@@ -119,12 +133,16 @@ function FeatureModelPickerList({
               <Check
                 className={cn(
                   "mt-0.5 size-4 shrink-0 text-violet-600 dark:text-violet-400",
-                  value === m.id ? "opacity-100" : "opacity-0"
+                  value === m.id ? "opacity-100" : "opacity-0",
                 )}
               />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium leading-tight">{m.name}</p>
-                <p className="truncate font-mono text-[10px] text-muted-foreground sm:text-xs">{m.id}</p>
+                <p className="truncate text-sm font-medium leading-tight">
+                  {m.name}
+                </p>
+                <p className="truncate font-mono text-[10px] text-muted-foreground sm:text-xs">
+                  {m.id}
+                </p>
               </div>
             </div>
             <span className="text-end text-xs tabular-nums text-muted-foreground">
@@ -183,14 +201,14 @@ export function FeatureModelPicker({
             <span
               className={cn(
                 "truncate text-left",
-                !hasResolvedModel && "text-muted-foreground"
+                !hasResolvedModel && "text-muted-foreground",
               )}
             >
               {hasResolvedModel
-              ? resolvedSelected.name
-              : models.length > 0
-                ? `${models.length} Modelle verfügbar - geprüft: ${lastDiscoveryTime || ""}`
-                : AI_NO_MODEL_SELECTED_LABEL}
+                ? resolvedSelected.name
+                : models.length > 0
+                  ? `${models.length} Modelle verfügbar - geprüft: ${lastDiscoveryTime || ""}`
+                  : AI_NO_MODEL_SELECTED_LABEL}
             </span>
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
@@ -225,7 +243,11 @@ export function FeatureModelPicker({
           disabled={disabled || loading}
           onClick={() => void onLoadModels()}
         >
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw className="size-4" />
+          )}
           Modelle prüfen
         </Button>
       )}

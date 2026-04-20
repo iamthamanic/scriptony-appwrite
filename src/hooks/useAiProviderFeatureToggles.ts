@@ -18,7 +18,9 @@ export type AiSettingsWithRouting = {
   settings_json_parsed?: AiFeatureRoutingParsed | null;
 };
 
-export function useAiProviderFeatureToggles(settings: AiSettingsWithRouting | null) {
+export function useAiProviderFeatureToggles(
+  settings: AiSettingsWithRouting | null,
+) {
   const parsed = settings?.settings_json_parsed ?? undefined;
 
   const featureFlags = useMemo(() => getAiFeatureFlags(parsed), [parsed]);
@@ -26,13 +28,15 @@ export function useAiProviderFeatureToggles(settings: AiSettingsWithRouting | nu
   const isAssignedToProvider = useCallback(
     (providerId: LlmProviderId, fid: AiFeatureId) =>
       getRoutedProviderForFeature(parsed, fid) === providerId,
-    [parsed]
+    [parsed],
   );
 
   const providerUsedByEnabledFeature = useCallback(
     (providerId: LlmProviderId) =>
-      AI_ROUTABLE_FEATURES.some(({ id }) => featureFlags[id] && isAssignedToProvider(providerId, id)),
-    [featureFlags, isAssignedToProvider]
+      AI_ROUTABLE_FEATURES.some(
+        ({ id }) => featureFlags[id] && isAssignedToProvider(providerId, id),
+      ),
+    [featureFlags, isAssignedToProvider],
   );
 
   return {

@@ -6,7 +6,10 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { Loader2, RefreshCw } from "lucide-react";
-import { FeatureModelPicker, type DiscoveredModelInfo } from "./FeatureModelPicker";
+import {
+  FeatureModelPicker,
+  type DiscoveredModelInfo,
+} from "./FeatureModelPicker";
 import { useProviderSelection } from "../../hooks/useProviderSelection";
 import {
   CANONICAL_OLLAMA_PROVIDER_ID,
@@ -53,33 +56,54 @@ interface FeatureProviderCardProps {
   draft: FeatureConfig;
   saved: FeatureConfig | undefined;
   ollamaModesByFeature: Record<FeatureKey, OllamaUiMode>;
-  setOllamaModesByFeature: React.Dispatch<React.SetStateAction<Record<FeatureKey, OllamaUiMode>>>;
+  setOllamaModesByFeature: React.Dispatch<
+    React.SetStateAction<Record<FeatureKey, OllamaUiMode>>
+  >;
   featureDrafts: Record<FeatureKey, FeatureConfig> | null;
-  setFeatureDrafts: React.Dispatch<React.SetStateAction<Record<FeatureKey, FeatureConfig> | null>>;
+  setFeatureDrafts: React.Dispatch<
+    React.SetStateAction<Record<FeatureKey, FeatureConfig> | null>
+  >;
   savedFeatures: Record<FeatureKey, FeatureConfig> | null;
-  setSavedFeatures: React.Dispatch<React.SetStateAction<Record<FeatureKey, FeatureConfig> | null>>;
+  setSavedFeatures: React.Dispatch<
+    React.SetStateAction<Record<FeatureKey, FeatureConfig> | null>
+  >;
   featureProviderKeyIndex: Record<string, boolean>;
   providers: AIProvider[];
   providerById: Record<string, AIProvider>;
   models: DiscoveredModelInfo[];
   discoveringFeatureKey: FeatureKey | null;
   modelsByFeatureProvider: Record<string, DiscoveredModelInfo[]>;
-  setModelsByFeatureProvider: React.Dispatch<React.SetStateAction<Record<string, DiscoveredModelInfo[]>>>;
+  setModelsByFeatureProvider: React.Dispatch<
+    React.SetStateAction<Record<string, DiscoveredModelInfo[]>>
+  >;
   ollamaBaseUrls: Record<string, string>;
-  setOllamaBaseUrls: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setOllamaBaseUrls: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   providerKeyDrafts: Record<string, string>;
-  setProviderKeyDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setProviderKeyDrafts: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   savedOllamaModesByFeature: Record<FeatureKey, OllamaUiMode>;
-  setSavedOllamaModesByFeature: React.Dispatch<React.SetStateAction<Record<FeatureKey, OllamaUiMode>>>;
+  setSavedOllamaModesByFeature: React.Dispatch<
+    React.SetStateAction<Record<FeatureKey, OllamaUiMode>>
+  >;
   savingFeatureKey: FeatureKey | null;
   setSavingFeatureKey: React.Dispatch<React.SetStateAction<FeatureKey | null>>;
   savingKeySlot: string | null;
   setSavingKeySlot: React.Dispatch<React.SetStateAction<string | null>>;
   showKeyForSlot: Record<string, boolean>;
-  setShowKeyForSlot: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  setShowKeyForSlot: React.Dispatch<
+    React.SetStateAction<Record<string, boolean>>
+  >;
   lastDiscoveryTime: Record<string, string>;
-  setLastDiscoveryTime: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  onDiscoverModels: (featureKey: FeatureKey, providerId: string) => Promise<DiscoveredModelInfo[]>;
+  setLastDiscoveryTime: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
+  onDiscoverModels: (
+    featureKey: FeatureKey,
+    providerId: string,
+  ) => Promise<DiscoveredModelInfo[]>;
   onLoadData: (showRefreshState?: boolean, options?: any) => Promise<void>;
   apiPost: any;
   apiPut: any;
@@ -117,12 +141,19 @@ const INACTIVE_CHECKBOX_STYLE = {
   color: "rgba(148, 163, 184, 0.7)",
 } as const;
 
-function featureProviderCacheKey(featureKey: FeatureKey, providerId: string): string {
+function featureProviderCacheKey(
+  featureKey: FeatureKey,
+  providerId: string,
+): string {
   return `${featureKey}:${providerId}`;
 }
 
-function providerDisplayName(providerById: Record<string, AIProvider>, providerId: string): string {
-  if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID) return "Ollama";
+function providerDisplayName(
+  providerById: Record<string, AIProvider>,
+  providerId: string,
+): string {
+  if (normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID)
+    return "Ollama";
   return providerById[providerId]?.name || providerId;
 }
 
@@ -168,13 +199,21 @@ export function FeatureProviderCard({
 }: FeatureProviderCardProps) {
   const Icon = meta.icon;
   const ollamaMode = ollamaModesByFeature[featureKey] ?? "local";
-  const effectiveProviderId = normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID
-    ? providerIdForOllamaMode(ollamaMode)
-    : draft.provider;
-  const modelCacheKey = featureProviderCacheKey(featureKey, effectiveProviderId);
+  const effectiveProviderId =
+    normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID
+      ? providerIdForOllamaMode(ollamaMode)
+      : draft.provider;
+  const modelCacheKey = featureProviderCacheKey(
+    featureKey,
+    effectiveProviderId,
+  );
   const fpSlot = modelCacheKey;
-  const selectedProviderLabel = providerDisplayName(providerById, draft.provider);
-  const isOllamaSelected = normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID;
+  const selectedProviderLabel = providerDisplayName(
+    providerById,
+    draft.provider,
+  );
+  const isOllamaSelected =
+    normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID;
   const requiresKeyForProvider = isOllamaSelected
     ? ollamaMode === "cloud"
     : providerById[effectiveProviderId]?.requiresApiKey !== false;
@@ -192,15 +231,16 @@ export function FeatureProviderCard({
   const buildFeatureSnapshot = (
     featureKey: FeatureKey,
     config: FeatureConfig | undefined,
-    ollamaModes: Record<FeatureKey, OllamaUiMode>
+    ollamaModes: Record<FeatureKey, OllamaUiMode>,
   ): string =>
     JSON.stringify({
       provider: config?.provider || "",
       model: config?.model || "",
       voice: config?.voice || "",
       ollamaMode:
-        normalizeProviderIdForUi(config?.provider || "") === CANONICAL_OLLAMA_PROVIDER_ID
-          ? ollamaModes[featureKey] ?? "local"
+        normalizeProviderIdForUi(config?.provider || "") ===
+        CANONICAL_OLLAMA_PROVIDER_ID
+          ? (ollamaModes[featureKey] ?? "local")
           : "",
     });
 
@@ -217,12 +257,16 @@ export function FeatureProviderCard({
     );
   };
 
-  const handleFeatureProviderChange = (feature: FeatureKey, providerId: string) => {
+  const handleFeatureProviderChange = (
+    feature: FeatureKey,
+    providerId: string,
+  ) => {
     setFeatureDrafts((prev) => {
       if (!prev) return prev;
       const current = prev[feature];
       const sameProvider =
-        normalizeProviderIdForUi(current.provider) === normalizeProviderIdForUi(providerId);
+        normalizeProviderIdForUi(current.provider) ===
+        normalizeProviderIdForUi(providerId);
       return {
         ...prev,
         [feature]: {
@@ -237,13 +281,17 @@ export function FeatureProviderCard({
   const handleFeatureSave = async (feature: FeatureKey) => {
     if (!featureDrafts) return;
     const draft = featureDrafts[feature];
-    const effectiveProviderId = normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID
-      ? providerIdForOllamaMode(ollamaModesByFeature[feature] ?? "local")
-      : draft.provider;
+    const effectiveProviderId =
+      normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID
+        ? providerIdForOllamaMode(ollamaModesByFeature[feature] ?? "local")
+        : draft.provider;
     setSavingFeatureKey(feature);
 
     try {
-      if (normalizeProviderIdForUi(draft.provider) === CANONICAL_OLLAMA_PROVIDER_ID) {
+      if (
+        normalizeProviderIdForUi(draft.provider) ===
+        CANONICAL_OLLAMA_PROVIDER_ID
+      ) {
         const ollamaMode = ollamaModesByFeature[feature] ?? "local";
         unwrapApiResult(
           await apiPut("/settings", {
@@ -253,7 +301,7 @@ export function FeatureProviderCard({
             ...(ollamaMode === "local"
               ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
               : {}),
-          })
+          }),
         );
       }
 
@@ -262,7 +310,7 @@ export function FeatureProviderCard({
           provider: effectiveProviderId,
           model: draft.model,
           ...(draft.voice ? { voice: draft.voice } : {}),
-        })
+        }),
       );
 
       setSavedFeatures((prev) => (prev ? { ...prev, [feature]: draft } : prev));
@@ -273,25 +321,39 @@ export function FeatureProviderCard({
       toast.success(`${meta.label} gespeichert.`);
     } catch (saveError) {
       const message =
-        saveError instanceof Error ? saveError.message : "Speichern fehlgeschlagen.";
+        saveError instanceof Error
+          ? saveError.message
+          : "Speichern fehlgeschlagen.";
       toast.error(message);
     } finally {
       setSavingFeatureKey(null);
     }
   };
 
-  const handleStoreFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
-    const effectivePId = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
-      ? providerIdForOllamaMode(ollamaModesByFeature[featureKey] ?? "local")
-      : providerId;
+  const handleStoreFeatureProviderKey = async (
+    featureKey: FeatureKey,
+    providerId: string,
+  ) => {
+    const effectivePId =
+      normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
+        ? providerIdForOllamaMode(ollamaModesByFeature[featureKey] ?? "local")
+        : providerId;
     const slot = featureProviderCacheKey(featureKey, effectivePId);
     const apiKeyDraft = providerKeyDrafts[slot];
-    const apiKey = apiKeyDraft && apiKeyDraft !== CONFIGURED_KEY_SENTINEL ? apiKeyDraft.trim() : "";
-    const isCanonicalOllama = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
+    const apiKey =
+      apiKeyDraft && apiKeyDraft !== CONFIGURED_KEY_SENTINEL
+        ? apiKeyDraft.trim()
+        : "";
+    const isCanonicalOllama =
+      normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID;
     const ollamaMode = ollamaModesByFeature[featureKey] ?? "local";
     const hasStoredKey = Boolean(featureProviderKeyIndex[slot]);
 
-    if ((!isCanonicalOllama || ollamaMode === "cloud") && !apiKey && !hasStoredKey) {
+    if (
+      (!isCanonicalOllama || ollamaMode === "cloud") &&
+      !apiKey &&
+      !hasStoredKey
+    ) {
       toast.error("Bitte zuerst einen API Key eingeben.");
       return;
     }
@@ -306,12 +368,12 @@ export function FeatureProviderCard({
       }
 
       const validationPayload = unwrapApiResult(
-        await apiPost(`/providers/${effectivePId}/validate`, requestBody)
+        await apiPost(`/providers/${effectivePId}/validate`, requestBody),
       ) as { valid?: boolean; error?: string } | null;
       if (validationPayload?.valid === false) {
         throw new Error(
           validationPayload?.error ||
-            `${providerDisplayName(providerById, providerId)} konnte nicht validiert werden.`
+            `${providerDisplayName(providerById, providerId)} konnte nicht validiert werden.`,
         );
       }
 
@@ -324,7 +386,7 @@ export function FeatureProviderCard({
             ...(ollamaMode === "local"
               ? { ollama_base_url: getOllamaBaseUrlForMode("local") }
               : {}),
-          })
+          }),
         );
       }
 
@@ -334,18 +396,21 @@ export function FeatureProviderCard({
             feature: featureKey,
             provider: effectivePId,
             api_key: apiKey,
-          })
+          }),
         );
       }
 
       toast.success(
         isCanonicalOllama
           ? `Ollama (${ollamaMode === "cloud" ? "Cloud" : "Lokal"}): Verbindung geprueft.`
-          : `${providerDisplayName(providerById, providerId)}: Zugang gespeichert.`
+          : `${providerDisplayName(providerById, providerId)}: Zugang gespeichert.`,
       );
       setProviderKeyDrafts((prev) => ({
         ...prev,
-        [slot]: ollamaMode === "cloud" || !isCanonicalOllama ? CONFIGURED_KEY_SENTINEL : "",
+        [slot]:
+          ollamaMode === "cloud" || !isCanonicalOllama
+            ? CONFIGURED_KEY_SENTINEL
+            : "",
       }));
       await onLoadData(true, {
         draftOverrides: featureDrafts
@@ -354,35 +419,49 @@ export function FeatureProviderCard({
         ollamaModeOverrides: { [featureKey]: ollamaMode },
       });
     } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : "API Key konnte nicht gespeichert werden.";
+      const message =
+        saveError instanceof Error
+          ? saveError.message
+          : "API Key konnte nicht gespeichert werden.";
       toast.error(message);
     } finally {
       setSavingKeySlot(null);
     }
   };
 
-  const handleDeleteFeatureProviderKey = async (featureKey: FeatureKey, providerId: string) => {
-    const effectivePId = normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
-      ? providerIdForOllamaMode(ollamaModesByFeature[featureKey] ?? "local")
-      : providerId;
+  const handleDeleteFeatureProviderKey = async (
+    featureKey: FeatureKey,
+    providerId: string,
+  ) => {
+    const effectivePId =
+      normalizeProviderIdForUi(providerId) === CANONICAL_OLLAMA_PROVIDER_ID
+        ? providerIdForOllamaMode(ollamaModesByFeature[featureKey] ?? "local")
+        : providerId;
     const slot = featureProviderCacheKey(featureKey, effectivePId);
     setSavingKeySlot(slot);
     try {
       unwrapApiResult(
         await apiDelete(
-          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(effectivePId)}`
-        )
+          `/api-keys/${encodeURIComponent(featureKey)}/${encodeURIComponent(effectivePId)}`,
+        ),
       );
-      toast.success(`${providerDisplayName(providerById, providerId)} API Key fuer dieses Feature entfernt.`);
+      toast.success(
+        `${providerDisplayName(providerById, providerId)} API Key fuer dieses Feature entfernt.`,
+      );
       setProviderKeyDrafts((prev) => ({ ...prev, [slot]: "" }));
       await onLoadData(true, {
         draftOverrides: featureDrafts
           ? { [featureKey]: featureDrafts[featureKey] }
           : undefined,
-        ollamaModeOverrides: { [featureKey]: ollamaModesByFeature[featureKey] ?? "local" },
+        ollamaModeOverrides: {
+          [featureKey]: ollamaModesByFeature[featureKey] ?? "local",
+        },
       });
     } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : "API Key konnte nicht geloescht werden.";
+      const message =
+        deleteError instanceof Error
+          ? deleteError.message
+          : "API Key konnte nicht geloescht werden.";
       toast.error(message);
     } finally {
       setSavingKeySlot(null);
@@ -437,7 +516,9 @@ export function FeatureProviderCard({
           <Label>Provider</Label>
           <Select
             value={draft.provider}
-            onValueChange={(value) => handleFeatureProviderChange(featureKey, value)}
+            onValueChange={(value) =>
+              handleFeatureProviderChange(featureKey, value)
+            }
           >
             <SelectTrigger>
               <div className="flex min-w-0 items-center gap-2">
@@ -456,10 +537,16 @@ export function FeatureProviderCard({
             </SelectTrigger>
             <SelectContent>
               {providers.map((provider) => {
-                const isProvActive = providerSelection.isProviderActive(provider.id);
-                const hasProvKey = providerSelection.hasProviderSavedKey(provider.id);
-                const canProvActivate = providerSelection.canProviderActivate(provider.id);
-                
+                const isProvActive = providerSelection.isProviderActive(
+                  provider.id,
+                );
+                const hasProvKey = providerSelection.hasProviderSavedKey(
+                  provider.id,
+                );
+                const canProvActivate = providerSelection.canProviderActivate(
+                  provider.id,
+                );
+
                 return (
                   <SelectItem
                     key={provider.id}
@@ -480,10 +567,20 @@ export function FeatureProviderCard({
                       {canProvActivate ? (
                         <button
                           type="button"
-                          onClick={providerSelection.activateSpecificProvider(provider.id)}
+                          onClick={providerSelection.activateSpecificProvider(
+                            provider.id,
+                          )}
                           className="flex size-4 items-center justify-center rounded-[4px] border cursor-pointer"
-                          style={isProvActive ? ACTIVE_CHECKBOX_STYLE : INACTIVE_CHECKBOX_STYLE}
-                          title={isProvActive ? "Aktiver Provider" : "Als aktiven Provider setzen"}
+                          style={
+                            isProvActive
+                              ? ACTIVE_CHECKBOX_STYLE
+                              : INACTIVE_CHECKBOX_STYLE
+                          }
+                          title={
+                            isProvActive
+                              ? "Aktiver Provider"
+                              : "Als aktiven Provider setzen"
+                          }
                         >
                           {isProvActive ? <Check className="size-3" /> : null}
                         </button>
@@ -509,7 +606,13 @@ export function FeatureProviderCard({
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className={ollamaMode === "local" ? "font-medium text-foreground" : "text-muted-foreground"}>
+                  <span
+                    className={
+                      ollamaMode === "local"
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                    }
+                  >
                     Lokal
                   </span>
                   <Switch
@@ -521,14 +624,22 @@ export function FeatureProviderCard({
                       }))
                     }
                   />
-                  <span className={ollamaMode === "cloud" ? "font-medium text-foreground" : "text-muted-foreground"}>
+                  <span
+                    className={
+                      ollamaMode === "cloud"
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                    }
+                  >
                     Cloud
                   </span>
                 </div>
               </div>
               {ollamaMode === "local" && (
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Ollama Base URL</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Ollama Base URL
+                  </Label>
                   <input
                     type="text"
                     value={getOllamaBaseUrlForMode("local")}
@@ -559,7 +670,7 @@ export function FeatureProviderCard({
                         model: modelId,
                       },
                     }
-                  : prev
+                  : prev,
               )
             }
             onLoadModels={() => {
@@ -595,11 +706,15 @@ export function FeatureProviderCard({
                       : providerKeyDrafts[fpSlot] || ""
                   }
                   onFocus={() => {
-                    if (providerKeyDrafts[fpSlot] !== CONFIGURED_KEY_SENTINEL) return;
+                    if (providerKeyDrafts[fpSlot] !== CONFIGURED_KEY_SENTINEL)
+                      return;
                     setProviderKeyDrafts((prev) => ({ ...prev, [fpSlot]: "" }));
                   }}
                   onChange={(e) =>
-                    setProviderKeyDrafts((prev) => ({ ...prev, [fpSlot]: e.target.value }))
+                    setProviderKeyDrafts((prev) => ({
+                      ...prev,
+                      [fpSlot]: e.target.value,
+                    }))
                   }
                 />
                 <Button
@@ -608,15 +723,26 @@ export function FeatureProviderCard({
                   size="icon"
                   className="absolute right-0 top-0 size-9 shrink-0"
                   onClick={() =>
-                    setShowKeyForSlot((prev) => ({ ...prev, [fpSlot]: !prev[fpSlot] }))
+                    setShowKeyForSlot((prev) => ({
+                      ...prev,
+                      [fpSlot]: !prev[fpSlot],
+                    }))
                   }
-                  aria-label={showKeyForSlot[fpSlot] ? "Key verbergen" : "Key anzeigen"}
+                  aria-label={
+                    showKeyForSlot[fpSlot] ? "Key verbergen" : "Key anzeigen"
+                  }
                 >
-                  {showKeyForSlot[fpSlot] ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {showKeyForSlot[fpSlot] ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
                 </Button>
               </div>
               {featureProviderKeyIndex[fpSlot] && (
-                <div className="text-xs font-medium text-emerald-300">API Key hinterlegt</div>
+                <div className="text-xs font-medium text-emerald-300">
+                  API Key hinterlegt
+                </div>
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <Button
@@ -625,7 +751,9 @@ export function FeatureProviderCard({
                   size="sm"
                   className="gap-1.5"
                   disabled={discoveringFeatureKey === featureKey}
-                  onClick={() => void onDiscoverModels(featureKey, draft.provider)}
+                  onClick={() =>
+                    void onDiscoverModels(featureKey, draft.provider)
+                  }
                 >
                   {discoveringFeatureKey === featureKey ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -637,17 +765,31 @@ export function FeatureProviderCard({
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => void handleStoreFeatureProviderKey(featureKey, draft.provider)}
+                  onClick={() =>
+                    void handleStoreFeatureProviderKey(
+                      featureKey,
+                      draft.provider,
+                    )
+                  }
                   disabled={savingKeySlot === fpSlot}
                 >
-                  {savingKeySlot === fpSlot ? <Loader2 className="size-4 animate-spin" /> : "Key speichern"}
+                  {savingKeySlot === fpSlot ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Key speichern"
+                  )}
                 </Button>
                 {featureProviderKeyIndex[fpSlot] && (
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => void handleDeleteFeatureProviderKey(featureKey, draft.provider)}
+                    onClick={() =>
+                      void handleDeleteFeatureProviderKey(
+                        featureKey,
+                        draft.provider,
+                      )
+                    }
                     disabled={savingKeySlot === fpSlot}
                   >
                     Entfernen
@@ -660,7 +802,9 @@ export function FeatureProviderCard({
                   onClick={() =>
                     setProviderKeyDrafts((prev) => ({
                       ...prev,
-                      [fpSlot]: featureProviderKeyIndex[fpSlot] ? CONFIGURED_KEY_SENTINEL : "",
+                      [fpSlot]: featureProviderKeyIndex[fpSlot]
+                        ? CONFIGURED_KEY_SENTINEL
+                        : "",
                     }))
                   }
                 >
@@ -677,7 +821,9 @@ export function FeatureProviderCard({
                 size="sm"
                 className="gap-1.5"
                 disabled={discoveringFeatureKey === featureKey}
-                onClick={() => void onDiscoverModels(featureKey, draft.provider)}
+                onClick={() =>
+                  void onDiscoverModels(featureKey, draft.provider)
+                }
               >
                 {discoveringFeatureKey === featureKey ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -690,10 +836,16 @@ export function FeatureProviderCard({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => void handleStoreFeatureProviderKey(featureKey, draft.provider)}
+                onClick={() =>
+                  void handleStoreFeatureProviderKey(featureKey, draft.provider)
+                }
                 disabled={savingKeySlot === fpSlot}
               >
-                {savingKeySlot === fpSlot ? <Loader2 className="size-4 animate-spin" /> : "Verbindung pruefen"}
+                {savingKeySlot === fpSlot ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Verbindung pruefen"
+                )}
               </Button>
             </div>
           )}

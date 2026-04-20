@@ -4,12 +4,19 @@
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
-import { sendJson, sendMethodNotAllowed, sendUnauthorized, type RequestLike, type ResponseLike } from "../../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendUnauthorized,
+} from "../../_shared/http";
 
 const TOOL_DESCRIPTORS = [
   {
     name: "list_projects",
-    description: "List projects for the authenticated user (HTTP: GET /projects)",
+    description:
+      "List projects for the authenticated user (HTTP: GET /projects)",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -32,7 +39,10 @@ const TOOL_DESCRIPTORS = [
   },
 ] as const;
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -43,7 +53,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     sendJson(res, 200, {
       version: "0.1",
       tools: TOOL_DESCRIPTORS,
-      note: "Invoke the same operations via Appwrite HTTP routes; MCP server can mirror this registry.",
+      note:
+        "Invoke the same operations via Appwrite HTTP routes; MCP server can mirror this registry.",
     });
     return;
   }

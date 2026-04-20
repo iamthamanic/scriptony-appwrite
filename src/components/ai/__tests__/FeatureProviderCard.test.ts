@@ -86,7 +86,9 @@ describe("FeatureProviderCard logic: Ollama provider handling", () => {
       const localId = providerIdForOllamaMode("local");
       const cloudId = providerIdForOllamaMode("cloud");
       expect(localId).not.toBe(cloudId);
-      expect(normalizeProviderIdForUi(localId)).toBe(normalizeProviderIdForUi(cloudId));
+      expect(normalizeProviderIdForUi(localId)).toBe(
+        normalizeProviderIdForUi(cloudId),
+      );
     });
   });
 

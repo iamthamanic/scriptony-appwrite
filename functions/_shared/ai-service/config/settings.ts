@@ -3,15 +3,15 @@
  */
 
 import {
+  type CanonicalAiFeature,
   DEFAULT_FEATURE_CONFIG,
+  type FeatureConfig,
   getFeatureConfigMap,
   getUserSettings,
   listMaskedApiKeys,
   resolveFeatureRuntime,
   updateApiKey as updateCentralApiKey,
   updateFeatureConfig as updateCentralFeatureConfig,
-  type CanonicalAiFeature,
-  type FeatureConfig,
   type UserSettingsRow,
 } from "../../ai-central-store";
 
@@ -45,13 +45,17 @@ export async function getAISettings(userId: string): Promise<AISettings> {
 
 export async function updateAISettings(
   userId: string,
-  settings: Partial<AISettings>
+  settings: Partial<AISettings>,
 ): Promise<void> {
   if (settings.features) {
     await Promise.all(
       Object.entries(settings.features).map(([feature, config]) =>
-        updateCentralFeatureConfig(userId, feature as CanonicalAiFeature, config)
-      )
+        updateCentralFeatureConfig(
+          userId,
+          feature as CanonicalAiFeature,
+          config,
+        )
+      ),
     );
   }
 }
@@ -60,7 +64,7 @@ export async function updateAPIKey(
   userId: string,
   provider: string,
   apiKey: string,
-  feature: CanonicalAiFeature | "" = ""
+  feature: CanonicalAiFeature | "" = "",
 ): Promise<void> {
   await updateCentralApiKey(userId, feature, provider as any, apiKey);
 }
@@ -68,18 +72,24 @@ export async function updateAPIKey(
 export async function updateFeatureConfig(
   userId: string,
   feature: keyof typeof DEFAULT_FEATURE_CONFIG,
-  config: FeatureConfig
+  config: FeatureConfig,
 ): Promise<void> {
-  await updateCentralFeatureConfig(userId, feature as CanonicalAiFeature, config);
+  await updateCentralFeatureConfig(
+    userId,
+    feature as CanonicalAiFeature,
+    config,
+  );
 }
 
 export function hasAPIKey(settings: AISettings, provider: string): boolean {
-  return Object.keys(settings.api_keys).some((key) => key.endsWith(`:${provider}`));
+  return Object.keys(settings.api_keys).some((key) =>
+    key.endsWith(`:${provider}`)
+  );
 }
 
 export function isFeatureConfigured(
   settings: AISettings,
-  feature: keyof typeof DEFAULT_FEATURE_CONFIG
+  feature: keyof typeof DEFAULT_FEATURE_CONFIG,
 ): boolean {
   const config = settings.features[feature];
   return Boolean(config?.provider && config?.model);

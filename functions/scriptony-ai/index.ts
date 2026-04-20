@@ -5,32 +5,32 @@
  */
 
 import {
-  getFeatureConfigMap,
+  type CanonicalAiFeature,
   getFeatureConfig,
-  getStoredApiKey,
+  getFeatureConfigMap,
   getLegacyAssistantSettings,
   getLegacyImageSettings,
+  getStoredApiKey,
   getUserSettings,
   listMaskedApiKeys,
   updateApiKey,
   updateFeatureConfig,
   updateLegacyAssistantSettings,
   updateLegacyImageSettings,
-  type CanonicalAiFeature,
 } from "../_shared/ai-central-store";
 import { getFeatureRuntimeView } from "../_shared/ai-feature-runtime-view";
 import { requireUserBootstrap } from "../_shared/auth";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../_shared/http";
 import { getModelsForProvider } from "../_shared/ai-service/config";
 import { discoverModels } from "../_shared/ai-service/model-discovery";
@@ -52,9 +52,13 @@ async function ensureFetchPolyfillLoaded(): Promise<void> {
 }
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -64,17 +68,23 @@ function getPathname(req: RequestLike): string {
 
 function getQueryParam(req: RequestLike, key: string): string {
   const fromQuery = req?.query?.[key];
-  if (typeof fromQuery === "string" && fromQuery.trim()) return fromQuery.trim();
+  if (typeof fromQuery === "string" && fromQuery.trim()) {
+    return fromQuery.trim();
+  }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url = raw.startsWith("http://") || raw.startsWith("https://") ? new URL(raw) : new URL(raw, "http://local");
+    const url = raw.startsWith("http://") || raw.startsWith("https://")
+      ? new URL(raw)
+      : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
   }
 }
 
-async function buildSettingsPayload(userId: string): Promise<Record<string, unknown>> {
+async function buildSettingsPayload(
+  userId: string,
+): Promise<Record<string, unknown>> {
   const [user, features, api_keys, assistant, image] = await Promise.all([
     getUserSettings(userId),
     getFeatureConfigMap(userId),
@@ -86,12 +96,15 @@ async function buildSettingsPayload(userId: string): Promise<Record<string, unkn
   const feature_provider_keys = Object.fromEntries(
     api_keys
       .filter((entry) => entry.feature !== "global")
-      .map((entry) => [`${entry.feature}:${entry.provider}`, true] as const)
+      .map((entry) => [`${entry.feature}:${entry.provider}`, true] as const),
   );
-  const providerKeyIndex = api_keys.reduce<Record<string, boolean>>((acc, entry) => {
-    acc[entry.provider] = true;
-    return acc;
-  }, {});
+  const providerKeyIndex = api_keys.reduce<Record<string, boolean>>(
+    (acc, entry) => {
+      acc[entry.provider] = true;
+      return acc;
+    },
+    {},
+  );
 
   // Build legacy API key fields for backward compatibility
   const legacyApiKeys: Record<string, string | null> = {};
@@ -152,17 +165,21 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         return;
       }
       sendJson(res, 200, {
-        providers: Object.entries(PROVIDER_CAPABILITIES).map(([name, caps]) => ({
-          id: name,
-          name: PROVIDER_DISPLAY_NAMES[name] || name,
-          capabilities: caps,
-          requiresApiKey: !isOllamaFamilyProvider(name),
-        })),
+        providers: Object.entries(PROVIDER_CAPABILITIES).map(
+          ([name, caps]) => ({
+            id: name,
+            name: PROVIDER_DISPLAY_NAMES[name] || name,
+            capabilities: caps,
+            requiresApiKey: !isOllamaFamilyProvider(name),
+          }),
+        ),
       });
       return;
     }
 
-    const providerModelsMatch = pathname.match(/^\/providers\/([^/]+)\/models$/);
+    const providerModelsMatch = pathname.match(
+      /^\/providers\/([^/]+)\/models$/,
+    );
     if (providerModelsMatch) {
       if (req.method !== "GET") {
         sendMethodNotAllowed(res, ["GET"]);
@@ -173,7 +190,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const providerDiscoverMatch = pathname.match(/^\/providers\/([^/]+)\/models\/discover$/);
+    const providerDiscoverMatch = pathname.match(
+      /^\/providers\/([^/]+)\/models\/discover$/,
+    );
     if (providerDiscoverMatch) {
       if (req.method !== "POST") {
         sendMethodNotAllowed(res, ["POST"]);
@@ -181,14 +200,21 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
       await ensureFetchPolyfillLoaded();
       const provider = providerDiscoverMatch[1];
-      const body = await readJsonBody<{ feature?: string; api_key?: string; base_url?: string }>(req);
+      const body = await readJsonBody<{
+        feature?: string;
+        api_key?: string;
+        base_url?: string;
+      }>(req);
       if (!body.feature) {
         sendBadRequest(res, "feature is required");
         return;
       }
-      const apiKey =
-        body.api_key?.trim() ||
-        (await getStoredApiKey(userId, body.feature as CanonicalAiFeature, provider as any)) ||
+      const apiKey = body.api_key?.trim() ||
+        (await getStoredApiKey(
+          userId,
+          body.feature as CanonicalAiFeature,
+          provider as any,
+        )) ||
         undefined;
       const models = await discoverModels(provider, body.feature, {
         apiKey,
@@ -198,7 +224,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const providerValidateMatch = pathname.match(/^\/providers\/([^/]+)\/validate$/);
+    const providerValidateMatch = pathname.match(
+      /^\/providers\/([^/]+)\/validate$/,
+    );
     if (providerValidateMatch) {
       if (req.method !== "POST") {
         sendMethodNotAllowed(res, ["POST"]);
@@ -206,10 +234,15 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
       await ensureFetchPolyfillLoaded();
       const provider = providerValidateMatch[1];
-      const body = await readJsonBody<{ api_key?: string; base_url?: string; feature?: CanonicalAiFeature }>(req);
-      const apiKey =
-        body.api_key?.trim() ||
-        (body.feature ? (await getStoredApiKey(userId, body.feature, provider as any)) || "" : "");
+      const body = await readJsonBody<{
+        api_key?: string;
+        base_url?: string;
+        feature?: CanonicalAiFeature;
+      }>(req);
+      const apiKey = body.api_key?.trim() ||
+        (body.feature
+          ? (await getStoredApiKey(userId, body.feature, provider as any)) || ""
+          : "");
 
       if (provider === "ollama_cloud") {
         const base = body.base_url?.trim() || OLLAMA_CLOUD_ORIGIN;
@@ -220,20 +253,19 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendJson(res, 200, {
           provider,
           valid,
-          message: valid ? "Ollama Cloud connection is valid" : "Ollama Cloud validation failed",
-          ...(valid
-            ? {}
-            : {
-                error:
-                  v1.status > 0 || tags.status > 0
-                    ? [
-                        v1.ok ? null : `v1/models: ${v1.status || 0} ${v1.error}`,
-                        tags.ok ? null : `api/tags: ${tags.status || 0} ${tags.error}`,
-                      ]
-                        .filter(Boolean)
-                        .join(" | ")
-                    : v1.error || tags.error || "Validation failed",
-              }),
+          message: valid
+            ? "Ollama Cloud connection is valid"
+            : "Ollama Cloud validation failed",
+          ...(valid ? {} : {
+            error: v1.status > 0 || tags.status > 0
+              ? [
+                v1.ok ? null : `v1/models: ${v1.status || 0} ${v1.error}`,
+                tags.ok ? null : `api/tags: ${tags.status || 0} ${tags.error}`,
+              ]
+                .filter(Boolean)
+                .join(" | ")
+              : v1.error || tags.error || "Validation failed",
+          }),
         });
         return;
       }
@@ -245,15 +277,14 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendJson(res, 200, {
           provider,
           valid: tags.ok,
-          message: tags.ok ? "Ollama connection is valid" : "Ollama validation failed",
-          ...(tags.ok
-            ? {}
-            : {
-                error:
-                  tags.status > 0
-                    ? `api/tags: ${tags.status} ${tags.error}`
-                    : tags.error || "Validation failed",
-              }),
+          message: tags.ok
+            ? "Ollama connection is valid"
+            : "Ollama validation failed",
+          ...(tags.ok ? {} : {
+            error: tags.status > 0
+              ? `api/tags: ${tags.status} ${tags.error}`
+              : tags.error || "Validation failed",
+          }),
         });
         return;
       }
@@ -297,7 +328,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           sendBadRequest(res, "provider is required");
           return;
         }
-        await updateApiKey(userId, (body.feature || "") as CanonicalAiFeature | "", body.provider as any, body.api_key || null);
+        await updateApiKey(
+          userId,
+          (body.feature || "") as CanonicalAiFeature | "",
+          body.provider as any,
+          body.api_key || null,
+        );
         sendJson(res, 200, { success: true });
         return;
       }
@@ -306,7 +342,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const scopedApiKeyDeleteMatch = pathname.match(/^\/api-keys\/([^/]+)\/([^/]+)$/);
+    const scopedApiKeyDeleteMatch = pathname.match(
+      /^\/api-keys\/([^/]+)\/([^/]+)$/,
+    );
     if (scopedApiKeyDeleteMatch) {
       if (req.method !== "DELETE") {
         sendMethodNotAllowed(res, ["DELETE"]);
@@ -316,7 +354,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         userId,
         scopedApiKeyDeleteMatch[1] as CanonicalAiFeature,
         scopedApiKeyDeleteMatch[2] as any,
-        null
+        null,
       );
       sendJson(res, 200, { success: true });
       return;
@@ -328,7 +366,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendMethodNotAllowed(res, ["DELETE"]);
         return;
       }
-      const feature = (getQueryParam(req, "feature") || "") as CanonicalAiFeature | "";
+      const feature = (getQueryParam(req, "feature") || "") as
+        | CanonicalAiFeature
+        | "";
       await updateApiKey(userId, feature, apiKeyDeleteMatch[1] as any, null);
       sendJson(res, 200, { success: true });
       return;
@@ -343,7 +383,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    const featureRuntimeMatch = pathname.match(/^\/features\/([^/]+)\/runtime$/);
+    const featureRuntimeMatch = pathname.match(
+      /^\/features\/([^/]+)\/runtime$/,
+    );
     if (featureRuntimeMatch) {
       if (req.method !== "GET") {
         sendMethodNotAllowed(res, ["GET"]);
@@ -352,23 +394,31 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       await ensureFetchPolyfillLoaded();
       const feature = featureRuntimeMatch[1] as CanonicalAiFeature;
       const includeModels = getQueryParam(req, "include_models") !== "false";
-      sendJson(res, 200, await getFeatureRuntimeView(userId, feature, { includeModels }));
+      sendJson(
+        res,
+        200,
+        await getFeatureRuntimeView(userId, feature, { includeModels }),
+      );
       return;
     }
 
     const featureMatch = pathname.match(/^\/features\/([^/]+)$/);
     if (featureMatch) {
       const feature = featureMatch[1] as CanonicalAiFeature;
-      
+
       if (req.method === "GET") {
         // Get single feature config
         const config = await getFeatureConfig(userId, feature);
         sendJson(res, 200, { feature, config });
         return;
       }
-      
+
       if (req.method === "PUT") {
-        const body = await readJsonBody<{ provider?: string; model?: string; voice?: string }>(req);
+        const body = await readJsonBody<{
+          provider?: string;
+          model?: string;
+          voice?: string;
+        }>(req);
         if (!body.provider || !body.model) {
           sendBadRequest(res, "provider and model are required");
           return;
@@ -384,10 +434,14 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
             active_model: body.model,
           });
         }
-        sendJson(res, 200, { success: true, feature, config: await getFeatureConfigMap(userId) });
+        sendJson(res, 200, {
+          success: true,
+          feature,
+          config: await getFeatureConfigMap(userId),
+        });
         return;
       }
-      
+
       sendMethodNotAllowed(res, ["GET", "PUT"]);
       return;
     }
@@ -430,27 +484,42 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
         if (body.features && typeof body.features === "object") {
           await Promise.all(
-            Object.entries(body.features as Record<string, { provider?: string; model?: string; voice?: string }>).map(
-              async ([feature, config]) => {
-                if (!config?.provider || !config?.model) return;
-                await updateFeatureConfig(userId, feature as CanonicalAiFeature, {
-                  provider: config.provider as any,
-                  model: config.model,
-                  ...(config.voice ? { voice: config.voice } : {}),
-                });
-              }
-            )
+            Object.entries(
+              body.features as Record<
+                string,
+                { provider?: string; model?: string; voice?: string }
+              >,
+            ).map(async ([feature, config]) => {
+              if (!config?.provider || !config?.model) return;
+              await updateFeatureConfig(userId, feature as CanonicalAiFeature, {
+                provider: config.provider as any,
+                model: config.model,
+                ...(config.voice ? { voice: config.voice } : {}),
+              });
+            }),
           );
         }
 
         if (body.api_keys && typeof body.api_keys === "object") {
           await Promise.all(
-            Object.entries(body.api_keys as Record<string, { feature?: CanonicalAiFeature | ""; provider?: string; api_key?: string }>).map(
-              async ([provider, entry]) => {
-                if (!provider) return;
-                await updateApiKey(userId, (entry?.feature || "") as CanonicalAiFeature | "", provider as any, entry?.api_key || null);
-              }
-            )
+            Object.entries(
+              body.api_keys as Record<
+                string,
+                {
+                  feature?: CanonicalAiFeature | "";
+                  provider?: string;
+                  api_key?: string;
+                }
+              >,
+            ).map(async ([provider, entry]) => {
+              if (!provider) return;
+              await updateApiKey(
+                userId,
+                (entry?.feature || "") as CanonicalAiFeature | "",
+                provider as any,
+                entry?.api_key || null,
+              );
+            }),
           );
         }
 
