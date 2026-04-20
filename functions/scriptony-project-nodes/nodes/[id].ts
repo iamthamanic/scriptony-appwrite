@@ -7,18 +7,25 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { getNodeById, mapNode, normalizeNodeInput } from "../../_shared/timeline";
+import {
+  getNodeById,
+  mapNode,
+  normalizeNodeInput,
+} from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -82,10 +89,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: nodeId,
           changes: updates,
-        }
+        },
       );
 
-      sendJson(res, 200, { node: mapNode(updated.update_timeline_nodes_by_pk || existing) });
+      sendJson(res, 200, {
+        node: mapNode(updated.update_timeline_nodes_by_pk || existing),
+      });
       return;
     }
 
@@ -98,7 +107,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: nodeId }
+        { id: nodeId },
       );
 
       sendJson(res, 200, { success: true });

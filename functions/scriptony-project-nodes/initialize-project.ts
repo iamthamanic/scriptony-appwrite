@@ -6,13 +6,13 @@ import { requireUserBootstrap } from "../_shared/auth";
 import { requestGraphql } from "../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../_shared/http";
 import { getTimelineNodes, mapNode } from "../_shared/timeline";
 
@@ -22,7 +22,10 @@ interface PredefinedNodeInput {
   description?: string;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -48,7 +51,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const levelOneCount = Number(structure.level_1_count ?? predefinedLevelOne.length ?? 0);
+    const levelOneCount = Number(
+      structure.level_1_count ?? predefinedLevelOne.length ?? 0,
+    );
     if (levelOneCount <= 0) {
       sendBadRequest(res, "structure.level_1_count must be greater than zero");
       return;
@@ -62,11 +67,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       parentId: null,
     });
     const sameTemplate = existingLevel1.filter(
-      (n) => String(n.template_id ?? n.templateId ?? "") === String(templateId)
+      (n) => String(n.template_id ?? n.templateId ?? "") === String(templateId),
     );
     if (sameTemplate.length > 0) {
       const sorted = [...sameTemplate].sort(
-        (a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0)
+        (a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0),
       );
       sendJson(res, 200, { nodes: sorted.map(mapNode) });
       return;
@@ -110,10 +115,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         }
       `,
-      { objects }
+      { objects },
     );
 
-    sendJson(res, 201, { nodes: created.insert_timeline_nodes.returning.map(mapNode) });
+    sendJson(res, 201, {
+      nodes: created.insert_timeline_nodes.returning.map(mapNode),
+    });
   } catch (error) {
     sendServerError(res, error);
   }

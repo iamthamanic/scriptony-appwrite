@@ -7,14 +7,14 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import {
   getCharacterById,
@@ -22,7 +22,10 @@ import {
   normalizeCharacterInput,
 } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -87,10 +90,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: characterId,
           changes: updates,
-        }
+        },
       );
 
-      sendJson(res, 200, { character: mapCharacter(updated.update_characters_by_pk || existing) });
+      sendJson(res, 200, {
+        character: mapCharacter(updated.update_characters_by_pk || existing),
+      });
       return;
     }
 
@@ -103,7 +108,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: characterId }
+        { id: characterId },
       );
 
       sendJson(res, 200, { success: true });

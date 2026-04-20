@@ -1,9 +1,11 @@
 # ⚡ QUICK-FIX: Structure & Beats anzeigen
 
 ## Problem:
+
 Du siehst Acts, aber **KEINE lila Beat-Rail** links! 😱
 
 ## Ursache:
+
 Die `StructureBeatsSection` Komponente wurde erstellt, aber noch **nicht in die ProjectsPage integriert**.
 
 ---
@@ -13,8 +15,9 @@ Die `StructureBeatsSection` Komponente wurde erstellt, aber noch **nicht in die 
 ### 1️⃣ Öffne `/components/pages/ProjectsPage.tsx`
 
 ### 2️⃣ Füge ganz oben bei den Imports hinzu:
+
 ```typescript
-import { StructureBeatsSection } from '../StructureBeatsSection';
+import { StructureBeatsSection } from "../StructureBeatsSection";
 ```
 
 ### 3️⃣ Suche nach dem **Project-Detail-View**
@@ -25,13 +28,13 @@ Scroll nach unten und suche nach einer Stelle die so aussieht:
 {project && (
   <div className="...">
     {/* Projekt-Info */}
-    
+
     {/* Charaktere */}
     <Collapsible>
       <h2>Charaktere (...)</h2>
       ...
     </Collapsible>
-    
+
     {/* Inspiration */}
     <Collapsible>
       <h2>Inspiration (...)</h2>
@@ -46,7 +49,7 @@ Scroll nach unten und suche nach einer Stelle die so aussieht:
 ```typescript
 {/* Structure & Beats Section */}
 <section className="space-y-3">
-  <StructureBeatsSection 
+  <StructureBeatsSection
     projectId={project.id}
     className=""
   />
@@ -86,6 +89,7 @@ Du solltest jetzt sehen:
 ## Falls es nicht funktioniert:
 
 ### Console Check:
+
 Öffne Browser DevTools (F12) → Console → Suche nach Errors
 
 ### Häufige Fehler:
@@ -104,6 +108,7 @@ Du solltest jetzt sehen:
 ## 🎯 Nächster Schritt:
 
 Wenn du die Beat-Rail siehst:
+
 - **Klick auf lila Beat-Band** → sollte expandieren
 - **Dropdown öffnen** → Container auswählen
 - **Beat passt sich an** → dynamische Positionierung! ✨

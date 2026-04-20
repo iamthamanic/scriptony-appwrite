@@ -6,17 +6,24 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { hydrateProjectRow, hydrateProjectRows, normalizeProjectInput } from "../../_shared/scriptony";
+import {
+  hydrateProjectRow,
+  hydrateProjectRows,
+  normalizeProjectInput,
+} from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -76,7 +83,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           userId: bootstrap.user.id,
           organizationId: bootstrap.organizationId,
-        }
+        },
       );
 
       sendJson(res, 200, { projects: hydrateProjectRows(data.projects) });
@@ -130,10 +137,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             organization_id: bootstrap.organizationId,
             user_id: bootstrap.user.id,
           },
-        }
+        },
       );
 
-      sendJson(res, 201, { project: hydrateProjectRow(created.insert_projects_one) });
+      sendJson(res, 201, {
+        project: hydrateProjectRow(created.insert_projects_one),
+      });
       return;
     }
 

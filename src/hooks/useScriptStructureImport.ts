@@ -3,19 +3,19 @@
  * Location: src/hooks/useScriptStructureImport.ts
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from "react";
 import {
   extractAndParseScriptFile,
   normalizeScriptProjectKind,
   type ImportParseOutcome,
   type ImportParseResult,
   type ScriptProjectKind,
-} from '../lib/script-import';
+} from "../lib/script-import";
 
 export function useScriptStructureImport(projectType?: string) {
   const kind: ScriptProjectKind = useMemo(
     () => normalizeScriptProjectKind(projectType),
-    [projectType]
+    [projectType],
   );
 
   const [parsed, setParsed] = useState<ImportParseResult | null>(null);
@@ -30,7 +30,7 @@ export function useScriptStructureImport(projectType?: string) {
       }
       return outcome;
     },
-    [kind]
+    [kind],
   );
 
   const discardParsed = useCallback(() => setParsed(null), []);

@@ -7,14 +7,14 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { worldsUpdatePayload } from "../../_shared/scriptony";
 
@@ -42,13 +42,16 @@ async function getWorld(worldId: string, organizationId: string) {
         }
       }
     `,
-    { worldId, organizationId }
+    { worldId, organizationId },
   );
 
   return data.worlds[0] || null;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -94,7 +97,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { worldId, changes }
+        { worldId, changes },
       );
 
       sendJson(res, 200, { world: updated.update_worlds_by_pk });
@@ -110,7 +113,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { worldId }
+        { worldId },
       );
 
       sendJson(res, 200, { success: true });

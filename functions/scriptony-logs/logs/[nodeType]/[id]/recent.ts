@@ -7,13 +7,13 @@ import { requestGraphql } from "../../../../../_shared/graphql-compat";
 import {
   getParam,
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../../_shared/http";
 
 const ENTITY_TYPE_MAP: Record<string, string> = {
@@ -23,7 +23,10 @@ const ENTITY_TYPE_MAP: Record<string, string> = {
   shot: "Shot",
 };
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -73,7 +76,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         }
       `,
-      { entityType, entityId: id, limit }
+      { entityType, entityId: id, limit },
     );
 
     sendJson(res, 200, {

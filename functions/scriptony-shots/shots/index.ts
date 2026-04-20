@@ -7,17 +7,20 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { getShots, mapShot, normalizeShotInput } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -26,7 +29,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId = getQuery(req, "project_id") ||
+        getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;
@@ -41,8 +45,15 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       const body = await readJsonBody<Record<string, any>>(req);
       const shotInput = normalizeShotInput(body);
 
-      if (!shotInput.scene_id || !shotInput.project_id || !(shotInput.title || shotInput.shot_number)) {
-        sendBadRequest(res, "scene_id, project_id, and shot_number are required");
+      if (
+        !shotInput.scene_id ||
+        !shotInput.project_id ||
+        !(shotInput.title || shotInput.shot_number)
+      ) {
+        sendBadRequest(
+          res,
+          "scene_id, project_id, and shot_number are required",
+        );
         return;
       }
 
@@ -127,7 +138,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             user_id: bootstrap.user.id,
             order_index: shotInput.order_index ?? 0,
           },
-        }
+        },
       );
 
       sendJson(res, 201, { shot: mapShot(created.insert_shots_one) });

@@ -1,6 +1,7 @@
 # 🎬 PATCH: Structure & Beats zu ProjectsPage hinzufügen
 
 ## Problem
+
 Die **Structure & Beats** Section wurde erstellt, aber noch NICHT in die ProjectsPage integriert!
 Deshalb siehst du im Screenshot die Acts, aber **keine lila Beat-Rail links**!
 
@@ -13,7 +14,7 @@ Deshalb siehst du im Screenshot die Acts, aber **keine lila Beat-Rail links**!
 Füge ganz oben in `/components/pages/ProjectsPage.tsx` (bei den anderen Imports) hinzu:
 
 ```typescript
-import { StructureBeatsSection } from '../StructureBeatsSection';
+import { StructureBeatsSection } from "../StructureBeatsSection";
 ```
 
 ---
@@ -23,7 +24,8 @@ import { StructureBeatsSection } from '../StructureBeatsSection';
 Suche in der ProjectsPage nach der Stelle, wo die **Project-Detail-View** gerendert wird.
 
 **Merkmale zum Finden:**
-- Dort wo `{project && (...)}`  steht
+
+- Dort wo `{project && (...)}` steht
 - Dort wo **"Charaktere"**, **"Inspiration"** als Sections angezeigt werden
 - Unterhalb der **Projekt-Info** (Logline, Duration, Genres, etc.)
 
@@ -32,7 +34,7 @@ Suche in der ProjectsPage nach der Stelle, wo die **Project-Detail-View** gerend
 ```typescript
 {/* Structure & Beats Section */}
 <section className="space-y-3">
-  <StructureBeatsSection 
+  <StructureBeatsSection
     projectId={project.id}
     className=""
   />
@@ -55,7 +57,7 @@ Suche in der ProjectsPage nach der Stelle, wo die **Project-Detail-View** gerend
 
     {/* ⭐ NEU: Structure & Beats Section ⭐ */}
     <section className="space-y-3">
-      <StructureBeatsSection 
+      <StructureBeatsSection
         projectId={project.id}
         className=""
       />
@@ -93,7 +95,7 @@ Suche in der ProjectsPage nach der Stelle, wo die **Project-Detail-View** gerend
 ✅ Die **Acts/Sequences/Scenes/Shots** werden rechts als Dropdown angezeigt  
 ✅ **Beats** werden als lila Bänder in der Rail angezeigt  
 ✅ **Klick auf Beat** → expandiert → Edit-Form erscheint direkt im Beat  
-✅ **Container collapse/expand** → Beats passen sich dynamisch an  
+✅ **Container collapse/expand** → Beats passen sich dynamisch an
 
 ---
 
@@ -126,15 +128,19 @@ Nach der Integration solltest du sehen:
 ## Troubleshooting:
 
 ### Problem: "StructureBeatsSection is not defined"
+
 → Import fehlt! Siehe Schritt 1
 
 ### Problem: "project is not defined"
+
 → Section ist außerhalb des `{project && (...)}` Blocks!
 
 ### Problem: Beat-Rail ist leer
+
 → Normal! Mock-Daten sind vorhanden (MOCK_BEATS in StructureBeatsSection.tsx)
 
 ### Problem: Keine Acts sichtbar
+
 → Mock-Daten sind vorhanden (MOCK_CONTAINERS in StructureBeatsSection.tsx)
 
 ---

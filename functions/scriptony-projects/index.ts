@@ -10,15 +10,14 @@ import projectsHandler from "./projects/index";
 import projectByIdHandler from "./projects/[id]";
 import projectUploadImageHandler from "./projects/[id]/upload-image";
 import {
-  sendNotFound,
   type RequestLike,
   type ResponseLike,
+  sendNotFound,
 } from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
-  const direct =
-    (typeof req?.path === "string" && req.path) ||
+  const direct = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
 
@@ -34,7 +33,10 @@ function getPathname(req: RequestLike): string {
   return q >= 0 ? direct.slice(0, q) : direct;
 }
 
-function withParams(req: RequestLike, params: Record<string, string>): RequestLike {
+function withParams(
+  req: RequestLike,
+  params: Record<string, string>,
+): RequestLike {
   req.params = { ...(req.params || {}), ...params };
   return req;
 }
@@ -54,7 +56,10 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
   const uploadMatch = pathname.match(/^\/projects\/([^/]+)\/upload-image$/);
   if (uploadMatch) {
-    await projectUploadImageHandler(withParams(req, { id: uploadMatch[1] }), res);
+    await projectUploadImageHandler(
+      withParams(req, { id: uploadMatch[1] }),
+      res,
+    );
     return;
   }
 

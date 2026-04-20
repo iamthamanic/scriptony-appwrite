@@ -5,13 +5,13 @@
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { Query } from "node-appwrite";
 import {
@@ -25,7 +25,10 @@ import {
 import { C, listDocumentsFull } from "../../_shared/appwrite-db";
 import { mapClip } from "../../_shared/clips-map";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -45,7 +48,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const includeShots = (getQuery(req, "include_shots") || "true") !== "false";
-    const excludeContent = (getQuery(req, "exclude_content") || "false") === "true";
+    const excludeContent =
+      (getQuery(req, "exclude_content") || "false") === "true";
 
     const [nodes, characters, shots, clipRows] = await Promise.all([
       getAllProjectNodes(projectId),
@@ -57,10 +61,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const mappedNodes = nodes.map(mapNode).map((node) => {
       if (!excludeContent || !node || typeof node !== "object") return node;
       const n = node as Record<string, unknown>;
-      const metadata =
-        n.metadata && typeof n.metadata === "object"
-          ? { ...(n.metadata as Record<string, unknown>) }
-          : undefined;
+      const metadata = n.metadata && typeof n.metadata === "object"
+        ? { ...(n.metadata as Record<string, unknown>) }
+        : undefined;
       if (metadata && "content" in metadata) {
         delete metadata.content;
       }

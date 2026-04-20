@@ -1,15 +1,21 @@
 /**
  * 🎬 TIMELINE API V2 - Generic Template Engine Client
- * 
+ *
  * 🚀 MIGRATED TO API GATEWAY
- * 
+ *
  * API Client für die generische Timeline Engine.
  * Funktioniert mit ALLEN Templates (Film, Serie, Buch, Theater, Game, ...)
- * 
+ *
  * Uses API Gateway for routing to the current project-nodes backend routes.
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-client';
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  unwrapApiResult,
+} from "../api-client";
 
 // =============================================================================
 // TYPES
@@ -29,7 +35,7 @@ export interface TimelineNode {
   metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
-  
+
   // Populated by client
   children?: TimelineNode[];
 }
@@ -96,22 +102,25 @@ export async function getNodes(filters: {
   const params = new URLSearchParams({
     project_id: filters.projectId,
   });
-  
+
   if (filters.level !== undefined) {
-    params.append('level', filters.level.toString());
+    params.append("level", filters.level.toString());
   }
-  
+
   if (filters.parentId !== undefined) {
-    params.append('parent_id', filters.parentId === null ? 'null' : filters.parentId);
+    params.append(
+      "parent_id",
+      filters.parentId === null ? "null" : filters.parentId,
+    );
   }
-  
+
   if (filters.templateId) {
-    params.append('template_id', filters.templateId);
+    params.append("template_id", filters.templateId);
   }
 
   // 🚀 NEW: Exclude content for structure-only loading
   if (filters.excludeContent) {
-    params.append('exclude_content', 'true');
+    params.append("exclude_content", "true");
   }
 
   const result = await apiGet(`/nodes?${params}`);
@@ -132,12 +141,12 @@ export async function getNode(nodeId: string): Promise<TimelineNode> {
  * Get children of a node
  */
 export async function getNodeChildren(
-  nodeId: string, 
-  recursive = false
+  nodeId: string,
+  recursive = false,
 ): Promise<TimelineNode[]> {
   const params = new URLSearchParams();
   if (recursive) {
-    params.append('recursive', 'true');
+    params.append("recursive", "true");
   }
 
   const result = await apiGet(`/nodes/${nodeId}/children?${params}`);
@@ -157,17 +166,19 @@ export async function getNodePath(nodeId: string): Promise<any[]> {
 /**
  * Create new node
  */
-export async function createNode(request: CreateNodeRequest): Promise<TimelineNode> {
-  console.log('[Timeline API V2] Creating node:', request);
-  
+export async function createNode(
+  request: CreateNodeRequest,
+): Promise<TimelineNode> {
+  console.log("[Timeline API V2] Creating node:", request);
+
   try {
-    const result = await apiPost('/nodes', request);
-    console.log('[Timeline API V2] Raw result:', result);
+    const result = await apiPost("/nodes", request);
+    console.log("[Timeline API V2] Raw result:", result);
     const data = unwrapApiResult(result);
-    console.log('[Timeline API V2] Node created successfully:', data);
+    console.log("[Timeline API V2] Node created successfully:", data);
     return data?.node || data;
   } catch (error) {
-    console.error('[Timeline API V2] Error creating node:', {
+    console.error("[Timeline API V2] Error creating node:", {
       request,
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
@@ -180,8 +191,8 @@ export async function createNode(request: CreateNodeRequest): Promise<TimelineNo
  * Update node
  */
 export async function updateNode(
-  nodeId: string, 
-  updates: UpdateNodeRequest
+  nodeId: string,
+  updates: UpdateNodeRequest,
 ): Promise<TimelineNode> {
   const result = await apiPut(`/nodes/${nodeId}`, updates);
   const data = unwrapApiResult(result);
@@ -200,7 +211,7 @@ export async function deleteNode(nodeId: string): Promise<void> {
  * Reorder nodes within parent
  */
 export async function reorderNodes(nodeIds: string[]): Promise<void> {
-  const result = await apiPost('/nodes/reorder', { nodeIds });
+  const result = await apiPost("/nodes/reorder", { nodeIds });
   unwrapApiResult(result);
 }
 
@@ -208,9 +219,9 @@ export async function reorderNodes(nodeIds: string[]): Promise<void> {
  * Bulk create nodes
  */
 export async function bulkCreateNodes(
-  request: BulkCreateRequest
+  request: BulkCreateRequest,
 ): Promise<TimelineNode[]> {
-  const result = await apiPost('/nodes/bulk', request);
+  const result = await apiPost("/nodes/bulk", request);
   const data = unwrapApiResult(result);
   return data?.nodes || [];
 }
@@ -219,9 +230,9 @@ export async function bulkCreateNodes(
  * Initialize project structure based on template
  */
 export async function initializeProject(
-  request: InitializeProjectRequest
+  request: InitializeProjectRequest,
 ): Promise<TimelineNode[]> {
-  const result = await apiPost('/initialize-project', request);
+  const result = await apiPost("/initialize-project", request);
   const data = unwrapApiResult(result);
   return data?.nodes || [];
 }
@@ -234,7 +245,7 @@ export async function initializeProject(
 export async function batchLoadTimeline(
   projectId: string,
   token: string,
-  options?: { excludeContent?: boolean }
+  options?: { excludeContent?: boolean },
 ): Promise<{
   acts: TimelineNode[];
   sequences: TimelineNode[];
@@ -246,20 +257,20 @@ export async function batchLoadTimeline(
     scenes: number;
   };
 }> {
-  console.log('[Timeline API V2] 🚀 Batch loading timeline:', projectId);
+  console.log("[Timeline API V2] 🚀 Batch loading timeline:", projectId);
   const timerLabel = `[Timeline API V2] Batch Load ${projectId}`;
   console.time(timerLabel);
-  
+
   const params = new URLSearchParams({ project_id: projectId });
   if (options?.excludeContent) {
-    params.set('exclude_content', 'true');
+    params.set("exclude_content", "true");
   }
   const result = await apiGet(`/nodes/batch-load?${params.toString()}`);
   const data = unwrapApiResult(result);
-  
+
   console.timeEnd(timerLabel);
-  console.log('[Timeline API V2] Batch load stats:', data.stats);
-  
+  console.log("[Timeline API V2] Batch load stats:", data.stats);
+
   return {
     acts: data?.acts || [],
     sequences: data?.sequences || [],
@@ -278,7 +289,7 @@ export async function ultraBatchLoadProject(
   options?: {
     includeShots?: boolean;
     excludeContent?: boolean;
-  }
+  },
 ): Promise<{
   timeline: {
     acts: TimelineNode[];
@@ -299,24 +310,27 @@ export async function ultraBatchLoadProject(
     clips: number;
   };
 }> {
-  console.log('[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project:', projectId);
+  console.log(
+    "[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project:",
+    projectId,
+  );
   const timerLabel = `[Timeline API V2] ULTRA Batch Load ${projectId}`;
   console.time(timerLabel);
 
   const params = new URLSearchParams({ project_id: projectId });
   if (options?.includeShots === false) {
-    params.set('include_shots', 'false');
+    params.set("include_shots", "false");
   }
   if (options?.excludeContent) {
-    params.set('exclude_content', 'true');
+    params.set("exclude_content", "true");
   }
 
   const result = await apiGet(`/nodes/ultra-batch-load?${params.toString()}`);
   const data = unwrapApiResult(result);
-  
+
   console.timeEnd(timerLabel);
-  console.log('[Timeline API V2] ULTRA Batch load stats:', data.stats);
-  
+  console.log("[Timeline API V2] ULTRA Batch load stats:", data.stats);
+
   return {
     timeline: {
       acts: data?.timeline?.acts || [],
@@ -326,10 +340,10 @@ export async function ultraBatchLoadProject(
     characters: data?.characters || [],
     shots: data?.shots || [],
     clips: data?.clips || [],
-    stats: data?.stats || { 
-      totalNodes: 0, 
-      acts: 0, 
-      sequences: 0, 
+    stats: data?.stats || {
+      totalNodes: 0,
+      acts: 0,
+      sequences: 0,
       scenes: 0,
       characters: 0,
       shots: 0,
@@ -350,14 +364,14 @@ export function buildNodeTree(nodes: TimelineNode[]): TimelineNode[] {
   const rootNodes: TimelineNode[] = [];
 
   // Create map
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     nodeMap.set(node.id, { ...node, children: [] });
   });
 
   // Build tree
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     const nodeWithChildren = nodeMap.get(node.id)!;
-    
+
     if (node.parentId === null) {
       rootNodes.push(nodeWithChildren);
     } else {
@@ -396,9 +410,9 @@ export function flattenNodeTree(nodes: TimelineNode[]): TimelineNode[] {
  */
 export async function getAllProjectNodes(
   projectId: string,
-  templateId?: string
+  templateId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
+  return getNodes({
     projectId,
     templateId,
   });
@@ -409,7 +423,7 @@ export async function getAllProjectNodes(
  */
 export async function getRootNodes(
   projectId: string,
-  templateId?: string
+  templateId?: string,
 ): Promise<TimelineNode[]> {
   return getNodes({
     projectId,
@@ -435,10 +449,10 @@ export async function getActs(projectId: string): Promise<TimelineNode[]> {
  */
 export async function getSequences(
   projectId: string,
-  actId?: string
+  actId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
-    projectId, 
+  return getNodes({
+    projectId,
     level: 2,
     parentId: actId,
   });
@@ -449,10 +463,10 @@ export async function getSequences(
  */
 export async function getScenes(
   projectId: string,
-  sequenceId?: string
+  sequenceId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
-    projectId, 
+  return getNodes({
+    projectId,
     level: 3,
     parentId: sequenceId,
   });
@@ -463,10 +477,10 @@ export async function getScenes(
  */
 export async function getShots(
   projectId: string,
-  sceneId?: string
+  sceneId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
-    projectId, 
+  return getNodes({
+    projectId,
     level: 4,
     parentId: sceneId,
   });
@@ -484,10 +498,10 @@ export async function getSeasons(projectId: string): Promise<TimelineNode[]> {
  */
 export async function getEpisodes(
   projectId: string,
-  seasonId?: string
+  seasonId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
-    projectId, 
+  return getNodes({
+    projectId,
     level: 2,
     parentId: seasonId,
   });
@@ -505,10 +519,10 @@ export async function getParts(projectId: string): Promise<TimelineNode[]> {
  */
 export async function getChapters(
   projectId: string,
-  partId?: string
+  partId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
-    projectId, 
+  return getNodes({
+    projectId,
     level: 2,
     parentId: partId,
   });
@@ -519,10 +533,10 @@ export async function getChapters(
  */
 export async function getSections(
   projectId: string,
-  chapterId?: string
+  chapterId?: string,
 ): Promise<TimelineNode[]> {
-  return getNodes({ 
-    projectId, 
+  return getNodes({
+    projectId,
     level: 3,
     parentId: chapterId,
   });
@@ -537,12 +551,12 @@ export async function getSections(
  * Returns just the content field from metadata
  */
 export async function fetchNodeContent(
-  nodeId: string
+  nodeId: string,
 ): Promise<{ content: any; wordCount?: number }> {
-  console.log('[Timeline API V2] 📖 Lazy loading content for node:', nodeId);
-  
+  console.log("[Timeline API V2] 📖 Lazy loading content for node:", nodeId);
+
   const node = await getNode(nodeId);
-  
+
   return {
     content: node.metadata?.content || null,
     wordCount: node.metadata?.wordCount,
@@ -555,13 +569,16 @@ export async function fetchNodeContent(
  */
 export async function loadTimelineStructure(
   projectId: string,
-  templateId?: string
+  templateId?: string,
 ): Promise<{
   acts: TimelineNode[];
   sequences: TimelineNode[];
   scenes: TimelineNode[];
 }> {
-  console.log('[Timeline API V2] 🏗️ Loading structure only (no content):', projectId);
+  console.log(
+    "[Timeline API V2] 🏗️ Loading structure only (no content):",
+    projectId,
+  );
   const timerLabel = `[Timeline API V2] Structure Load ${projectId}`;
   console.time(timerLabel);
 
@@ -572,12 +589,12 @@ export async function loadTimelineStructure(
     excludeContent: true, // 🚀 Key optimization!
   });
 
-  const acts = allNodes.filter(n => n.level === 1);
-  const sequences = allNodes.filter(n => n.level === 2);
-  const scenes = allNodes.filter(n => n.level === 3);
+  const acts = allNodes.filter((n) => n.level === 1);
+  const sequences = allNodes.filter((n) => n.level === 2);
+  const scenes = allNodes.filter((n) => n.level === 3);
 
   console.timeEnd(timerLabel);
-  console.log('[Timeline API V2] Structure loaded:', {
+  console.log("[Timeline API V2] Structure loaded:", {
     acts: acts.length,
     sequences: sequences.length,
     scenes: scenes.length,

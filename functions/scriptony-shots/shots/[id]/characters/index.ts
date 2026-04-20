@@ -7,17 +7,20 @@ import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../_shared/http";
 import { getShotById, mapShot } from "../../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -36,7 +39,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const body = await readJsonBody<{ character_id?: string; characterId?: string }>(req);
+    const body = await readJsonBody<{
+      character_id?: string;
+      characterId?: string;
+    }>(req);
     const characterId = body.character_id ?? body.characterId;
     if (!characterId) {
       sendBadRequest(res, "character_id is required");
@@ -57,11 +63,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         }
       `,
-      { shotId, characterId }
+      { shotId, characterId },
     );
 
     const shot = await getShotById(shotId);
-    sendJson(res, 200, { shot: shot ? mapShot(shot) : { id: shotId, characters: [] } });
+    sendJson(res, 200, {
+      shot: shot ? mapShot(shot) : { id: shotId, characters: [] },
+    });
   } catch (error) {
     sendServerError(res, error);
   }

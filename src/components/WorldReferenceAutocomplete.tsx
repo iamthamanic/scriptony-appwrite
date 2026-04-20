@@ -16,48 +16,57 @@ interface WorldReferenceAutocompleteProps {
 
 const getCategoryIcon = (categoryType: string) => {
   switch (categoryType) {
-    case 'geography':
+    case "geography":
       return Mountain;
-    case 'politics':
+    case "politics":
       return Landmark;
-    case 'society':
+    case "society":
       return Users;
-    case 'culture':
+    case "culture":
       return Palette;
     default:
       return Globe;
   }
 };
 
-export function WorldReferenceAutocomplete({ items, search, position, onSelect }: WorldReferenceAutocompleteProps) {
+export function WorldReferenceAutocomplete({
+  items,
+  search,
+  position,
+  onSelect,
+}: WorldReferenceAutocompleteProps) {
   // Filter by search
-  const filtered = items.filter(item => 
-    item.name.toLowerCase().includes(search.toLowerCase()) ||
-    item.category.toLowerCase().includes(search.toLowerCase())
+  const filtered = items.filter(
+    (item) =>
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.category.toLowerCase().includes(search.toLowerCase()),
   );
 
   // Group by category
-  const grouped = filtered.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, WorldItem[]>);
+  const grouped = filtered.reduce(
+    (acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    },
+    {} as Record<string, WorldItem[]>,
+  );
 
   if (filtered.length === 0) {
     return null;
   }
 
   return (
-    <div 
+    <div
       className="absolute z-50 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-[300px] overflow-y-auto"
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: `${position.top}px`,
         left: `${position.left}px`,
-        minWidth: '280px',
-        maxWidth: '350px'
+        minWidth: "280px",
+        maxWidth: "350px",
       }}
     >
       <div className="p-1">
@@ -66,10 +75,9 @@ export function WorldReferenceAutocomplete({ items, search, position, onSelect }
           return (
             <div key={category}>
               <div className="px-2 py-1.5 text-xs text-asset-green flex items-center gap-1.5">
-                <Icon className="size-3" />
-                / {category}
+                <Icon className="size-3" />/ {category}
               </div>
-              {catItems.slice(0, 3).map(item => (
+              {catItems.slice(0, 3).map((item) => (
                 <button
                   key={item.id}
                   onMouseDown={(e) => {

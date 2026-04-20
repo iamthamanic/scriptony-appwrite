@@ -11,7 +11,7 @@ type JsonRecord = Record<string, any>;
 
 function compact<T extends JsonRecord>(value: T): T {
   return Object.fromEntries(
-    Object.entries(value).filter(([, entry]) => entry !== undefined)
+    Object.entries(value).filter(([, entry]) => entry !== undefined),
   ) as T;
 }
 
@@ -44,14 +44,18 @@ export function normalizeNodeInput(body: JsonRecord): JsonRecord {
     project_id: body.project_id ?? body.projectId,
     template_id: body.template_id ?? body.templateId,
     level: body.level,
-    parent_id:
-      body.parent_id !== undefined ? body.parent_id : body.parentId,
+    parent_id: body.parent_id !== undefined ? body.parent_id : body.parentId,
     title: body.title,
     summary: body.description ?? body.summary ?? null,
-    order_index: body.order_index ?? body.orderIndex ?? body.nodeNumber ?? body.node_number,
+    order_index: body.order_index ??
+      body.orderIndex ??
+      body.nodeNumber ??
+      body.node_number,
     node_type: body.node_type ?? body.nodeType ?? null,
     scene_id: body.scene_id ?? body.sceneId ?? null,
-    metadata_json: typeof body.metadata === "object" ? JSON.stringify(body.metadata) : (body.metadata_json ?? null),
+    metadata_json: typeof body.metadata === "object"
+      ? JSON.stringify(body.metadata)
+      : (body.metadata_json ?? null),
   });
 }
 
@@ -94,24 +98,28 @@ export function normalizeShotInput(body: JsonRecord): JsonRecord {
     framing: body.framing ?? null,
     lens: body.lens ?? null,
     duration: body.duration ?? null,
-    shotlength_minutes:
-      body.shotlength_minutes ?? body.shotlengthMinutes ?? null,
-    shotlength_seconds:
-      body.shotlength_seconds ?? body.shotlengthSeconds ?? null,
+    shotlength_minutes: body.shotlength_minutes ?? body.shotlengthMinutes ??
+      null,
+    shotlength_seconds: body.shotlength_seconds ?? body.shotlengthSeconds ??
+      null,
     composition: body.composition ?? null,
     lighting_notes: body.lighting_notes ?? body.lightingNotes ?? null,
     image_url: optionalUrlField(body.image_url ?? body.imageUrl),
     sound_notes: body.sound_notes ?? body.soundNotes ?? null,
     storyboard_url: optionalUrlField(body.storyboard_url ?? body.storyboardUrl),
     reference_image_url: optionalUrlField(
-      body.reference_image_url ?? body.referenceImageUrl
+      body.reference_image_url ?? body.referenceImageUrl,
     ),
     dialog: body.dialog ?? null,
     notes: body.notes ?? null,
     order_index: body.order_index ?? body.orderIndex,
     user_id: body.user_id ?? body.userId ?? null,
-    stage2d_file_id: optionalIdField(body.stage2d_file_id ?? body.stage2dFileId),
-    stage3d_file_id: optionalIdField(body.stage3d_file_id ?? body.stage3dFileId),
+    stage2d_file_id: optionalIdField(
+      body.stage2d_file_id ?? body.stage2dFileId,
+    ),
+    stage3d_file_id: optionalIdField(
+      body.stage3d_file_id ?? body.stage3dFileId,
+    ),
     shot_image_mime: (() => {
       const v = body.shot_image_mime ?? body.shotImageMime;
       if (v === undefined) return undefined;
@@ -164,12 +172,12 @@ export function mapCharacter(row: JsonRecord): JsonRecord {
 }
 
 export function mapNode(row: JsonRecord): JsonRecord {
-  const rawMetadata =
-    typeof row.metadata_json === "string" ? JSON.parse(row.metadata_json || "{}") : (row.metadata_json ?? {});
-  const metadata =
-    rawMetadata && typeof rawMetadata === "object"
-      ? { ...(rawMetadata as JsonRecord) }
-      : {};
+  const rawMetadata = typeof row.metadata_json === "string"
+    ? JSON.parse(row.metadata_json || "{}")
+    : (row.metadata_json ?? {});
+  const metadata = rawMetadata && typeof rawMetadata === "object"
+    ? { ...(rawMetadata as JsonRecord) }
+    : {};
   // Tolerate older typoed metadata keys from legacy initializers / migrated data.
   if (metadata.pct_from === undefined && typeof metadata.pt_from === "number") {
     metadata.pct_from = metadata.pt_from;
@@ -292,7 +300,9 @@ export function mapShot(row: JsonRecord): JsonRecord {
   };
 }
 
-export async function getProjectIfAccessible(projectId: string): Promise<JsonRecord | null> {
+export async function getProjectIfAccessible(
+  projectId: string,
+): Promise<JsonRecord | null> {
   const data = await requestGraphql<{
     projects_by_pk: JsonRecord | null;
   }>(
@@ -309,7 +319,7 @@ export async function getProjectIfAccessible(projectId: string): Promise<JsonRec
         }
       }
     `,
-    { projectId }
+    { projectId },
   );
 
   return data.projects_by_pk;
@@ -338,13 +348,15 @@ export async function getNodeById(nodeId: string): Promise<JsonRecord | null> {
         }
       }
     `,
-    { nodeId }
+    { nodeId },
   );
 
   return data.timeline_nodes_by_pk;
 }
 
-export async function getTimelineChildren(parentId: string): Promise<JsonRecord[]> {
+export async function getTimelineChildren(
+  parentId: string,
+): Promise<JsonRecord[]> {
   const data = await requestGraphql<{
     timeline_nodes: JsonRecord[];
   }>(
@@ -370,7 +382,7 @@ export async function getTimelineChildren(parentId: string): Promise<JsonRecord[
         }
       }
     `,
-    { parentId }
+    { parentId },
   );
 
   return data.timeline_nodes;
@@ -394,7 +406,9 @@ export async function getTimelineNodes(filters: {
   });
 }
 
-export async function getAllProjectNodes(projectId: string): Promise<JsonRecord[]> {
+export async function getAllProjectNodes(
+  projectId: string,
+): Promise<JsonRecord[]> {
   const data = await requestGraphql<{
     timeline_nodes: JsonRecord[];
   }>(
@@ -425,13 +439,15 @@ export async function getAllProjectNodes(projectId: string): Promise<JsonRecord[
         }
       }
     `,
-    { projectId }
+    { projectId },
   );
 
   return data.timeline_nodes;
 }
 
-export async function getCharactersByProject(projectId: string): Promise<JsonRecord[]> {
+export async function getCharactersByProject(
+  projectId: string,
+): Promise<JsonRecord[]> {
   const data = await requestGraphql<{
     characters: JsonRecord[];
   }>(
@@ -459,13 +475,15 @@ export async function getCharactersByProject(projectId: string): Promise<JsonRec
         }
       }
     `,
-    { projectId }
+    { projectId },
   );
 
   return data.characters;
 }
 
-export async function getCharacterById(characterId: string): Promise<JsonRecord | null> {
+export async function getCharacterById(
+  characterId: string,
+): Promise<JsonRecord | null> {
   const data = await requestGraphql<{
     characters_by_pk: JsonRecord | null;
   }>(
@@ -490,7 +508,7 @@ export async function getCharacterById(characterId: string): Promise<JsonRecord 
         }
       }
     `,
-    { characterId }
+    { characterId },
   );
 
   return data.characters_by_pk;
@@ -574,7 +592,7 @@ export async function getShots(filters: {
           }
         }
       `,
-      { projectId: filters.projectId }
+      { projectId: filters.projectId },
     );
 
     return data.shots;
@@ -654,7 +672,7 @@ export async function getShots(filters: {
           }
         }
       `,
-      { sceneId: filters.sceneId }
+      { sceneId: filters.sceneId },
     );
 
     return data.shots;
@@ -734,7 +752,7 @@ export async function getShotById(shotId: string): Promise<JsonRecord | null> {
         }
       }
     `,
-    { shotId }
+    { shotId },
   );
 
   return data.shots_by_pk;
@@ -755,13 +773,15 @@ export async function buildNodePath(nodeId: string): Promise<JsonRecord[]> {
   return path;
 }
 
-export async function getRecursiveChildren(nodeId: string): Promise<JsonRecord[]> {
+export async function getRecursiveChildren(
+  nodeId: string,
+): Promise<JsonRecord[]> {
   const children = await getTimelineChildren(nodeId);
   const nested = await Promise.all(
     children.map(async (child) => {
       const descendants = await getRecursiveChildren(child.id);
       return [mapNode(child), ...descendants];
-    })
+    }),
   );
 
   return nested.flat();

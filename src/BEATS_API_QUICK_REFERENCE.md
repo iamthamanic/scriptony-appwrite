@@ -3,7 +3,7 @@
 ## 📦 Import
 
 ```typescript
-import * as BeatsAPI from '../lib/api/beats-api';
+import * as BeatsAPI from "../lib/api/beats-api";
 ```
 
 ---
@@ -53,7 +53,7 @@ const newBeat = await BeatsAPI.createBeat({
   pct_to: 12,
   color: "#6E59A5",
   notes: "This changes everything",
-  order_index: 1
+  order_index: 1,
 });
 
 // Returns: StoryBeat
@@ -70,7 +70,7 @@ const updatedBeat = await BeatsAPI.updateBeat("beat-uuid", {
   to_container_id: "act-2",
   pct_from: 50,
   pct_to: 55,
-  notes: "Updated notes"
+  notes: "Updated notes",
 });
 
 // Returns: StoryBeat
@@ -94,7 +94,7 @@ await BeatsAPI.deleteBeat("beat-uuid");
 await BeatsAPI.reorderBeats([
   { id: "beat-1", order_index: 0 },
   { id: "beat-2", order_index: 1 },
-  { id: "beat-3", order_index: 2 }
+  { id: "beat-3", order_index: 2 },
 ]);
 
 // Returns: void
@@ -111,16 +111,16 @@ interface StoryBeat {
   id: string;
   project_id: string;
   user_id: string;
-  label: string;                    // "Opening Image", "Catalyst", etc.
-  template_abbr?: string;           // "STC", "HJ", "CUSTOM"
-  description?: string;             // Ausführliche Beschreibung
-  from_container_id: string;        // Timeline Node ID (Start)
-  to_container_id: string;          // Timeline Node ID (End)
-  pct_from: number;                 // 0-100
-  pct_to: number;                   // 0-100
-  color?: string;                   // Hex color "#6E59A5"
-  notes?: string;                   // Notizen
-  order_index: number;              // Reihenfolge
+  label: string; // "Opening Image", "Catalyst", etc.
+  template_abbr?: string; // "STC", "HJ", "CUSTOM"
+  description?: string; // Ausführliche Beschreibung
+  from_container_id: string; // Timeline Node ID (Start)
+  to_container_id: string; // Timeline Node ID (End)
+  pct_from: number; // 0-100
+  pct_to: number; // 0-100
+  color?: string; // Hex color "#6E59A5"
+  notes?: string; // Notizen
+  order_index: number; // Reihenfolge
   created_at: string;
   updated_at: string;
 }
@@ -130,17 +130,17 @@ interface StoryBeat {
 
 ```typescript
 interface CreateBeatPayload {
-  project_id: string;               // REQUIRED
-  label: string;                    // REQUIRED
-  template_abbr?: string;           // Optional
-  description?: string;             // Optional
-  from_container_id: string;        // REQUIRED
-  to_container_id: string;          // REQUIRED
-  pct_from?: number;                // Optional (default: 0)
-  pct_to?: number;                  // Optional (default: 0)
-  color?: string;                   // Optional
-  notes?: string;                   // Optional
-  order_index?: number;             // Optional (default: 0)
+  project_id: string; // REQUIRED
+  label: string; // REQUIRED
+  template_abbr?: string; // Optional
+  description?: string; // Optional
+  from_container_id: string; // REQUIRED
+  to_container_id: string; // REQUIRED
+  pct_from?: number; // Optional (default: 0)
+  pct_to?: number; // Optional (default: 0)
+  color?: string; // Optional
+  notes?: string; // Optional
+  order_index?: number; // Optional (default: 0)
 }
 ```
 
@@ -176,11 +176,11 @@ useEffect(() => {
       const data = await BeatsAPI.getBeats(projectId);
       setBeats(data);
     } catch (error) {
-      console.error('Failed to load beats:', error);
-      toast.error('Beats konnten nicht geladen werden');
+      console.error("Failed to load beats:", error);
+      toast.error("Beats konnten nicht geladen werden");
     }
   }
-  
+
   loadBeats();
 }, [projectId]);
 ```
@@ -200,22 +200,20 @@ const handleCreateBeat = async (payload: CreateBeatPayload) => {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-  
-  setBeats(prev => [...prev, tempBeat]);
-  
+
+  setBeats((prev) => [...prev, tempBeat]);
+
   try {
     const newBeat = await BeatsAPI.createBeat(payload);
-    
+
     // Replace temp with real
-    setBeats(prev => 
-      prev.map(b => b.id === tempBeat.id ? newBeat : b)
-    );
-    
-    toast.success('Beat erstellt');
+    setBeats((prev) => prev.map((b) => (b.id === tempBeat.id ? newBeat : b)));
+
+    toast.success("Beat erstellt");
   } catch (error) {
     // Rollback
-    setBeats(prev => prev.filter(b => b.id !== tempBeat.id));
-    toast.error('Beat konnte nicht erstellt werden');
+    setBeats((prev) => prev.filter((b) => b.id !== tempBeat.id));
+    toast.error("Beat konnte nicht erstellt werden");
   }
 };
 ```
@@ -228,20 +226,18 @@ const handleCreateBeat = async (payload: CreateBeatPayload) => {
 const handleUpdateBeat = async (beatId: string, updates: UpdateBeatPayload) => {
   // Optimistic UI
   const oldBeats = [...beats];
-  setBeats(prev => 
-    prev.map(b => b.id === beatId ? { ...b, ...updates } : b)
+  setBeats((prev) =>
+    prev.map((b) => (b.id === beatId ? { ...b, ...updates } : b)),
   );
-  
+
   try {
     const updatedBeat = await BeatsAPI.updateBeat(beatId, updates);
-    
-    setBeats(prev => 
-      prev.map(b => b.id === beatId ? updatedBeat : b)
-    );
+
+    setBeats((prev) => prev.map((b) => (b.id === beatId ? updatedBeat : b)));
   } catch (error) {
     // Rollback
     setBeats(oldBeats);
-    toast.error('Beat konnte nicht aktualisiert werden');
+    toast.error("Beat konnte nicht aktualisiert werden");
   }
 };
 ```
@@ -252,20 +248,20 @@ const handleUpdateBeat = async (beatId: string, updates: UpdateBeatPayload) => {
 
 ```typescript
 const handleDeleteBeat = async (beatId: string) => {
-  const confirmed = window.confirm('Beat wirklich löschen?');
+  const confirmed = window.confirm("Beat wirklich löschen?");
   if (!confirmed) return;
-  
+
   // Optimistic UI
   const oldBeats = [...beats];
-  setBeats(prev => prev.filter(b => b.id !== beatId));
-  
+  setBeats((prev) => prev.filter((b) => b.id !== beatId));
+
   try {
     await BeatsAPI.deleteBeat(beatId);
-    toast.success('Beat gelöscht');
+    toast.success("Beat gelöscht");
   } catch (error) {
     // Rollback
     setBeats(oldBeats);
-    toast.error('Beat konnte nicht gelöscht werden');
+    toast.error("Beat konnte nicht gelöscht werden");
   }
 };
 ```
@@ -279,19 +275,19 @@ const handleReorder = async (newBeats: StoryBeat[]) => {
   // Optimistic UI
   const oldBeats = [...beats];
   setBeats(newBeats);
-  
+
   try {
     // Update order_index for all affected beats
     const updates = newBeats.map((beat, index) => ({
       id: beat.id,
-      order_index: index
+      order_index: index,
     }));
-    
+
     await BeatsAPI.reorderBeats(updates);
   } catch (error) {
     // Rollback
     setBeats(oldBeats);
-    toast.error('Reihenfolge konnte nicht gespeichert werden');
+    toast.error("Reihenfolge konnte nicht gespeichert werden");
   }
 };
 ```
@@ -304,21 +300,21 @@ const handleReorder = async (newBeats: StoryBeat[]) => {
 
 ```typescript
 const SAVE_THE_CAT_BEATS = [
-  { label: 'Opening Image', pct: 0 },
-  { label: 'Theme Stated', pct: 5 },
-  { label: 'Set-Up', pct: 1-10 },
-  { label: 'Catalyst', pct: 10 },
-  { label: 'Debate', pct: 10-20 },
-  { label: 'Break into Two', pct: 20 },
-  { label: 'B Story', pct: 22 },
-  { label: 'Fun and Games', pct: 20-50 },
-  { label: 'Midpoint', pct: 50 },
-  { label: 'Bad Guys Close In', pct: 50-75 },
-  { label: 'All Is Lost', pct: 75 },
-  { label: 'Dark Night of the Soul', pct: 75-80 },
-  { label: 'Break into Three', pct: 80 },
-  { label: 'Finale', pct: 80-99 },
-  { label: 'Final Image', pct: 99-100 }
+  { label: "Opening Image", pct: 0 },
+  { label: "Theme Stated", pct: 5 },
+  { label: "Set-Up", pct: 1 - 10 },
+  { label: "Catalyst", pct: 10 },
+  { label: "Debate", pct: 10 - 20 },
+  { label: "Break into Two", pct: 20 },
+  { label: "B Story", pct: 22 },
+  { label: "Fun and Games", pct: 20 - 50 },
+  { label: "Midpoint", pct: 50 },
+  { label: "Bad Guys Close In", pct: 50 - 75 },
+  { label: "All Is Lost", pct: 75 },
+  { label: "Dark Night of the Soul", pct: 75 - 80 },
+  { label: "Break into Three", pct: 80 },
+  { label: "Finale", pct: 80 - 99 },
+  { label: "Final Image", pct: 99 - 100 },
 ];
 ```
 
@@ -326,18 +322,18 @@ const SAVE_THE_CAT_BEATS = [
 
 ```typescript
 const HEROS_JOURNEY_BEATS = [
-  { label: 'Ordinary World', pct: 0-10 },
-  { label: 'Call to Adventure', pct: 10 },
-  { label: 'Refusal of the Call', pct: 10-15 },
-  { label: 'Meeting the Mentor', pct: 15 },
-  { label: 'Crossing the Threshold', pct: 20 },
-  { label: 'Tests, Allies, Enemies', pct: 20-50 },
-  { label: 'Approach to Inmost Cave', pct: 50 },
-  { label: 'Ordeal', pct: 50-60 },
-  { label: 'Reward', pct: 60-70 },
-  { label: 'The Road Back', pct: 70-75 },
-  { label: 'Resurrection', pct: 75-90 },
-  { label: 'Return with Elixir', pct: 90-100 }
+  { label: "Ordinary World", pct: 0 - 10 },
+  { label: "Call to Adventure", pct: 10 },
+  { label: "Refusal of the Call", pct: 10 - 15 },
+  { label: "Meeting the Mentor", pct: 15 },
+  { label: "Crossing the Threshold", pct: 20 },
+  { label: "Tests, Allies, Enemies", pct: 20 - 50 },
+  { label: "Approach to Inmost Cave", pct: 50 },
+  { label: "Ordeal", pct: 50 - 60 },
+  { label: "Reward", pct: 60 - 70 },
+  { label: "The Road Back", pct: 70 - 75 },
+  { label: "Resurrection", pct: 75 - 90 },
+  { label: "Return with Elixir", pct: 90 - 100 },
 ];
 ```
 

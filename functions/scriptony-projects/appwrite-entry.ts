@@ -1,4 +1,9 @@
-import { createAppwriteHandler, getPathname, sendRouteNotFound, withParams } from "../_shared/appwrite-handler";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
 import healthHandler from "./health";
 import projectsHandler from "./projects/index";
 import projectByIdHandler from "./projects/[id]";
@@ -19,7 +24,10 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
 
   const uploadMatch = pathname.match(/^\/projects\/([^/]+)\/upload-image$/);
   if (uploadMatch) {
-    await projectUploadImageHandler(withParams(req, { id: uploadMatch[1] }), res);
+    await projectUploadImageHandler(
+      withParams(req, { id: uploadMatch[1] }),
+      res,
+    );
     return;
   }
 

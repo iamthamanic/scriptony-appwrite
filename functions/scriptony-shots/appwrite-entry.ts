@@ -1,5 +1,10 @@
-import { createAppwriteHandler, getPathname, sendRouteNotFound, withParams } from "../_shared/appwrite-handler";
-import { sendJson, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
+import { type RequestLike, type ResponseLike, sendJson } from "../_shared/http";
 import shotsHandler from "./shots/index";
 import shotsBySceneHandler from "./shots/[sceneId]";
 import shotByIdHandler from "./shots/by-id/[id]";
@@ -32,7 +37,10 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
 
   const bySceneMatch = pathname.match(/^\/shots\/by-scene\/([^/]+)$/);
   if (bySceneMatch) {
-    await shotsBySceneHandler(withParams(req, { sceneId: bySceneMatch[1] }), res);
+    await shotsBySceneHandler(
+      withParams(req, { sceneId: bySceneMatch[1] }),
+      res,
+    );
     return;
   }
   const uploadMatch = pathname.match(/^\/shots\/([^/]+)\/upload-image$/);
@@ -42,14 +50,22 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
   }
   const addCharacterMatch = pathname.match(/^\/shots\/([^/]+)\/characters$/);
   if (addCharacterMatch) {
-    await shotCharactersHandler(withParams(req, { id: addCharacterMatch[1] }), res);
+    await shotCharactersHandler(
+      withParams(req, { id: addCharacterMatch[1] }),
+      res,
+    );
     return;
   }
-  const removeCharacterMatch = pathname.match(/^\/shots\/([^/]+)\/characters\/([^/]+)$/);
+  const removeCharacterMatch = pathname.match(
+    /^\/shots\/([^/]+)\/characters\/([^/]+)$/,
+  );
   if (removeCharacterMatch) {
     await shotCharacterDeleteHandler(
-      withParams(req, { id: removeCharacterMatch[1], characterId: removeCharacterMatch[2] }),
-      res
+      withParams(req, {
+        id: removeCharacterMatch[1],
+        characterId: removeCharacterMatch[2],
+      }),
+      res,
     );
     return;
   }

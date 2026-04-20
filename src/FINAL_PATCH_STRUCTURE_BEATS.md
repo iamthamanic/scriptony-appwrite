@@ -21,7 +21,7 @@
 Öffne `/components/pages/ProjectsPage.tsx` und füge bei den Imports hinzu:
 
 ```typescript
-import { StructureBeatsSection } from '../StructureBeatsSection';
+import { StructureBeatsSection } from "../StructureBeatsSection";
 ```
 
 ---
@@ -51,6 +51,7 @@ ODER suche nach einem Collapsible mit "Structure" oder "Acts":
 ### Schritt 3: Ersetze FilmDropdown/Section durch StructureBeatsSection
 
 **VORHER (Alt):**
+
 ```typescript
 <section className="space-y-3">
   <Collapsible>
@@ -65,6 +66,7 @@ ODER suche nach einem Collapsible mit "Structure" oder "Acts":
 ```
 
 **NACHHER (Neu):**
+
 ```typescript
 <section className="space-y-3">
   <StructureBeatsSection
@@ -116,19 +118,25 @@ Du solltest jetzt sehen:
 ## 🔍 Wenn es immer noch nicht funktioniert:
 
 ### Debug 1: Console öffnen (F12)
+
 Suche nach Errors wie:
+
 - "StructureBeatsSection is not defined" → Import fehlt
 - "BeatRail is not defined" → Component fehlt
 - "Cannot read property..." → Props fehlen
 
 ### Debug 2: React DevTools
+
 Suche nach der `StructureBeatsSection` Komponente:
+
 - Ist sie im React-Tree?
 - Welche Props hat sie?
 - Wird sie überhaupt gerendert?
 
 ### Debug 3: Element-Inspektor
+
 Rechtsklick auf "Structure & Beats" → Inspect:
+
 - Siehst du ein `<div className="w-20 bg-primary/5 ...">`?
 - Wenn ja: Beat-Rail ist da, aber vielleicht leer
 - Wenn nein: StructureBeatsSection wird nicht verwendet
@@ -148,6 +156,7 @@ Rechtsklick auf "Structure & Beats" → Inspect:
 ## 🚀 Quick-Command für Suche:
 
 Öffne ProjectsPage.tsx und suche nach:
+
 - `FilmDropdown` (STRG+F)
 - `Structure & Beats` (STRG+F)
 - `{project &&` (zeigt Project-Detail-View)
@@ -164,12 +173,12 @@ Wenn du die FilmDropdown-Usage nicht findest, füge einfach DIREKT nach der Proj
 {project && (
   <div className="p-6 space-y-6">
     {/* Projekt-Info ... */}
-    
+
     {/* ⭐ NEU ⭐ */}
     <StructureBeatsSection
       projectId={project.id}
     />
-    
+
     {/* Rest... */}
   </div>
 )}

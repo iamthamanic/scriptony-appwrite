@@ -9,7 +9,9 @@ import { loadAppwriteCliEnv } from "../../functions/scripts/load-appwrite-cli-en
 loadAppwriteCliEnv();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(new URL("../../functions/package.json", import.meta.url));
+const require = createRequire(
+  new URL("../../functions/package.json", import.meta.url),
+);
 const { Client, Databases, IndexType, OrderBy } = require("node-appwrite");
 
 const endpoint = process.env.APPWRITE_ENDPOINT;
@@ -18,11 +20,16 @@ const apiKey = process.env.APPWRITE_API_KEY;
 const databaseId = process.env.APPWRITE_DATABASE_ID?.trim() || "scriptony";
 
 if (!endpoint || !projectId || !apiKey) {
-  console.error("Missing Appwrite env. Expected APPWRITE_ENDPOINT/PROJECT_ID/API_KEY or mapped VITE_APPWRITE_*.");
+  console.error(
+    "Missing Appwrite env. Expected APPWRITE_ENDPOINT/PROJECT_ID/API_KEY or mapped VITE_APPWRITE_*.",
+  );
   process.exit(1);
 }
 
-const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+const client = new Client()
+  .setEndpoint(endpoint)
+  .setProject(projectId)
+  .setKey(apiKey);
 const db = new Databases(client);
 
 const collectionFiles = [
@@ -47,10 +54,16 @@ const shotsAttributes = [
   { key: "acceptedRenderJobId", type: "string", required: false, size: 255 },
 ];
 
-const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+const sleep = (ms) =>
+  new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
 function isAlreadyExists(err) {
-  return err?.code === 409 || String(err?.message || "").toLowerCase().includes("already exists");
+  return (
+    err?.code === 409 ||
+    String(err?.message || "")
+      .toLowerCase()
+      .includes("already exists")
+  );
 }
 
 function getSpec(file) {
@@ -63,7 +76,9 @@ async function waitAttribute(collectionId, key) {
     const attribute = await db.getAttribute(databaseId, collectionId, key);
     if (attribute.status === "available") return;
     if (attribute.status === "failed") {
-      throw new Error(`Attribute ${collectionId}.${key} failed: ${JSON.stringify(attribute)}`);
+      throw new Error(
+        `Attribute ${collectionId}.${key} failed: ${JSON.stringify(attribute)}`,
+      );
     }
     await sleep(500);
   }
@@ -76,7 +91,14 @@ async function ensureCollection(collectionId) {
     console.log(`collection exists: ${collectionId}`);
   } catch (err) {
     if (err?.code !== 404) throw err;
-    await db.createCollection(databaseId, collectionId, collectionId, [], false, true);
+    await db.createCollection(
+      databaseId,
+      collectionId,
+      collectionId,
+      [],
+      false,
+      true,
+    );
     console.log(`collection created: ${collectionId}`);
   }
 }
@@ -102,7 +124,7 @@ async function ensureAttribute(collectionId, attr) {
         Number(attr.size || 255),
         required,
         undefined,
-        isArray
+        isArray,
       );
     } else if (attr.type === "integer") {
       await db.createIntegerAttribute(
@@ -113,7 +135,7 @@ async function ensureAttribute(collectionId, attr) {
         undefined,
         undefined,
         undefined,
-        isArray
+        isArray,
       );
     } else if (attr.type === "double" || attr.type === "float") {
       await db.createFloatAttribute(
@@ -124,10 +146,12 @@ async function ensureAttribute(collectionId, attr) {
         undefined,
         undefined,
         undefined,
-        isArray
+        isArray,
       );
     } else {
-      throw new Error(`Unsupported attribute type ${attr.type} for ${collectionId}.${attr.key}`);
+      throw new Error(
+        `Unsupported attribute type ${attr.type} for ${collectionId}.${attr.key}`,
+      );
     }
 
     await waitAttribute(collectionId, attr.key);
@@ -155,12 +179,14 @@ async function ensureIndex(collectionId, indexSpec) {
       indexSpec.key,
       indexSpec.type === "key" ? IndexType.Key : indexSpec.type,
       indexSpec.attributes,
-      (indexSpec.attributes || []).map(() => OrderBy.Asc)
+      (indexSpec.attributes || []).map(() => OrderBy.Asc),
     );
     console.log(`  index created: ${collectionId}.${indexSpec.key}`);
   } catch (err) {
     if (isAlreadyExists(err)) {
-      console.log(`  index exists after race: ${collectionId}.${indexSpec.key}`);
+      console.log(
+        `  index exists after race: ${collectionId}.${indexSpec.key}`,
+      );
       return;
     }
     throw err;

@@ -2,17 +2,29 @@
  * Clip API — editorial timeline segments (scriptony-clips).
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from '../api-client';
-import type { Clip } from '../types';
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  unwrapApiResult,
+} from "../api-client";
+import type { Clip } from "../types";
 
-export async function listClipsByProject(projectId: string, _accessToken: string): Promise<Clip[]> {
+export async function listClipsByProject(
+  projectId: string,
+  _accessToken: string,
+): Promise<Clip[]> {
   const params = new URLSearchParams({ project_id: projectId });
   const result = await apiGet(`/clips?${params.toString()}`);
   const data = unwrapApiResult(result);
   return (data?.clips || []) as Clip[];
 }
 
-export async function listClipsByShot(shotId: string, _accessToken: string): Promise<Clip[]> {
+export async function listClipsByShot(
+  shotId: string,
+  _accessToken: string,
+): Promise<Clip[]> {
   const params = new URLSearchParams({ shot_id: shotId });
   const result = await apiGet(`/clips?${params.toString()}`);
   const data = unwrapApiResult(result);
@@ -31,7 +43,7 @@ export async function createClip(
     sourceInSec?: number;
     sourceOutSec?: number;
   },
-  _accessToken: string
+  _accessToken: string,
 ): Promise<Clip> {
   const body: Record<string, unknown> = {
     project_id: payload.projectId,
@@ -42,10 +54,12 @@ export async function createClip(
     lane_index: payload.laneIndex ?? 0,
     order_index: payload.orderIndex ?? 0,
   };
-  if (payload.sourceInSec !== undefined) body.source_in_sec = payload.sourceInSec;
-  if (payload.sourceOutSec !== undefined) body.source_out_sec = payload.sourceOutSec;
+  if (payload.sourceInSec !== undefined)
+    body.source_in_sec = payload.sourceInSec;
+  if (payload.sourceOutSec !== undefined)
+    body.source_out_sec = payload.sourceOutSec;
 
-  const result = await apiPost('/clips', body);
+  const result = await apiPost("/clips", body);
   const data = unwrapApiResult(result);
   return (data?.clip || data) as Clip;
 }
@@ -60,22 +74,27 @@ export async function updateClip(
     sourceInSec: number | null;
     sourceOutSec: number | null;
   }>,
-  _accessToken: string
+  _accessToken: string,
 ): Promise<Clip> {
   const body: Record<string, unknown> = {};
   if (updates.startSec !== undefined) body.start_sec = updates.startSec;
   if (updates.endSec !== undefined) body.end_sec = updates.endSec;
   if (updates.laneIndex !== undefined) body.lane_index = updates.laneIndex;
   if (updates.orderIndex !== undefined) body.order_index = updates.orderIndex;
-  if (updates.sourceInSec !== undefined) body.source_in_sec = updates.sourceInSec;
-  if (updates.sourceOutSec !== undefined) body.source_out_sec = updates.sourceOutSec;
+  if (updates.sourceInSec !== undefined)
+    body.source_in_sec = updates.sourceInSec;
+  if (updates.sourceOutSec !== undefined)
+    body.source_out_sec = updates.sourceOutSec;
 
   const result = await apiPut(`/clips/${encodeURIComponent(clipId)}`, body);
   const data = unwrapApiResult(result);
   return (data?.clip || data) as Clip;
 }
 
-export async function deleteClip(clipId: string, _accessToken: string): Promise<void> {
+export async function deleteClip(
+  clipId: string,
+  _accessToken: string,
+): Promise<void> {
   const result = await apiDelete(`/clips/${encodeURIComponent(clipId)}`);
   unwrapApiResult(result);
 }

@@ -7,13 +7,13 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import {
   getCharactersByProject,
@@ -21,7 +21,10 @@ import {
   normalizeCharacterInput,
 } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -30,7 +33,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId = getQuery(req, "project_id") ||
+        getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;
@@ -78,13 +82,15 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           object: {
             ...characterInput,
-            organization_id:
-              characterInput.organization_id ?? bootstrap.organizationId,
+            organization_id: characterInput.organization_id ??
+              bootstrap.organizationId,
           },
-        }
+        },
       );
 
-      sendJson(res, 201, { character: mapCharacter(created.insert_characters_one) });
+      sendJson(res, 201, {
+        character: mapCharacter(created.insert_characters_one),
+      });
       return;
     }
 

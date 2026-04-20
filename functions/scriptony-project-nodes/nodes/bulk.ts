@@ -6,17 +6,20 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { mapNode, normalizeNodeInput } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -29,7 +32,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const body = await readJsonBody<{ nodes?: Array<Record<string, any>> }>(req);
+    const body = await readJsonBody<{ nodes?: Array<Record<string, any>> }>(
+      req,
+    );
     const rawNodes = Array.isArray(body.nodes) ? body.nodes : [];
     const nodes = rawNodes.map(normalizeNodeInput);
 
@@ -37,15 +42,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       nodes.length === 0 ||
       nodes.some(
         (node) =>
-          !node.project_id ||
-          !node.template_id ||
-          !node.level ||
-          !node.title
+          !node.project_id || !node.template_id || !node.level || !node.title,
       )
     ) {
       sendBadRequest(
         res,
-        "nodes must contain project_id, template_id, level, and title"
+        "nodes must contain project_id, template_id, level, and title",
       );
       return;
     }
@@ -80,10 +82,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           order_index: node.order_index ?? 0,
           metadata_json: JSON.stringify(node.metadata ?? {}),
         })),
-      }
+      },
     );
 
-    sendJson(res, 201, { nodes: created.insert_timeline_nodes.returning.map(mapNode) });
+    sendJson(res, 201, {
+      nodes: created.insert_timeline_nodes.returning.map(mapNode),
+    });
   } catch (error) {
     sendServerError(res, error);
   }

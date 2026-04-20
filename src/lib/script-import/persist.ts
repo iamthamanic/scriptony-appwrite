@@ -2,18 +2,22 @@
  * Persist parsed segments via Timeline API and return fresh TimelineData for cache.
  */
 
-import type { ScriptProjectKind, ImportSegment, ImportedTimelineData } from './types';
-import * as TimelineAPI from '../api/timeline-api';
-import * as TimelineAPIV2 from '../api/timeline-api-v2';
-import * as ShotsAPI from '../api/shots-api';
-import { nodeToAct, nodeToSequence, nodeToScene } from '../api/timeline-api';
-import { splitIntoThirds } from './split-thirds';
-import { tiptapDocToContentString } from './tiptap-plain';
+import type {
+  ScriptProjectKind,
+  ImportSegment,
+  ImportedTimelineData,
+} from "./types";
+import * as TimelineAPI from "../api/timeline-api";
+import * as TimelineAPIV2 from "../api/timeline-api-v2";
+import * as ShotsAPI from "../api/shots-api";
+import { nodeToAct, nodeToSequence, nodeToScene } from "../api/timeline-api";
+import { splitIntoThirds } from "./split-thirds";
+import { tiptapDocToContentString } from "./tiptap-plain";
 
 async function nextSequenceNumber(
   projectId: string,
   actId: string,
-  token: string
+  token: string,
 ): Promise<number> {
   const all = await TimelineAPI.getAllSequencesByProject(projectId, token);
   const inAct = all.filter((s) => s.actId === actId);
@@ -30,13 +34,20 @@ function wordCount(text: string): number {
 async function ensureThreeActs(projectId: string, token: string) {
   let acts = await TimelineAPI.getActs(projectId, token);
   if (!acts.length) {
-    await ShotsAPI.initializeTimelineStructureFromNarrative(projectId, token, '3-act');
+    await ShotsAPI.initializeTimelineStructureFromNarrative(
+      projectId,
+      token,
+      "3-act",
+    );
     acts = await TimelineAPI.getActs(projectId, token);
   }
   return [...acts].sort((a, b) => (a.actNumber ?? 0) - (b.actNumber ?? 0));
 }
 
-async function reloadTimeline(projectId: string, token: string): Promise<ImportedTimelineData> {
+async function reloadTimeline(
+  projectId: string,
+  token: string,
+): Promise<ImportedTimelineData> {
   try {
     const ultra = await TimelineAPIV2.ultraBatchLoadProject(projectId, token);
     return {
@@ -62,7 +73,7 @@ async function reloadTimeline(projectId: string, token: string): Promise<Importe
 async function persistFilmLike(
   projectId: string,
   segments: ImportSegment[],
-  token: string
+  token: string,
 ): Promise<void> {
   const acts = await ensureThreeActs(projectId, token);
   const [bucketA, bucketB, bucketC] = splitIntoThirds(segments);
@@ -79,10 +90,10 @@ async function persistFilmLike(
       act.id,
       {
         sequenceNumber: seqNum,
-        title: 'Import',
+        title: "Import",
         description: `${bucket.length} Szenen aus Skript-Import`,
       },
-      token
+      token,
     );
 
     for (let j = 0; j < bucket.length; j++) {
@@ -97,7 +108,7 @@ async function persistFilmLike(
           description,
           orderIndex: j,
         },
-        token
+        token,
       );
     }
   }
@@ -106,11 +117,11 @@ async function persistFilmLike(
 async function persistBook(
   projectId: string,
   segments: ImportSegment[],
-  token: string
+  token: string,
 ): Promise<void> {
   const acts = await ensureThreeActs(projectId, token);
   const act = acts[0];
-  if (!act?.id) throw new Error('Kein Akt für Buch-Import gefunden.');
+  if (!act?.id) throw new Error("Kein Akt für Buch-Import gefunden.");
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
@@ -123,7 +134,7 @@ async function persistBook(
         title: chapterTitle,
         description: `Import Kapitel ${i + 1}`,
       },
-      token
+      token,
     );
 
     const wc = wordCount(seg.body);
@@ -132,12 +143,12 @@ async function persistBook(
       seq.id,
       {
         sceneNumber: 1,
-        title: 'Abschnitt 1',
+        title: "Abschnitt 1",
         orderIndex: 0,
         content,
         wordCount: wc,
       },
-      token
+      token,
     );
   }
 }
@@ -146,13 +157,13 @@ export async function persistImportedSegments(
   projectId: string,
   kind: ScriptProjectKind,
   segments: ImportSegment[],
-  token: string
+  token: string,
 ): Promise<ImportedTimelineData> {
   if (!segments.length) {
-    throw new Error('Keine Segmente zum Importieren.');
+    throw new Error("Keine Segmente zum Importieren.");
   }
 
-  if (kind === 'book') {
+  if (kind === "book") {
     await persistBook(projectId, segments, token);
   } else {
     await persistFilmLike(projectId, segments, token);

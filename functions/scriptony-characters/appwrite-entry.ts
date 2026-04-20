@@ -1,5 +1,10 @@
-import { createAppwriteHandler, getPathname, sendRouteNotFound, withParams } from "../_shared/appwrite-handler";
-import { sendJson, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
+import { type RequestLike, type ResponseLike, sendJson } from "../_shared/http";
 import timelineCharactersHandler from "./timeline-characters/index";
 import timelineCharacterByIdHandler from "./timeline-characters/[id]";
 
@@ -20,9 +25,14 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
     return;
   }
 
-  const byIdMatch = pathname.match(/^\/(?:characters|timeline-characters)\/([^/]+)$/);
+  const byIdMatch = pathname.match(
+    /^\/(?:characters|timeline-characters)\/([^/]+)$/,
+  );
   if (byIdMatch) {
-    await timelineCharacterByIdHandler(withParams(req, { id: byIdMatch[1] }), res);
+    await timelineCharacterByIdHandler(
+      withParams(req, { id: byIdMatch[1] }),
+      res,
+    );
     return;
   }
 

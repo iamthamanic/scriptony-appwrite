@@ -6,17 +6,20 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { worldsInsertPayload } from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -45,7 +48,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { organizationId: bootstrap.organizationId }
+        { organizationId: bootstrap.organizationId },
       );
 
       sendJson(res, 200, { worlds: data.worlds });
@@ -80,7 +83,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         `,
         {
           object: insertPayload,
-        }
+        },
       );
 
       sendJson(res, 201, { world: created.insert_worlds_one });

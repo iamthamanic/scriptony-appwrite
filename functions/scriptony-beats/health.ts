@@ -3,16 +3,27 @@
  */
 
 import { requestGraphql } from "../_shared/graphql-compat";
-import { sendJson, sendMethodNotAllowed, sendServerError, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+} from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;
   }
 
   try {
-    await requestGraphql<{ story_beats_aggregate: { aggregate: { count: number } } }>(
+    await requestGraphql<{
+      story_beats_aggregate: { aggregate: { count: number } };
+    }>(
       `
         query BeatsHealthcheck {
           story_beats_aggregate {
@@ -21,7 +32,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         }
-      `
+      `,
     );
 
     sendJson(res, 200, {

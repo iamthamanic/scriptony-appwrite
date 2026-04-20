@@ -76,8 +76,12 @@ StructureBeatsSection
 
 ```typescript
 // BeatRail.tsx synchronisiert Beat-Bands mit DOM:
-const startEl = document.querySelector(`[data-container-id="${beat.fromContainerId}"]`);
-const endEl = document.querySelector(`[data-container-id="${beat.toContainerId}"]`);
+const startEl = document.querySelector(
+  `[data-container-id="${beat.fromContainerId}"]`,
+);
+const endEl = document.querySelector(
+  `[data-container-id="${beat.toContainerId}"]`,
+);
 
 const top = startEl.top - railRect.top;
 const height = endEl.bottom - startEl.top;
@@ -94,11 +98,11 @@ beatBand.style.height = `${height}px`;
 
 ```typescript
 // Klick auf Beat-Band:
-<BeatBand 
+<BeatBand
   beat={beat}
   containers={containers}
   onUpdate={(id, updates) => {
-    setBeats(prev => prev.map(b => 
+    setBeats(prev => prev.map(b =>
       b.id === id ? { ...b, ...updates } : b
     ));
   }}
@@ -126,6 +130,7 @@ Act 1 → Sequence 1 → Scene 3 → Shot 2
 ## 🎨 Design-Specs (exakte Pixel-Werte):
 
 ### BeatRail:
+
 ```css
 width: 80px;
 background: rgba(110, 89, 165, 0.05); /* primary/5 */
@@ -135,10 +140,11 @@ overflow: visible; /* für expandierte Beats */
 ```
 
 ### BeatBand (Collapsed):
+
 ```css
 min-height: 40px;
 background: rgba(110, 89, 165, 0.2); /* primary/20 */
-border-left: 4px solid #6E59A5; /* primary */
+border-left: 4px solid #6e59a5; /* primary */
 transition: all 0.2s;
 cursor: pointer;
 
@@ -149,6 +155,7 @@ cursor: pointer;
 ```
 
 ### BeatBand (Expanded):
+
 ```css
 position: absolute;
 left: 0;
@@ -165,6 +172,7 @@ z-index: 30;
 ```
 
 ### Container-Stack:
+
 ```css
 flex: 1;
 overflow-y: auto;
@@ -173,6 +181,7 @@ background: var(--background);
 ```
 
 ### Main Container:
+
 ```css
 display: flex;
 min-height: 600px;
@@ -289,7 +298,7 @@ import { StructureBeatsSection } from '../StructureBeatsSection';
     </section>
 
     {/* ⭐ Structure & Beats Section */}
-    <StructureBeatsSection 
+    <StructureBeatsSection
       projectId={project.id}
       className=""
     />
@@ -322,6 +331,7 @@ Das **Structure & Beats System** ist VOLLSTÄNDIG implementiert und bereit für 
 ## 📞 Support:
 
 Bei Fragen oder Problemen:
+
 1. Check DEPLOY_STRUCTURE_BEATS_INTEGRATION.md für Deployment-Guide
 2. Check STRUCTURE_BEATS_SNIPPET.tsx für Integration-Snippet
 3. Check BeatBand.tsx / BeatRail.tsx für technische Details

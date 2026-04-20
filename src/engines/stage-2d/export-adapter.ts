@@ -50,7 +50,10 @@ export interface Stage2DExportAdapter {
     projects: StageExportProjectRow[];
     worlds: StageExportWorldRow[];
   }>;
-  loadTimelineForProject: (projectId: string, projectType?: string) => Promise<StageTimelineBundle>;
+  loadTimelineForProject: (
+    projectId: string,
+    projectType?: string,
+  ) => Promise<StageTimelineBundle>;
   loadAssetsForWorld: (worldId: string) => Promise<StageExportAssetRow[]>;
   assignToShot: (args: {
     projectId: string;

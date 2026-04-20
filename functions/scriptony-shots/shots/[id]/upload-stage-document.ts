@@ -8,22 +8,29 @@ import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { uploadFileToStorage } from "../../../_shared/storage";
-import { getAccessibleProject, getUserOrganizationIds } from "../../../_shared/scriptony";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
 import { getShotById, mapShot } from "../../../_shared/timeline";
+import { Buffer } from "node:buffer";
 
 const MAX_JSON_BYTES = 15 * 1024 * 1024;
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -49,25 +56,32 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-    const project = await getAccessibleProject(shot.project_id, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      shot.project_id,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Shot not found");
       return;
     }
 
     const body = await readJsonBody<Record<string, unknown>>(req);
-    const kind = body.kind === "stage3d" ? "stage3d" : body.kind === "stage2d" ? "stage2d" : null;
+    const kind = body.kind === "stage3d"
+      ? "stage3d"
+      : body.kind === "stage2d"
+      ? "stage2d"
+      : null;
     if (!kind) {
       sendBadRequest(res, 'kind must be "stage2d" or "stage3d"');
       return;
     }
 
-    const json =
-      typeof body.json === "string"
-        ? body.json
-        : body.document !== undefined
-          ? JSON.stringify(body.document)
-          : null;
+    const json = typeof body.json === "string"
+      ? body.json
+      : body.document !== undefined
+      ? JSON.stringify(body.document)
+      : null;
     if (typeof json !== "string" || !json.trim()) {
       sendBadRequest(res, "json (string) or document (object) required");
       return;
@@ -108,7 +122,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: shotId, fid: uploaded.id, userId: bootstrap.user.id }
+        { id: shotId, fid: uploaded.id, userId: bootstrap.user.id },
       );
     } else {
       await requestGraphql(
@@ -122,7 +136,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: shotId, fid: uploaded.id, userId: bootstrap.user.id }
+        { id: shotId, fid: uploaded.id, userId: bootstrap.user.id },
       );
     }
 

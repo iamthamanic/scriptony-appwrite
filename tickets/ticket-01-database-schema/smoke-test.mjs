@@ -9,7 +9,9 @@ import { loadAppwriteCliEnv } from "../../functions/scripts/load-appwrite-cli-en
 loadAppwriteCliEnv();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(new URL("../../functions/package.json", import.meta.url));
+const require = createRequire(
+  new URL("../../functions/package.json", import.meta.url),
+);
 const { Client, Databases } = require("node-appwrite");
 
 const endpoint = process.env.APPWRITE_ENDPOINT;
@@ -18,11 +20,16 @@ const apiKey = process.env.APPWRITE_API_KEY;
 const databaseId = process.env.APPWRITE_DATABASE_ID?.trim() || "scriptony";
 
 if (!endpoint || !projectId || !apiKey) {
-  console.error("Missing Appwrite env. Expected APPWRITE_ENDPOINT/PROJECT_ID/API_KEY or mapped VITE_APPWRITE_*.");
+  console.error(
+    "Missing Appwrite env. Expected APPWRITE_ENDPOINT/PROJECT_ID/API_KEY or mapped VITE_APPWRITE_*.",
+  );
   process.exit(1);
 }
 
-const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+const client = new Client()
+  .setEndpoint(endpoint)
+  .setProject(projectId)
+  .setKey(apiKey);
 const db = new Databases(client);
 
 const collectionFiles = [
@@ -70,7 +77,13 @@ function buildValue(collectionId, attr, nowIso) {
     return 0.5;
   }
 
-  if (key === "configJson" || key === "metadata" || key === "payload" || key === "viewState" || key === "repairConfig") {
+  if (
+    key === "configJson" ||
+    key === "metadata" ||
+    key === "payload" ||
+    key === "viewState" ||
+    key === "repairConfig"
+  ) {
     return "{}";
   }
 
@@ -102,7 +115,23 @@ function buildValidDocument(collectionId, spec) {
   const data = {};
 
   for (const attr of spec.attributes) {
-    if (!attr.required && !["acceptedAt", "acceptedBy", "completedAt", "previewImageId", "projectId", "prompt", "repairConfig", "viewState", "selectedTakeId", "glbPreviewFileId", "lastSyncedAt", "outputImageIds"].includes(attr.key)) {
+    if (
+      !attr.required &&
+      ![
+        "acceptedAt",
+        "acceptedBy",
+        "completedAt",
+        "previewImageId",
+        "projectId",
+        "prompt",
+        "repairConfig",
+        "viewState",
+        "selectedTakeId",
+        "glbPreviewFileId",
+        "lastSyncedAt",
+        "outputImageIds",
+      ].includes(attr.key)
+    ) {
       continue;
     }
     data[attr.key] = buildValue(collectionId, attr, nowIso);
@@ -123,14 +152,20 @@ async function expectExists(collectionId, spec) {
     if (Boolean(live.required) !== Boolean(attr.required)) {
       issues.push(`required ${live.required} != ${attr.required}`);
     }
-    if (attr.type === "string" && attr.size != null && live.size !== attr.size) {
+    if (
+      attr.type === "string" &&
+      attr.size != null &&
+      live.size !== attr.size
+    ) {
       issues.push(`size ${live.size} != ${attr.size}`);
     }
     if (Boolean(live.array) !== Boolean(attr.array)) {
       issues.push(`array ${live.array} != ${Boolean(attr.array)}`);
     }
     if (issues.length) {
-      throw new Error(`Attribute mismatch for ${collectionId}.${attr.key}: ${issues.join(", ")}`);
+      throw new Error(
+        `Attribute mismatch for ${collectionId}.${attr.key}: ${issues.join(", ")}`,
+      );
     }
   }
 
@@ -140,8 +175,13 @@ async function expectExists(collectionId, spec) {
     if (!live) {
       throw new Error(`Missing index ${collectionId}.${indexSpec.key}`);
     }
-    if (JSON.stringify(live.attributes || []) !== JSON.stringify(indexSpec.attributes || [])) {
-      throw new Error(`Index attribute mismatch for ${collectionId}.${indexSpec.key}`);
+    if (
+      JSON.stringify(live.attributes || []) !==
+      JSON.stringify(indexSpec.attributes || [])
+    ) {
+      throw new Error(
+        `Index attribute mismatch for ${collectionId}.${indexSpec.key}`,
+      );
     }
   }
 }
@@ -172,10 +212,17 @@ async function smokeCollection(collectionId, spec) {
     }
 
     if (!invalidRejected) {
-      throw new Error(`Missing required field was accepted for ${collectionId}.${requiredAttr.key}`);
+      throw new Error(
+        `Missing required field was accepted for ${collectionId}.${requiredAttr.key}`,
+      );
     }
 
-    const created = await db.createDocument(databaseId, collectionId, "unique()", valid);
+    const created = await db.createDocument(
+      databaseId,
+      collectionId,
+      "unique()",
+      valid,
+    );
     createdId = created.$id;
     console.log(`smoke ok: ${collectionId} created ${createdId}`);
   } finally {
@@ -190,13 +237,17 @@ async function verifyShotsExtensions() {
   for (const attr of shotsExpected) {
     const live = await db.getAttribute(databaseId, "shots", attr.key);
     if (normalizeType(live.type) !== normalizeType(attr.type)) {
-      throw new Error(`shots.${attr.key} has type ${live.type}, expected ${attr.type}`);
+      throw new Error(
+        `shots.${attr.key} has type ${live.type}, expected ${attr.type}`,
+      );
     }
   }
 }
 
 async function main() {
-  console.log(`Running Ticket 1 smoke test against Appwrite database '${databaseId}'`);
+  console.log(
+    `Running Ticket 1 smoke test against Appwrite database '${databaseId}'`,
+  );
 
   for (const file of collectionFiles) {
     const spec = getSpec(file);

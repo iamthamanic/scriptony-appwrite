@@ -8,39 +8,17 @@
 
 ## Verified
 
-[x] 1. All 5 collections exist in Appwrite
-    - `styleProfiles`
-    - `renderJobs`
-    - `imageTasks`
-    - `guideBundles`
-    - `stageDocuments`
+[x] 1. All 5 collections exist in Appwrite - `styleProfiles` - `renderJobs` - `imageTasks` - `guideBundles` - `stageDocuments`
 
 [x] 2. All collection attributes from the ticket JSON specs exist
 
 [x] 3. All required ticket indexes exist
 
-[x] 4. `shots` contains the new fields
-    - `blenderSourceVersion`
-    - `blenderSyncRevision`
-    - `guideBundleRevision`
-    - `styleProfileId`
-    - `styleProfileRevision`
-    - `renderRevision`
-    - `lastBlenderSyncAt`
-    - `lastPreviewAt`
-    - `latestGuideBundleId`
-    - `latestRenderJobId`
-    - `acceptedRenderJobId`
+[x] 4. `shots` contains the new fields - `blenderSourceVersion` - `blenderSyncRevision` - `guideBundleRevision` - `styleProfileId` - `styleProfileRevision` - `renderRevision` - `lastBlenderSyncAt` - `lastPreviewAt` - `latestGuideBundleId` - `latestRenderJobId` - `acceptedRenderJobId`
 
-[x] 5. One valid test document was created and deleted in each collection
-    - `styleProfiles`
-    - `renderJobs`
-    - `imageTasks`
-    - `guideBundles`
-    - `stageDocuments`
+[x] 5. One valid test document was created and deleted in each collection - `styleProfiles` - `renderJobs` - `imageTasks` - `guideBundles` - `stageDocuments`
 
-[x] 6. Required fields are enforced
-    - For each collection, one invalid create with a missing required field was rejected as expected
+[x] 6. Required fields are enforced - For each collection, one invalid create with a missing required field was rejected as expected
 
 ## Command
 

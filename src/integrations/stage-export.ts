@@ -24,13 +24,20 @@ import type {
   StageShotImportBundle,
   StageTimelineBundle,
 } from "@/engines/stage-2d/export-adapter";
-import type { Stage2DPayload, StageDocumentStage2D, StageDocumentStage3D } from "@/lib/stage-schema-info";
+import type {
+  Stage2DPayload,
+  StageDocumentStage2D,
+  StageDocumentStage3D,
+} from "@/lib/stage-schema-info";
 import {
   isStage2DDocument,
   isStage3DDocument,
   parseStageDocumentJson,
 } from "@/lib/stage-schema-info";
-import { buildStorageFileViewUrl, getStageDocumentsBucketId } from "@/lib/stage-storage-url";
+import {
+  buildStorageFileViewUrl,
+  getStageDocumentsBucketId,
+} from "@/lib/stage-storage-url";
 import { normalizeTimelineShot } from "@/engines/stage-2d/normalize-timeline-shot";
 import type { Act, Scene, Sequence, Shot } from "@/lib/types";
 
@@ -45,7 +52,10 @@ function dedupeShots(shots: Shot[]): Shot[] {
   return [...m.values()].sort(byOrderIndex);
 }
 
-async function loadTimelineBundle(projectId: string, projectType: string | undefined): Promise<StageTimelineBundle> {
+async function loadTimelineBundle(
+  projectId: string,
+  projectType: string | undefined,
+): Promise<StageTimelineBundle> {
   const token = await getAuthToken();
   if (!token) {
     throw new Error("Nicht eingeloggt.");
@@ -74,13 +84,17 @@ async function loadTimelineBundle(projectId: string, projectType: string | undef
   }
 
   const shots = dedupeShots(
-    (shotsRaw as Record<string, unknown>[]).map((raw) => normalizeTimelineShot(raw))
+    (shotsRaw as Record<string, unknown>[]).map((raw) =>
+      normalizeTimelineShot(raw),
+    ),
   );
 
   return { acts, sequences, scenes, shots };
 }
 
-function readImageDimensionsFromUrl(url: string): Promise<{ width: number; height: number }> {
+function readImageDimensionsFromUrl(
+  url: string,
+): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = document.createElement("img");
     img.crossOrigin = "anonymous";
@@ -91,7 +105,10 @@ function readImageDimensionsFromUrl(url: string): Promise<{ width: number; heigh
   });
 }
 
-function artboardHintFromImageDimensions(dims: { width: number; height: number }) {
+function artboardHintFromImageDimensions(dims: {
+  width: number;
+  height: number;
+}) {
   const longEdge = 1080;
   const scale = longEdge / Math.max(dims.width, dims.height);
   return {
@@ -100,7 +117,9 @@ function artboardHintFromImageDimensions(dims: { width: number; height: number }
   };
 }
 
-async function loadShotStageImportBundleFromApi(shotId: string): Promise<StageShotImportBundle> {
+async function loadShotStageImportBundleFromApi(
+  shotId: string,
+): Promise<StageShotImportBundle> {
   const token = await getAuthToken();
   if (!token) throw new Error("Nicht eingeloggt.");
   const shot = await getShot(shotId, token);
@@ -110,7 +129,10 @@ async function loadShotStageImportBundleFromApi(shotId: string): Promise<StageSh
 
   const stage2Id = shot.stage2dFileId ?? shot.stage2d_file_id;
   if (stage2Id) {
-    const docUrl = buildStorageFileViewUrl(getStageDocumentsBucketId(), stage2Id);
+    const docUrl = buildStorageFileViewUrl(
+      getStageDocumentsBucketId(),
+      stage2Id,
+    );
     if (docUrl) {
       try {
         const res = await fetch(docUrl);
@@ -127,7 +149,10 @@ async function loadShotStageImportBundleFromApi(shotId: string): Promise<StageSh
 
   const stage3Id = shot.stage3dFileId ?? shot.stage3d_file_id;
   if (stage3Id) {
-    const docUrl = buildStorageFileViewUrl(getStageDocumentsBucketId(), stage3Id);
+    const docUrl = buildStorageFileViewUrl(
+      getStageDocumentsBucketId(),
+      stage3Id,
+    );
     if (docUrl) {
       try {
         const res = await fetch(docUrl);
@@ -166,24 +191,38 @@ async function loadShotStageImportBundleFromApi(shotId: string): Promise<StageSh
   };
 }
 
-export function createScriptonyStageExportAdapter(queryClient: QueryClient): Stage2DExportAdapter {
+export function createScriptonyStageExportAdapter(
+  queryClient: QueryClient,
+): Stage2DExportAdapter {
   return {
-    async loadExportTargets(): Promise<{ projects: StageExportProjectRow[]; worlds: StageExportWorldRow[] }> {
-      const [projects, worlds] = await Promise.all([projectsApi.getAll(), worldsApi.getAll()]);
-      const normalizedProjects: StageExportProjectRow[] = (projects || []).map((project: Record<string, unknown>) => ({
-        id: String(project.id),
-        title: (project.title ?? project.name ?? "Unbenanntes Projekt") as string,
-        type:
-          typeof project.type === "string"
-            ? project.type
-            : typeof project.project_type === "string"
-              ? (project.project_type as string)
-              : undefined,
-      }));
-      const normalizedWorlds: StageExportWorldRow[] = (worlds || []).map((world: Record<string, unknown>) => ({
-        id: String(world.id),
-        name: String(world.name ?? world.title ?? "Unbenannte Welt"),
-      }));
+    async loadExportTargets(): Promise<{
+      projects: StageExportProjectRow[];
+      worlds: StageExportWorldRow[];
+    }> {
+      const [projects, worlds] = await Promise.all([
+        projectsApi.getAll(),
+        worldsApi.getAll(),
+      ]);
+      const normalizedProjects: StageExportProjectRow[] = (projects || []).map(
+        (project: Record<string, unknown>) => ({
+          id: String(project.id),
+          title: (project.title ??
+            project.name ??
+            "Unbenanntes Projekt") as string,
+          type:
+            typeof project.type === "string"
+              ? project.type
+              : typeof project.project_type === "string"
+                ? (project.project_type as string)
+                : undefined,
+        }),
+      );
+      const normalizedWorlds: StageExportWorldRow[] = (worlds || []).map(
+        (world: Record<string, unknown>) => ({
+          id: String(world.id),
+          name: String(world.name ?? world.title ?? "Unbenannte Welt"),
+        }),
+      );
       return { projects: normalizedProjects, worlds: normalizedWorlds };
     },
 
@@ -194,7 +233,12 @@ export function createScriptonyStageExportAdapter(queryClient: QueryClient): Sta
       const items = await itemsApi.getAllForWorld(worldId);
       return (items || []).map((item: Record<string, unknown>) => ({
         id: String(item.id),
-        name: item.name != null ? String(item.name) : item.title != null ? String(item.title) : undefined,
+        name:
+          item.name != null
+            ? String(item.name)
+            : item.title != null
+              ? String(item.title)
+              : undefined,
         title: item.title != null ? String(item.title) : undefined,
         world_category_id:
           item.world_category_id != null
@@ -226,7 +270,12 @@ export function createScriptonyStageExportAdapter(queryClient: QueryClient): Sta
       }
       const imageUrl = await uploadShotImage(shotId, file, token);
       if (stage2dDocument) {
-        await uploadShotStageDocument(shotId, stage2dDocument, "stage2d", token);
+        await uploadShotStageDocument(
+          shotId,
+          stage2dDocument,
+          "stage2d",
+          token,
+        );
       }
       await queryClient.invalidateQueries({
         queryKey: queryKeys.timeline.byProject(projectId),
@@ -238,10 +287,12 @@ export function createScriptonyStageExportAdapter(queryClient: QueryClient): Sta
           return {
             ...old,
             shots: old.shots.map((sh) =>
-              String(sh.id) === String(shotId) ? { ...sh, imageUrl, image_url: imageUrl } : sh
+              String(sh.id) === String(shotId)
+                ? { ...sh, imageUrl, image_url: imageUrl }
+                : sh,
             ),
           };
-        }
+        },
       );
     },
 
@@ -253,9 +304,12 @@ export function createScriptonyStageExportAdapter(queryClient: QueryClient): Sta
     }): Promise<void> {
       const { worldId, categoryId, assetId, file } = args;
       const imageUrl = await uploadWorldImage(worldId, file);
-      await itemsApi.update(worldId, categoryId, assetId, { image_url: imageUrl });
+      await itemsApi.update(worldId, categoryId, assetId, {
+        image_url: imageUrl,
+      });
     },
 
-    loadShotStageImportBundle: (shotId: string) => loadShotStageImportBundleFromApi(shotId),
+    loadShotStageImportBundle: (shotId: string) =>
+      loadShotStageImportBundleFromApi(shotId),
   };
 }

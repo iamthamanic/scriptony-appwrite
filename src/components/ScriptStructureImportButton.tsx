@@ -3,9 +3,9 @@
  * Location: src/components/ScriptStructureImportButton.tsx
  */
 
-import { useRef, useState } from 'react';
-import { Import as ImportIcon, Loader2 } from 'lucide-react';
-import { Button } from './ui/button';
+import { useRef, useState } from "react";
+import { Import as ImportIcon, Loader2 } from "lucide-react";
+import { Button } from "./ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,18 +15,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from './ui/alert-dialog';
-import { useAuth } from '../hooks/useAuth';
-import { useScriptStructureImport } from '../hooks/useScriptStructureImport';
+} from "./ui/alert-dialog";
+import { useAuth } from "../hooks/useAuth";
+import { useScriptStructureImport } from "../hooks/useScriptStructureImport";
 import {
   SCRIPT_IMPORT_ACCEPT,
   persistImportedSegments,
   importStructureConfirmMessage,
   type ImportedTimelineData,
-} from '../lib/script-import';
-import { toast } from 'sonner';
-import type { TimelineData } from './FilmDropdown';
-import type { BookTimelineData } from './BookDropdown';
+} from "../lib/script-import";
+import { toast } from "sonner";
+import type { TimelineData } from "./FilmDropdown";
+import type { BookTimelineData } from "./BookDropdown";
 
 export interface ScriptStructureImportButtonProps {
   projectId: string;
@@ -37,22 +37,23 @@ export interface ScriptStructureImportButtonProps {
 
 export function ScriptStructureImportButton({
   projectId,
-  projectType = 'film',
+  projectType = "film",
   onImported,
   enabled = true,
 }: ScriptStructureImportButtonProps) {
   const { getAccessToken } = useAuth();
-  const { kind, parsed, analyzeFile, discardParsed } = useScriptStructureImport(projectType);
+  const { kind, parsed, analyzeFile, discardParsed } =
+    useScriptStructureImport(projectType);
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingLabel, setPendingLabel] = useState('');
+  const [pendingLabel, setPendingLabel] = useState("");
 
   const openPicker = () => inputRef.current?.click();
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = '';
+    e.target.value = "";
     if (!file) return;
 
     setBusy(true);
@@ -62,11 +63,13 @@ export function ScriptStructureImportButton({
         toast.error(outcome.error);
         return;
       }
-      setPendingLabel(importStructureConfirmMessage(kind, outcome.segments.length));
+      setPendingLabel(
+        importStructureConfirmMessage(kind, outcome.segments.length),
+      );
       setConfirmOpen(true);
     } catch (err) {
-      console.error('[ScriptStructureImport]', err);
-      toast.error(err instanceof Error ? err.message : 'Import fehlgeschlagen');
+      console.error("[ScriptStructureImport]", err);
+      toast.error(err instanceof Error ? err.message : "Import fehlgeschlagen");
       discardParsed();
     } finally {
       setBusy(false);
@@ -77,14 +80,14 @@ export function ScriptStructureImportButton({
     const snapshot = parsed;
     setConfirmOpen(false);
     if (!snapshot) {
-      toast.error('Keine Daten — bitte Datei erneut wählen.');
+      toast.error("Keine Daten — bitte Datei erneut wählen.");
       discardParsed();
       return;
     }
 
     const token = await getAccessToken();
     if (!token) {
-      toast.error('Nicht angemeldet');
+      toast.error("Nicht angemeldet");
       discardParsed();
       return;
     }
@@ -98,13 +101,15 @@ export function ScriptStructureImportButton({
         projectId,
         kind,
         snapshot.segments,
-        token
+        token,
       );
       onImported(data as TimelineData);
-      toast.success('Struktur importiert');
+      toast.success("Struktur importiert");
     } catch (err) {
-      console.error('[ScriptStructureImport] persist', err);
-      toast.error(err instanceof Error ? err.message : 'Speichern fehlgeschlagen');
+      console.error("[ScriptStructureImport] persist", err);
+      toast.error(
+        err instanceof Error ? err.message : "Speichern fehlgeschlagen",
+      );
     } finally {
       setBusy(false);
       discardParsed();
@@ -130,7 +135,11 @@ export function ScriptStructureImportButton({
         disabled={busy}
         onClick={openPicker}
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImportIcon className="h-4 w-4 shrink-0" aria-hidden />}
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <ImportIcon className="h-4 w-4 shrink-0" aria-hidden />
+        )}
         Import
       </Button>
 
@@ -159,7 +168,9 @@ export function ScriptStructureImportButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void runPersist()}>Import starten</AlertDialogAction>
+            <AlertDialogAction onClick={() => void runPersist()}>
+              Import starten
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

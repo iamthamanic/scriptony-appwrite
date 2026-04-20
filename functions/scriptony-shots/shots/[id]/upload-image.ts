@@ -8,20 +8,26 @@ import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
-import { getAccessibleProject, getUserOrganizationIds } from "../../../_shared/scriptony";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
 import { getShotById } from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -47,7 +53,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-    const project = await getAccessibleProject(shot.project_id, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      shot.project_id,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Shot not found");
       return;
@@ -55,7 +65,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     // Normalize JSON body (Appwrite sometimes delivers a string; ensureFile reads req.body)
     const parsed = await readJsonBody<Record<string, unknown>>(req);
-    if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Object.keys(parsed).length > 0
+    ) {
       req.body = parsed;
     }
 
@@ -80,7 +94,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       },
     });
 
-    const mime = typeof file.type === "string" && file.type.startsWith("image/") ? file.type : "image/jpeg";
+    const mime = typeof file.type === "string" && file.type.startsWith("image/")
+      ? file.type
+      : "image/jpeg";
 
     await requestGraphql(
       `
@@ -98,7 +114,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         imageUrl: uploaded.url,
         userId: bootstrap.user.id,
         shotImageMime: mime,
-      }
+      },
     );
 
     sendJson(res, 200, { imageUrl: uploaded.url });

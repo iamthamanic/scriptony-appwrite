@@ -1,12 +1,12 @@
 /**
  * 🎬 BEATS QUERY HOOKS
- * 
+ *
  * Performance-optimierte React Query Hooks für Beats
  * mit Optimistic Updates & Prefetching
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner@2.0.3';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner@2.0.3";
 import {
   getBeats,
   createBeat,
@@ -16,8 +16,8 @@ import {
   type StoryBeat,
   type CreateBeatPayload,
   type UpdateBeatPayload,
-} from '../lib/api/beats-api';
-import { queryKeys } from '../lib/react-query';
+} from "../lib/api/beats-api";
+import { queryKeys } from "../lib/react-query";
 
 // =============================================================================
 // QUERY HOOKS
@@ -25,12 +25,12 @@ import { queryKeys } from '../lib/react-query';
 
 /**
  * ⚡ Get Beats für ein Projekt
- * 
+ *
  * Performance: <10ms aus Cache, ~200ms bei Cold Start
  */
 export function useBeats(projectId: string | undefined) {
   return useQuery({
-    queryKey: queryKeys.beats.byProject(projectId || ''),
+    queryKey: queryKeys.beats.byProject(projectId || ""),
     queryFn: () => getBeats(projectId!),
     enabled: !!projectId,
     staleTime: 30 * 1000, // 30s - beats ändern sich selten
@@ -50,7 +50,7 @@ export function useCreateBeat() {
 
   return useMutation({
     mutationFn: createBeat,
-    
+
     // 🚀 Optimistic Update: UI updated sofort!
     onMutate: async (newBeat) => {
       const projectId = newBeat.project_id;
@@ -67,7 +67,7 @@ export function useCreateBeat() {
         const optimisticBeat: StoryBeat = {
           ...newBeat,
           id: `temp-${Date.now()}`, // Temp ID
-          user_id: 'temp-user',
+          user_id: "temp-user",
           order_index: newBeat.order_index ?? previousBeats.length,
           pct_from: newBeat.pct_from ?? 0,
           pct_to: newBeat.pct_to ?? 0,
@@ -75,10 +75,10 @@ export function useCreateBeat() {
           updated_at: new Date().toISOString(),
         };
 
-        queryClient.setQueryData<StoryBeat[]>(
-          queryKey,
-          [...previousBeats, optimisticBeat]
-        );
+        queryClient.setQueryData<StoryBeat[]>(queryKey, [
+          ...previousBeats,
+          optimisticBeat,
+        ]);
       }
 
       return { previousBeats, projectId };
@@ -87,16 +87,16 @@ export function useCreateBeat() {
     // ✅ Success: Ersetze optimistic data mit echten Daten
     onSuccess: (newBeat, variables, context) => {
       const queryKey = queryKeys.beats.byProject(context.projectId);
-      
+
       queryClient.setQueryData<StoryBeat[]>(queryKey, (old) => {
         if (!old) return [newBeat];
         // Ersetze temp beat mit echtem beat
         return old.map((beat) =>
-          beat.id.startsWith('temp-') ? newBeat : beat
+          beat.id.startsWith("temp-") ? newBeat : beat,
         );
       });
 
-      toast.success('Beat erstellt');
+      toast.success("Beat erstellt");
     },
 
     // ❌ Error: Rollback
@@ -104,12 +104,12 @@ export function useCreateBeat() {
       if (context?.previousBeats) {
         queryClient.setQueryData(
           queryKeys.beats.byProject(context.projectId),
-          context.previousBeats
+          context.previousBeats,
         );
       }
-      
-      console.error('[useCreateBeat] Error:', error);
-      toast.error('Beat konnte nicht erstellt werden');
+
+      console.error("[useCreateBeat] Error:", error);
+      toast.error("Beat konnte nicht erstellt werden");
     },
 
     // 🔄 Finally: Invalidate query
@@ -128,8 +128,13 @@ export function useUpdateBeat() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ beatId, payload }: { beatId: string; payload: UpdateBeatPayload }) =>
-      updateBeat(beatId, payload),
+    mutationFn: ({
+      beatId,
+      payload,
+    }: {
+      beatId: string;
+      payload: UpdateBeatPayload;
+    }) => updateBeat(beatId, payload),
 
     // 🚀 Optimistic Update
     onMutate: async ({ beatId, payload }) => {
@@ -165,7 +170,7 @@ export function useUpdateBeat() {
       queryClient.setQueryData<StoryBeat[]>(queryKey, (old) => {
         if (!old) return old;
         return old.map((beat) =>
-          beat.id === beatId ? { ...beat, ...payload } : beat
+          beat.id === beatId ? { ...beat, ...payload } : beat,
         );
       });
 
@@ -176,16 +181,16 @@ export function useUpdateBeat() {
     onSuccess: (updatedBeat, variables, context) => {
       if (context.projectId) {
         const queryKey = queryKeys.beats.byProject(context.projectId);
-        
+
         queryClient.setQueryData<StoryBeat[]>(queryKey, (old) => {
           if (!old) return [updatedBeat];
           return old.map((beat) =>
-            beat.id === updatedBeat.id ? updatedBeat : beat
+            beat.id === updatedBeat.id ? updatedBeat : beat,
           );
         });
       }
 
-      toast.success('Beat aktualisiert');
+      toast.success("Beat aktualisiert");
     },
 
     // ❌ Error: Rollback
@@ -193,12 +198,12 @@ export function useUpdateBeat() {
       if (context?.previousBeats && context?.projectId) {
         queryClient.setQueryData(
           queryKeys.beats.byProject(context.projectId),
-          context.previousBeats
+          context.previousBeats,
         );
       }
-      
-      console.error('[useUpdateBeat] Error:', error);
-      toast.error('Beat konnte nicht aktualisiert werden');
+
+      console.error("[useUpdateBeat] Error:", error);
+      toast.error("Beat konnte nicht aktualisiert werden");
     },
 
     // 🔄 Finally
@@ -262,7 +267,7 @@ export function useDeleteBeat() {
 
     // ✅ Success
     onSuccess: () => {
-      toast.success('Beat gelöscht');
+      toast.success("Beat gelöscht");
     },
 
     // ❌ Error: Rollback
@@ -270,12 +275,12 @@ export function useDeleteBeat() {
       if (context?.previousBeats && context?.projectId) {
         queryClient.setQueryData(
           queryKeys.beats.byProject(context.projectId),
-          context.previousBeats
+          context.previousBeats,
         );
       }
-      
-      console.error('[useDeleteBeat] Error:', error);
-      toast.error('Beat konnte nicht gelöscht werden');
+
+      console.error("[useDeleteBeat] Error:", error);
+      toast.error("Beat konnte nicht gelöscht werden");
     },
 
     // 🔄 Finally
@@ -331,11 +336,11 @@ export function useReorderBeats() {
       // Optimistic Update: Reorder sofort
       queryClient.setQueryData<StoryBeat[]>(queryKey, (old) => {
         if (!old) return old;
-        
+
         const reorderedMap = new Map(
-          reorderedBeats.map((b) => [b.id, b.order_index])
+          reorderedBeats.map((b) => [b.id, b.order_index]),
         );
-        
+
         return [...old]
           .map((beat) => ({
             ...beat,
@@ -349,7 +354,7 @@ export function useReorderBeats() {
 
     // ✅ Success
     onSuccess: () => {
-      toast.success('Reihenfolge gespeichert');
+      toast.success("Reihenfolge gespeichert");
     },
 
     // ❌ Error: Rollback
@@ -357,12 +362,12 @@ export function useReorderBeats() {
       if (context?.previousBeats && context?.projectId) {
         queryClient.setQueryData(
           queryKeys.beats.byProject(context.projectId),
-          context.previousBeats
+          context.previousBeats,
         );
       }
-      
-      console.error('[useReorderBeats] Error:', error);
-      toast.error('Reihenfolge konnte nicht gespeichert werden');
+
+      console.error("[useReorderBeats] Error:", error);
+      toast.error("Reihenfolge konnte nicht gespeichert werden");
     },
 
     // 🔄 Finally
@@ -382,7 +387,7 @@ export function useReorderBeats() {
 
 /**
  * 🚀 Prefetch Beats für ein Projekt
- * 
+ *
  * Call this when user hovers über ein Projekt oder bevor Navigation
  */
 export function usePrefetchBeats() {

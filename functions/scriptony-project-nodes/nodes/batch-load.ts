@@ -5,17 +5,20 @@
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { getAllProjectNodes, mapNode } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -29,28 +32,30 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
-    const excludeContent = (getQuery(req, "exclude_content") || "false") === "true";
+    const excludeContent =
+      (getQuery(req, "exclude_content") || "false") === "true";
     if (!projectId) {
       sendBadRequest(res, "project_id is required");
       return;
     }
 
-    const nodes = (await getAllProjectNodes(projectId)).map(mapNode).map((node) => {
-      if (!excludeContent || !node || typeof node !== "object") return node;
-      const n = node as Record<string, unknown>;
-      const metadata =
-        n.metadata && typeof n.metadata === "object"
+    const nodes = (await getAllProjectNodes(projectId))
+      .map(mapNode)
+      .map((node) => {
+        if (!excludeContent || !node || typeof node !== "object") return node;
+        const n = node as Record<string, unknown>;
+        const metadata = n.metadata && typeof n.metadata === "object"
           ? { ...(n.metadata as Record<string, unknown>) }
           : undefined;
-      if (metadata && "content" in metadata) {
-        delete metadata.content;
-      }
-      return {
-        ...n,
-        metadata,
-        content: undefined,
-      };
-    });
+        if (metadata && "content" in metadata) {
+          delete metadata.content;
+        }
+        return {
+          ...n,
+          metadata,
+          content: undefined,
+        };
+      });
     const acts = nodes.filter((node) => node.level === 1);
     const sequences = nodes.filter((node) => node.level === 2);
     const scenes = nodes.filter((node) => node.level === 3);

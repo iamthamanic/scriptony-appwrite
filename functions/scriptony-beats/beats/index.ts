@@ -7,13 +7,13 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { normalizeBeatInput } from "../../_shared/scriptony";
 
@@ -37,7 +37,10 @@ function mapBeatForClient(row: Record<string, any>): Record<string, any> {
   };
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -46,7 +49,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId = getQuery(req, "project_id") ||
+        getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;
@@ -83,7 +87,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { projectId }
+        { projectId },
       );
 
       sendJson(res, 200, { beats: data.story_beats.map(mapBeatForClient) });
@@ -96,10 +100,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       const beatInput = normalizeBeatInput(body);
 
       if (!projectId || !beatInput.label) {
-        sendBadRequest(
-          res,
-          "Missing required fields: project_id, label"
-        );
+        sendBadRequest(res, "Missing required fields: project_id, label");
         return;
       }
 
@@ -147,10 +148,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             project_id: projectId,
             user_id: bootstrap.user.id,
           },
-        }
+        },
       );
 
-      sendJson(res, 201, { beat: mapBeatForClient(created.insert_story_beats_one) });
+      sendJson(res, 201, {
+        beat: mapBeatForClient(created.insert_story_beats_one),
+      });
       return;
     }
 

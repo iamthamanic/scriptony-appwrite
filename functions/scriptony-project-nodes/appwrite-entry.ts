@@ -1,5 +1,10 @@
-import { createAppwriteHandler, getPathname, sendRouteNotFound, withParams } from "../_shared/appwrite-handler";
-import { sendJson, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
+import { type RequestLike, type ResponseLike, sendJson } from "../_shared/http";
 import initializeProjectHandler from "./initialize-project";
 import nodesHandler from "./nodes/index";
 import nodeByIdHandler from "./nodes/[id]";

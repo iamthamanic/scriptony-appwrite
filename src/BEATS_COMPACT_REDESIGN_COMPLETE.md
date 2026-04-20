@@ -3,12 +3,15 @@
 ## 🎯 Was wurde geändert:
 
 ### 1. **BeatColumn schmaler** (200px → 100px) ✅
+
 - Width von `200px` auf `100px` reduziert
 - Padding von `p-3` auf `p-2` reduziert
 - Spacing von `space-y-3` auf `space-y-2` reduziert
 
 ### 2. **BeatCard kompakter** ✅
+
 Alle Elemente verkleinert:
+
 - ✅ Border: `border-2` → `border`
 - ✅ Drag Handle: `size-4` → `size-3`
 - ✅ More Menu: `h-7 w-7` → `h-5 w-5`
@@ -20,7 +23,9 @@ Alle Elemente verkleinert:
 - ✅ Nur Expand-Button wenn Items vorhanden
 
 ### 3. **Lite-7 Template System** ✅
+
 Neue Datei `/lib/beat-templates.ts` mit:
+
 - ✅ `LITE_7_TEMPLATE` (7 Beats)
 - ✅ `SAVE_THE_CAT_TEMPLATE` (15 Beats)
 - ✅ `HEROES_JOURNEY_TEMPLATE` (12 Beats)
@@ -84,6 +89,7 @@ Die Section zeigt jetzt **7 Beats** aus dem Lite-7 Preset:
 ## 📐 Kompaktes Layout:
 
 ### VORHER (200px breit):
+
 ```
 ┌────────────┬────────────────┐
 │            │                │
@@ -101,6 +107,7 @@ Die Section zeigt jetzt **7 Beats** aus dem Lite-7 Preset:
 ```
 
 ### NACHHER (100px breit):
+
 ```
 ┌──────┬──────────────────────┐
 │      │                      │
@@ -127,22 +134,26 @@ Die Section zeigt jetzt **7 Beats** aus dem Lite-7 Preset:
 ## 🎯 Kompakte Card-Maße:
 
 ### Header:
+
 - Padding: `p-1.5 pb-1` (statt `p-3 pb-2`)
 - Drag Handle: `size-3` (statt `size-4`)
 - More Menu: `h-5 w-5` (statt `h-7 w-7`)
 - Template Badge: `h-5 w-12 text-[10px]` (statt `h-7 w-24 text-xs`)
 
 ### Label:
+
 - Font Size: `text-[10px]` (statt `text-sm`)
 - Line Height: `leading-tight`
 - Padding: `px-1`
 
 ### Sub-Items (expandiert):
+
 - Font Size: `text-[9px]` (statt `text-sm`)
 - Padding: `py-0.5 px-1` (statt `py-1 px-2`)
 - Spacing: `space-y-0.5` (statt `space-y-1`)
 
 ### Prozent-Badge:
+
 - Font Size: `text-[9px]` (statt `text-xs`)
 - Height: `h-4`
 - Padding: `py-0.5` (statt `py-1`)
@@ -152,9 +163,11 @@ Die Section zeigt jetzt **7 Beats** aus dem Lite-7 Preset:
 ## 📦 Files:
 
 ### Created:
+
 - ✅ `/lib/beat-templates.ts` - Template Registry mit 5 Presets
 
 ### Updated:
+
 - ✅ `/components/BeatColumn.tsx` - Width 200px → 100px
 - ✅ `/components/BeatCard.tsx` - Kompaktes Design
 - ✅ `/components/StructureBeatsSection.tsx` - Lite-7 Template verwenden
@@ -181,23 +194,22 @@ Die Beats haben jetzt unterschiedliche Lila-Töne für visuelle Hierarchie:
 
 1. **Lite-7** (L7) - 7 Beats
    - Hook, Inciting, Crisis, Midpoint, All is Lost, Climax, Resolution
-   
 2. **Save the Cat** (STC) - 15 Beats
    - Opening Image, Theme Stated, Setup, Catalyst, Debate, Break into Two, B Story, Fun and Games, Midpoint, Bad Guys Close In, All is Lost, Dark Night of the Soul, Break into Three, Finale, Final Image
-   
 3. **Hero's Journey** (HJ) - 12 Beats
    - Ordinary World, Call to Adventure, Refusal of the Call, Meeting the Mentor, Crossing the Threshold, Tests/Allies/Enemies, Approach to Inmost Cave, Ordeal, Reward, The Road Back, Resurrection, Return with Elixir
-   
 4. **Syd Field** (FLD) - 7 Beats
    - Setup, Plot Point 1, Confrontation 2A, Midpoint, Confrontation 2B, Plot Point 2, Resolution
-   
 5. **Seven Point** (7PT) - 7 Beats
    - Hook, Plot Turn 1, Pinch Point 1, Midpoint, Pinch Point 2, Plot Turn 2, Resolution
 
 ### Template anwenden:
 
 ```typescript
-import { generateBeatsFromTemplate, SAVE_THE_CAT_TEMPLATE } from '../lib/beat-templates';
+import {
+  generateBeatsFromTemplate,
+  SAVE_THE_CAT_TEMPLATE,
+} from "../lib/beat-templates";
 
 // Apply Save the Cat Template
 const beats = generateBeatsFromTemplate(SAVE_THE_CAT_TEMPLATE);
@@ -286,6 +298,7 @@ import { getAllTemplateOptions } from '../lib/beat-templates';
 ## 🔧 Next Steps:
 
 ### 1. Template Selector hinzufügen
+
 Button zum Wechseln des Templates:
 
 ```typescript
@@ -298,6 +311,7 @@ Button zum Wechseln des Templates:
 ```
 
 ### 2. Beat-Height an Acts anpassen
+
 Die Beats sollen nur so hoch sein wie die Acts (nicht volle Section-Höhe):
 
 ```typescript
@@ -310,7 +324,7 @@ Die Beats sollen nur so hoch sein wie die Acts (nicht volle Section-Höhe):
     onDeleteBeat={handleDeleteBeat}
     className="max-h-[600px]" // Limit height
   />
-  
+
   {/* Container Stack */}
   <div className="flex-1 overflow-y-auto p-4 max-h-[600px]">
     <FilmDropdown ... />
@@ -319,6 +333,7 @@ Die Beats sollen nur so hoch sein wie die Acts (nicht volle Section-Höhe):
 ```
 
 ### 3. Drag & Drop für Beat-Sortierung
+
 Beats per Drag & Drop sortieren:
 
 ```typescript
@@ -337,6 +352,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 ## 🎉 FERTIG!
 
 Die Beats sind jetzt:
+
 - ✅ **Halb so breit** (100px statt 200px)
 - ✅ **Kompaktes Design** (kleinere Schrift, Spacing, Buttons)
 - ✅ **Lite-7 Template** (7 Beats als Default)

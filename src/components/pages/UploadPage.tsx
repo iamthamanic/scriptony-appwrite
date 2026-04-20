@@ -1,8 +1,26 @@
 import { useState } from "react";
-import { Upload as UploadIcon, FileText, File, CheckCircle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Upload as UploadIcon,
+  FileText,
+  File,
+  CheckCircle,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
 
@@ -11,7 +29,9 @@ interface UploadPageProps {
 }
 
 export function UploadPage({ onNavigate }: UploadPageProps) {
-  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "analyzing" | "complete">("idle");
+  const [uploadState, setUploadState] = useState<
+    "idle" | "uploading" | "analyzing" | "complete"
+  >("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -19,20 +39,20 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
   const handleUpload = () => {
     setUploadState("uploading");
     setUploadProgress(0);
-    
+
     // Simulate upload
     const interval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           setUploadState("analyzing");
-          
+
           // Simulate analysis
           setTimeout(() => {
             setUploadState("complete");
             setShowResultDialog(true);
           }, 2000);
-          
+
           return 100;
         }
         return prev + 10;
@@ -60,7 +80,8 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
   const analysisResult = {
     title: "Project X",
     type: "Movie",
-    description: "Ein Science-Fiction-Thriller über eine Gruppe von Astronauten",
+    description:
+      "Ein Science-Fiction-Thriller über eine Gruppe von Astronauten",
     scenes: [
       "Scene 1 – Wohnzimmer, Nacht",
       "Scene 2 – Raumschiff, Tag",
@@ -92,10 +113,10 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
                 dragActive
                   ? "border-primary bg-primary/5"
                   : uploadState === "idle"
-                  ? "border-border active:border-primary/50"
-                  : uploadState === "complete"
-                  ? "border-green-500 bg-green-500/5"
-                  : "border-border"
+                    ? "border-border active:border-primary/50"
+                    : uploadState === "complete"
+                      ? "border-green-500 bg-green-500/5"
+                      : "border-border"
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -112,28 +133,37 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
                   </p>
                 </>
               )}
-              
+
               {uploadState === "uploading" && (
                 <>
                   <FileText className="size-10 mx-auto mb-3 text-primary" />
-                  <h3 className="text-base mb-3">Hochladen {uploadProgress}%</h3>
-                  <Progress value={uploadProgress} className="max-w-xs mx-auto h-2" />
+                  <h3 className="text-base mb-3">
+                    Hochladen {uploadProgress}%
+                  </h3>
+                  <Progress
+                    value={uploadProgress}
+                    className="max-w-xs mx-auto h-2"
+                  />
                 </>
               )}
-              
+
               {uploadState === "analyzing" && (
                 <>
                   <FileText className="size-10 mx-auto mb-3 text-primary animate-pulse" />
                   <h3 className="text-base mb-1">Analysiere Skript...</h3>
-                  <p className="text-xs text-muted-foreground">Einen Moment bitte</p>
+                  <p className="text-xs text-muted-foreground">
+                    Einen Moment bitte
+                  </p>
                 </>
               )}
-              
+
               {uploadState === "complete" && (
                 <>
                   <CheckCircle className="size-10 mx-auto mb-3 text-green-500" />
                   <h3 className="text-base mb-1">Upload erfolgreich!</h3>
-                  <p className="text-xs text-muted-foreground">Analyse abgeschlossen</p>
+                  <p className="text-xs text-muted-foreground">
+                    Analyse abgeschlossen
+                  </p>
                 </>
               )}
             </div>
@@ -204,16 +234,22 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
               Dein Skript wurde erfolgreich analysiert
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {/* Project Info */}
             <div>
               <h3 className="text-base mb-2">{analysisResult.title}</h3>
               <div className="flex gap-2 mb-2">
-                <Badge variant="secondary" className="text-xs">{analysisResult.type}</Badge>
-                <Badge variant="outline" className="text-xs">{analysisResult.duration}</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {analysisResult.type}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {analysisResult.duration}
+                </Badge>
               </div>
-              <p className="text-muted-foreground text-sm">{analysisResult.description}</p>
+              <p className="text-muted-foreground text-sm">
+                {analysisResult.description}
+              </p>
             </div>
 
             {/* Scenes */}
@@ -221,7 +257,10 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
               <h4 className="text-sm mb-2">Szenen-Übersicht</h4>
               <div className="space-y-2">
                 {analysisResult.scenes.map((scene, index) => (
-                  <div key={index} className="p-2.5 bg-muted rounded-lg text-xs">
+                  <div
+                    key={index}
+                    className="p-2.5 bg-muted rounded-lg text-xs"
+                  >
                     {scene}
                   </div>
                 ))}
@@ -233,7 +272,10 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
               <h4 className="text-sm mb-2">Charakterliste</h4>
               <div className="space-y-2">
                 {analysisResult.characters.map((character, index) => (
-                  <div key={index} className="p-2.5 bg-muted rounded-lg text-xs">
+                  <div
+                    key={index}
+                    className="p-2.5 bg-muted rounded-lg text-xs"
+                  >
                     {character}
                   </div>
                 ))}
@@ -242,16 +284,23 @@ export function UploadPage({ onNavigate }: UploadPageProps) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowResultDialog(false);
-              setUploadState("idle");
-            }} className="h-11">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowResultDialog(false);
+                setUploadState("idle");
+              }}
+              className="h-11"
+            >
               Schließen
             </Button>
-            <Button onClick={() => {
-              setShowResultDialog(false);
-              onNavigate("projekte", "new");
-            }} className="h-11">
+            <Button
+              onClick={() => {
+                setShowResultDialog(false);
+                onNavigate("projekte", "new");
+              }}
+              className="h-11"
+            >
               Projekt erstellen
             </Button>
           </DialogFooter>

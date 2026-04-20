@@ -7,19 +7,22 @@ import { getStorageBucketId } from "../../../_shared/env";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
 import { getAccessibleProject } from "../../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -38,7 +41,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const project = await getAccessibleProject(projectId, bootstrap.user.id, [bootstrap.organizationId]);
+    const project = await getAccessibleProject(projectId, bootstrap.user.id, [
+      bootstrap.organizationId,
+    ]);
     if (!project) {
       sendNotFound(res, "Project not found");
       return;
@@ -78,7 +83,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       {
         id: projectId,
         imageUrl: uploaded.url,
-      }
+      },
     );
 
     sendJson(res, 200, { imageUrl: uploaded.url });

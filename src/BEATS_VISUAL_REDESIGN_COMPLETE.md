@@ -5,6 +5,7 @@
 Die Beat-Darstellung wurde komplett überarbeitet, um **genau wie im Screenshot** auszusehen:
 
 ### VORHER (Horizontal Bands):
+
 ```
 ┌────┬──────────────────────────┐
 │ 0% │                          │
@@ -17,6 +18,7 @@ Die Beat-Darstellung wurde komplett überarbeitet, um **genau wie im Screenshot*
 ```
 
 ### NACHHER (Vertikale Cards):
+
 ```
 ┌────────┬──────────────────────┐
 │┌──────┐│                      │
@@ -41,7 +43,9 @@ Die Beat-Darstellung wurde komplett überarbeitet, um **genau wie im Screenshot*
 ## 📦 Neue Komponenten:
 
 ### 1. **BeatCard.tsx** ✅
+
 Einzelne vertikale Karte für einen Beat mit:
+
 - ✅ Lila Hintergrund (anpassbare Farbe)
 - ✅ Template Dropdown (STC, HJ, FLD, Custom)
 - ✅ B.I.D Dropdown (Business, Information, Drama)
@@ -53,13 +57,16 @@ Einzelne vertikale Karte für einen Beat mit:
 - ✅ Abgerundete Ecken (rounded-lg)
 
 ### 2. **BeatColumn.tsx** ✅
+
 Vertikale Spalte für gestackte Beats:
+
 - ✅ Fixed Width (200px)
 - ✅ Scrollbar bei zu vielen Beats
 - ✅ Spacing zwischen Cards (space-y-3)
 - ✅ Empty State
 
 ### 3. **StructureBeatsSection.tsx** (Updated) ✅
+
 - ✅ BeatColumn statt BeatRail
 - ✅ Mock-Daten mit richtiger Struktur (Hook, Inciting, Crisis, Climax, Final Image)
 - ✅ Layout: Beat Column links | Separator | FilmDropdown rechts
@@ -69,6 +76,7 @@ Vertikale Spalte für gestackte Beats:
 ## 🎨 Design Features:
 
 ### Beat Card Design:
+
 ```
 ┌─────────────────────┐
 │ [STC ▾] [B.I.D ▾] ⋮ │  <- Header mit Dropdowns
@@ -87,12 +95,14 @@ Vertikale Spalte für gestackte Beats:
 ```
 
 ### Farben:
+
 - **Primary**: `#9B87C4` (Lila, wie im Screenshot)
 - **Sub-Items**: White text mit opacity
 - **Prozent-Badge**: White background mit colored text
 - **Hover**: Leichte Transparenz
 
 ### Interaktionen:
+
 1. **Template Dropdown**: STC, HJ, FLD, Custom
 2. **B.I.D Dropdown**: Business, Information, Drama
 3. **Expand/Collapse**: ChevronDown → zeigt Sub-Items
@@ -156,6 +166,7 @@ Beat Col  │ Acts/Sequences/Scenes/Shots
 ## 🔄 Vergleich mit Screenshot:
 
 ### Screenshot 1 Features: ✅ IMPLEMENTED
+
 - ✅ Vertikale gestackte Blöcke
 - ✅ Template Dropdown (STC)
 - ✅ B.I.D Dropdown
@@ -167,6 +178,7 @@ Beat Col  │ Acts/Sequences/Scenes/Shots
 - ✅ More Menu (⋮)
 
 ### Screenshot 2 Features: ✅ IMPLEMENTED
+
 - ✅ Beats-Spalte links (200px)
 - ✅ Acts rechts (FilmDropdown)
 - ✅ Separator zwischen Beat Column und Acts
@@ -177,17 +189,20 @@ Beat Col  │ Acts/Sequences/Scenes/Shots
 ## 📁 Files:
 
 ### Neu erstellt:
+
 - ✅ `/components/BeatCard.tsx` - Einzelne Beat-Karte
 - ✅ `/components/BeatColumn.tsx` - Vertikale Spalte mit Beats
 
 ### Updated:
+
 - ✅ `/components/StructureBeatsSection.tsx` - BeatColumn Integration
 
 ### Noch vorhanden (nicht mehr verwendet):
-- ⚠️  `/components/BeatBand.tsx` - Alte horizontale Bands
-- ⚠️  `/components/BeatRail.tsx` - Alte Rail mit Prozent-Skala
 
-*(Diese können später gelöscht werden, falls nicht mehr benötigt)*
+- ⚠️ `/components/BeatBand.tsx` - Alte horizontale Bands
+- ⚠️ `/components/BeatRail.tsx` - Alte Rail mit Prozent-Skala
+
+_(Diese können später gelöscht werden, falls nicht mehr benötigt)_
 
 ---
 
@@ -210,14 +225,21 @@ Beat Col  │ Acts/Sequences/Scenes/Shots
 ## 🚀 Next Steps (Optional):
 
 ### 1. **Drag & Drop für Beats**
+
 Beats per Drag & Drop sortierbar machen:
+
 ```typescript
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 ```
 
 ### 2. **"+ Beat hinzufügen" Button**
+
 Neuen Beat zur Column hinzufügen:
+
 ```typescript
 <Button onClick={() => {
   const newBeat: BeatCardData = {
@@ -236,7 +258,9 @@ Neuen Beat zur Column hinzufügen:
 ```
 
 ### 3. **Beat Templates**
+
 Save the Cat, Hero's Journey etc. als Presets:
+
 ```typescript
 const applySaveTheCatTemplate = () => {
   setBeats(SAVE_THE_CAT_BEATS);
@@ -244,22 +268,24 @@ const applySaveTheCatTemplate = () => {
 ```
 
 ### 4. **API Integration**
+
 Mock-Daten durch echte API ersetzen:
+
 ```typescript
-import * as BeatsAPI from '../lib/api/beats-api';
+import * as BeatsAPI from "../lib/api/beats-api";
 
 useEffect(() => {
   async function loadBeats() {
     const data = await BeatsAPI.getBeats(projectId);
     // Map API data to BeatCardData format
-    const mapped = data.map(beat => ({
+    const mapped = data.map((beat) => ({
       id: beat.id,
       label: beat.label,
       templateAbbr: beat.template_abbr,
       pctFrom: beat.pct_from,
       pctTo: beat.pct_to,
       items: [], // TODO: Load sub-items
-      color: beat.color || '#9B87C4',
+      color: beat.color || "#9B87C4",
     }));
     setBeats(mapped);
   }

@@ -11,19 +11,33 @@ import batchLoadHandler from "./nodes/batch-load";
 import ultraBatchLoadHandler from "./nodes/ultra-batch-load";
 import bulkHandler from "./nodes/bulk";
 import reorderHandler from "./nodes/reorder";
-import { sendJson, sendNotFound, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendNotFound,
+} from "../_shared/http";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
-  } catch { /* fallback */ }
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
+  } catch {
+    /* fallback */
+  }
   const q = direct.indexOf("?");
   return q >= 0 ? direct.slice(0, q) : direct;
 }
 
-function withParams(req: RequestLike, params: Record<string, string>): RequestLike {
+function withParams(
+  req: RequestLike,
+  params: Record<string, string>,
+): RequestLike {
   req.params = { ...(req.params || {}), ...params };
   return req;
 }

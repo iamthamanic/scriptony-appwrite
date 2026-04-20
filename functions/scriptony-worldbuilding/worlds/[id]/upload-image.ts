@@ -7,18 +7,21 @@ import { getStorageBucketId } from "../../../_shared/env";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -48,10 +51,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         }
       `,
-      { id: worldId }
+      { id: worldId },
     );
 
-    if (!world.worlds_by_pk || world.worlds_by_pk.organization_id !== bootstrap.organizationId) {
+    if (
+      !world.worlds_by_pk ||
+      world.worlds_by_pk.organization_id !== bootstrap.organizationId
+    ) {
       sendNotFound(res, "World not found");
       return;
     }
@@ -90,7 +96,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       {
         id: worldId,
         imageUrl: uploaded.url,
-      }
+      },
     );
 
     sendJson(res, 200, { imageUrl: uploaded.url });

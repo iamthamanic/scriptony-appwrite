@@ -8,7 +8,5 @@
     { "key": "files", "type": "string", "required": true, "size": 5000 },
     { "key": "metadata", "type": "string", "required": true, "size": 5000 }
   ],
-  "indexes": [
-    { "key": "shotId_idx", "type": "key", "attributes": ["shotId"] }
-  ]
+  "indexes": [{ "key": "shotId_idx", "type": "key", "attributes": ["shotId"] }]
 }

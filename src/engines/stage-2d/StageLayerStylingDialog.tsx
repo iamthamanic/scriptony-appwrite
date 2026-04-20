@@ -235,19 +235,27 @@ export function StageLayerStylingDialog({
           </div>
 
           <div className="space-y-2 rounded-lg border border-[#3b35558a] bg-[#17152a]/50 p-3">
-            <div className="text-xs font-medium text-slate-700 dark:text-[#e8e4ff]">Strich</div>
+            <div className="text-xs font-medium text-slate-700 dark:text-[#e8e4ff]">
+              Strich
+            </div>
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="styling-pressure" className="text-xs font-normal dark:text-[#b6aecf]">
+              <Label
+                htmlFor="styling-pressure"
+                className="text-xs font-normal dark:text-[#b6aecf]"
+              >
                 Druckempfindlich (variable Breite)
               </Label>
               <Switch
                 id="styling-pressure"
                 checked={values.pressureSensitive}
-                onCheckedChange={(checked) => onChange({ pressureSensitive: checked })}
+                onCheckedChange={(checked) =>
+                  onChange({ pressureSensitive: checked })
+                }
               />
             </div>
             <p className="text-[11px] leading-snug text-slate-600 dark:text-[#8f88b0]">
-              Aus = gleichmäßige Strichbreite wie ein harter Marker. Neu gezeichnete Striche folgen der Einstellung.
+              Aus = gleichmäßige Strichbreite wie ein harter Marker. Neu
+              gezeichnete Striche folgen der Einstellung.
             </p>
           </div>
         </div>

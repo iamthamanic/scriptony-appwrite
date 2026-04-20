@@ -7,20 +7,31 @@ import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../_shared/http";
 import { Query } from "node-appwrite";
-import { C, deleteDocument, listDocumentsFull } from "../../../_shared/appwrite-db";
-import { getShotById, mapShot, normalizeShotInput } from "../../../_shared/timeline";
+import {
+  C,
+  deleteDocument,
+  listDocumentsFull,
+} from "../../../_shared/appwrite-db";
+import {
+  getShotById,
+  mapShot,
+  normalizeShotInput,
+} from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -133,19 +144,29 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           changes: {
             // Keep only schema-safe keys for Appwrite collection `shots`.
             ...(updates.title !== undefined ? { title: updates.title } : {}),
-            ...(updates.description !== undefined ? { description: updates.description } : {}),
-            ...(updates.image_url !== undefined ? { image_url: updates.image_url } : {}),
-            ...(updates.storyboard_url !== undefined ? { storyboard_url: updates.storyboard_url } : {}),
+            ...(updates.description !== undefined
+              ? { description: updates.description }
+              : {}),
+            ...(updates.image_url !== undefined
+              ? { image_url: updates.image_url }
+              : {}),
+            ...(updates.storyboard_url !== undefined
+              ? { storyboard_url: updates.storyboard_url }
+              : {}),
             ...(updates.dialog !== undefined ? { dialog: updates.dialog } : {}),
             ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
-            ...(updates.order_index !== undefined ? { order_index: updates.order_index } : {}),
+            ...(updates.order_index !== undefined
+              ? { order_index: updates.order_index }
+              : {}),
             ...(updates.duration !== undefined && updates.duration !== null
               ? { duration: updates.duration }
               : {}),
-            ...(updates.shotlength_minutes !== undefined && updates.shotlength_minutes !== null
+            ...(updates.shotlength_minutes !== undefined &&
+                updates.shotlength_minutes !== null
               ? { shotlength_minutes: updates.shotlength_minutes }
               : {}),
-            ...(updates.shotlength_seconds !== undefined && updates.shotlength_seconds !== null
+            ...(updates.shotlength_seconds !== undefined &&
+                updates.shotlength_seconds !== null
               ? { shotlength_seconds: updates.shotlength_seconds }
               : {}),
             ...(updates.stage2d_file_id !== undefined
@@ -154,19 +175,25 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             ...(updates.stage3d_file_id !== undefined
               ? { stage3d_file_id: updates.stage3d_file_id }
               : {}),
-            ...(updates.shot_image_mime !== undefined ? { shot_image_mime: updates.shot_image_mime } : {}),
+            ...(updates.shot_image_mime !== undefined
+              ? { shot_image_mime: updates.shot_image_mime }
+              : {}),
             user_id: bootstrap.user.id,
           },
-        }
+        },
       );
 
-      sendJson(res, 200, { shot: mapShot(updated.update_shots_by_pk || existing) });
+      sendJson(res, 200, {
+        shot: mapShot(updated.update_shots_by_pk || existing),
+      });
       return;
     }
 
     if (req.method === "DELETE") {
       // PHASE1: cascade-delete editorial clips for this shot (Appwrite `clips` collection).
-      const clipRows = await listDocumentsFull(C.clips, [Query.equal("shot_id", shotId)]);
+      const clipRows = await listDocumentsFull(C.clips, [
+        Query.equal("shot_id", shotId),
+      ]);
       for (const c of clipRows) {
         if (c?.id) await deleteDocument(C.clips, String(c.id));
       }
@@ -179,7 +206,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: shotId }
+        { id: shotId },
       );
 
       sendJson(res, 200, { success: true });

@@ -2,9 +2,9 @@
  * Maps project type → parse function (Open/Closed: add types by extending this map).
  */
 
-import type { ScriptProjectKind, ImportParseOutcome } from './types';
-import { parseFountainLikeScenes } from './profiles/fountain-scenes';
-import { parseBookChapters } from './profiles/book-chapters';
+import type { ScriptProjectKind, ImportParseOutcome } from "./types";
+import { parseFountainLikeScenes } from "./profiles/fountain-scenes";
+import { parseBookChapters } from "./profiles/book-chapters";
 
 export type SegmentParser = (source: string) => ImportParseOutcome;
 
@@ -22,9 +22,12 @@ export function getSegmentParser(kind: string): SegmentParser | null {
   return null;
 }
 
-const FILM_LIKE: ScriptProjectKind[] = ['film', 'series', 'audio'];
+const FILM_LIKE: ScriptProjectKind[] = ["film", "series", "audio"];
 
-export function parseScriptSource(kind: string, source: string): ImportParseOutcome {
+export function parseScriptSource(
+  kind: string,
+  source: string,
+): ImportParseOutcome {
   const parser = getSegmentParser(kind);
   if (!parser) {
     return { ok: false, error: `Unbekannter Projekttyp: ${kind}` };
@@ -44,7 +47,7 @@ export function parseScriptSource(kind: string, source: string): ImportParseOutc
           ok: true,
           segments: book.segments,
           warnings: [
-            'Keine INT./EXT.-Überschriften — Text wurde wie Kapitel/Abschnitte (Roman/Prosa) erkannt.',
+            "Keine INT./EXT.-Überschriften — Text wurde wie Kapitel/Abschnitte (Roman/Prosa) erkannt.",
             ...book.warnings,
           ],
         };

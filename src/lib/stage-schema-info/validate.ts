@@ -54,16 +54,24 @@ function validatePoint(v: unknown, path: string): string[] {
 function validateStroke(v: unknown, path: string): string[] {
   if (!isRecord(v)) return [err(path, "Stroke muss ein Objekt sein")];
   const e: string[] = [];
-  if (typeof v.id !== "string" || !v.id) e.push(err(`${path}.id`, "string nötig"));
+  if (typeof v.id !== "string" || !v.id)
+    e.push(err(`${path}.id`, "string nötig"));
   if (typeof v.color !== "string") e.push(err(`${path}.color`, "string nötig"));
   if (!isFiniteNumber(v.size)) e.push(err(`${path}.size`, "Zahl nötig"));
-  if (typeof v.eraser !== "boolean") e.push(err(`${path}.eraser`, "boolean nötig"));
+  if (typeof v.eraser !== "boolean")
+    e.push(err(`${path}.eraser`, "boolean nötig"));
   if (!Array.isArray(v.points)) e.push(err(`${path}.points`, "Array nötig"));
-  else v.points.forEach((p, i) => e.push(...validatePoint(p, `${path}.points[${i}]`)));
+  else
+    v.points.forEach((p, i) =>
+      e.push(...validatePoint(p, `${path}.points[${i}]`)),
+    );
   return e;
 }
 
-function validateBaseLayerFields(v: Record<string, unknown>, path: string): string[] {
+function validateBaseLayerFields(
+  v: Record<string, unknown>,
+  path: string,
+): string[] {
   const e: string[] = [];
   const nums = [
     "opacity",
@@ -86,7 +94,10 @@ function validateBaseLayerFields(v: Record<string, unknown>, path: string): stri
   for (const k of bool) {
     if (typeof v[k] !== "boolean") e.push(err(`${path}.${k}`, "boolean nötig"));
   }
-  if (v.pressureSensitive !== undefined && typeof v.pressureSensitive !== "boolean") {
+  if (
+    v.pressureSensitive !== undefined &&
+    typeof v.pressureSensitive !== "boolean"
+  ) {
     e.push(err(`${path}.pressureSensitive`, "boolean oder weglassen"));
   }
   if (v.kind !== "draw" && v.kind !== "image") {
@@ -118,10 +129,15 @@ function validateLayer(v: unknown, path: string): string[] {
   if (!isRecord(v)) return [err(path, "Layer muss ein Objekt sein")];
   const e = validateBaseLayerFields(v, path);
   if (v.kind === "draw") {
-    if (!Array.isArray(v.strokes)) e.push(err(`${path}.strokes`, "Array nötig"));
-    else (v.strokes as unknown[]).forEach((s, i) => e.push(...validateStroke(s, `${path}.strokes[${i}]`)));
+    if (!Array.isArray(v.strokes))
+      e.push(err(`${path}.strokes`, "Array nötig"));
+    else
+      (v.strokes as unknown[]).forEach((s, i) =>
+        e.push(...validateStroke(s, `${path}.strokes[${i}]`)),
+      );
   } else if (v.kind === "image") {
-    if (typeof v.imageUrl !== "string") e.push(err(`${path}.imageUrl`, "string nötig"));
+    if (typeof v.imageUrl !== "string")
+      e.push(err(`${path}.imageUrl`, "string nötig"));
     if (!isFiniteNumber(v.width)) e.push(err(`${path}.width`, "Zahl nötig"));
     if (!isFiniteNumber(v.height)) e.push(err(`${path}.height`, "Zahl nötig"));
     e.push(...validateImageAssetRef(v.imageAssetRef, `${path}.imageAssetRef`));
@@ -133,24 +149,33 @@ function validateStage2DPayload(v: unknown, path: string): string[] {
   if (!isRecord(v)) return [err(path, "payload muss ein Objekt sein")];
   const e: string[] = [];
   if (v.payloadRevision !== undefined) {
-    if (!isFiniteNumber(v.payloadRevision) || !Number.isInteger(v.payloadRevision)) {
+    if (
+      !isFiniteNumber(v.payloadRevision) ||
+      !Number.isInteger(v.payloadRevision)
+    ) {
       e.push(err(`${path}.payloadRevision`, "ganze Zahl oder weglassen"));
     }
   }
   if (!Array.isArray(v.layers)) e.push(err(`${path}.layers`, "Array nötig"));
-  else (v.layers as unknown[]).forEach((layer, i) => e.push(...validateLayer(layer, `${path}.layers[${i}]`)));
+  else
+    (v.layers as unknown[]).forEach((layer, i) =>
+      e.push(...validateLayer(layer, `${path}.layers[${i}]`)),
+    );
 
   if (v.camera !== undefined) {
-    if (!isRecord(v.camera)) e.push(err(`${path}.camera`, "Objekt oder weglassen"));
+    if (!isRecord(v.camera))
+      e.push(err(`${path}.camera`, "Objekt oder weglassen"));
     else {
       const c = v.camera as Record<string, unknown>;
       ["x", "y", "scale"].forEach((k) => {
-        if (!isFiniteNumber(c[k])) e.push(err(`${path}.camera.${k}`, "Zahl nötig"));
+        if (!isFiniteNumber(c[k]))
+          e.push(err(`${path}.camera.${k}`, "Zahl nötig"));
       });
     }
   }
   if (v.artboard !== undefined) {
-    if (!isRecord(v.artboard)) e.push(err(`${path}.artboard`, "Objekt oder weglassen"));
+    if (!isRecord(v.artboard))
+      e.push(err(`${path}.artboard`, "Objekt oder weglassen"));
     else {
       const ab = v.artboard as Record<string, unknown>;
       if (!isFiniteNumber(ab.width) || (ab.width as number) <= 0) {
@@ -162,11 +187,14 @@ function validateStage2DPayload(v: unknown, path: string): string[] {
     }
   }
   if (v.viewport !== undefined) {
-    if (!isRecord(v.viewport)) e.push(err(`${path}.viewport`, "Objekt oder weglassen"));
+    if (!isRecord(v.viewport))
+      e.push(err(`${path}.viewport`, "Objekt oder weglassen"));
     else {
       const vp = v.viewport as Record<string, unknown>;
-      if (!isFiniteNumber(vp.width)) e.push(err(`${path}.viewport.width`, "Zahl nötig"));
-      if (!isFiniteNumber(vp.height)) e.push(err(`${path}.viewport.height`, "Zahl nötig"));
+      if (!isFiniteNumber(vp.width))
+        e.push(err(`${path}.viewport.width`, "Zahl nötig"));
+      if (!isFiniteNumber(vp.height))
+        e.push(err(`${path}.viewport.height`, "Zahl nötig"));
     }
   }
   if (v.meta !== undefined) {
@@ -188,7 +216,10 @@ function validateStage3DPayload(v: unknown, path: string): string[] {
   if (!isRecord(v)) return [err(path, "payload muss ein Objekt sein")];
   const e: string[] = [];
   if (v.payloadRevision !== undefined) {
-    if (!isFiniteNumber(v.payloadRevision) || !Number.isInteger(v.payloadRevision)) {
+    if (
+      !isFiniteNumber(v.payloadRevision) ||
+      !Number.isInteger(v.payloadRevision)
+    ) {
       e.push(err(`${path}.payloadRevision`, "ganze Zahl oder weglassen"));
     }
   }
@@ -199,9 +230,14 @@ function validateStage3DPayload(v: unknown, path: string): string[] {
         e.push(err(`${path}.nodes[${i}]`, "Objekt nötig"));
         return;
       }
-      if (typeof node.id !== "string" || !node.id) e.push(err(`${path}.nodes[${i}].id`, "string nötig"));
-      if (typeof node.type !== "string" || !node.type) e.push(err(`${path}.nodes[${i}].type`, "string nötig"));
-      if (node.data !== undefined && (!isRecord(node.data) || node.data === null)) {
+      if (typeof node.id !== "string" || !node.id)
+        e.push(err(`${path}.nodes[${i}].id`, "string nötig"));
+      if (typeof node.type !== "string" || !node.type)
+        e.push(err(`${path}.nodes[${i}].type`, "string nötig"));
+      if (
+        node.data !== undefined &&
+        (!isRecord(node.data) || node.data === null)
+      ) {
         e.push(err(`${path}.nodes[${i}].data`, "Objekt oder weglassen"));
       }
     });
@@ -225,7 +261,9 @@ export function validateStageDocument(raw: unknown): StageDocumentParseResult {
   errors.push(...validateSchemaVersion(raw.schemaVersion, "schemaVersion"));
 
   if (raw.kind !== STAGE_KIND_2D && raw.kind !== STAGE_KIND_3D) {
-    errors.push(err("kind", `muss "${STAGE_KIND_2D}" oder "${STAGE_KIND_3D}" sein`));
+    errors.push(
+      err("kind", `muss "${STAGE_KIND_2D}" oder "${STAGE_KIND_3D}" sein`),
+    );
   }
 
   if (errors.length > 0) return { ok: false, errors };
@@ -272,7 +310,9 @@ export function createStage2DPayloadFromState(state: {
 }
 
 /** Root-Dokument für Export/Speichern bauen. */
-export function createStage2DDocument(payload: Stage2DPayload): import("./envelope").StageDocumentStage2D {
+export function createStage2DDocument(
+  payload: Stage2DPayload,
+): import("./envelope").StageDocumentStage2D {
   return {
     schemaVersion: STAGE_SCHEMA_VERSION_LATEST,
     kind: STAGE_KIND_2D,

@@ -23,7 +23,9 @@ export function toStringOrNull(value: unknown): string | null {
 }
 
 export function toInteger(value: unknown, fallback = 0): number {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
   if (typeof value === "string" && value.trim()) {
     const n = Number(value);
     return Number.isFinite(n) ? Math.trunc(n) : fallback;
@@ -32,7 +34,9 @@ export function toInteger(value: unknown, fallback = 0): number {
 }
 
 export function toIntegerOrNull(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
   if (typeof value === "string" && value.trim()) {
     const n = Number(value);
     return Number.isFinite(n) ? Math.trunc(n) : null;
@@ -57,11 +61,13 @@ export function toBoolean(value: unknown, fallback = false): boolean {
 export async function userCanAccessShot(
   shotId: string,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<boolean> {
   const shot = await getDocument(C.shots, shotId);
   if (!shot) return false;
   const projectId = toString(shot.project_id ?? shot.projectId);
   if (!projectId) return false;
-  return Boolean(await getAccessibleProject(projectId, userId, organizationIds));
+  return Boolean(
+    await getAccessibleProject(projectId, userId, organizationIds),
+  );
 }

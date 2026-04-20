@@ -7,16 +7,19 @@ import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -62,7 +65,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { worldId }
+        { worldId },
       );
 
       sendJson(res, 200, { categories: data.world_categories });
@@ -103,7 +106,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             icon: body.icon ?? null,
             color: body.color ?? null,
           },
-        }
+        },
       );
 
       sendJson(res, 201, { category: created.insert_world_categories_one });

@@ -7,18 +7,26 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { getAccessibleProject, getUserOrganizationIds, hydrateProjectRow, normalizeProjectInput } from "../../_shared/scriptony";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+  hydrateProjectRow,
+  normalizeProjectInput,
+} from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -33,7 +41,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-    const project = await getAccessibleProject(projectId, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      projectId,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Project not found or access denied");
       return;
@@ -50,7 +62,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       if (typeof body.is_deleted === "boolean") {
         changes.is_deleted = body.is_deleted;
       }
-      if (typeof body.organization_id === "string" && body.organization_id.trim()) {
+      if (
+        typeof body.organization_id === "string" &&
+        body.organization_id.trim()
+      ) {
         changes.organization_id = body.organization_id.trim();
       }
 
@@ -86,10 +101,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           projectId,
           changes,
-        }
+        },
       );
 
-      sendJson(res, 200, { project: hydrateProjectRow(updated.update_projects_by_pk) });
+      sendJson(res, 200, {
+        project: hydrateProjectRow(updated.update_projects_by_pk),
+      });
       return;
     }
 
@@ -105,7 +122,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { projectId }
+        { projectId },
       );
 
       sendJson(res, 200, { success: true });

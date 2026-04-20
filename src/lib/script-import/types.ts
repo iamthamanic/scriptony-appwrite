@@ -3,7 +3,7 @@
  * Keeps parsers and persistence decoupled from React.
  */
 
-import type { Act, Scene, Sequence, Shot } from '../types';
+import type { Act, Scene, Sequence, Shot } from "../types";
 
 /** Same shape as FilmDropdown TimelineData; kept here to avoid lib → components imports. */
 export interface ImportedTimelineData {
@@ -13,7 +13,7 @@ export interface ImportedTimelineData {
   shots: Shot[];
 }
 
-export type ScriptProjectKind = 'film' | 'series' | 'book' | 'audio';
+export type ScriptProjectKind = "film" | "series" | "book" | "audio";
 
 /** One logical block after parsing (scene slug, chapter, or audio cue block). */
 export interface ImportSegment {

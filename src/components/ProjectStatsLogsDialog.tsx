@@ -1,20 +1,20 @@
 /**
  * 📊 PROJECT STATS & LOGS DIALOG
- * 
+ *
  * ✅ PHASE 2: COMPLETE IMPLEMENTATION
- * 
+ *
  * Modal mit 2 Tabs:
  * - Statistics: Timeline Stats, Shot Analytics, Character Analytics, Media Stats
  * - Logs: Activity Tracking mit Timeline, vollständiger Attribution, Details
  */
 
-import { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Calendar, 
-  Clock, 
-  Film, 
-  Users, 
+import { useState, useEffect } from "react";
+import {
+  BarChart3,
+  Calendar,
+  Clock,
+  Film,
+  Users,
   Activity,
   Loader2,
   AlertCircle,
@@ -25,36 +25,36 @@ import {
   Image as ImageIcon,
   Camera,
   TrendingUp,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { ScrollArea } from './ui/scroll-area';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import { Separator } from './ui/separator';
-import { toast } from 'sonner@2.0.3';
-import { getAuthToken } from '../lib/auth/getAuthToken';
-import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from '../lib/api-gateway';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+} from "./ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { ScrollArea } from "./ui/scroll-area";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Separator } from "./ui/separator";
+import { toast } from "sonner@2.0.3";
+import { getAuthToken } from "../lib/auth/getAuthToken";
+import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-  Legend
-} from 'recharts';
+  Legend,
+} from "recharts";
 
 // =============================================================================
 // TYPES
@@ -146,42 +146,46 @@ interface ActivityLog {
 // =============================================================================
 
 const CHART_COLORS = [
-  '#6E59A5', // Primary Purple
-  '#8B7BB8', // Light Purple
-  '#9B8FC9', // Lighter Purple
-  '#ABA3D9', // Lightest Purple
-  '#60A5FA', // Blue
-  '#34D399', // Green
-  '#FBBF24', // Yellow
-  '#F87171', // Red
+  "#6E59A5", // Primary Purple
+  "#8B7BB8", // Light Purple
+  "#9B8FC9", // Lighter Purple
+  "#ABA3D9", // Lightest Purple
+  "#60A5FA", // Blue
+  "#34D399", // Green
+  "#FBBF24", // Yellow
+  "#F87171", // Red
 ];
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
-export function ProjectStatsLogsDialog({ 
-  open, 
-  onOpenChange, 
-  project 
+export function ProjectStatsLogsDialog({
+  open,
+  onOpenChange,
+  project,
 }: ProjectStatsLogsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Stats states
-  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(
+    null,
+  );
   const [shotStats, setShotStats] = useState<ShotStats | null>(null);
-  const [characterStats, setCharacterStats] = useState<CharacterStats | null>(null);
+  const [characterStats, setCharacterStats] = useState<CharacterStats | null>(
+    null,
+  );
   const [mediaStats, setMediaStats] = useState<MediaStats | null>(null);
-  
+
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [logsError, setLogsError] = useState<string | null>(null);
-  
+
   // NEW: Filter states
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all');
-  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
+  const [actionFilter, setActionFilter] = useState<string>("all");
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -197,37 +201,77 @@ export function ProjectStatsLogsDialog({
 
       const token = await getAuthToken();
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Load all stats in parallel
       const [overviewRes, shotRes, characterRes, mediaRes] = await Promise.all([
-        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/overview`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/shots`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/characters`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch(buildFunctionRouteUrl(EDGE_FUNCTIONS.STATS, `/stats/project/${project.id}/media`), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
+        fetch(
+          buildFunctionRouteUrl(
+            EDGE_FUNCTIONS.STATS,
+            `/stats/project/${project.id}/overview`,
+          ),
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        ),
+        fetch(
+          buildFunctionRouteUrl(
+            EDGE_FUNCTIONS.STATS,
+            `/stats/project/${project.id}/shots`,
+          ),
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        ),
+        fetch(
+          buildFunctionRouteUrl(
+            EDGE_FUNCTIONS.STATS,
+            `/stats/project/${project.id}/characters`,
+          ),
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        ),
+        fetch(
+          buildFunctionRouteUrl(
+            EDGE_FUNCTIONS.STATS,
+            `/stats/project/${project.id}/media`,
+          ),
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        ),
       ]);
 
       // Check for errors and log responses
       if (!overviewRes.ok) {
-        console.error('Overview stats failed:', overviewRes.status, await overviewRes.text());
+        console.error(
+          "Overview stats failed:",
+          overviewRes.status,
+          await overviewRes.text(),
+        );
       }
       if (!shotRes.ok) {
-        console.error('Shot stats failed:', shotRes.status, await shotRes.text());
+        console.error(
+          "Shot stats failed:",
+          shotRes.status,
+          await shotRes.text(),
+        );
       }
       if (!characterRes.ok) {
-        console.error('Character stats failed:', characterRes.status, await characterRes.text());
+        console.error(
+          "Character stats failed:",
+          characterRes.status,
+          await characterRes.text(),
+        );
       }
       if (!mediaRes.ok) {
-        console.error('Media stats failed:', mediaRes.status, await mediaRes.text());
+        console.error(
+          "Media stats failed:",
+          mediaRes.status,
+          await mediaRes.text(),
+        );
       }
 
       // Parse JSON only if responses are OK
@@ -236,7 +280,7 @@ export function ProjectStatsLogsDialog({
       const characters = characterRes.ok ? await characterRes.json() : null;
       const media = mediaRes.ok ? await mediaRes.json() : null;
 
-      console.log('📊 Stats loaded:', { overview, shots, characters, media });
+      console.log("📊 Stats loaded:", { overview, shots, characters, media });
 
       // Set stats directly (backend sends data without wrapper)
       setOverviewStats(overview || null);
@@ -246,14 +290,15 @@ export function ProjectStatsLogsDialog({
 
       // Show warning if no data
       if (!overview && !shots && !characters && !media) {
-        setError('Keine Statistiken verfügbar. Bitte stelle sicher, dass die Route `scriptony-stats` erreichbar ist.');
-        toast.error('Stats Backend nicht verfügbar');
+        setError(
+          "Keine Statistiken verfügbar. Bitte stelle sicher, dass die Route `scriptony-stats` erreichbar ist.",
+        );
+        toast.error("Stats Backend nicht verfügbar");
       }
-
     } catch (error: any) {
-      console.error('Error loading stats:', error);
+      console.error("Error loading stats:", error);
       setError(`Fehler beim Laden der Statistiken: ${error.message}`);
-      toast.error('Fehler beim Laden der Statistiken');
+      toast.error("Fehler beim Laden der Statistiken");
     } finally {
       setLoading(false);
     }
@@ -261,35 +306,49 @@ export function ProjectStatsLogsDialog({
 
   const loadLogs = async () => {
     try {
-      console.log('[ProjectStatsLogsDialog] 🔄 loadLogs() called for project:', project.id);
+      console.log(
+        "[ProjectStatsLogsDialog] 🔄 loadLogs() called for project:",
+        project.id,
+      );
       setLogsLoading(true);
       setLogsError(null);
 
       const token = await getAuthToken();
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
-      const url = buildFunctionRouteUrl(EDGE_FUNCTIONS.LOGS, `/logs/project/${project.id}/recent`);
-      console.log('[ProjectStatsLogsDialog] 📡 Fetching logs from:', url);
+      const url = buildFunctionRouteUrl(
+        EDGE_FUNCTIONS.LOGS,
+        `/logs/project/${project.id}/recent`,
+      );
+      console.log("[ProjectStatsLogsDialog] 📡 Fetching logs from:", url);
 
       const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log('[ProjectStatsLogsDialog] 📊 Response status:', response.status);
+      console.log(
+        "[ProjectStatsLogsDialog] 📊 Response status:",
+        response.status,
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[ProjectStatsLogsDialog] ❌ Error response:', errorText);
-        throw new Error(`Failed to load logs: ${response.status} - ${errorText}`);
+        console.error("[ProjectStatsLogsDialog] ❌ Error response:", errorText);
+        throw new Error(
+          `Failed to load logs: ${response.status} - ${errorText}`,
+        );
       }
 
       const data = await response.json();
-      console.log('[ProjectStatsLogsDialog] ✅ Logs loaded:', data);
+      console.log("[ProjectStatsLogsDialog] ✅ Logs loaded:", data);
       setLogs(data.logs || []);
     } catch (error: any) {
-      console.error('[ProjectStatsLogsDialog] ❌ Error loading activity logs:', error);
+      console.error(
+        "[ProjectStatsLogsDialog] ❌ Error loading activity logs:",
+        error,
+      );
       setLogsError(`Fehler beim Laden der Activity Logs: ${error.message}`);
     } finally {
       setLogsLoading(false);
@@ -298,27 +357,31 @@ export function ProjectStatsLogsDialog({
 
   // Load logs when switching to Logs tab
   const handleTabChange = (value: string) => {
-    console.log('[ProjectStatsLogsDialog] Tab changed to:', value);
-    console.log('[ProjectStatsLogsDialog] Current logs.length:', logs.length);
-    
-    if (value === 'logs' && logs.length === 0) {
-      console.log('[ProjectStatsLogsDialog] Loading logs...');
+    console.log("[ProjectStatsLogsDialog] Tab changed to:", value);
+    console.log("[ProjectStatsLogsDialog] Current logs.length:", logs.length);
+
+    if (value === "logs" && logs.length === 0) {
+      console.log("[ProjectStatsLogsDialog] Loading logs...");
       loadLogs();
     }
   };
 
   // Format date helper
   const formatDate = (dateString?: string | null) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }) + ', ' + date.toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return (
+      date.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }) +
+      ", " +
+      date.toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    );
   };
 
   // Format relative time for logs
@@ -330,10 +393,10 @@ export function ProjectStatsLogsDialog({
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'gerade eben';
+    if (diffMins < 1) return "gerade eben";
     if (diffMins < 60) return `vor ${diffMins} Min`;
     if (diffHours < 24) return `vor ${diffHours} Std`;
-    if (diffDays < 7) return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+    if (diffDays < 7) return `vor ${diffDays} Tag${diffDays > 1 ? "en" : ""}`;
     return formatDate(dateString);
   };
 
@@ -341,14 +404,14 @@ export function ProjectStatsLogsDialog({
   const getActionIcon = (action: string) => {
     const lowerAction = action.toLowerCase();
     switch (lowerAction) {
-      case 'created':
-      case 'create':
+      case "created":
+      case "create":
         return <Plus className="size-4 text-green-600" />;
-      case 'updated':
-      case 'update':
+      case "updated":
+      case "update":
         return <Edit className="size-4 text-blue-600" />;
-      case 'deleted':
-      case 'delete':
+      case "deleted":
+      case "delete":
         return <Trash2 className="size-4 text-red-600" />;
       default:
         return <Activity className="size-4 text-muted-foreground" />;
@@ -359,85 +422,109 @@ export function ProjectStatsLogsDialog({
   const getActionColor = (action: string) => {
     const lowerAction = action.toLowerCase();
     switch (lowerAction) {
-      case 'created':
-      case 'create':
-        return 'text-green-600';
-      case 'updated':
-      case 'update':
-        return 'text-blue-600';
-      case 'deleted':
-      case 'delete':
-        return 'text-red-600';
+      case "created":
+      case "create":
+        return "text-green-600";
+      case "updated":
+      case "update":
+        return "text-blue-600";
+      case "deleted":
+      case "delete":
+        return "text-red-600";
       default:
-        return 'text-muted-foreground';
+        return "text-muted-foreground";
     }
   };
 
   // Format log message into readable German text
   const formatLogMessage = (log: ActivityLog): string => {
-    const userName = log.user?.name || log.user?.email || 'Ein Benutzer';
-    const entityType = log.entity_type || 'Item';
-    const action = log.action?.toLowerCase() || 'unknown';
-    
+    const userName = log.user?.name || log.user?.email || "Ein Benutzer";
+    const entityType = log.entity_type || "Item";
+    const action = log.action?.toLowerCase() || "unknown";
+
     // CREATE action
-    if (action === 'create' || action === 'created') {
+    if (action === "create" || action === "created") {
       const title = log.details?.title || entityType;
       return `${userName} hat ${entityType} "${title}" erstellt`;
     }
-    
+
     // DELETE action
-    if (action === 'delete' || action === 'deleted') {
+    if (action === "delete" || action === "deleted") {
       const title = log.details?.title || entityType;
       return `${userName} hat ${entityType} "${title}" gelöscht`;
     }
-    
+
     // UPDATE action - detect what changed
-    if (action === 'update' || action === 'updated') {
+    if (action === "update" || action === "updated") {
       const changes: string[] = [];
-      
+
       if (log.details?.new && log.details?.old) {
         const newData = log.details.new;
         const oldData = log.details.old;
-        
+
         // Title changed
         if (newData.title && oldData.title && newData.title !== oldData.title) {
-          changes.push(`den Titel von "${oldData.title}" zu "${newData.title}"`);
+          changes.push(
+            `den Titel von "${oldData.title}" zu "${newData.title}"`,
+          );
         }
-        
+
         // Description changed
-        if (newData.description && oldData.description && newData.description !== oldData.description) {
+        if (
+          newData.description &&
+          oldData.description &&
+          newData.description !== oldData.description
+        ) {
           changes.push(`die Beschreibung`);
         }
-        
+
         // Color changed
         if (newData.color && oldData.color && newData.color !== oldData.color) {
           changes.push(`die Farbe`);
         }
-        
+
         // Duration changed
-        if (newData.duration !== undefined && oldData.duration !== undefined && newData.duration !== oldData.duration) {
-          changes.push(`die Dauer von ${oldData.duration}s auf ${newData.duration}s`);
+        if (
+          newData.duration !== undefined &&
+          oldData.duration !== undefined &&
+          newData.duration !== oldData.duration
+        ) {
+          changes.push(
+            `die Dauer von ${oldData.duration}s auf ${newData.duration}s`,
+          );
         }
-        
+
         // Location changed (for scenes)
-        if (newData.location && oldData.location && newData.location !== oldData.location) {
-          changes.push(`den Ort von "${oldData.location}" zu "${newData.location}"`);
+        if (
+          newData.location &&
+          oldData.location &&
+          newData.location !== oldData.location
+        ) {
+          changes.push(
+            `den Ort von "${oldData.location}" zu "${newData.location}"`,
+          );
         }
-        
+
         // Time of day changed (for scenes)
-        if (newData.timeOfDay && oldData.timeOfDay && newData.timeOfDay !== oldData.timeOfDay) {
-          changes.push(`die Tageszeit von "${oldData.timeOfDay}" zu "${newData.timeOfDay}"`);
+        if (
+          newData.timeOfDay &&
+          oldData.timeOfDay &&
+          newData.timeOfDay !== oldData.timeOfDay
+        ) {
+          changes.push(
+            `die Tageszeit von "${oldData.timeOfDay}" zu "${newData.timeOfDay}"`,
+          );
         }
       }
-      
+
       if (changes.length > 0) {
-        return `${userName} hat ${changes.join(', ')} bei ${entityType} geändert`;
+        return `${userName} hat ${changes.join(", ")} bei ${entityType} geändert`;
       }
-      
+
       // Fallback for unknown changes
       return `${userName} hat ${entityType} aktualisiert`;
     }
-    
+
     // Fallback
     return `${userName} hat eine Aktion bei ${entityType} ausgeführt`;
   };
@@ -482,7 +569,11 @@ export function ProjectStatsLogsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="statistics" className="w-full" onValueChange={handleTabChange}>
+        <Tabs
+          defaultValue="statistics"
+          className="w-full"
+          onValueChange={handleTabChange}
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="statistics">
               <BarChart3 className="size-4 mr-2" />
@@ -497,7 +588,7 @@ export function ProjectStatsLogsDialog({
           {/* ============================================================= */}
           {/* STATISTICS TAB */}
           {/* ============================================================= */}
-          
+
           <TabsContent value="statistics" className="space-y-4 mt-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -511,25 +602,35 @@ export function ProjectStatsLogsDialog({
                     <div>
                       <div className="font-semibold mb-1">{error}</div>
                       <div className="text-sm text-muted-foreground">
-                        Bitte stelle sicher, dass die benoetigten Backend-Funktionen erreichbar sind:
+                        Bitte stelle sicher, dass die benoetigten
+                        Backend-Funktionen erreichbar sind:
                       </div>
                       <ul className="text-xs text-muted-foreground mt-2 space-y-1 ml-4 list-disc">
                         <li>scriptony-stats</li>
                         <li>scriptony-logs</li>
                       </ul>
                       <div className="text-xs text-muted-foreground mt-2">
-                        Siehe: <code className="bg-muted px-1 py-0.5 rounded">DEPLOY_project_stats_logs_PHASE2_READY.md</code>
+                        Siehe:{" "}
+                        <code className="bg-muted px-1 py-0.5 rounded">
+                          DEPLOY_project_stats_logs_PHASE2_READY.md
+                        </code>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ) : !overviewStats && !shotStats && !characterStats && !mediaStats ? (
+            ) : !overviewStats &&
+              !shotStats &&
+              !characterStats &&
+              !mediaStats ? (
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <div className="text-muted-foreground mb-2">Keine Statistiken verfügbar</div>
+                  <div className="text-muted-foreground mb-2">
+                    Keine Statistiken verfügbar
+                  </div>
                   <div className="text-sm text-muted-foreground">
-                    Die benoetigten Backend-Funktionen sind moeglicherweise noch nicht bereit.
+                    Die benoetigten Backend-Funktionen sind moeglicherweise noch
+                    nicht bereit.
                   </div>
                 </CardContent>
               </Card>
@@ -545,25 +646,33 @@ export function ProjectStatsLogsDialog({
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="flex flex-col gap-1 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900">
-                      <span className="text-xs text-muted-foreground">Acts</span>
+                      <span className="text-xs text-muted-foreground">
+                        Acts
+                      </span>
                       <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                         {overviewStats?.timeline?.acts ?? 0}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-100 dark:border-green-900">
-                      <span className="text-xs text-muted-foreground">Sequences</span>
+                      <span className="text-xs text-muted-foreground">
+                        Sequences
+                      </span>
                       <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {overviewStats?.timeline?.sequences ?? 0}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 p-3 bg-pink-50 dark:bg-pink-950/20 rounded-lg border border-pink-100 dark:border-pink-900">
-                      <span className="text-xs text-muted-foreground">Scenes</span>
+                      <span className="text-xs text-muted-foreground">
+                        Scenes
+                      </span>
                       <span className="text-2xl font-bold text-pink-600 dark:text-pink-400">
                         {overviewStats?.timeline?.scenes ?? 0}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-100 dark:border-yellow-900">
-                      <span className="text-xs text-muted-foreground">Shots</span>
+                      <span className="text-xs text-muted-foreground">
+                        Shots
+                      </span>
                       <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                         {overviewStats?.timeline?.shots ?? 0}
                       </span>
@@ -584,27 +693,45 @@ export function ProjectStatsLogsDialog({
                       {/* Duration Stats */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-xs text-muted-foreground mb-1">Durchschnitt</div>
-                          <div className="text-xl font-bold">{shotStats.duration_stats.average}s</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Durchschnitt
+                          </div>
+                          <div className="text-xl font-bold">
+                            {shotStats.duration_stats.average}s
+                          </div>
                         </div>
                         <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-xs text-muted-foreground mb-1">Minimum</div>
-                          <div className="text-xl font-bold">{shotStats.duration_stats.min}s</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Minimum
+                          </div>
+                          <div className="text-xl font-bold">
+                            {shotStats.duration_stats.min}s
+                          </div>
                         </div>
                         <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-xs text-muted-foreground mb-1">Maximum</div>
-                          <div className="text-xl font-bold">{shotStats.duration_stats.max}s</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Maximum
+                          </div>
+                          <div className="text-xl font-bold">
+                            {shotStats.duration_stats.max}s
+                          </div>
                         </div>
                         <div className="text-center p-3 bg-muted/50 rounded-lg">
-                          <div className="text-xs text-muted-foreground mb-1">Gesamt</div>
-                          <div className="text-xl font-bold">{Math.floor(shotStats.duration_stats.total / 60)}min</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            Gesamt
+                          </div>
+                          <div className="text-xl font-bold">
+                            {Math.floor(shotStats.duration_stats.total / 60)}min
+                          </div>
                         </div>
                       </div>
 
                       {/* Camera Angles Chart */}
                       {getCameraAnglesData().length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold mb-3">Kamera-Winkel</h4>
+                          <h4 className="text-sm font-semibold mb-3">
+                            Kamera-Winkel
+                          </h4>
                           <ResponsiveContainer width="100%" height={200}>
                             <BarChart data={getCameraAnglesData()}>
                               <CartesianGrid strokeDasharray="3 3" />
@@ -620,7 +747,9 @@ export function ProjectStatsLogsDialog({
                       {/* Framings Chart */}
                       {getFramingsData().length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold mb-3">Bildausschnitte</h4>
+                          <h4 className="text-sm font-semibold mb-3">
+                            Bildausschnitte
+                          </h4>
                           <ResponsiveContainer width="100%" height={200}>
                             <PieChart>
                               <Pie
@@ -628,13 +757,20 @@ export function ProjectStatsLogsDialog({
                                 cx="50%"
                                 cy="50%"
                                 labelLine={false}
-                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                label={({ name, percent }) =>
+                                  `${name} (${(percent * 100).toFixed(0)}%)`
+                                }
                                 outerRadius={80}
                                 fill="#8884d8"
                                 dataKey="value"
                               >
                                 {getFramingsData().map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={
+                                      CHART_COLORS[index % CHART_COLORS.length]
+                                    }
+                                  />
                                 ))}
                               </Pie>
                               <Tooltip />
@@ -659,14 +795,27 @@ export function ProjectStatsLogsDialog({
                       {/* Top Characters */}
                       {getCharacterAppearancesData().length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold mb-3">Top 10 Characters (by Appearances)</h4>
+                          <h4 className="text-sm font-semibold mb-3">
+                            Top 10 Characters (by Appearances)
+                          </h4>
                           <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={getCharacterAppearancesData()} layout="vertical">
+                            <BarChart
+                              data={getCharacterAppearancesData()}
+                              layout="vertical"
+                            >
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis type="number" fontSize={12} />
-                              <YAxis type="category" dataKey="name" width={100} fontSize={12} />
+                              <YAxis
+                                type="category"
+                                dataKey="name"
+                                width={100}
+                                fontSize={12}
+                              />
                               <Tooltip />
-                              <Bar dataKey="shot_count" fill={CHART_COLORS[0]} />
+                              <Bar
+                                dataKey="shot_count"
+                                fill={CHART_COLORS[0]}
+                              />
                             </BarChart>
                           </ResponsiveContainer>
                         </div>
@@ -676,16 +825,28 @@ export function ProjectStatsLogsDialog({
                       <div className="grid grid-cols-2 gap-3">
                         {characterStats.most_featured && (
                           <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-100 dark:border-green-900">
-                            <div className="text-xs text-muted-foreground mb-1">Most Featured</div>
-                            <div className="font-semibold">{characterStats.most_featured.name}</div>
-                            <div className="text-xs text-muted-foreground">{characterStats.most_featured.shot_count} shots</div>
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Most Featured
+                            </div>
+                            <div className="font-semibold">
+                              {characterStats.most_featured.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {characterStats.most_featured.shot_count} shots
+                            </div>
                           </div>
                         )}
                         {characterStats.least_featured && (
                           <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900">
-                            <div className="text-xs text-muted-foreground mb-1">Least Featured</div>
-                            <div className="font-semibold">{characterStats.least_featured.name}</div>
-                            <div className="text-xs text-muted-foreground">{characterStats.least_featured.shot_count} shots</div>
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Least Featured
+                            </div>
+                            <div className="font-semibold">
+                              {characterStats.least_featured.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {characterStats.least_featured.shot_count} shots
+                            </div>
                           </div>
                         )}
                       </div>
@@ -705,18 +866,30 @@ export function ProjectStatsLogsDialog({
                     <CardContent className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900">
                         <Music className="size-5 mx-auto mb-1 text-purple-600 dark:text-purple-400" />
-                        <div className="text-xl font-bold text-purple-600 dark:text-purple-400">{mediaStats.audio_files}</div>
-                        <div className="text-xs text-muted-foreground">Audio Files</div>
+                        <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                          {mediaStats.audio_files}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Audio Files
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-100 dark:border-yellow-900">
                         <ImageIcon className="size-5 mx-auto mb-1 text-yellow-600 dark:text-yellow-500" />
-                        <div className="text-xl font-bold text-yellow-600 dark:text-yellow-500">{mediaStats.images}</div>
-                        <div className="text-xs text-muted-foreground">Images</div>
+                        <div className="text-xl font-bold text-yellow-600 dark:text-yellow-500">
+                          {mediaStats.images}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Images
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900">
                         <TrendingUp className="size-5 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
-                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{mediaStats.total_storage}</div>
-                        <div className="text-xs text-muted-foreground">Total Storage</div>
+                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                          {mediaStats.total_storage}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Total Storage
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -728,7 +901,7 @@ export function ProjectStatsLogsDialog({
           {/* ============================================================= */}
           {/* LOGS TAB */}
           {/* ============================================================= */}
-          
+
           <TabsContent value="logs" className="mt-4">
             {logsLoading ? (
               <div className="flex items-center justify-center py-12">
@@ -745,7 +918,10 @@ export function ProjectStatsLogsDialog({
                         Die Route `scriptony-logs` ist aktuell nicht erreichbar.
                       </div>
                       <div className="text-xs text-muted-foreground mt-2">
-                        Siehe: <code className="bg-muted px-1 py-0.5 rounded">DEPLOY_project_stats_logs_PHASE2_READY.md</code>
+                        Siehe:{" "}
+                        <code className="bg-muted px-1 py-0.5 rounded">
+                          DEPLOY_project_stats_logs_PHASE2_READY.md
+                        </code>
                       </div>
                     </div>
                   </div>
@@ -769,7 +945,10 @@ export function ProjectStatsLogsDialog({
                   <ScrollArea className="h-[500px] pr-4">
                     <div className="space-y-3">
                       {logs.map((log) => (
-                        <div key={log.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div
+                          key={log.id}
+                          className="flex gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
                           <div className="mt-0.5">
                             {getActionIcon(log.action)}
                           </div>

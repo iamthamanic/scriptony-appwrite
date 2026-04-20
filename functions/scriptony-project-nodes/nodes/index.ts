@@ -7,13 +7,13 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import {
   getTimelineNodes,
@@ -21,7 +21,10 @@ import {
   normalizeNodeInput,
 } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -30,16 +33,21 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId = getQuery(req, "project_id") ||
+        getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;
       }
 
       const levelValue = getQuery(req, "level");
-      const parentQuery = getQuery(req, "parent_id") ?? getQuery(req, "parentId");
-      const parentId =
-        parentQuery === undefined ? undefined : parentQuery === "null" ? null : parentQuery;
+      const parentQuery = getQuery(req, "parent_id") ??
+        getQuery(req, "parentId");
+      const parentId = parentQuery === undefined
+        ? undefined
+        : parentQuery === "null"
+        ? null
+        : parentQuery;
 
       const nodes = await getTimelineNodes({
         projectId,
@@ -63,7 +71,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       ) {
         sendBadRequest(
           res,
-          "Missing required fields: project_id, template_id, level, title"
+          "Missing required fields: project_id, template_id, level, title",
         );
         return;
       }
@@ -96,7 +104,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             order_index: nodeInput.order_index ?? 0,
             metadata_json: nodeInput.metadata_json ?? "{}",
           },
-        }
+        },
       );
 
       sendJson(res, 201, { node: mapNode(created.insert_timeline_nodes_one) });

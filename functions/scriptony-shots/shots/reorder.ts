@@ -6,16 +6,19 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -28,12 +31,15 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const body = await readJsonBody<{ shot_ids?: string[]; shotIds?: string[] }>(req);
+    const body = await readJsonBody<{
+      shot_ids?: string[];
+      shotIds?: string[];
+    }>(req);
     const shotIds = Array.isArray(body.shot_ids)
       ? body.shot_ids
       : Array.isArray(body.shotIds)
-        ? body.shotIds
-        : [];
+      ? body.shotIds
+      : [];
 
     if (shotIds.length === 0) {
       sendBadRequest(res, "shot_ids is required");
@@ -53,9 +59,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               }
             }
           `,
-          { id, orderIndex: index, userId: bootstrap.user.id }
+          { id, orderIndex: index, userId: bootstrap.user.id },
         )
-      )
+      ),
     );
 
     sendJson(res, 200, { success: true });

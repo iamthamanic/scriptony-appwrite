@@ -13,8 +13,18 @@
     { "key": "acceptedBy", "type": "string", "required": false },
     { "key": "guideBundleId", "type": "string", "required": true },
     { "key": "styleProfileId", "type": "string", "required": true },
-    { "key": "repairConfig", "type": "string", "required": false, "size": 5000 },
-    { "key": "outputImageIds", "type": "string", "required": false, "array": true },
+    {
+      "key": "repairConfig",
+      "type": "string",
+      "required": false,
+      "size": 5000
+    },
+    {
+      "key": "outputImageIds",
+      "type": "string",
+      "required": false,
+      "array": true
+    },
     { "key": "createdAt", "type": "string", "required": true },
     { "key": "completedAt", "type": "string", "required": false }
   ],

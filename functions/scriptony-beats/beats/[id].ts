@@ -7,18 +7,20 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 import { normalizeBeatInput } from "../../_shared/scriptony";
 
-function mapBeatForClient(row: Record<string, any> | null): Record<string, any> | null {
+function mapBeatForClient(
+  row: Record<string, any> | null,
+): Record<string, any> | null {
   if (!row) return null;
   return {
     id: row.id,
@@ -51,13 +53,16 @@ async function getBeat(beatId: string) {
         }
       }
     `,
-    { beatId }
+    { beatId },
   );
 
   return data.story_beats_by_pk;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
@@ -112,27 +117,46 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           beatId,
           changes: {
-            ...(changes.label !== undefined ? { title: changes.label, label: changes.label } : {}),
+            ...(changes.label !== undefined
+              ? { title: changes.label, label: changes.label }
+              : {}),
             ...(changes.template_abbr !== undefined
-              ? { beat_type: changes.template_abbr, template_abbr: changes.template_abbr }
+              ? {
+                beat_type: changes.template_abbr,
+                template_abbr: changes.template_abbr,
+              }
               : {}),
             ...(changes.description !== undefined
-              ? { content: changes.description, description: changes.description }
+              ? {
+                content: changes.description,
+                description: changes.description,
+              }
               : {}),
             ...(changes.from_container_id !== undefined
-              ? { parent_beat_id: changes.from_container_id, from_container_id: changes.from_container_id }
+              ? {
+                parent_beat_id: changes.from_container_id,
+                from_container_id: changes.from_container_id,
+              }
               : {}),
-            ...(changes.to_container_id !== undefined ? { to_container_id: changes.to_container_id } : {}),
-            ...(changes.pct_from !== undefined ? { pct_from: changes.pct_from } : {}),
+            ...(changes.to_container_id !== undefined
+              ? { to_container_id: changes.to_container_id }
+              : {}),
+            ...(changes.pct_from !== undefined
+              ? { pct_from: changes.pct_from }
+              : {}),
             ...(changes.pct_to !== undefined ? { pct_to: changes.pct_to } : {}),
             ...(changes.color !== undefined ? { color: changes.color } : {}),
             ...(changes.notes !== undefined ? { notes: changes.notes } : {}),
-            ...(changes.order_index !== undefined ? { order_index: changes.order_index } : {}),
+            ...(changes.order_index !== undefined
+              ? { order_index: changes.order_index }
+              : {}),
           },
-        }
+        },
       );
 
-      sendJson(res, 200, { beat: mapBeatForClient(updated.update_story_beats_by_pk) });
+      sendJson(res, 200, {
+        beat: mapBeatForClient(updated.update_story_beats_by_pk),
+      });
       return;
     }
 
@@ -145,7 +169,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { beatId }
+        { beatId },
       );
 
       sendJson(res, 200, { success: true });

@@ -1,4 +1,9 @@
-import { createAppwriteHandler, getPathname, sendRouteNotFound, withParams } from "../_shared/appwrite-handler";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
 import healthHandler from "./health";
 import beatsHandler from "./beats/index";
 import beatByIdHandler from "./beats/[id]";
