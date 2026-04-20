@@ -33,9 +33,15 @@ export const schemaCreateScene: JsonSchema = {
   type: "object",
   properties: {
     project_id: { type: "string" },
-    template_id: { type: "string", description: "Timeline template UUID for the new node" },
+    template_id: {
+      type: "string",
+      description: "Timeline template UUID for the new node",
+    },
     title: { type: "string" },
-    parent_id: { type: "string", description: "Optional parent timeline node UUID" },
+    parent_id: {
+      type: "string",
+      description: "Optional parent timeline node UUID",
+    },
     summary: { type: "string" },
   },
   required: ["project_id", "template_id", "title"],

@@ -17,7 +17,7 @@ export interface ApprovalRequiredPayload {
 export function buildApprovalRequiredResponse(
   tool: InternalTool,
   input: unknown,
-  message = "This tool requires explicit approval before execution."
+  message = "This tool requires explicit approval before execution.",
 ): ApprovalRequiredPayload {
   let inputSummary: Record<string, unknown> = {};
   if (input && typeof input === "object" && !Array.isArray(input)) {

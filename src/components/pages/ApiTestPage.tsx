@@ -9,7 +9,7 @@ import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../../lib/api-gateway";
 
 interface TestResult {
   name: string;
-  status: 'pending' | 'success' | 'error' | 'running';
+  status: "pending" | "success" | "error" | "running";
   message?: string;
   duration?: number;
 }
@@ -19,12 +19,12 @@ export function ApiTestPage() {
   const [running, setRunning] = useState(false);
 
   const updateTest = (name: string, update: Partial<TestResult>) => {
-    setTests(prev => {
-      const existing = prev.find(t => t.name === name);
+    setTests((prev) => {
+      const existing = prev.find((t) => t.name === name);
       if (existing) {
-        return prev.map(t => t.name === name ? { ...t, ...update } : t);
+        return prev.map((t) => (t.name === name ? { ...t, ...update } : t));
       }
-      return [...prev, { name, status: 'pending', ...update }];
+      return [...prev, { name, status: "pending", ...update }];
     });
   };
 
@@ -33,14 +33,15 @@ export function ApiTestPage() {
     setTests([]);
 
     // Test 1: Environment Config
-    updateTest('Environment Config', { status: 'running' });
+    updateTest("Environment Config", { status: "running" });
     try {
       const url = backendConfig.functionsBaseUrl;
       const mapKeys = backendConfig.functionDomainMap
         ? Object.keys(backendConfig.functionDomainMap)
         : [];
       const hasKey =
-        backendConfig.provider === "appwrite" || backendConfig.publicAuthToken.length > 0;
+        backendConfig.provider === "appwrite" ||
+        backendConfig.publicAuthToken.length > 0;
 
       if ((url || mapKeys.length > 0) && hasKey) {
         const hint = mapKeys.length
@@ -57,119 +58,122 @@ export function ApiTestPage() {
         });
       }
     } catch (e: any) {
-      updateTest('Environment Config', { 
-        status: 'error', 
-        message: e.message 
+      updateTest("Environment Config", {
+        status: "error",
+        message: e.message,
       });
     }
 
     // Test 2: Health Check (No Auth)
-    updateTest('Health Check', { status: 'running' });
+    updateTest("Health Check", { status: "running" });
     const healthUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS, "/health");
     const healthStart = Date.now();
-    
+
     try {
       const response = await fetch(healthUrl);
       const duration = Date.now() - healthStart;
       const data = await response.json();
-      
+
       if (response.ok) {
-        updateTest('Health Check', { 
-          status: 'success', 
+        updateTest("Health Check", {
+          status: "success",
           message: `Status: ${data.status} (${duration}ms)`,
-          duration 
+          duration,
         });
       } else {
-        updateTest('Health Check', { 
-          status: 'error', 
-          message: `HTTP ${response.status}: ${JSON.stringify(data)}` 
+        updateTest("Health Check", {
+          status: "error",
+          message: `HTTP ${response.status}: ${JSON.stringify(data)}`,
         });
       }
     } catch (e: any) {
       const duration = Date.now() - healthStart;
-      updateTest('Health Check', { 
-        status: 'error', 
+      updateTest("Health Check", {
+        status: "error",
         message: `${e.message} (after ${duration}ms)`,
-        duration 
+        duration,
       });
     }
 
     // Test 3: Auth Token
-    updateTest('Auth Token', { status: 'running' });
+    updateTest("Auth Token", { status: "running" });
     try {
       const token = await getAuthToken();
-      
+
       if (token) {
-        const tokenPreview = token.substring(0, 20) + '...';
-        updateTest('Auth Token', { 
-          status: 'success', 
-          message: `Token: ${tokenPreview}` 
+        const tokenPreview = token.substring(0, 20) + "...";
+        updateTest("Auth Token", {
+          status: "success",
+          message: `Token: ${tokenPreview}`,
         });
 
         // Test 4: Projects API (With Auth)
-        updateTest('Projects API', { status: 'running' });
-        const projectsUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS, "/projects");
+        updateTest("Projects API", { status: "running" });
+        const projectsUrl = buildFunctionRouteUrl(
+          EDGE_FUNCTIONS.PROJECTS,
+          "/projects",
+        );
         const projectsStart = Date.now();
-        
+
         try {
           const response = await fetch(projectsUrl, {
             headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
           });
-          
+
           const duration = Date.now() - projectsStart;
           const data = await response.json();
-          
+
           if (response.ok) {
             const projectCount = Array.isArray(data.projects)
               ? data.projects.length
               : Array.isArray(data)
                 ? data.length
                 : 0;
-            updateTest('Projects API', { 
-              status: 'success', 
+            updateTest("Projects API", {
+              status: "success",
               message: `${projectCount} projects found (${duration}ms)`,
-              duration 
+              duration,
             });
           } else {
-            updateTest('Projects API', { 
-              status: 'error', 
-              message: `HTTP ${response.status}: ${JSON.stringify(data)}` 
+            updateTest("Projects API", {
+              status: "error",
+              message: `HTTP ${response.status}: ${JSON.stringify(data)}`,
             });
           }
         } catch (e: any) {
           const duration = Date.now() - projectsStart;
-          updateTest('Projects API', { 
-            status: 'error', 
+          updateTest("Projects API", {
+            status: "error",
             message: `${e.message} (after ${duration}ms)`,
-            duration 
+            duration,
           });
         }
       } else {
-        updateTest('Auth Token', { 
-          status: 'error', 
-          message: 'No session found - please log in' 
+        updateTest("Auth Token", {
+          status: "error",
+          message: "No session found - please log in",
         });
       }
     } catch (e: any) {
-      updateTest('Auth Token', { 
-        status: 'error', 
-        message: e.message 
+      updateTest("Auth Token", {
+        status: "error",
+        message: e.message,
       });
     }
 
     setRunning(false);
   };
 
-  const getStatusIcon = (status: TestResult['status']) => {
+  const getStatusIcon = (status: TestResult["status"]) => {
     switch (status) {
-      case 'success':
+      case "success":
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-      case 'error':
+      case "error":
         return <XCircle className="w-5 h-5 text-red-500" />;
-      case 'running':
+      case "running":
         return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
       default:
         return <AlertCircle className="w-5 h-5 text-muted-foreground" />;
@@ -191,31 +195,25 @@ export function ApiTestPage() {
             <CardTitle>Connection Tests</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
-              onClick={runTests} 
-              disabled={running}
-              className="w-full"
-            >
+            <Button onClick={runTests} disabled={running} className="w-full">
               {running ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Running Tests...
                 </>
               ) : (
-                'Run All Tests'
+                "Run All Tests"
               )}
             </Button>
 
             {tests.length > 0 && (
               <div className="space-y-3 mt-6">
                 {tests.map((test) => (
-                  <div 
+                  <div
                     key={test.name}
                     className="flex items-start gap-3 p-3 rounded-lg border bg-card"
                   >
-                    <div className="mt-0.5">
-                      {getStatusIcon(test.status)}
-                    </div>
+                    <div className="mt-0.5">{getStatusIcon(test.status)}</div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{test.name}</div>
                       {test.message && (
@@ -246,11 +244,17 @@ export function ApiTestPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm font-mono">
             <div>
-              <span className="text-muted-foreground">Base URL (path-style):</span>
-              <div className="break-all">{backendConfig.functionsBaseUrl || "(unset)"}</div>
+              <span className="text-muted-foreground">
+                Base URL (path-style):
+              </span>
+              <div className="break-all">
+                {backendConfig.functionsBaseUrl || "(unset)"}
+              </div>
             </div>
             <div>
-              <span className="text-muted-foreground">Function domain map:</span>
+              <span className="text-muted-foreground">
+                Function domain map:
+              </span>
               <div className="break-all">
                 {backendConfig.functionDomainMap
                   ? JSON.stringify(backendConfig.functionDomainMap)
@@ -262,7 +266,9 @@ export function ApiTestPage() {
               <div>{backendConfig.provider}</div>
             </div>
             <div>
-              <span className="text-muted-foreground">Beispiel (scriptony-projects):</span>
+              <span className="text-muted-foreground">
+                Beispiel (scriptony-projects):
+              </span>
               <div className="break-all">
                 {buildFunctionRouteUrl(EDGE_FUNCTIONS.PROJECTS)}
               </div>

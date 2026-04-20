@@ -5,7 +5,10 @@
 import type { ToolRegistry } from "../scriptony-mcp/registry/registry";
 import type { ToolResult } from "../scriptony-mcp/results/envelope";
 import type { InternalTool } from "../scriptony-mcp/types/tool";
-import type { AssistantProfileSummary, ProviderRouter } from "./provider-router";
+import type {
+  AssistantProfileSummary,
+  ProviderRouter,
+} from "./provider-router";
 import type { ApprovalRequiredPayload } from "./approval";
 import { runSingleToolInvocation } from "./tool-loop";
 import type { RuntimeContext } from "./runtime-context";
@@ -13,7 +16,17 @@ import type { RuntimeContext } from "./runtime-context";
 export type McpOrchestratorResult =
   | {
       kind: "list_tools";
-      tools: Array<Pick<InternalTool, "name" | "description" | "inputSchema" | "policy" | "riskLevel" | "requiresApproval">>;
+      tools: Array<
+        Pick<
+          InternalTool,
+          | "name"
+          | "description"
+          | "inputSchema"
+          | "policy"
+          | "riskLevel"
+          | "requiresApproval"
+        >
+      >;
       assistant_profile: AssistantProfileSummary | null;
     }
   | {
@@ -34,7 +47,7 @@ export async function runMcpOrchestrator(
   registry: ToolRegistry,
   router: ProviderRouter,
   runtime: RuntimeContext,
-  req: OrchestratorRequest
+  req: OrchestratorRequest,
 ): Promise<McpOrchestratorResult> {
   const assistant_profile = router.getAssistantProfile();
 
@@ -53,7 +66,11 @@ export async function runMcpOrchestrator(
   if (req.action === "invoke") {
     const toolName = req.tool?.trim();
     if (!toolName) {
-      return { kind: "error", message: "invoke requires tool name", code: "MISSING_TOOL" };
+      return {
+        kind: "error",
+        message: "invoke requires tool name",
+        code: "MISSING_TOOL",
+      };
     }
     const result = await runSingleToolInvocation({
       registry,

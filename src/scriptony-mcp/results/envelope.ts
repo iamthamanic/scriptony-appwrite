@@ -16,11 +16,19 @@ export interface ToolResult<T = unknown> {
   metadata?: Record<string, unknown>;
 }
 
-export function okResult<T>(message: string, data?: T, metadata?: Record<string, unknown>): ToolResult<T> {
+export function okResult<T>(
+  message: string,
+  data?: T,
+  metadata?: Record<string, unknown>,
+): ToolResult<T> {
   return { success: true, message, data, metadata };
 }
 
-export function errResult(message: string, error?: ToolErrorEnvelope, metadata?: Record<string, unknown>): ToolResult {
+export function errResult(
+  message: string,
+  error?: ToolErrorEnvelope,
+  metadata?: Record<string, unknown>,
+): ToolResult {
   return {
     success: false,
     message,

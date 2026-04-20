@@ -2,10 +2,17 @@
  * Single-step tool loop — deterministic invocation when tool name is explicit.
  */
 
-import { ToolNotFoundError, type ToolRegistry } from "../scriptony-mcp/registry/registry";
+import {
+  ToolNotFoundError,
+  type ToolRegistry,
+} from "../scriptony-mcp/registry/registry";
 import type { ToolResult } from "../scriptony-mcp/results/envelope";
 import { validateToolInput } from "../scriptony-mcp/schemas/validate";
-import { buildApprovalRequiredResponse, isApproved, type ApprovalRequiredPayload } from "./approval";
+import {
+  buildApprovalRequiredResponse,
+  isApproved,
+  type ApprovalRequiredPayload,
+} from "./approval";
 import { toMcpToolContext, type RuntimeContext } from "./runtime-context";
 
 export interface SingleToolRunOptions {
@@ -17,7 +24,9 @@ export interface SingleToolRunOptions {
   approved?: boolean;
 }
 
-export async function runSingleToolInvocation(opts: SingleToolRunOptions): Promise<ToolResult | ApprovalRequiredPayload> {
+export async function runSingleToolInvocation(
+  opts: SingleToolRunOptions,
+): Promise<ToolResult | ApprovalRequiredPayload> {
   const { registry, runtime, toolName, input, approved } = opts;
   let tool;
   try {

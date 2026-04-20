@@ -13,12 +13,12 @@ import {
   devFunctionUrlUsePlainHttp,
   joinUrl,
   upgradeHttpFunctionUrlForSecurePage,
-} from './env';
+} from "./env";
 
 export type ApiGatewayErrorLayer =
-  | 'transport'
-  | 'function-auth'
-  | 'function-response';
+  | "transport"
+  | "function-auth"
+  | "function-response";
 
 type ApiGatewayErrorInit = {
   layer: ApiGatewayErrorLayer;
@@ -45,7 +45,7 @@ export class ApiGatewayError extends Error {
 
   constructor(message: string, init: ApiGatewayErrorInit) {
     super(message);
-    this.name = 'ApiGatewayError';
+    this.name = "ApiGatewayError";
     this.layer = init.layer;
     this.functionName = init.functionName;
     this.route = init.route;
@@ -66,39 +66,39 @@ export class ApiGatewayError extends Error {
  * Backend function names exposed by the current provider.
  */
 export const BACKEND_FUNCTIONS = {
-  MAIN_SERVER: 'make-server-3b52693b', // legacy unified server / special routes
-  PROJECTS: 'scriptony-projects',
-  PROJECT_NODES: 'scriptony-project-nodes', // template engine / nodes
-  SHOTS: 'scriptony-shots',
+  MAIN_SERVER: "make-server-3b52693b", // legacy unified server / special routes
+  PROJECTS: "scriptony-projects",
+  PROJECT_NODES: "scriptony-project-nodes", // template engine / nodes
+  SHOTS: "scriptony-shots",
   /** Editorial timeline clips (NLE segments). */
-  CLIPS: 'scriptony-clips',
-  CHARACTERS: 'scriptony-characters',
+  CLIPS: "scriptony-clips",
+  CHARACTERS: "scriptony-characters",
   /** Style Guide (project_visual_style + items). Deploy `scriptony-style-guide`. */
-  STYLE_GUIDE: 'scriptony-style-guide',
-  AUDIO: 'scriptony-audio', // selected in getBackendFunctionForRoute for paths under /shots/... (audio)
-  BEATS: 'scriptony-beats',
-  WORLDBUILDING: 'scriptony-worldbuilding',
+  STYLE_GUIDE: "scriptony-style-guide",
+  AUDIO: "scriptony-audio", // selected in getBackendFunctionForRoute for paths under /shots/... (audio)
+  BEATS: "scriptony-beats",
+  WORLDBUILDING: "scriptony-worldbuilding",
   /** Unified AI service: `/ai/*`, feature config, provider keys (replaces assistant for gateway `/ai`). */
-  AI: 'scriptony-ai',
-  ASSISTANT: 'scriptony-assistant',
-  IMAGE: 'scriptony-image',
+  AI: "scriptony-ai",
+  ASSISTANT: "scriptony-assistant",
+  IMAGE: "scriptony-image",
   /** Puppet-Layer: render-job orchestrator (accept/reject/complete lifecycle). */
-  STAGE: 'scriptony-stage',
+  STAGE: "scriptony-stage",
   /** Puppet-Layer: 2D layer & repair endpoints. */
-  STAGE2D: 'scriptony-stage2d',
+  STAGE2D: "scriptony-stage2d",
   /** Puppet-Layer: 3D view-state endpoints. */
-  STAGE3D: 'scriptony-stage3d',
+  STAGE3D: "scriptony-stage3d",
   /** Puppet-Layer: style-profile CRUD + apply. */
-  STYLE: 'scriptony-style',
+  STYLE: "scriptony-style",
   /** Puppet-Layer: Blender ingress (sync metadata only). */
-  SYNC: 'scriptony-sync',
-  GYM: 'scriptony-gym',
-  AUTH: 'scriptony-auth',
-  SUPERADMIN: 'scriptony-superadmin',
-  STATS: 'scriptony-stats',
-  LOGS: 'scriptony-logs',
+  SYNC: "scriptony-sync",
+  GYM: "scriptony-gym",
+  AUTH: "scriptony-auth",
+  SUPERADMIN: "scriptony-superadmin",
+  STATS: "scriptony-stats",
+  LOGS: "scriptony-logs",
   /** Internal MCP-style capability host (thin HTTP entry). */
-  MCP_APPWRITE: 'scriptony-mcp-appwrite',
+  MCP_APPWRITE: "scriptony-mcp-appwrite",
 } as const;
 
 export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
@@ -114,10 +114,10 @@ export function buildFunctionBaseUrl(functionName: string): string {
    */
   if (import.meta.env.DEV && backendConfig.functionDomainMap?.[functionName]) {
     const origin =
-      typeof window !== 'undefined'
+      typeof window !== "undefined"
         ? window.location.origin
-        : 'http://localhost:3000';
-    return `${origin}/__dev-proxy/${functionName}`.replace(/\/+$/, '');
+        : "http://localhost:3000";
+    return `${origin}/__dev-proxy/${functionName}`.replace(/\/+$/, "");
   }
 
   const domain = backendConfig.functionDomainMap?.[functionName]?.trim();
@@ -127,20 +127,27 @@ export function buildFunctionBaseUrl(functionName: string): string {
 
   if (!backendConfig.functionsBaseUrl?.trim()) {
     throw new Error(
-      `Backend function "${functionName}" is not configured: add it to VITE_BACKEND_FUNCTION_DOMAIN_MAP or set VITE_BACKEND_API_BASE_URL / VITE_APPWRITE_FUNCTIONS_BASE_URL.`
+      `Backend function "${functionName}" is not configured: add it to VITE_BACKEND_FUNCTION_DOMAIN_MAP or set VITE_BACKEND_API_BASE_URL / VITE_APPWRITE_FUNCTIONS_BASE_URL.`,
     );
   }
 
   if (!backendConfig.functionsBaseUrl) {
-    throw new Error(`Backend function URL is not configured for ${functionName}.`);
+    throw new Error(
+      `Backend function URL is not configured for ${functionName}.`,
+    );
   }
 
   return upgradeHttpFunctionUrlForSecurePage(
-    devFunctionUrlUsePlainHttp(joinUrl(backendConfig.functionsBaseUrl, functionName))
+    devFunctionUrlUsePlainHttp(
+      joinUrl(backendConfig.functionsBaseUrl, functionName),
+    ),
   );
 }
 
-export function buildFunctionRouteUrl(functionName: string, route = ''): string {
+export function buildFunctionRouteUrl(
+  functionName: string,
+  route = "",
+): string {
   const baseUrl = buildFunctionBaseUrl(functionName);
   return route ? joinUrl(baseUrl, route) : baseUrl;
 }
@@ -156,113 +163,115 @@ export function buildFunctionRouteUrl(functionName: string, route = ''): string 
  */
 const ROUTE_MAP: Record<string, string> = {
   // scriptony-auth
-  '/signup': BACKEND_FUNCTIONS.AUTH,
-  '/create-demo-user': BACKEND_FUNCTIONS.AUTH,
-  '/profile': BACKEND_FUNCTIONS.AUTH,
-  '/organizations': BACKEND_FUNCTIONS.AUTH,
-  '/integration-tokens': BACKEND_FUNCTIONS.AUTH,
-  '/storage': BACKEND_FUNCTIONS.AUTH,
-  '/storage-providers': BACKEND_FUNCTIONS.AUTH,
+  "/signup": BACKEND_FUNCTIONS.AUTH,
+  "/create-demo-user": BACKEND_FUNCTIONS.AUTH,
+  "/profile": BACKEND_FUNCTIONS.AUTH,
+  "/organizations": BACKEND_FUNCTIONS.AUTH,
+  "/integration-tokens": BACKEND_FUNCTIONS.AUTH,
+  "/storage": BACKEND_FUNCTIONS.AUTH,
+  "/storage-providers": BACKEND_FUNCTIONS.AUTH,
 
   // scriptony-projects
-  '/projects': BACKEND_FUNCTIONS.PROJECTS,
+  "/projects": BACKEND_FUNCTIONS.PROJECTS,
 
   // scriptony-style-guide (prefix before shorter routes)
-  '/style-guide': BACKEND_FUNCTIONS.STYLE_GUIDE,
+  "/style-guide": BACKEND_FUNCTIONS.STYLE_GUIDE,
 
   // scriptony-project-nodes
-  '/nodes': BACKEND_FUNCTIONS.PROJECT_NODES,
-  '/initialize-project': BACKEND_FUNCTIONS.PROJECT_NODES,
+  "/nodes": BACKEND_FUNCTIONS.PROJECT_NODES,
+  "/initialize-project": BACKEND_FUNCTIONS.PROJECT_NODES,
 
   // scriptony-shots (audio-specific paths handled in getBackendFunctionForRoute → AUDIO)
-  '/shots': BACKEND_FUNCTIONS.SHOTS,
+  "/shots": BACKEND_FUNCTIONS.SHOTS,
 
   // scriptony-clips (editorial timeline; must not prefix-match /shots)
-  '/clips': BACKEND_FUNCTIONS.CLIPS,
+  "/clips": BACKEND_FUNCTIONS.CLIPS,
 
   // scriptony-characters
-  '/characters': BACKEND_FUNCTIONS.CHARACTERS,
-  '/timeline-characters': BACKEND_FUNCTIONS.CHARACTERS,
+  "/characters": BACKEND_FUNCTIONS.CHARACTERS,
+  "/timeline-characters": BACKEND_FUNCTIONS.CHARACTERS,
 
   // scriptony-stats, scriptony-logs
-  '/stats': BACKEND_FUNCTIONS.STATS,
-  '/logs': BACKEND_FUNCTIONS.LOGS,
+  "/stats": BACKEND_FUNCTIONS.STATS,
+  "/logs": BACKEND_FUNCTIONS.LOGS,
 
   // scriptony-beats
-  '/beats': BACKEND_FUNCTIONS.BEATS,
+  "/beats": BACKEND_FUNCTIONS.BEATS,
 
   // scriptony-worldbuilding
-  '/worlds': BACKEND_FUNCTIONS.WORLDBUILDING,
-  '/locations': BACKEND_FUNCTIONS.WORLDBUILDING,
+  "/worlds": BACKEND_FUNCTIONS.WORLDBUILDING,
+  "/locations": BACKEND_FUNCTIONS.WORLDBUILDING,
 
   // scriptony-mcp-appwrite (longer prefix before shorter assistant routes if path overlaps)
-  '/scriptony-mcp': BACKEND_FUNCTIONS.MCP_APPWRITE,
+  "/scriptony-mcp": BACKEND_FUNCTIONS.MCP_APPWRITE,
 
   // scriptony-image (must be above /ai prefix)
-  '/ai/image': BACKEND_FUNCTIONS.IMAGE,
+  "/ai/image": BACKEND_FUNCTIONS.IMAGE,
 
   // ---------------------------------------------------------------------------
   // Puppet-Layer surfaces (longer prefixes before shorter /ai catch-all)
   // ---------------------------------------------------------------------------
 
   // scriptony-stage: render-job orchestrator + repair dispatch
-  '/ai/jobs': BACKEND_FUNCTIONS.STAGE,
-  '/ai/stage': BACKEND_FUNCTIONS.STAGE,
+  "/ai/jobs": BACKEND_FUNCTIONS.STAGE,
+  "/ai/stage": BACKEND_FUNCTIONS.STAGE,
+  "/stage": BACKEND_FUNCTIONS.STAGE,
 
   // scriptony-stage2d: 2D document & layer endpoints
-  '/ai/stage2d': BACKEND_FUNCTIONS.STAGE2D,
+  "/ai/stage2d": BACKEND_FUNCTIONS.STAGE2D,
 
   // scriptony-stage3d: 3D view-state endpoints
-  '/ai/stage3d': BACKEND_FUNCTIONS.STAGE3D,
+  "/ai/stage3d": BACKEND_FUNCTIONS.STAGE3D,
 
   // scriptony-style: style-profile CRUD + apply
-  '/ai/style': BACKEND_FUNCTIONS.STYLE,
+  "/ai/style": BACKEND_FUNCTIONS.STYLE,
 
   // scriptony-sync: Blender ingress (sync metadata only, no product decisions)
-  '/ai/sync': BACKEND_FUNCTIONS.SYNC,
+  "/ai/sync": BACKEND_FUNCTIONS.SYNC,
+  "/sync": BACKEND_FUNCTIONS.SYNC,
 
   // ---------------------------------------------------------------------------
   // scriptony-assistant: canonical /ai/assistant/* + legacy /ai/{chat,settings,…}
   // scriptony-assistant accepts both prefixes (dual-prefix normalisation).
   // ---------------------------------------------------------------------------
-  '/ai/assistant': BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/assistant": BACKEND_FUNCTIONS.ASSISTANT,
 
   // Legacy assistant paths — routed directly to ASSISTANT so scriptony-ai
   // no longer needs to proxy them via dispatchAssistantLegacyRoute().
-  '/ai/chat': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/conversations': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/rag': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/settings': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/models': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/validate-key': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/count-tokens': BACKEND_FUNCTIONS.ASSISTANT,
-  '/ai/gym': BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/chat": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/conversations": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/rag": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/settings": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/models": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/validate-key": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/count-tokens": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/gym": BACKEND_FUNCTIONS.ASSISTANT,
 
   // ---------------------------------------------------------------------------
   // scriptony-ai control plane (provider registry, feature routing, key storage)
   // ---------------------------------------------------------------------------
-  '/providers': BACKEND_FUNCTIONS.AI,
-  '/api-keys': BACKEND_FUNCTIONS.AI,
-  '/features': BACKEND_FUNCTIONS.AI,
-  '/settings': BACKEND_FUNCTIONS.AI,
+  "/providers": BACKEND_FUNCTIONS.AI,
+  "/api-keys": BACKEND_FUNCTIONS.AI,
+  "/features": BACKEND_FUNCTIONS.AI,
+  "/settings": BACKEND_FUNCTIONS.AI,
 
   // scriptony-ai catch-all for remaining /ai/* (route-request, future control-plane routes)
-  '/ai': BACKEND_FUNCTIONS.AI,
+  "/ai": BACKEND_FUNCTIONS.AI,
 
   // Remaining standalone assistant-only routes (legacy non-/ai paths)
-  '/conversations': BACKEND_FUNCTIONS.ASSISTANT,
-  '/rag': BACKEND_FUNCTIONS.ASSISTANT,
-  '/mcp': BACKEND_FUNCTIONS.ASSISTANT,
+  "/conversations": BACKEND_FUNCTIONS.ASSISTANT,
+  "/rag": BACKEND_FUNCTIONS.ASSISTANT,
+  "/mcp": BACKEND_FUNCTIONS.ASSISTANT,
 
   // scriptony-gym
-  '/exercises': BACKEND_FUNCTIONS.GYM,
-  '/progress': BACKEND_FUNCTIONS.GYM,
-  '/achievements': BACKEND_FUNCTIONS.GYM,
-  '/categories': BACKEND_FUNCTIONS.GYM,
-  '/daily-challenge': BACKEND_FUNCTIONS.GYM,
+  "/exercises": BACKEND_FUNCTIONS.GYM,
+  "/progress": BACKEND_FUNCTIONS.GYM,
+  "/achievements": BACKEND_FUNCTIONS.GYM,
+  "/categories": BACKEND_FUNCTIONS.GYM,
+  "/daily-challenge": BACKEND_FUNCTIONS.GYM,
 
   // scriptony-superadmin
-  '/superadmin': BACKEND_FUNCTIONS.SUPERADMIN,
+  "/superadmin": BACKEND_FUNCTIONS.SUPERADMIN,
 };
 
 /**
@@ -270,22 +279,28 @@ const ROUTE_MAP: Record<string, string> = {
  */
 function getBackendFunctionForRoute(route: string): string {
   // Audio routes live under /shots/... but must hit scriptony-audio, not scriptony-shots.
-  if (route.includes('/upload-audio') || 
-      route.includes('/shots/audio/') || 
-      route.match(/\/shots\/[^/]+\/audio$/)) {
+  if (
+    route.includes("/upload-audio") ||
+    route.includes("/shots/audio/") ||
+    route.match(/\/shots\/[^/]+\/audio$/)
+  ) {
     return BACKEND_FUNCTIONS.AUDIO;
   }
-  
+
   // Longest-prefix match (more specific routes win over shorter shared prefixes)
-  const sortedPrefixes = Object.keys(ROUTE_MAP).sort((a, b) => b.length - a.length);
-  const matchedPrefix = sortedPrefixes.find((prefix) => route.startsWith(prefix));
+  const sortedPrefixes = Object.keys(ROUTE_MAP).sort(
+    (a, b) => b.length - a.length,
+  );
+  const matchedPrefix = sortedPrefixes.find((prefix) =>
+    route.startsWith(prefix),
+  );
 
   if (!matchedPrefix) {
     console.warn(`[API Gateway] No backend function found for route: ${route}`);
     // Fallback to projects function for unknown routes
     return BACKEND_FUNCTIONS.PROJECTS;
   }
-  
+
   return ROUTE_MAP[matchedPrefix];
 }
 
@@ -294,7 +309,7 @@ function getBackendFunctionForRoute(route: string): string {
 // =============================================================================
 
 export interface ApiGatewayOptions {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   route: string;
   body?: any;
   headers?: Record<string, string>;
@@ -305,7 +320,7 @@ export interface ApiGatewayOptions {
 function humanizeHtmlOrGatewayError(
   functionName: string,
   status: number,
-  raw: string
+  raw: string,
 ): string {
   const trimmed = raw.trim();
   if (status === 408) {
@@ -317,8 +332,8 @@ function humanizeHtmlOrGatewayError(
     );
   }
   const looksHtml =
-    trimmed.startsWith('<!DOCTYPE') ||
-    trimmed.startsWith('<html') ||
+    trimmed.startsWith("<!DOCTYPE") ||
+    trimmed.startsWith("<html") ||
     /unexpected server error/i.test(trimmed);
   if (!looksHtml) {
     return trimmed.slice(0, 2000);
@@ -331,41 +346,49 @@ function humanizeHtmlOrGatewayError(
 }
 
 function getResponseErrorCode(errorData: unknown): string | undefined {
-  if (!errorData || typeof errorData !== 'object' || Array.isArray(errorData)) {
+  if (!errorData || typeof errorData !== "object" || Array.isArray(errorData)) {
     return undefined;
   }
   const code = (errorData as { code?: unknown }).code;
-  return typeof code === 'string' && code.trim() ? code.trim() : undefined;
+  return typeof code === "string" && code.trim() ? code.trim() : undefined;
 }
 
 function getResponseErrorMessage(
   functionName: string,
   status: number,
-  errorData: unknown
+  errorData: unknown,
 ): string {
-  if (errorData && typeof errorData === 'object' && !Array.isArray(errorData)) {
-    const payload = errorData as { error?: unknown; message?: unknown; details?: unknown };
-    if (typeof payload.error === 'string' && payload.error.trim()) {
+  if (errorData && typeof errorData === "object" && !Array.isArray(errorData)) {
+    const payload = errorData as {
+      error?: unknown;
+      message?: unknown;
+      details?: unknown;
+    };
+    if (typeof payload.error === "string" && payload.error.trim()) {
       return payload.error.trim();
     }
-    if (typeof payload.message === 'string' && payload.message.trim()) {
+    if (typeof payload.message === "string" && payload.message.trim()) {
       return payload.message.trim();
     }
-    if (typeof payload.details === 'string' && payload.details.trim()) {
+    if (typeof payload.details === "string" && payload.details.trim()) {
       return payload.details.trim();
     }
     return JSON.stringify(errorData);
   }
 
-  return humanizeHtmlOrGatewayError(functionName, status, String(errorData ?? ''));
+  return humanizeHtmlOrGatewayError(
+    functionName,
+    status,
+    String(errorData ?? ""),
+  );
 }
 
 /**
  * Makes an API call through the API Gateway
- * 
+ *
  * Automatically routes the request to the correct backend function
  * based on the route prefix.
- * 
+ *
  * @example
  * ```typescript
  * // Automatically routed to scriptony-timeline
@@ -374,7 +397,7 @@ function getResponseErrorMessage(
  *   route: '/shots/scene-123',
  *   accessToken: token,
  * });
- * 
+ *
  * // Routed to scriptony-ai (Hono: `/ai/chat`, `/ai/settings`, …)
  * const response = await apiGateway({
  *   method: 'POST',
@@ -385,7 +408,7 @@ function getResponseErrorMessage(
  * ```
  */
 export async function apiGateway<T = any>(
-  options: ApiGatewayOptions
+  options: ApiGatewayOptions,
 ): Promise<T> {
   const { method, route, body, headers = {}, accessToken } = options;
 
@@ -395,10 +418,10 @@ export async function apiGateway<T = any>(
   const baseUrl = buildFunctionBaseUrl(functionName);
 
   const url = joinUrl(baseUrl, route);
-  
+
   // Build headers
   const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...headers,
   };
 
@@ -426,22 +449,22 @@ export async function apiGateway<T = any>(
       error: fetchError?.message || String(fetchError),
     });
     throw new ApiGatewayError(
-      `Cannot connect to ${functionName}: ${fetchError?.message || 'Network request failed'}`,
+      `Cannot connect to ${functionName}: ${fetchError?.message || "Network request failed"}`,
       {
-        layer: 'transport',
+        layer: "transport",
         functionName,
         route,
         url,
         method,
         details: fetchError,
-      }
+      },
     );
   }
-  
+
   // Handle response
   if (!response.ok) {
     const errorText = await response.text();
-    
+
     // Try to parse error as JSON for better logging
     let errorData;
     try {
@@ -451,11 +474,15 @@ export async function apiGateway<T = any>(
     }
 
     const errorCode = getResponseErrorCode(errorData);
-    const errorMessage = getResponseErrorMessage(functionName, response.status, errorData);
+    const errorMessage = getResponseErrorMessage(
+      functionName,
+      response.status,
+      errorData,
+    );
     const layer: ApiGatewayErrorLayer =
       response.status === 401 || response.status === 403
-        ? 'function-auth'
-        : 'function-response';
+        ? "function-auth"
+        : "function-response";
 
     const logPayload = {
       method,
@@ -469,7 +496,7 @@ export async function apiGateway<T = any>(
       response: errorData,
     };
 
-    if (layer === 'function-auth') {
+    if (layer === "function-auth") {
       console.warn(`[API Gateway] Function auth rejected request`, logPayload);
     } else {
       console.error(`[API Gateway] Function responded with error`, logPayload);
@@ -487,7 +514,7 @@ export async function apiGateway<T = any>(
       details: errorData,
     });
   }
-  
+
   const data = await response.json();
   return data;
 }
@@ -501,9 +528,9 @@ export async function apiGateway<T = any>(
  */
 export async function apiGet<T = any>(
   route: string,
-  accessToken?: string
+  accessToken?: string,
 ): Promise<T> {
-  return apiGateway<T>({ method: 'GET', route, accessToken });
+  return apiGateway<T>({ method: "GET", route, accessToken });
 }
 
 /**
@@ -512,9 +539,9 @@ export async function apiGet<T = any>(
 export async function apiPost<T = any>(
   route: string,
   body: any,
-  accessToken?: string
+  accessToken?: string,
 ): Promise<T> {
-  return apiGateway<T>({ method: 'POST', route, body, accessToken });
+  return apiGateway<T>({ method: "POST", route, body, accessToken });
 }
 
 /**
@@ -523,9 +550,9 @@ export async function apiPost<T = any>(
 export async function apiPut<T = any>(
   route: string,
   body: any,
-  accessToken?: string
+  accessToken?: string,
 ): Promise<T> {
-  return apiGateway<T>({ method: 'PUT', route, body, accessToken });
+  return apiGateway<T>({ method: "PUT", route, body, accessToken });
 }
 
 /**
@@ -533,9 +560,9 @@ export async function apiPut<T = any>(
  */
 export async function apiDelete<T = any>(
   route: string,
-  accessToken?: string
+  accessToken?: string,
 ): Promise<T> {
-  return apiGateway<T>({ method: 'DELETE', route, accessToken });
+  return apiGateway<T>({ method: "DELETE", route, accessToken });
 }
 
 /**
@@ -544,9 +571,9 @@ export async function apiDelete<T = any>(
 export async function apiPatch<T = any>(
   route: string,
   body: any,
-  accessToken?: string
+  accessToken?: string,
 ): Promise<T> {
-  return apiGateway<T>({ method: 'PATCH', route, body, accessToken });
+  return apiGateway<T>({ method: "PATCH", route, body, accessToken });
 }
 
 // =============================================================================
@@ -555,7 +582,7 @@ export async function apiPatch<T = any>(
 
 /**
  * Get API base URL for a specific function
- * 
+ *
  * @deprecated Use apiGateway() instead for automatic routing
  */
 export function getApiBase(functionName: keyof typeof EDGE_FUNCTIONS): string {

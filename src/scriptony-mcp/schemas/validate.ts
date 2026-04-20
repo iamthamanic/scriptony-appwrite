@@ -18,12 +18,18 @@ export interface DeclarativeToolInputRule {
   requiredStringKeys?: string[];
 }
 
-export const DECLARATIVE_TOOL_INPUT_RULES: Record<string, DeclarativeToolInputRule> = {
+export const DECLARATIVE_TOOL_INPUT_RULES: Record<
+  string,
+  DeclarativeToolInputRule
+> = {
   get_project_summary: { needsProjectId: true },
   list_project_scenes: { needsProjectId: true },
   get_scene_details: { requiredStringKeys: ["scene_id"] },
   rename_project: { needsProjectId: true, requiredStringKeys: ["title"] },
-  create_scene: { needsProjectId: true, requiredStringKeys: ["template_id", "title"] },
+  create_scene: {
+    needsProjectId: true,
+    requiredStringKeys: ["template_id", "title"],
+  },
 };
 
 /**
@@ -32,7 +38,7 @@ export const DECLARATIVE_TOOL_INPUT_RULES: Record<string, DeclarativeToolInputRu
 export function validateToolInput(
   toolName: string,
   input: unknown,
-  ctx: ToolValidationContext
+  ctx: ToolValidationContext,
 ): ToolResult | null {
   if (!isPlainObject(input)) {
     return errResult("Tool input must be a JSON object.", {
@@ -48,16 +54,22 @@ export function validateToolInput(
 
   if (rule.needsProjectId) {
     if (!resolveProjectId(input, ctx)) {
-      return errResult("project_id is required (in input or request project_id).", {
-        code: "VALIDATION",
-        message: "missing project_id",
-      });
+      return errResult(
+        "project_id is required (in input or request project_id).",
+        {
+          code: "VALIDATION",
+          message: "missing project_id",
+        },
+      );
     }
   }
 
   for (const key of rule.requiredStringKeys ?? []) {
     if (!readString(input, key)) {
-      return errResult(`${key} is required.`, { code: "VALIDATION", message: `missing ${key}` });
+      return errResult(`${key} is required.`, {
+        code: "VALIDATION",
+        message: `missing ${key}`,
+      });
     }
   }
 

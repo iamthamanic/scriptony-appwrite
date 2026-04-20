@@ -29,7 +29,9 @@ export function createStubProviderRouter(): ProviderRouter {
   };
 }
 
-export function createProviderRouterFromSummary(summary: AssistantProfileSummary | null): ProviderRouter {
+export function createProviderRouterFromSummary(
+  summary: AssistantProfileSummary | null,
+): ProviderRouter {
   return {
     describe() {
       if (!summary || (!summary.providerId && !summary.modelId)) {

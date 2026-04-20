@@ -21,7 +21,10 @@ export interface ProjectIdResolutionContext {
 }
 
 /** project_id from input body or runtime default (POST body project_id on host). */
-export function resolveProjectId(input: unknown, ctx: ProjectIdResolutionContext): string | undefined {
+export function resolveProjectId(
+  input: unknown,
+  ctx: ProjectIdResolutionContext,
+): string | undefined {
   const fromInput = readString(input, "project_id");
   const fromCtx = ctx.projectId?.trim();
   return fromInput ?? (fromCtx && fromCtx.length > 0 ? fromCtx : undefined);

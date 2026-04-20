@@ -9,19 +9,36 @@ import {
   hydrateProjectRow,
   normalizeProjectInput,
 } from "../_shared/scriptony";
-import { getNodeById, getTimelineNodes, mapNode, normalizeNodeInput } from "../_shared/timeline";
+import {
+  getNodeById,
+  getTimelineNodes,
+  mapNode,
+  normalizeNodeInput,
+} from "../_shared/timeline";
 import type { BootstrapResult } from "../_shared/auth";
 import { errResult, okResult } from "../../src/scriptony-mcp/results/envelope";
-import type { SceneNodePayload, ScriptonyMcpInfra } from "../../src/scriptony-mcp/types/infra";
+import type {
+  SceneNodePayload,
+  ScriptonyMcpInfra,
+} from "../../src/scriptony-mcp/types/infra";
 
-export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpInfra {
+export function createScriptonyInfra(
+  bootstrap: BootstrapResult,
+): ScriptonyMcpInfra {
   const userId = bootstrap.user.id;
 
   async function ensureProject(projectId: string) {
     const organizationIds = await getUserOrganizationIds(userId);
-    const project = await getAccessibleProject(projectId, userId, organizationIds);
+    const project = await getAccessibleProject(
+      projectId,
+      userId,
+      organizationIds,
+    );
     if (!project) {
-      return { ok: false as const, error: "Project not found or access denied" };
+      return {
+        ok: false as const,
+        error: "Project not found or access denied",
+      };
     }
     return { ok: true as const, project };
   }
@@ -30,7 +47,10 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
     async getProjectSummary(projectId) {
       const access = await ensureProject(projectId);
       if (!access.ok) {
-        return errResult(access.error, { code: "FORBIDDEN", message: access.error });
+        return errResult(access.error, {
+          code: "FORBIDDEN",
+          message: access.error,
+        });
       }
       const scenes = await getTimelineNodes({ projectId, level: 3 });
       return okResult("Project summary", {
@@ -42,10 +62,15 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
     async listProjectScenes(projectId) {
       const access = await ensureProject(projectId);
       if (!access.ok) {
-        return errResult(access.error, { code: "FORBIDDEN", message: access.error });
+        return errResult(access.error, {
+          code: "FORBIDDEN",
+          message: access.error,
+        });
       }
       const scenes = await getTimelineNodes({ projectId, level: 3 });
-      const mapped = scenes.map((n) => mapNode(n) as unknown as SceneNodePayload);
+      const mapped = scenes.map(
+        (n) => mapNode(n) as unknown as SceneNodePayload,
+      );
       return okResult("Scenes listed", { scenes: mapped });
     },
 
@@ -56,15 +81,23 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
       }
       const access = await ensureProject(row.project_id as string);
       if (!access.ok) {
-        return errResult(access.error, { code: "FORBIDDEN", message: access.error });
+        return errResult(access.error, {
+          code: "FORBIDDEN",
+          message: access.error,
+        });
       }
-      return okResult("Scene loaded", { scene: mapNode(row) as unknown as SceneNodePayload });
+      return okResult("Scene loaded", {
+        scene: mapNode(row) as unknown as SceneNodePayload,
+      });
     },
 
     async renameProject(projectId, title) {
       const access = await ensureProject(projectId);
       if (!access.ok) {
-        return errResult(access.error, { code: "FORBIDDEN", message: access.error });
+        return errResult(access.error, {
+          code: "FORBIDDEN",
+          message: access.error,
+        });
       }
       const updated = await requestGraphql<{
         update_projects_by_pk: Record<string, unknown> | null;
@@ -80,11 +113,14 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
         {
           projectId,
           changes: normalizeProjectInput({ title }),
-        }
+        },
       );
       const row = updated.update_projects_by_pk;
       if (!row) {
-        return errResult("Update failed", { code: "UPDATE_FAILED", message: "No row returned" });
+        return errResult("Update failed", {
+          code: "UPDATE_FAILED",
+          message: "No row returned",
+        });
       }
       return okResult("Project renamed", {
         project_id: String(row.id),
@@ -95,7 +131,10 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
     async createScene(input) {
       const access = await ensureProject(input.projectId);
       if (!access.ok) {
-        return errResult(access.error, { code: "FORBIDDEN", message: access.error });
+        return errResult(access.error, {
+          code: "FORBIDDEN",
+          message: access.error,
+        });
       }
 
       const nodeInput = normalizeNodeInput({
@@ -107,10 +146,16 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
         summary: input.summary,
       });
 
-      if (!nodeInput.project_id || !nodeInput.template_id || !nodeInput.level || !nodeInput.title) {
+      if (
+        !nodeInput.project_id ||
+        !nodeInput.template_id ||
+        !nodeInput.level ||
+        !nodeInput.title
+      ) {
         return errResult("Invalid scene payload", {
           code: "VALIDATION",
-          message: "project_id, template_id, level, title required after normalize",
+          message:
+            "project_id, template_id, level, title required after normalize",
         });
       }
 
@@ -142,11 +187,13 @@ export function createScriptonyInfra(bootstrap: BootstrapResult): ScriptonyMcpIn
             order_index: nodeInput.order_index ?? 0,
             metadata_json: nodeInput.metadata_json ?? "{}",
           },
-        }
+        },
       );
 
       const row = created.insert_timeline_nodes_one;
-      return okResult("Scene created", { scene: mapNode(row) as unknown as SceneNodePayload });
+      return okResult("Scene created", {
+        scene: mapNode(row) as unknown as SceneNodePayload,
+      });
     },
   };
 }

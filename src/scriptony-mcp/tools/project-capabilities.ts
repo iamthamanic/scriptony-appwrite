@@ -17,7 +17,8 @@ export function registerProjectCapabilityTools(registry: ToolRegistry): void {
   const tools: InternalTool[] = [
     {
       name: "get_project_summary",
-      description: "Returns a hydrated project row and count of level-3 (scene) timeline nodes.",
+      description:
+        "Returns a hydrated project row and count of level-3 (scene) timeline nodes.",
       inputSchema: schemaProjectId,
       policy: "read",
       riskLevel: "low",
@@ -66,7 +67,8 @@ export function registerProjectCapabilityTools(registry: ToolRegistry): void {
     },
     {
       name: "create_scene",
-      description: "Creates a new level-3 timeline node (scene). Requires template_id from the project template model.",
+      description:
+        "Creates a new level-3 timeline node (scene). Requires template_id from the project template model.",
       inputSchema: schemaCreateScene,
       policy: "write",
       riskLevel: "medium",

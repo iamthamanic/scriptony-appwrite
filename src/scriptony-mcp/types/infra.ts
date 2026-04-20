@@ -19,10 +19,19 @@ export interface SceneNodePayload extends Record<string, unknown> {
 }
 
 export interface ScriptonyMcpInfra {
-  getProjectSummary(projectId: string): Promise<ToolResult<ProjectSummaryPayload>>;
-  listProjectScenes(projectId: string): Promise<ToolResult<{ scenes: SceneNodePayload[] }>>;
-  getSceneDetails(sceneId: string): Promise<ToolResult<{ scene: SceneNodePayload | null }>>;
-  renameProject(projectId: string, title: string): Promise<ToolResult<{ project_id: string; title: string }>>;
+  getProjectSummary(
+    projectId: string,
+  ): Promise<ToolResult<ProjectSummaryPayload>>;
+  listProjectScenes(
+    projectId: string,
+  ): Promise<ToolResult<{ scenes: SceneNodePayload[] }>>;
+  getSceneDetails(
+    sceneId: string,
+  ): Promise<ToolResult<{ scene: SceneNodePayload | null }>>;
+  renameProject(
+    projectId: string,
+    title: string,
+  ): Promise<ToolResult<{ project_id: string; title: string }>>;
   createScene(input: {
     projectId: string;
     templateId: string;

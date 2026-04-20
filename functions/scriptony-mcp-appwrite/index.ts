@@ -8,26 +8,33 @@ import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { requireUserBootstrap } from "../_shared/auth";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../_shared/http";
 import { createDefaultCapabilityRegistry } from "../../src/scriptony-mcp/tools/project-capabilities";
 import { createProviderRouterFromSummary } from "../../src/scriptony-runtime/provider-router";
-import { runMcpOrchestrator, type OrchestratorRequest } from "../../src/scriptony-runtime/orchestrator";
+import {
+  type OrchestratorRequest,
+  runMcpOrchestrator,
+} from "../../src/scriptony-runtime/orchestrator";
 import { createScriptonyInfra } from "./create-infra";
 import { loadAssistantProfileSummary } from "./provider-context";
 
 const registry = createDefaultCapabilityRegistry();
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) || (typeof req?.url === "string" && req.url) || "/";
+  const direct = (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
   try {
-    if (direct.startsWith("http://") || direct.startsWith("https://")) return new URL(direct).pathname || "/";
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
   } catch {
     /* fallback */
   }
@@ -44,7 +51,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         status: "ok",
         service: "scriptony-mcp-appwrite",
         provider: "appwrite",
-        note: "assistant_profile is included on authenticated POST /invoke responses only.",
+        note:
+          "assistant_profile is included on authenticated POST /invoke responses only.",
         timestamp: new Date().toISOString(),
       });
       return;
@@ -76,7 +84,9 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     const tool = typeof body.tool === "string" ? body.tool.trim() : undefined;
     const input = body.input;
     const approved = body.approved === true;
-    const projectId = typeof body.project_id === "string" ? body.project_id.trim() : undefined;
+    const projectId = typeof body.project_id === "string"
+      ? body.project_id.trim()
+      : undefined;
 
     if (actionRaw === "invoke" && !tool) {
       sendBadRequest(res, 'invoke requires string "tool"');
@@ -108,7 +118,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         infra,
         requestPath: pathname,
       },
-      orchReq
+      orchReq,
     );
 
     sendJson(res, 200, out);

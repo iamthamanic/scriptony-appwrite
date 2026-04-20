@@ -2,7 +2,10 @@
  * Canonical internal tool contract (MCP-style capability, in-process).
  */
 
-import type { ToolPolicyCategory, ToolRiskLevel } from "../policies/tool-policy";
+import type {
+  ToolPolicyCategory,
+  ToolRiskLevel,
+} from "../policies/tool-policy";
 import type { ToolResult } from "../results/envelope";
 import type { JsonSchema } from "./json-schema";
 import type { ScriptonyMcpInfra } from "./infra";

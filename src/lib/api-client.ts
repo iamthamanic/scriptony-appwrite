@@ -1,15 +1,18 @@
 /**
  * Centralized API Client for Scriptony Backend
- * 
+ *
  * Provides a unified interface for making HTTP requests to the provider-neutral backend functions.
  * Handles authentication, error handling, logging, and request/response transformation.
- * 
+ *
  * NOTE: This now uses API Gateway for automatic routing to the correct backend function.
  */
 
-import { API_CONFIG } from './config';
-import { ApiGatewayError, apiGateway as internalApiGateway } from './api-gateway';
-import { backendConfig } from './env';
+import { API_CONFIG } from "./config";
+import {
+  ApiGatewayError,
+  apiGateway as internalApiGateway,
+} from "./api-gateway";
+import { backendConfig } from "./env";
 
 // =============================================================================
 // Types
@@ -51,7 +54,7 @@ const API_BASE_URL_LEGACY = `${backendConfig.functionsBaseUrl || ""}${API_CONFIG
 const USE_API_GATEWAY = true;
 const API_CLIENT_DEBUG =
   import.meta.env.DEV &&
-  String(import.meta.env.VITE_DEBUG_API_CLIENT || '').trim() === '1';
+  String(import.meta.env.VITE_DEBUG_API_CLIENT || "").trim() === "1";
 
 function debugApiClient(...args: unknown[]): void {
   if (API_CLIENT_DEBUG) {
@@ -66,13 +69,13 @@ function debugApiClient(...args: unknown[]): void {
 /**
  * Gets the current auth token via centralized auth client
  */
-import { getAuthToken as getCentralAuthToken } from './auth/getAuthToken';
+import { getAuthToken as getCentralAuthToken } from "./auth/getAuthToken";
 
 async function getAuthToken(): Promise<string | null> {
   try {
     return await getCentralAuthToken();
   } catch (error) {
-    console.error('[API Client] Exception getting auth token:', error);
+    console.error("[API Client] Exception getting auth token:", error);
     return null;
   }
 }
@@ -89,43 +92,51 @@ function createTimeout(ms: number): Promise<never> {
 /**
  * Formats an error response into a standardized ApiError
  */
-function formatError(error: any, status?: number, statusText?: string): ApiError {
-  if (typeof error === 'string') {
+function formatError(
+  error: any,
+  status?: number,
+  statusText?: string,
+): ApiError {
+  if (typeof error === "string") {
     return { message: error, status, statusText };
   }
-  
+
   if (error?.message) {
     return {
       message: error.message,
       status: status || error.status,
       statusText: statusText || error.statusText,
-      code: typeof error.code === 'string' ? error.code : undefined,
+      code: typeof error.code === "string" ? error.code : undefined,
       layer:
-        typeof error.layer === 'string'
+        typeof error.layer === "string"
           ? error.layer
-          : typeof error.kind === 'string'
+          : typeof error.kind === "string"
             ? error.kind
             : undefined,
       details: error.details || error,
     };
   }
-  
+
   return {
-    message: 'An unknown error occurred',
+    message: "An unknown error occurred",
     status,
     statusText,
-    code: typeof error?.code === 'string' ? error.code : undefined,
+    code: typeof error?.code === "string" ? error.code : undefined,
     layer:
-      typeof error?.layer === 'string'
+      typeof error?.layer === "string"
         ? error.layer
-        : typeof error?.kind === 'string'
+        : typeof error?.kind === "string"
           ? error.kind
           : undefined,
     details: error,
   };
 }
 
-function logGatewayFailure(method: string, endpoint: string, error: ApiGatewayError): void {
+function logGatewayFailure(
+  method: string,
+  endpoint: string,
+  error: ApiGatewayError,
+): void {
   const payload = {
     layer: error.layer,
     functionName: error.functionName,
@@ -137,17 +148,26 @@ function logGatewayFailure(method: string, endpoint: string, error: ApiGatewayEr
     details: error.details,
   };
 
-  if (error.layer === 'function-auth') {
-    console.warn(`[API Client] Function auth failure for ${method} ${endpoint}`, payload);
+  if (error.layer === "function-auth") {
+    console.warn(
+      `[API Client] Function auth failure for ${method} ${endpoint}`,
+      payload,
+    );
     return;
   }
 
-  if (error.layer === 'transport') {
-    console.error(`[API Client] Gateway transport failure for ${method} ${endpoint}`, payload);
+  if (error.layer === "transport") {
+    console.error(
+      `[API Client] Gateway transport failure for ${method} ${endpoint}`,
+      payload,
+    );
     return;
   }
 
-  console.error(`[API Client] Function error for ${method} ${endpoint}`, payload);
+  console.error(
+    `[API Client] Function error for ${method} ${endpoint}`,
+    payload,
+  );
 }
 
 // =============================================================================
@@ -156,14 +176,14 @@ function logGatewayFailure(method: string, endpoint: string, error: ApiGatewayEr
 
 /**
  * Makes an HTTP request to the API
- * 
+ *
  * @param endpoint - API endpoint (without base URL), e.g. '/projects'
  * @param options - Request options
  * @returns Promise with ApiResult
  */
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestOptions = {}
+  options: RequestOptions = {},
 ): Promise<ApiResult<T>> {
   const {
     requireAuth = true,
@@ -172,34 +192,42 @@ export async function apiRequest<T = any>(
     ...fetchOptions
   } = options;
 
-  const method = fetchOptions.method || 'GET';
+  const method = fetchOptions.method || "GET";
 
   // Use API Gateway for automatic routing to the correct backend function
   if (USE_API_GATEWAY) {
     debugApiClient(`[API Client] Using API Gateway for ${method} ${endpoint}`);
-    
+
     try {
       // Get auth token if required
       let authToken: string | null = null;
       if (requireAuth) {
         authToken = await getAuthToken();
         if (!authToken) {
-          console.warn('[API Client] No auth token available for', method, endpoint);
+          console.warn(
+            "[API Client] No auth token available for",
+            method,
+            endpoint,
+          );
           return {
             error: {
-              message: 'Unauthorized - please log in',
+              message: "Unauthorized - please log in",
               status: 401,
-              statusText: 'Unauthorized',
-              code: 'AUTH_MISSING_TOKEN',
-              layer: 'client-auth',
+              statusText: "Unauthorized",
+              code: "AUTH_MISSING_TOKEN",
+              layer: "client-auth",
             },
           };
         }
-        debugApiClient(`[API Client] Auth token acquired for ${method} ${endpoint}`);
+        debugApiClient(
+          `[API Client] Auth token acquired for ${method} ${endpoint}`,
+        );
       }
-      
+
       // Call API Gateway
-      const body = fetchOptions.body ? JSON.parse(fetchOptions.body as string) : undefined;
+      const body = fetchOptions.body
+        ? JSON.parse(fetchOptions.body as string)
+        : undefined;
       const data = await internalApiGateway<T>({
         method: method as any,
         route: endpoint,
@@ -207,20 +235,23 @@ export async function apiRequest<T = any>(
         headers: headers as Record<string, string>,
         accessToken: authToken || undefined,
       });
-      
+
       return { data };
     } catch (error: any) {
       if (error instanceof ApiGatewayError) {
         logGatewayFailure(method, endpoint, error);
       } else {
-        console.error(`[API Client] Unexpected gateway failure for ${method} ${endpoint}`, error);
+        console.error(
+          `[API Client] Unexpected gateway failure for ${method} ${endpoint}`,
+          error,
+        );
       }
       return {
         error: formatError(error, error?.status, error?.statusText),
       };
     }
   }
-  
+
   // LEGACY: Fallback to old direct function call (for backward compatibility)
   const url = `${API_BASE_URL_LEGACY}${endpoint}`;
   debugApiClient(`[API Client] LEGACY MODE: ${method} request to ${url}`);
@@ -231,18 +262,24 @@ export async function apiRequest<T = any>(
     if (requireAuth) {
       authToken = await getAuthToken();
       if (!authToken) {
-        console.warn('[API Client] No auth token available for', method, endpoint);
+        console.warn(
+          "[API Client] No auth token available for",
+          method,
+          endpoint,
+        );
         return {
           error: {
-            message: 'Unauthorized - please log in',
+            message: "Unauthorized - please log in",
             status: 401,
-            statusText: 'Unauthorized',
-            code: 'AUTH_MISSING_TOKEN',
-            layer: 'client-auth',
+            statusText: "Unauthorized",
+            code: "AUTH_MISSING_TOKEN",
+            layer: "client-auth",
           },
         };
       }
-      debugApiClient(`[API Client] Auth token acquired for ${method} ${endpoint}`);
+      debugApiClient(
+        `[API Client] Auth token acquired for ${method} ${endpoint}`,
+      );
     }
 
     // Build headers
@@ -260,48 +297,62 @@ export async function apiRequest<T = any>(
     }
 
     // Log request
-    debugApiClient(`[API] Starting ${method} ${url}`, fetchOptions.body ? JSON.parse(fetchOptions.body as string) : '');
+    debugApiClient(
+      `[API] Starting ${method} ${url}`,
+      fetchOptions.body ? JSON.parse(fetchOptions.body as string) : "",
+    );
     debugApiClient(`[API] Request headers:`, requestHeaders);
 
     // Make request with timeout
     let response: Response;
-    
+
     try {
       debugApiClient(`[API] Fetching with ${timeout}ms timeout...`);
-      response = await Promise.race([
+      response = (await Promise.race([
         fetch(url, {
           ...fetchOptions,
           headers: requestHeaders,
         }),
         createTimeout(timeout),
-      ]) as Response;
-      debugApiClient(`[API] Response received:`, response.status, response.statusText);
+      ])) as Response;
+      debugApiClient(
+        `[API] Response received:`,
+        response.status,
+        response.statusText,
+      );
     } catch (fetchError: any) {
       // Handle network errors or timeout
-      if (fetchError.message?.includes('timeout')) {
-        console.error(`[API TIMEOUT] ${method} ${endpoint}: Request timed out after ${timeout}ms`);
-        console.error(`[API TIMEOUT] This usually means the server is not responding`);
+      if (fetchError.message?.includes("timeout")) {
+        console.error(
+          `[API TIMEOUT] ${method} ${endpoint}: Request timed out after ${timeout}ms`,
+        );
+        console.error(
+          `[API TIMEOUT] This usually means the server is not responding`,
+        );
         console.error(`[API TIMEOUT] URL was: ${url}`);
         return {
           error: {
             message: `Request timed out after ${timeout}ms. Server may be offline or unreachable.`,
             status: 408,
-            statusText: 'Request Timeout',
+            statusText: "Request Timeout",
             details: { url, fetchError },
           },
         };
       }
-      
+
       console.error(`[API FETCH ERROR] ${method} ${endpoint}:`, fetchError);
       console.error(`[API FETCH ERROR] URL was: ${url}`);
-      console.error(`[API FETCH ERROR] This might be a network issue, CORS problem, or server offline`);
-      
+      console.error(
+        `[API FETCH ERROR] This might be a network issue, CORS problem, or server offline`,
+      );
+
       // Provide more helpful error message
-      let message = 'Network error or server unreachable.';
-      if (fetchError.message === 'Failed to fetch') {
-          message = 'Cannot connect to backend. Please check:\n1. Is your internet working?\n2. Is the backend function deployed?\n3. Check browser console for CORS errors';
+      let message = "Network error or server unreachable.";
+      if (fetchError.message === "Failed to fetch") {
+        message =
+          "Cannot connect to backend. Please check:\n1. Is your internet working?\n2. Is the backend function deployed?\n3. Check browser console for CORS errors";
       }
-      
+
       return {
         error: {
           message,
@@ -312,11 +363,11 @@ export async function apiRequest<T = any>(
 
     // Parse response
     let responseData: any;
-    
+
     try {
-      const contentType = response.headers.get('content-type');
-      
-      if (contentType?.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+
+      if (contentType?.includes("application/json")) {
         responseData = await response.json();
       } else {
         responseData = await response.text();
@@ -329,25 +380,27 @@ export async function apiRequest<T = any>(
     // Handle HTTP errors
     if (!response.ok) {
       const error = formatError(
-        responseData?.error || responseData?.details || responseData || 'Request failed',
+        responseData?.error ||
+          responseData?.details ||
+          responseData ||
+          "Request failed",
         response.status,
-        response.statusText
+        response.statusText,
       );
-      
+
       console.error(`[API ERROR] ${method} ${endpoint}:`, error);
-      
+
       return { error };
     }
 
     // Success
     console.log(`[API SUCCESS] ${method} ${endpoint}:`, responseData);
-    
-    return { data: responseData as T };
 
+    return { data: responseData as T };
   } catch (error: any) {
     const apiError = formatError(error);
     console.error(`[API EXCEPTION] ${method} ${endpoint}:`, apiError);
-    
+
     return { error: apiError };
   }
 }
@@ -361,9 +414,9 @@ export async function apiRequest<T = any>(
  */
 export async function apiGet<T = any>(
   endpoint: string,
-  options?: Omit<RequestOptions, 'method' | 'body'>
+  options?: Omit<RequestOptions, "method" | "body">,
 ): Promise<ApiResult<T>> {
-  return apiRequest<T>(endpoint, { ...options, method: 'GET' });
+  return apiRequest<T>(endpoint, { ...options, method: "GET" });
 }
 
 /**
@@ -372,11 +425,11 @@ export async function apiGet<T = any>(
 export async function apiPost<T = any>(
   endpoint: string,
   body?: any,
-  options?: Omit<RequestOptions, 'method' | 'body'>
+  options?: Omit<RequestOptions, "method" | "body">,
 ): Promise<ApiResult<T>> {
   return apiRequest<T>(endpoint, {
     ...options,
-    method: 'POST',
+    method: "POST",
     body: body ? JSON.stringify(body) : undefined,
   });
 }
@@ -387,11 +440,11 @@ export async function apiPost<T = any>(
 export async function apiPut<T = any>(
   endpoint: string,
   body?: any,
-  options?: Omit<RequestOptions, 'method' | 'body'>
+  options?: Omit<RequestOptions, "method" | "body">,
 ): Promise<ApiResult<T>> {
   return apiRequest<T>(endpoint, {
     ...options,
-    method: 'PUT',
+    method: "PUT",
     body: body ? JSON.stringify(body) : undefined,
   });
 }
@@ -402,11 +455,11 @@ export async function apiPut<T = any>(
 export async function apiDelete<T = any>(
   endpoint: string,
   body?: any,
-  options?: Omit<RequestOptions, 'method' | 'body'>
+  options?: Omit<RequestOptions, "method" | "body">,
 ): Promise<ApiResult<T>> {
   return apiRequest<T>(endpoint, {
     ...options,
-    method: 'DELETE',
+    method: "DELETE",
     body: body ? JSON.stringify(body) : undefined,
   });
 }
@@ -417,11 +470,11 @@ export async function apiDelete<T = any>(
 export async function apiPatch<T = any>(
   endpoint: string,
   body?: any,
-  options?: Omit<RequestOptions, 'method' | 'body'>
+  options?: Omit<RequestOptions, "method" | "body">,
 ): Promise<ApiResult<T>> {
   return apiRequest<T>(endpoint, {
     ...options,
-    method: 'PATCH',
+    method: "PATCH",
     body: body ? JSON.stringify(body) : undefined,
   });
 }
@@ -445,15 +498,17 @@ export function unwrapApiResult<T>(result: ApiResult<T>): T {
     (error as any).details = err.details;
     throw error;
   }
-  
+
   return result.data;
 }
 
 /**
  * Checks if an ApiResult is an error
  */
-export function isApiError<T>(result: ApiResult<T>): result is ApiErrorResponse {
-  return 'error' in result;
+export function isApiError<T>(
+  result: ApiResult<T>,
+): result is ApiErrorResponse {
+  return "error" in result;
 }
 
 // =============================================================================
@@ -465,27 +520,46 @@ export function isApiError<T>(result: ApiResult<T>): result is ApiErrorResponse 
  * Use this for simpler code that uses try/catch for error handling
  */
 export const apiClient = {
-  async get<T = any>(endpoint: string, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+  async get<T = any>(
+    endpoint: string,
+    options?: Omit<RequestOptions, "method" | "body">,
+  ): Promise<T> {
     const result = await apiGet<T>(endpoint, options);
     return unwrapApiResult(result);
   },
-  
-  async post<T = any>(endpoint: string, body?: any, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+
+  async post<T = any>(
+    endpoint: string,
+    body?: any,
+    options?: Omit<RequestOptions, "method" | "body">,
+  ): Promise<T> {
     const result = await apiPost<T>(endpoint, body, options);
     return unwrapApiResult(result);
   },
-  
-  async put<T = any>(endpoint: string, body?: any, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+
+  async put<T = any>(
+    endpoint: string,
+    body?: any,
+    options?: Omit<RequestOptions, "method" | "body">,
+  ): Promise<T> {
     const result = await apiPut<T>(endpoint, body, options);
     return unwrapApiResult(result);
   },
-  
-  async delete<T = any>(endpoint: string, body?: any, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+
+  async delete<T = any>(
+    endpoint: string,
+    body?: any,
+    options?: Omit<RequestOptions, "method" | "body">,
+  ): Promise<T> {
     const result = await apiDelete<T>(endpoint, body, options);
     return unwrapApiResult(result);
   },
-  
-  async patch<T = any>(endpoint: string, body?: any, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+
+  async patch<T = any>(
+    endpoint: string,
+    body?: any,
+    options?: Omit<RequestOptions, "method" | "body">,
+  ): Promise<T> {
     const result = await apiPatch<T>(endpoint, body, options);
     return unwrapApiResult(result);
   },

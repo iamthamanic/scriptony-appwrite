@@ -7,7 +7,9 @@ import { getLegacyAssistantSettings } from "../_shared/ai-central-store";
 import { resolveAiFeatureProfile } from "../_shared/ai-feature-profile";
 import type { AssistantProfileSummary } from "../../src/scriptony-runtime/provider-router";
 
-export async function loadAssistantProfileSummary(userId: string): Promise<AssistantProfileSummary | null> {
+export async function loadAssistantProfileSummary(
+  userId: string,
+): Promise<AssistantProfileSummary | null> {
   const row = await getLegacyAssistantSettings(userId);
   if (!row) {
     return {
@@ -26,7 +28,9 @@ export async function loadAssistantProfileSummary(userId: string): Promise<Assis
   }
 
   return {
-    providerId: typeof row.active_provider === "string" ? row.active_provider : null,
+    providerId: typeof row.active_provider === "string"
+      ? row.active_provider
+      : null,
     modelId: typeof row.active_model === "string" ? row.active_model : null,
     resolutionNote: resolved.error,
   };
