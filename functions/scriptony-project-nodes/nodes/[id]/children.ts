@@ -11,14 +11,17 @@ import {
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
+  sendNotFound,
   sendServerError,
   sendUnauthorized,
 } from "../../../_shared/http";
 import {
   getRecursiveChildren,
   getTimelineChildren,
+  getNodeById,
   mapNode,
 } from "../../../_shared/timeline";
+import { requireProjectAccess } from "../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -41,6 +44,19 @@ export default async function handler(
       sendBadRequest(res, "id is required");
       return;
     }
+
+    const node = await getNodeById(nodeId);
+    if (!node) {
+      sendNotFound(res, "Node not found");
+      return;
+    }
+
+    const _project = await requireProjectAccess(
+      String(node.project_id),
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
 
     const recursive = getQuery(req, "recursive") === "true";
     const children = recursive

@@ -56,7 +56,11 @@ async function reloadTimeline(
       scenes: (ultra.timeline.scenes || []).map(nodeToScene),
       shots: ultra.shots || [],
     };
-  } catch {
+  } catch (error) {
+    console.error(
+      "[persist] ultraBatchLoadProject failed, falling back to batch load",
+      error,
+    );
     const [batch, shotsList] = await Promise.all([
       TimelineAPIV2.batchLoadTimeline(projectId, token),
       ShotsAPI.getAllShotsByProject(projectId, token).catch(() => []),

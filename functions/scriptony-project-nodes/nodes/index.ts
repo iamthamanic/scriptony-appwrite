@@ -20,6 +20,7 @@ import {
   mapNode,
   normalizeNodeInput,
 } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -39,6 +40,9 @@ export default async function handler(
         sendBadRequest(res, "project_id is required");
         return;
       }
+
+      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      if (!_project) return;
 
       const levelValue = getQuery(req, "level");
       const parentQuery = getQuery(req, "parent_id") ??
@@ -75,6 +79,13 @@ export default async function handler(
         );
         return;
       }
+
+      const _project = await requireProjectAccess(
+        String(nodeInput.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
 
       const created = await requestGraphql<{
         insert_timeline_nodes_one: Record<string, any>;

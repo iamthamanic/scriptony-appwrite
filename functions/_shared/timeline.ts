@@ -300,7 +300,8 @@ export function mapShot(row: JsonRecord): JsonRecord {
   };
 }
 
-export async function getProjectIfAccessible(
+/** Fetches a project by ID without access check. Use `requireProjectAccess` from scriptony.ts for access-gated lookups. */
+export async function getProjectById(
   projectId: string,
 ): Promise<JsonRecord | null> {
   const data = await requestGraphql<{
@@ -759,15 +760,21 @@ export async function getShotById(shotId: string): Promise<JsonRecord | null> {
 }
 
 export async function buildNodePath(nodeId: string): Promise<JsonRecord[]> {
-  const path: JsonRecord[] = [];
-  let current = await getNodeById(nodeId);
+  const startNode = await getNodeById(nodeId);
+  if (!startNode) return [];
+  if (!startNode.project_id) return [mapNode(startNode)];
 
+  const allNodes = await getAllProjectNodes(String(startNode.project_id));
+
+  const byId = new Map<string, JsonRecord>();
+  for (const n of allNodes) byId.set(String(n.id), n);
+
+  const path: JsonRecord[] = [];
+  let current: JsonRecord | undefined = byId.get(nodeId) ?? startNode;
   while (current) {
     path.unshift(mapNode(current));
-    if (!current.parent_id) {
-      break;
-    }
-    current = await getNodeById(current.parent_id);
+    if (!current.parent_id) break;
+    current = byId.get(String(current.parent_id));
   }
 
   return path;
@@ -776,13 +783,25 @@ export async function buildNodePath(nodeId: string): Promise<JsonRecord[]> {
 export async function getRecursiveChildren(
   nodeId: string,
 ): Promise<JsonRecord[]> {
-  const children = await getTimelineChildren(nodeId);
-  const nested = await Promise.all(
-    children.map(async (child) => {
-      const descendants = await getRecursiveChildren(child.id);
-      return [mapNode(child), ...descendants];
-    }),
-  );
+  const node = await getNodeById(nodeId);
+  if (!node?.project_id) return [];
 
-  return nested.flat();
+  const allNodes = await getAllProjectNodes(String(node.project_id));
+
+  const childrenOf = new Map<string, JsonRecord[]>();
+  for (const n of allNodes) {
+    const pid = String(n.parent_id ?? "");
+    if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+    childrenOf.get(pid)!.push(n);
+  }
+
+  const result: JsonRecord[] = [];
+  const queue = [...(childrenOf.get(nodeId) ?? [])];
+  while (queue.length) {
+    const child = queue.shift()!;
+    result.push(child);
+    queue.push(...(childrenOf.get(String(child.id)) ?? []));
+  }
+
+  return result.map(mapNode);
 }

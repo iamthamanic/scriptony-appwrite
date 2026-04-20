@@ -80,6 +80,7 @@ Ich habe eine **komplette Performance-Optimierungs-Infrastruktur** für deine Dr
 ## ⚡ Performance Impact
 
 ### Vorher (Ohne Optimierungen):
+
 ```
 📊 FilmDropdown:
 - Initial Load: 3-5 Sekunden ❌
@@ -95,6 +96,7 @@ Ich habe eine **komplette Performance-Optimierungs-Infrastruktur** für deine Dr
 ```
 
 ### Nachher (Mit Optimierungen):
+
 ```
 🚀 FilmDropdown:
 - Initial Load: 300-500ms ✅ (10x schneller!)
@@ -116,35 +118,46 @@ Ich habe eine **komplette Performance-Optimierungs-Infrastruktur** für deine Dr
 ### Option 1: Drop-in Hook (5 Minuten)
 
 **FilmDropdown.tsx:**
+
 ```typescript
-import { useOptimizedFilmDropdown } from '../hooks/useOptimizedFilmDropdown';
+import { useOptimizedFilmDropdown } from "../hooks/useOptimizedFilmDropdown";
 
 // In FilmDropdown function:
 const optimized = useOptimizedFilmDropdown({
-  acts, sequences, scenes, shots,
-  expandedActs, expandedSequences, expandedScenes,
+  acts,
+  sequences,
+  scenes,
+  shots,
+  expandedActs,
+  expandedSequences,
+  expandedScenes,
 });
 
 // Ersetze:
-sequences.filter(s => s.actId === actId)
+sequences.filter((s) => s.actId === actId);
 // Mit:
-optimized.getSequencesForAct(actId)
+optimized.getSequencesForAct(actId);
 ```
 
 **BookDropdown.tsx:**
+
 ```typescript
-import { useOptimizedBookDropdown } from '../hooks/useOptimizedBookDropdown';
+import { useOptimizedBookDropdown } from "../hooks/useOptimizedBookDropdown";
 
 // In BookDropdown function:
 const optimized = useOptimizedBookDropdown({
-  acts, sequences, scenes,
-  expandedActs, expandedSequences, expandedScenes,
+  acts,
+  sequences,
+  scenes,
+  expandedActs,
+  expandedSequences,
+  expandedScenes,
 });
 
 // Ersetze:
-sequences.filter(s => s.actId === actId)
+sequences.filter((s) => s.actId === actId);
 // Mit:
-optimized.getSequencesForAct(actId)
+optimized.getSequencesForAct(actId);
 ```
 
 **→ 10x Performance mit 1 Zeile Code!** ⚡
@@ -154,8 +167,9 @@ optimized.getSequencesForAct(actId)
 ### Option 2: Lazy Loading (15 Minuten - Maximum Performance!)
 
 **FilmDropdown - Lazy Load Shots:**
+
 ```typescript
-import { useLazyLoadShots } from '../hooks/useLazyLoadShots';
+import { useLazyLoadShots } from "../hooks/useLazyLoadShots";
 
 // In Scene component:
 const { shots, loading } = useLazyLoadShots({
@@ -166,8 +180,9 @@ const { shots, loading } = useLazyLoadShots({
 ```
 
 **BookDropdown - Lazy Load Content:**
+
 ```typescript
-import { useLazyLoadSceneContent } from '../hooks/useLazyLoadSceneContent';
+import { useLazyLoadSceneContent } from "../hooks/useLazyLoadSceneContent";
 
 // In Scene component:
 const { content, wordCount, loading } = useLazyLoadSceneContent({
@@ -183,23 +198,27 @@ const { content, wordCount, loading } = useLazyLoadSceneContent({
 ## 🏆 Key Features
 
 ### ✅ Keine Breaking Changes
+
 - Alles ist **rückwärtskompatibel**
 - Bestehender Code funktioniert weiter
 - Schrittweise Integration möglich
 
 ### ✅ Production Ready
+
 - TypeScript fully typed
 - Error handling included
 - Memory leaks prevented
 - Abort controllers for cleanup
 
 ### ✅ Smart Caching
+
 - TTL-based cache expiration
 - Size limits (no memory leaks)
 - Automatic cache invalidation
 - Stale-while-revalidate pattern
 
 ### ✅ Developer Experience
+
 - Console logging for debugging
 - Performance metrics included
 - Helpful comments everywhere
@@ -258,6 +277,7 @@ Load Metadata Only → Render Visible Only → Lazy Parse on Expand → Fast! �
 ## 💬 Feedback
 
 Alle Optimierungen sind:
+
 - ✅ Tested & Ready
 - ✅ TypeScript Ready
 - ✅ Production Ready

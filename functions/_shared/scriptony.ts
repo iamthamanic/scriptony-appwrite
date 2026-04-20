@@ -5,6 +5,7 @@
  */
 
 import { requestGraphql } from "./graphql-compat";
+import { sendNotFound, type ResponseLike } from "./http";
 
 function hasOwn(body: Record<string, any>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(body, key);
@@ -37,7 +38,9 @@ function parseConceptBlocks(value: unknown): unknown {
   }
 }
 
-export function hydrateProjectRow<T extends Record<string, any> | null>(project: T): T {
+export function hydrateProjectRow<T extends Record<string, any> | null>(
+  project: T,
+): T {
   if (!project) return project;
   return {
     ...project,
@@ -45,11 +48,15 @@ export function hydrateProjectRow<T extends Record<string, any> | null>(project:
   } as T;
 }
 
-export function hydrateProjectRows<T extends Record<string, any>>(projects: T[]): T[] {
+export function hydrateProjectRows<T extends Record<string, any>>(
+  projects: T[],
+): T[] {
   return projects.map((project) => hydrateProjectRow(project));
 }
 
-export function normalizeProjectInput(body: Record<string, any>): Record<string, any> {
+export function normalizeProjectInput(
+  body: Record<string, any>,
+): Record<string, any> {
   const conceptBlocks = pickProvided(body, "concept_blocks", "conceptBlocks");
   const project = {
     organization_id: pickProvided(body, "organization_id", "organizationId"),
@@ -63,29 +70,53 @@ export function normalizeProjectInput(body: Record<string, any>): Record<string,
     duration: pickProvided(body, "duration"),
     status: pickProvided(body, "status"),
     slug: pickProvided(body, "slug"),
-    world_id: pickProvided(body, "world_id", "worldId", "linked_world_id", "linkedWorldId"),
-    cover_image_url: pickProvided(body, "cover_image_url", "coverImage", "coverImageUrl"),
+    world_id: pickProvided(
+      body,
+      "world_id",
+      "worldId",
+      "linked_world_id",
+      "linkedWorldId",
+    ),
+    cover_image_url: pickProvided(
+      body,
+      "cover_image_url",
+      "coverImage",
+      "coverImageUrl",
+    ),
     is_deleted: pickProvided(body, "is_deleted", "isDeleted"),
-    narrative_structure: pickProvided(body, "narrative_structure", "narrativeStructure"),
+    narrative_structure: pickProvided(
+      body,
+      "narrative_structure",
+      "narrativeStructure",
+    ),
     beat_template: pickProvided(body, "beat_template", "beatTemplate"),
     episode_layout: pickProvided(body, "episode_layout", "episodeLayout"),
     season_engine: pickProvided(body, "season_engine", "seasonEngine"),
     concept_blocks: serializeConceptBlocks(conceptBlocks),
     target_pages: pickProvided(body, "target_pages", "targetPages"),
     words_per_page: pickProvided(body, "words_per_page", "wordsPerPage"),
-    reading_speed_wpm: pickProvided(body, "reading_speed_wpm", "readingSpeedWpm"),
+    reading_speed_wpm: pickProvided(
+      body,
+      "reading_speed_wpm",
+      "readingSpeedWpm",
+    ),
     template_id: pickProvided(body, "template_id", "templateId"),
   };
 
   return Object.fromEntries(
-    Object.entries(project).filter(([_, value]) => value !== undefined)
+    Object.entries(project).filter(([_, value]) => value !== undefined),
   );
 }
 
-export function normalizeWorldInput(body: Record<string, any>): Record<string, any> {
+export function normalizeWorldInput(
+  body: Record<string, any>,
+): Record<string, any> {
   // Appwrite `worlds` collection uses `cover_image_url` only (no separate `image_url` attribute).
-  const cover =
-    body.cover_image_url ?? body.coverImageUrl ?? body.image_url ?? body.imageUrl ?? null;
+  const cover = body.cover_image_url ??
+    body.coverImageUrl ??
+    body.image_url ??
+    body.imageUrl ??
+    null;
   const world = {
     name: body.name,
     description: body.description ?? null,
@@ -94,11 +125,16 @@ export function normalizeWorldInput(body: Record<string, any>): Record<string, a
   };
 
   return Object.fromEntries(
-    Object.entries(world).filter(([_, value]) => value !== undefined)
+    Object.entries(world).filter(([_, value]) => value !== undefined),
   );
 }
 
-const WORLD_DOC_KEYS = ["name", "description", "cover_image_url", "linked_project_id"] as const;
+const WORLD_DOC_KEYS = [
+  "name",
+  "description",
+  "cover_image_url",
+  "linked_project_id",
+] as const;
 
 /**
  * Only attributes that exist on the Appwrite `worlds` collection may be sent to createDocument.
@@ -107,7 +143,7 @@ const WORLD_DOC_KEYS = ["name", "description", "cover_image_url", "linked_projec
  */
 export function worldsInsertPayload(
   body: Record<string, any>,
-  organizationId: string
+  organizationId: string,
 ): Record<string, unknown> {
   const n = normalizeWorldInput(body);
   return {
@@ -120,7 +156,9 @@ export function worldsInsertPayload(
 }
 
 /** Allowed fields for worlds update only — no extra keys from the request body. */
-export function worldsUpdatePayload(body: Record<string, any>): Record<string, unknown> {
+export function worldsUpdatePayload(
+  body: Record<string, any>,
+): Record<string, unknown> {
   const n = normalizeWorldInput(body);
   const out: Record<string, unknown> = {};
   for (const k of WORLD_DOC_KEYS) {
@@ -131,7 +169,9 @@ export function worldsUpdatePayload(body: Record<string, any>): Record<string, u
   return out;
 }
 
-export function normalizeBeatInput(body: Record<string, any>): Record<string, any> {
+export function normalizeBeatInput(
+  body: Record<string, any>,
+): Record<string, any> {
   const beat = {
     label: body.label,
     template_abbr: body.template_abbr ?? body.templateAbbr ?? null,
@@ -146,11 +186,13 @@ export function normalizeBeatInput(body: Record<string, any>): Record<string, an
   };
 
   return Object.fromEntries(
-    Object.entries(beat).filter(([_, value]) => value !== undefined)
+    Object.entries(beat).filter(([_, value]) => value !== undefined),
   );
 }
 
-export async function getUserOrganizationIds(userId: string): Promise<string[]> {
+export async function getUserOrganizationIds(
+  userId: string,
+): Promise<string[]> {
   const data = await requestGraphql<{
     organization_members: Array<{ organization_id: string }>;
   }>(
@@ -161,7 +203,7 @@ export async function getUserOrganizationIds(userId: string): Promise<string[]> 
         }
       }
     `,
-    { userId }
+    { userId },
   );
 
   return data.organization_members.map((entry) => entry.organization_id);
@@ -170,7 +212,7 @@ export async function getUserOrganizationIds(userId: string): Promise<string[]> 
 export async function getAccessibleProject(
   projectId: string,
   userId: string,
-  organizationIds: string[]
+  organizationIds: string[],
 ): Promise<Record<string, any> | null> {
   const data = await requestGraphql<{
     projects: Array<Record<string, any>>;
@@ -215,8 +257,26 @@ export async function getAccessibleProject(
       projectId,
       userId,
       organizationIds,
-    }
+    },
   );
 
   return hydrateProjectRow(data.projects[0] || null);
+}
+
+/**
+ * Verify that the authenticated user has access to the given project.
+ * Returns the project row on success, or null (and sends 404) on failure.
+ */
+export async function requireProjectAccess(
+  projectId: string,
+  userId: string,
+  res: ResponseLike,
+): Promise<Record<string, any> | null> {
+  const organizationIds = await getUserOrganizationIds(userId);
+  const project = await getAccessibleProject(projectId, userId, organizationIds);
+  if (!project) {
+    sendNotFound(res, "Project not found or access denied");
+    return null;
+  }
+  return project;
 }

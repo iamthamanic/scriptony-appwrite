@@ -4,17 +4,17 @@
  * Matches NLE-style “expand this segment / shrink neighbor” rather than scaling everyone.
  */
 
-import { clampBoundaryToChildren } from './timeline-structure-trim-clamp';
+import { clampBoundaryToChildren } from "./timeline-structure-trim-clamp";
 
 function isFiniteNumber(value: number | null | undefined): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 export function outerTrimAdjustLastPair(
   durs: number[],
   newLastDur: number,
   budget: number,
-  minD: number
+  minD: number,
 ): number[] {
   const n = durs.length;
   if (n === 0) return [];
@@ -37,7 +37,7 @@ export function outerTrimAdjustFirstPair(
   durs: number[],
   newFirstDur: number,
   budget: number,
-  minD: number
+  minD: number,
 ): number[] {
   const n = durs.length;
   if (n === 0) return [];
@@ -64,7 +64,14 @@ export function clampOuterLastDurationToChildHull(args: {
   leftHullEndSec?: number | null;
   rightHullStartSec?: number | null;
 }): number {
-  const { desiredLastDur, pairStartSec, totalEndSec, minD, leftHullEndSec, rightHullStartSec } = args;
+  const {
+    desiredLastDur,
+    pairStartSec,
+    totalEndSec,
+    minD,
+    leftHullEndSec,
+    rightHullStartSec,
+  } = args;
   const minBoundary = pairStartSec + minD;
   const maxBoundary = totalEndSec - minD;
   const desiredBoundary = totalEndSec - desiredLastDur;
@@ -73,7 +80,7 @@ export function clampOuterLastDurationToChildHull(args: {
     minBoundary,
     maxBoundary,
     isFiniteNumber(leftHullEndSec) ? leftHullEndSec : minBoundary,
-    isFiniteNumber(rightHullStartSec) ? rightHullStartSec : maxBoundary
+    isFiniteNumber(rightHullStartSec) ? rightHullStartSec : maxBoundary,
   );
   return Math.max(minD, totalEndSec - clampedBoundary);
 }
@@ -86,7 +93,14 @@ export function clampOuterFirstDurationToChildHull(args: {
   leftHullEndSec?: number | null;
   rightHullStartSec?: number | null;
 }): number {
-  const { desiredFirstDur, totalStartSec, pairEndSec, minD, leftHullEndSec, rightHullStartSec } = args;
+  const {
+    desiredFirstDur,
+    totalStartSec,
+    pairEndSec,
+    minD,
+    leftHullEndSec,
+    rightHullStartSec,
+  } = args;
   const minBoundary = totalStartSec + minD;
   const maxBoundary = pairEndSec - minD;
   const desiredBoundary = totalStartSec + desiredFirstDur;
@@ -95,7 +109,7 @@ export function clampOuterFirstDurationToChildHull(args: {
     minBoundary,
     maxBoundary,
     isFiniteNumber(leftHullEndSec) ? leftHullEndSec : minBoundary,
-    isFiniteNumber(rightHullStartSec) ? rightHullStartSec : maxBoundary
+    isFiniteNumber(rightHullStartSec) ? rightHullStartSec : maxBoundary,
   );
   return Math.max(minD, clampedBoundary - totalStartSec);
 }

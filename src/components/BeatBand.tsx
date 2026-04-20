@@ -1,16 +1,22 @@
-import { useState } from 'react';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Separator } from './ui/separator';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { BeatDefinition } from './BeatRail';
-import type { ContainerData } from './ContainerCard';
+import { useState } from "react";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { Separator } from "./ui/separator";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import type { BeatDefinition } from "./BeatRail";
+import type { ContainerData } from "./ContainerCard";
 
 /**
  * 🎵 BEAT BAND (Einzelner Beat mit Collapsible Edit-Form)
- * 
+ *
  * Klickbar → expandiert → zeigt Edit-Felder:
  * - Template & Label
  * - Start Container (Dropdown)
@@ -35,9 +41,9 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
     <div
       id={`beat-band-${beat.id}`}
       className={`absolute left-0 right-0 transition-all duration-200 overflow-visible group ${
-        isExpanded 
-          ? 'bg-primary/50 border-l-4 border-primary shadow-lg z-20' 
-          : 'bg-primary/20 border-l-4 border-primary hover:bg-primary/30 cursor-pointer'
+        isExpanded
+          ? "bg-primary/50 border-l-4 border-primary shadow-lg z-20"
+          : "bg-primary/20 border-l-4 border-primary hover:bg-primary/30 cursor-pointer"
       }`}
       style={style}
       onClick={() => !isExpanded && setIsExpanded(true)}
@@ -47,8 +53,8 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
         <>
           {/* Template Badge */}
           <div className="absolute top-1 left-1">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="text-xs h-5 px-1.5 bg-primary/90 text-primary-foreground border-primary"
             >
               {beat.templateAbbr}
@@ -108,14 +114,14 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
               >
                 <ChevronDown className="size-4" />
               </Button>
-              
-              <Badge 
-                variant="outline" 
+
+              <Badge
+                variant="outline"
                 className="shrink-0 bg-primary/10 text-primary border-primary/30"
               >
                 {beat.templateAbbr}
               </Badge>
-              
+
               <span className="font-medium truncate">{beat.label}</span>
             </div>
           </div>
@@ -193,7 +199,9 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
                 value={beat.pctFrom}
                 onChange={(e) => {
                   const value = parseInt(e.target.value) || 0;
-                  onUpdate(beat.id, { pctFrom: Math.max(0, Math.min(100, value)) });
+                  onUpdate(beat.id, {
+                    pctFrom: Math.max(0, Math.min(100, value)),
+                  });
                 }}
                 className="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm"
                 onClick={(e) => e.stopPropagation()}
@@ -206,7 +214,9 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
                 value={beat.pctTo}
                 onChange={(e) => {
                   const value = parseInt(e.target.value) || 0;
-                  onUpdate(beat.id, { pctTo: Math.max(0, Math.min(100, value)) });
+                  onUpdate(beat.id, {
+                    pctTo: Math.max(0, Math.min(100, value)),
+                  });
                 }}
                 className="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm"
                 onClick={(e) => e.stopPropagation()}
@@ -217,7 +227,8 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
 
           {/* Info */}
           <div className="bg-muted/50 rounded p-2 text-xs text-muted-foreground">
-            <strong>Tipp:</strong> Container ändern → Beat-Band passt sich automatisch an
+            <strong>Tipp:</strong> Container ändern → Beat-Band passt sich
+            automatisch an
           </div>
         </div>
       )}
@@ -228,7 +239,10 @@ export function BeatBand({ beat, containers, onUpdate, style }: BeatBandProps) {
 /**
  * Flatten nested containers into a flat list with hierarchical labels
  */
-function flattenContainerIds(containers: ContainerData[], prefix = ''): Array<{ id: string; label: string }> {
+function flattenContainerIds(
+  containers: ContainerData[],
+  prefix = "",
+): Array<{ id: string; label: string }> {
   const result: Array<{ id: string; label: string }> = [];
 
   for (const container of containers) {

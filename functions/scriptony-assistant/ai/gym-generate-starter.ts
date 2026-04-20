@@ -8,8 +8,9 @@ import { chat } from "../../_shared/ai-service/services/text";
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
   getCharactersByProject,
-  getProjectIfAccessible,
+  getProjectById,
 } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 import {
   readJsonBody,
   type RequestLike,
@@ -122,7 +123,10 @@ export default async function handler(
       ? body.source_project_id.trim()
       : "";
     if (projectId) {
-      const p = await getProjectIfAccessible(projectId);
+      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      if (!_project) return;
+
+      const p = await getProjectById(projectId);
       if (p) {
         const title = typeof p.title === "string" ? p.title : "";
         const logline = typeof (p as { logline?: string }).logline === "string"

@@ -1,15 +1,15 @@
 /**
  * 🚀 LAZY LOAD SHOTS HOOK
- * 
+ *
  * Only loads shots when a scene is expanded
  * Dramatically improves initial load time by avoiding loading ALL shots upfront
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from './useAuth';
-import * as ShotsAPI from '../lib/api/shots-api';
-import type { Shot } from '../lib/types';
-import { SmartCache } from '../lib/dropdown-optimization-helpers';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "./useAuth";
+import * as ShotsAPI from "../lib/api/shots-api";
+import type { Shot } from "../lib/types";
+import { SmartCache } from "../lib/dropdown-optimization-helpers";
 
 // Global cache for shots across all components
 const shotsCache = new SmartCache<Shot[]>(60000, 100);
@@ -43,7 +43,9 @@ export function useLazyLoadShots({
     const cacheKey = `shots:${sceneId}`;
     const cached = shotsCache.get(cacheKey);
     if (cached) {
-      console.log(`[useLazyLoadShots] 💾 Using cached shots for scene ${sceneId}`);
+      console.log(
+        `[useLazyLoadShots] 💾 Using cached shots for scene ${sceneId}`,
+      );
       setShots(cached);
       loadedRef.current = true;
       return;
@@ -62,10 +64,12 @@ export function useLazyLoadShots({
 
       const token = await getAccessToken();
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
-      console.log(`[useLazyLoadShots] 🔄 Loading shots for scene ${sceneId}...`);
+      console.log(
+        `[useLazyLoadShots] 🔄 Loading shots for scene ${sceneId}...`,
+      );
       const loadedShots = await ShotsAPI.getShots(sceneId, token);
 
       // Check if request was aborted
@@ -78,15 +82,22 @@ export function useLazyLoadShots({
 
       // Cache the result
       shotsCache.set(cacheKey, loadedShots || []);
-      console.log(`[useLazyLoadShots] ✅ Loaded ${loadedShots?.length || 0} shots for scene ${sceneId}`);
+      console.log(
+        `[useLazyLoadShots] ✅ Loaded ${loadedShots?.length || 0} shots for scene ${sceneId}`,
+      );
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        console.log(`[useLazyLoadShots] ⏹️ Request aborted for scene ${sceneId}`);
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log(
+          `[useLazyLoadShots] ⏹️ Request aborted for scene ${sceneId}`,
+        );
         return;
       }
 
-      console.error(`[useLazyLoadShots] ❌ Error loading shots for scene ${sceneId}:`, err);
-      setError(err instanceof Error ? err : new Error('Failed to load shots'));
+      console.error(
+        `[useLazyLoadShots] ❌ Error loading shots for scene ${sceneId}:`,
+        err,
+      );
+      setError(err instanceof Error ? err : new Error("Failed to load shots"));
     } finally {
       setLoading(false);
       abortControllerRef.current = null;
@@ -112,14 +123,17 @@ export function useLazyLoadShots({
     setShots([]);
   }, [sceneId]);
 
-  const addShot = useCallback((shot: Shot) => {
-    setShots((prev) => [...prev, shot]);
-    shotsCache.set(`shots:${sceneId}`, [...shots, shot]);
-  }, [sceneId, shots]);
+  const addShot = useCallback(
+    (shot: Shot) => {
+      setShots((prev) => [...prev, shot]);
+      shotsCache.set(`shots:${sceneId}`, [...shots, shot]);
+    },
+    [sceneId, shots],
+  );
 
   const updateShot = useCallback((shotId: string, updates: Partial<Shot>) => {
     setShots((prev) =>
-      prev.map((s) => (s.id === shotId ? { ...s, ...updates } : s))
+      prev.map((s) => (s.id === shotId ? { ...s, ...updates } : s)),
     );
   }, []);
 

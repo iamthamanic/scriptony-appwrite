@@ -42,8 +42,12 @@ pxPerSec = fitPxPerSec × (MAX_PX_PER_SEC / fitPxPerSec)^zoom
 
 ```typescript
 // Berechnet dynamisches Minimum
-function getFitPxPerSec(totalDurationSec: number, viewportWidthPx: number): number {
-  if (totalDurationSec <= 0 || viewportWidthPx <= 0) return FALLBACK_MIN_PX_PER_SEC;
+function getFitPxPerSec(
+  totalDurationSec: number,
+  viewportWidthPx: number,
+): number {
+  if (totalDurationSec <= 0 || viewportWidthPx <= 0)
+    return FALLBACK_MIN_PX_PER_SEC;
   return viewportWidthPx / totalDurationSec;
 }
 
@@ -74,10 +78,10 @@ const [fitPxPerSec, setFitPxPerSec] = useState(FALLBACK_MIN_PX_PER_SEC);
 // Update fitPxPerSec when viewport or duration changes
 useEffect(() => {
   if (!viewportWidth || totalDurationSec <= 0) return;
-  
+
   const dynamicFitPx = getFitPxPerSec(totalDurationSec, viewportWidth);
   setFitPxPerSec(dynamicFitPx);
-  
+
   if (initialZoomSetRef.current) {
     const newPxPerSec = pxPerSecFromZoom(zoom, dynamicFitPx);
     setPxPerSec(newPxPerSec);
@@ -244,6 +248,7 @@ Je länger das Projekt, desto größer der Zoom-Range!
 ```
 
 **Key Indicators:**
+
 - `fitPxPerSec` sollte = `viewportWidth / durationSec` sein
 - `zoom` sollte = `0` sein beim Start
 - `pxPerSec` sollte = `fitPxPerSec` sein bei zoom = 0
@@ -254,14 +259,17 @@ Je länger das Projekt, desto größer der Zoom-Range!
 ## 📚 Dokumentation
 
 Erstellt:
+
 - ✅ `/TIMELINE_ZOOM_CHANGES.md` - Detaillierte technische Dokumentation
 - ✅ `/TIMELINE_ZOOM_BEFORE_AFTER.md` - Visuelle Before/After Vergleiche
 - ✅ `/TIMELINE_ZOOM_SUMMARY.md` - Diese Zusammenfassung
 
 Aktualisiert:
+
 - ✅ `/components/VideoEditorTimeline.tsx` - Code-Implementation
 
 Bestehend (nicht aktualisiert):
+
 - `/TIMELINE_ZOOM_ANALYSIS.json` - Alte Analyse (veraltet)
 - `/TIMELINE_ZOOM_ANALYSIS.md` - Alte Analyse (veraltet)
 - `/TIMELINE_ZOOM_VISUALIZATION.md` - Alte Visualisierungen (veraltet)

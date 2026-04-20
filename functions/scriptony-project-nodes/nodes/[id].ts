@@ -21,6 +21,7 @@ import {
   mapNode,
   normalizeNodeInput,
 } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -46,6 +47,13 @@ export default async function handler(
         return;
       }
 
+      const _project = await requireProjectAccess(
+        String(node.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       sendJson(res, 200, { node: mapNode(node) });
       return;
     }
@@ -56,6 +64,13 @@ export default async function handler(
         sendNotFound(res, "Node not found");
         return;
       }
+
+      const _project = await requireProjectAccess(
+        String(existing.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
 
       const body = await readJsonBody<Record<string, any>>(req);
       const updates = normalizeNodeInput(body);
@@ -99,6 +114,19 @@ export default async function handler(
     }
 
     if (req.method === "DELETE") {
+      const node = await getNodeById(nodeId);
+      if (!node) {
+        sendNotFound(res, "Node not found");
+        return;
+      }
+
+      const _project = await requireProjectAccess(
+        String(node.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       await requestGraphql(
         `
           mutation DeleteTimelineNode($id: uuid!) {

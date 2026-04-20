@@ -7,14 +7,21 @@
  * - Real-time Web Audio API fade preview
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Scissors, Play, Pause, Loader2 } from 'lucide-react';
-import { ProgressiveWaveform } from './ProgressiveWaveform';
-import { FadeAudioPlayer } from '../lib/audio/FadeAudioPlayer';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Scissors, Play, Pause, Loader2 } from "lucide-react";
+import { ProgressiveWaveform } from "./ProgressiveWaveform";
+import { FadeAudioPlayer } from "../lib/audio/FadeAudioPlayer";
 
 interface AudioEditDialogProProps {
   open: boolean;
@@ -31,19 +38,27 @@ interface AudioEditDialogProProps {
     peaks?: number[];
     duration?: number;
   } | null;
-  onSave: (audioId: string, updates: { 
-    label?: string; 
-    startTime?: number; 
-    endTime?: number; 
-    fadeIn?: number; 
-    fadeOut?: number;
-    peaks?: number[];
-    duration?: number;
-  }) => void;
+  onSave: (
+    audioId: string,
+    updates: {
+      label?: string;
+      startTime?: number;
+      endTime?: number;
+      fadeIn?: number;
+      fadeOut?: number;
+      peaks?: number[];
+      duration?: number;
+    },
+  ) => void;
 }
 
-export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: AudioEditDialogProProps) {
-  const [label, setLabel] = useState('');
+export function AudioEditDialogPro({
+  open,
+  onOpenChange,
+  audioFile,
+  onSave,
+}: AudioEditDialogProProps) {
+  const [label, setLabel] = useState("");
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
   const [fadeIn, setFadeIn] = useState(0);
@@ -52,7 +67,7 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
   const [peaks, setPeaks] = useState<number[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  
+
   const audioPlayerRef = useRef<FadeAudioPlayer | null>(null);
 
   // Initialize state when audioFile changes
@@ -65,8 +80,8 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
       setFadeOut(audioFile.fadeOut || 0);
       setDuration(audioFile.duration || 0);
       setPeaks(audioFile.peaks || []);
-      
-      console.log('[AudioEditDialogPro] Initialized:', {
+
+      console.log("[AudioEditDialogPro] Initialized:", {
         label,
         startTime: audioFile.startTime,
         endTime: audioFile.endTime,
@@ -100,11 +115,14 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
     audioPlayerRef.current = player;
 
     // Load audio
-    player.loadAudio(audioFile.url).then(() => {
-      console.log('[AudioEditDialogPro] Audio loaded for playback');
-    }).catch(error => {
-      console.error('[AudioEditDialogPro] Failed to load audio:', error);
-    });
+    player
+      .loadAudio(audioFile.url)
+      .then(() => {
+        console.log("[AudioEditDialogPro] Audio loaded for playback");
+      })
+      .catch((error) => {
+        console.error("[AudioEditDialogPro] Failed to load audio:", error);
+      });
 
     return () => {
       player.destroy();
@@ -127,11 +145,11 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = (seconds % 60).toFixed(2);
-    return `${String(mins).padStart(2, '0')}:${secs.padStart(5, '0')}`;
+    return `${String(mins).padStart(2, "0")}:${secs.padStart(5, "0")}`;
   };
 
   const parseTime = (timeStr: string): number => {
-    const parts = timeStr.split(':');
+    const parts = timeStr.split(":");
     if (parts.length !== 2) return 0;
     const mins = parseInt(parts[0], 10);
     const secs = parseFloat(parts[1]);
@@ -141,10 +159,13 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
 
   // Handle waveform ready (from Web Worker)
   const handleWaveformReady = (newPeaks: number[], newDuration: number) => {
-    console.log('[AudioEditDialogPro] Waveform ready:', { peaks: newPeaks.length, duration: newDuration });
+    console.log("[AudioEditDialogPro] Waveform ready:", {
+      peaks: newPeaks.length,
+      duration: newDuration,
+    });
     setPeaks(newPeaks);
     setDuration(newDuration);
-    
+
     // Set initial end time if not set
     if (endTime === 0) {
       setEndTime(newDuration);
@@ -193,7 +214,7 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
       updates.duration = duration;
     }
 
-    console.log('[AudioEditDialogPro] Saving:', updates);
+    console.log("[AudioEditDialogPro] Saving:", updates);
     onSave(audioFile.id, updates);
     onOpenChange(false);
   };
@@ -335,19 +356,26 @@ export function AudioEditDialogPro({ open, onOpenChange, audioFile, onSave }: Au
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-neutral-600">Output Duration:</span>
-                <span className="ml-2 font-medium text-[#6E59A5]">{formatTime(outputDuration)}</span>
+                <span className="ml-2 font-medium text-[#6E59A5]">
+                  {formatTime(outputDuration)}
+                </span>
               </div>
               <div>
                 <span className="text-neutral-600">Fade In:</span>
-                <span className="ml-2 font-medium text-[#6E59A5]">{fadeIn.toFixed(2)}s</span>
+                <span className="ml-2 font-medium text-[#6E59A5]">
+                  {fadeIn.toFixed(2)}s
+                </span>
               </div>
               <div>
                 <span className="text-neutral-600">Fade Out:</span>
-                <span className="ml-2 font-medium text-[#6E59A5]">{fadeOut.toFixed(2)}s</span>
+                <span className="ml-2 font-medium text-[#6E59A5]">
+                  {fadeOut.toFixed(2)}s
+                </span>
               </div>
             </div>
             <div className="text-xs text-neutral-500 italic">
-              ✨ Professional Features: Web Worker decoding, Web Audio API fade preview, cached waveforms
+              ✨ Professional Features: Web Worker decoding, Web Audio API fade
+              preview, cached waveforms
             </div>
           </div>
         </div>

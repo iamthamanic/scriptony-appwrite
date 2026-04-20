@@ -1,49 +1,59 @@
 /**
  * 📚 BOOK DROPDOWN - Hierarchical Structure View for Books
- * 
+ *
  * Acts > Kapitel > Abschnitte (3-Level Structure)
  * Minimalistic inline editing with clean collapsed/expanded states
  * Drag & Drop: Within containers + Cross-container
  * Optimistic UI + Performance optimizations
- * 
+ *
  * Abschnitte have text content (like Shot dialog in films)
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, MoreVertical, Copy, Edit, Info } from 'lucide-react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { cn } from './ui/utils';
-import { useIsMobile } from './ui/use-mobile';
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  ChevronDown,
+  ChevronRight,
+  MoreVertical,
+  Copy,
+  Edit,
+  Info,
+} from "lucide-react";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { cn } from "./ui/utils";
+import { useIsMobile } from "./ui/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+} from "./ui/dropdown-menu";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from './ui/collapsible';
-import { TimelineNodeStatsDialog } from './TimelineNodeStatsDialog';
-import { DebouncedRichTextEditor } from './DebouncedRichTextEditor';
-import { ReadonlyTiptapView } from './ReadonlyTiptapView';
-import { ContentSkeleton, ContentSkeletonInline } from './ContentSkeleton';
-import { BookDropdownMobile } from './BookDropdownMobile';
-import { useAuth } from '../hooks/useAuth';
-import * as TimelineAPI from '../lib/api/timeline-api';
-import * as TimelineAPIV2 from '../lib/api/timeline-api-v2';
-import { loadProjectTimelineBundle } from '../lib/timeline-map';
-import * as CharactersAPI from '../lib/api/characters-api';
-import type { Act, Sequence, Scene, Character } from '../lib/types';
-import { toast } from 'sonner';
-import { perfMonitor } from '../lib/performance-monitor';
-import { cacheManager } from '../lib/cache-manager';
-import { useOptimizedBookDropdown } from '../hooks/useOptimizedBookDropdown';
+} from "./ui/collapsible";
+import { TimelineNodeStatsDialog } from "./TimelineNodeStatsDialog";
+import { DebouncedRichTextEditor } from "./DebouncedRichTextEditor";
+import { ReadonlyTiptapView } from "./ReadonlyTiptapView";
+import { ContentSkeleton, ContentSkeletonInline } from "./ContentSkeleton";
+import { BookDropdownMobile } from "./BookDropdownMobile";
+import { useAuth } from "../hooks/useAuth";
+import * as TimelineAPI from "../lib/api/timeline-api";
+import * as TimelineAPIV2 from "../lib/api/timeline-api-v2";
+import { loadProjectTimelineBundle } from "../lib/timeline-map";
+import * as CharactersAPI from "../lib/api/characters-api";
+import type { Act, Sequence, Scene, Character } from "../lib/types";
+import { toast } from "sonner";
+import { perfMonitor } from "../lib/performance-monitor";
+import { cacheManager } from "../lib/cache-manager";
+import { useOptimizedBookDropdown } from "../hooks/useOptimizedBookDropdown";
 
 // Timeline Cache Data Structure (no shots for books)
 export interface BookTimelineData {
@@ -55,21 +65,21 @@ export interface BookTimelineData {
 // 📖 DEFAULT WORD COUNTS FOR NEW ITEMS
 // Based on typical book structure and 250 words per page
 const DEFAULT_WORD_COUNTS = {
-  ACT: 25000,        // ~100 pages (typical act in a novel)
-  CHAPTER: 2500,     // ~10 pages (typical chapter)
-  SECTION: 625,      // ~2.5 pages (typical section/scene)
+  ACT: 25000, // ~100 pages (typical act in a novel)
+  CHAPTER: 2500, // ~10 pages (typical chapter)
+  SECTION: 625, // ~2.5 pages (typical section/scene)
 };
 
 function extractTextFromTiptap(node: unknown): string {
-  if (!node || typeof node !== 'object') return '';
+  if (!node || typeof node !== "object") return "";
   const n = node as { text?: string; content?: unknown[]; type?: string };
-  let text = '';
+  let text = "";
   if (n.text) text += n.text;
   if (n.content && Array.isArray(n.content)) {
     n.content.forEach((child: unknown) => {
       text += extractTextFromTiptap(child);
       const c = child as { type?: string };
-      if (c.type === 'paragraph' || c.type === 'heading') text += ' ';
+      if (c.type === "paragraph" || c.type === "heading") text += " ";
     });
   }
   return text;
@@ -90,9 +100,9 @@ interface BookDropdownProps {
 
 // DnD Types
 const ItemTypes = {
-  ACT: 'act',
-  SEQUENCE: 'sequence',
-  SCENE: 'scene',
+  ACT: "act",
+  SEQUENCE: "sequence",
+  SCENE: "scene",
 };
 
 // =====================================================
@@ -104,11 +114,18 @@ interface DropZoneProps {
   index: number;
   onDrop: (draggedItemId: string, targetIndex: number) => void;
   label: string;
-  height?: 'act' | 'sequence' | 'scene';
+  height?: "act" | "sequence" | "scene";
   onAdd?: () => void;
 }
 
-function DropZone({ type, index, onDrop, label, height = 'act', onAdd }: DropZoneProps) {
+function DropZone({
+  type,
+  index,
+  onDrop,
+  label,
+  height = "act",
+  onAdd,
+}: DropZoneProps) {
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: type,
     drop: (item: { id: string; index: number }) => {
@@ -123,9 +140,9 @@ function DropZone({ type, index, onDrop, label, height = 'act', onAdd }: DropZon
   const [isHovering, setIsHovering] = useState(false);
 
   const heightClass = {
-    act: 'h-12',
-    sequence: 'h-10',
-    scene: 'h-8',
+    act: "h-12",
+    sequence: "h-10",
+    scene: "h-8",
   }[height];
 
   return (
@@ -136,10 +153,12 @@ function DropZone({ type, index, onDrop, label, height = 'act', onAdd }: DropZon
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       className={cn(
-        'transition-all duration-200 relative group',
+        "transition-all duration-200 relative group",
         heightClass,
-        isOver && canDrop && 'bg-violet-100 dark:bg-violet-900/20 border-2 border-dashed border-violet-400 rounded-md',
-        !isOver && 'h-3 hover:h-6' // Slight expand on hover to make button clickable
+        isOver &&
+          canDrop &&
+          "bg-violet-100 dark:bg-violet-900/20 border-2 border-dashed border-violet-400 rounded-md",
+        !isOver && "h-3 hover:h-6", // Slight expand on hover to make button clickable
       )}
     >
       {/* Inline Add Button - Visible on Hover */}
@@ -154,7 +173,7 @@ function DropZone({ type, index, onDrop, label, height = 'act', onAdd }: DropZon
               e.stopPropagation();
               onAdd();
             }}
-            title={label.replace('Vor', 'Einfügen:')}
+            title={label.replace("Vor", "Einfügen:")}
           >
             <Plus className="h-3 w-3" />
           </Button>
@@ -163,7 +182,6 @@ function DropZone({ type, index, onDrop, label, height = 'act', onAdd }: DropZon
     </div>
   );
 }
-
 
 // =====================================================
 // DRAGGABLE ACT CARD
@@ -176,7 +194,12 @@ interface DraggableActProps {
   onStatsClick: () => void;
 }
 
-function DraggableAct({ act, index, children, onStatsClick }: DraggableActProps) {
+function DraggableAct({
+  act,
+  index,
+  children,
+  onStatsClick,
+}: DraggableActProps) {
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.ACT,
     item: { id: act.id, index },
@@ -203,7 +226,12 @@ interface DraggableSequenceProps {
   onStatsClick: () => void;
 }
 
-function DraggableSequence({ sequence, index, children, onStatsClick }: DraggableSequenceProps) {
+function DraggableSequence({
+  sequence,
+  index,
+  children,
+  onStatsClick,
+}: DraggableSequenceProps) {
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.SEQUENCE,
     item: { id: sequence.id, index },
@@ -230,7 +258,12 @@ interface DraggableSceneProps {
   onStatsClick: () => void;
 }
 
-function DraggableScene({ scene, index, children, onStatsClick }: DraggableSceneProps) {
+function DraggableScene({
+  scene,
+  index,
+  children,
+  onStatsClick,
+}: DraggableSceneProps) {
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.SCENE,
     item: { id: scene.id, index },
@@ -250,7 +283,7 @@ function DraggableScene({ scene, index, children, onStatsClick }: DraggableScene
 // MAIN COMPONENT
 // =====================================================
 
-export function BookDropdown({ 
+export function BookDropdown({
   projectId,
   projectType,
   initialData,
@@ -266,44 +299,62 @@ export function BookDropdown({
 
   // State - Initialize with initialData if available
   const [acts, setActs] = useState<Act[]>(initialData?.acts || []);
-  const [sequences, setSequences] = useState<Sequence[]>(initialData?.sequences || []);
+  const [sequences, setSequences] = useState<Sequence[]>(
+    initialData?.sequences || [],
+  );
   const [scenes, setScenes] = useState<Scene[]>(initialData?.scenes || []);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(!initialData);
 
   // Expand/Collapse State (controlled or internal)
-  const [internalExpandedActs, setInternalExpandedActs] = useState<Set<string>>(new Set());
-  const [internalExpandedSequences, setInternalExpandedSequences] = useState<Set<string>>(new Set());
-  const [internalExpandedScenes, setInternalExpandedScenes] = useState<Set<string>>(new Set()); // 🔥 NEW: Scenes expand state
-  
+  const [internalExpandedActs, setInternalExpandedActs] = useState<Set<string>>(
+    new Set(),
+  );
+  const [internalExpandedSequences, setInternalExpandedSequences] = useState<
+    Set<string>
+  >(new Set());
+  const [internalExpandedScenes, setInternalExpandedScenes] = useState<
+    Set<string>
+  >(new Set()); // 🔥 NEW: Scenes expand state
+
   const expandedActs = controlledExpandedActs ?? internalExpandedActs;
-  const expandedSequences = controlledExpandedSequences ?? internalExpandedSequences;
+  const expandedSequences =
+    controlledExpandedSequences ?? internalExpandedSequences;
   const expandedScenes = internalExpandedScenes; // Always internal for scenes
-  
+
   const setExpandedActs = onExpandedActsChange ?? setInternalExpandedActs;
-  const setExpandedSequences = onExpandedSequencesChange ?? setInternalExpandedSequences;
+  const setExpandedSequences =
+    onExpandedSequencesChange ?? setInternalExpandedSequences;
   const setExpandedScenes = setInternalExpandedScenes;
 
   // Edit State (for inline editing)
   const [editingAct, setEditingAct] = useState<string | null>(null);
   const [editingSequence, setEditingSequence] = useState<string | null>(null);
   const [editingScene, setEditingScene] = useState<string | null>(null);
-  const [editingSceneTitle, setEditingSceneTitle] = useState<string | null>(null); // 🔥 NEW: Separate title editing
-  const [editValues, setEditValues] = useState<Record<string, { title?: string; description?: string; content?: string }>>({});
+  const [editingSceneTitle, setEditingSceneTitle] = useState<string | null>(
+    null,
+  ); // 🔥 NEW: Separate title editing
+  const [editValues, setEditValues] = useState<
+    Record<string, { title?: string; description?: string; content?: string }>
+  >({});
 
   // Stats Dialog State
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
-  const [statsNode, setStatsNode] = useState<{ type: 'act' | 'sequence' | 'scene'; data: any } | null>(null);
+  const [statsNode, setStatsNode] = useState<{
+    type: "act" | "sequence" | "scene";
+    data: any;
+  } | null>(null);
 
   // Rich Text Editor Modal State
   const [showContentModal, setShowContentModal] = useState(false);
-  const [editingSceneForModal, setEditingSceneForModal] = useState<Scene | null>(null);
+  const [editingSceneForModal, setEditingSceneForModal] =
+    useState<Scene | null>(null);
 
   // 🚀 NEW: Content loading state for lazy loading
   const [loadingContent, setLoadingContent] = useState<Set<string>>(new Set());
 
   // 🔥 FIX: Use ref to track previous data and prevent infinite loops
-  const previousDataRef = useRef<string>('');
+  const previousDataRef = useRef<string>("");
 
   // 🚀 PERFORMANCE OPTIMIZATION: Memoized filtering for 10x faster rendering
   const optimized = useOptimizedBookDropdown({
@@ -320,11 +371,14 @@ export function BookDropdown({
     if (loading) return;
 
     let updated = false;
-    const updatedSequences = sequences.map(seq => {
+    const updatedSequences = sequences.map((seq) => {
       // Calculate total words in this sequence from its scenes
-      const sequenceScenes = scenes.filter(sc => sc.sequenceId === seq.id);
-      const totalWords = sequenceScenes.reduce((sum, sc) => sum + (sc.wordCount || 0), 0);
-      
+      const sequenceScenes = scenes.filter((sc) => sc.sequenceId === seq.id);
+      const totalWords = sequenceScenes.reduce(
+        (sum, sc) => sum + (sc.wordCount || 0),
+        0,
+      );
+
       if (totalWords !== seq.wordCount) {
         updated = true;
         return { ...seq, wordCount: totalWords };
@@ -332,11 +386,14 @@ export function BookDropdown({
       return seq;
     });
 
-    const updatedActs = acts.map(act => {
+    const updatedActs = acts.map((act) => {
       // Calculate total words in this act from its sequences
-      const actSequences = updatedSequences.filter(s => s.actId === act.id);
-      const totalWords = actSequences.reduce((sum, s) => sum + (s.wordCount || 0), 0);
-      
+      const actSequences = updatedSequences.filter((s) => s.actId === act.id);
+      const totalWords = actSequences.reduce(
+        (sum, s) => sum + (s.wordCount || 0),
+        0,
+      );
+
       if (totalWords !== act.wordCount) {
         updated = true;
         return { ...act, wordCount: totalWords };
@@ -345,39 +402,54 @@ export function BookDropdown({
     });
 
     if (updated) {
-      console.log('[BookDropdown] 📖 Auto-updating word counts for acts and sequences');
+      console.log(
+        "[BookDropdown] 📖 Auto-updating word counts for acts and sequences",
+      );
       setSequences(updatedSequences);
       setActs(updatedActs);
-      
+
       // 💾 PERSIST TO DATABASE
       persistWordCounts(updatedActs, updatedSequences);
     }
   }, [scenes, sequences, acts, loading]);
-  
+
   // 💾 Persist word counts to database
-  const persistWordCounts = async (actsToUpdate: Act[], sequencesToUpdate: Sequence[]) => {
+  const persistWordCounts = async (
+    actsToUpdate: Act[],
+    sequencesToUpdate: Sequence[],
+  ) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
-      
+
       // Update acts in parallel
       const actPromises = actsToUpdate
-        .filter(act => act.wordCount !== acts.find(a => a.id === act.id)?.wordCount)
-        .map(act => 
-          TimelineAPI.updateAct(act.id, { wordCount: act.wordCount }, token)
+        .filter(
+          (act) =>
+            act.wordCount !== acts.find((a) => a.id === act.id)?.wordCount,
+        )
+        .map((act) =>
+          TimelineAPI.updateAct(act.id, { wordCount: act.wordCount }, token),
         );
-      
+
       // Update sequences in parallel
       const sequencePromises = sequencesToUpdate
-        .filter(seq => seq.wordCount !== sequences.find(s => s.id === seq.id)?.wordCount)
-        .map(seq =>
-          TimelineAPI.updateSequence(seq.id, { wordCount: seq.wordCount }, token)
+        .filter(
+          (seq) =>
+            seq.wordCount !== sequences.find((s) => s.id === seq.id)?.wordCount,
+        )
+        .map((seq) =>
+          TimelineAPI.updateSequence(
+            seq.id,
+            { wordCount: seq.wordCount },
+            token,
+          ),
         );
-      
+
       await Promise.all([...actPromises, ...sequencePromises]);
-      console.log('[BookDropdown] 💾 Persisted word counts to database');
+      console.log("[BookDropdown] 💾 Persisted word counts to database");
     } catch (error) {
-      console.error('[BookDropdown] Error persisting word counts:', error);
+      console.error("[BookDropdown] Error persisting word counts:", error);
     }
   };
 
@@ -402,37 +474,56 @@ export function BookDropdown({
   // 🔥 Helper: Parse scene content if it's a JSON string AND calculate word count
   const parseSceneContent = (scene: Scene): Scene => {
     // 🚀 PRIORITY: Use wordCount from database (metadata->wordCount) if available
-    if (scene.metadata?.wordCount !== undefined && scene.metadata?.wordCount !== null) {
-      console.log(`[BookDropdown] ✅ Using DB wordCount for scene "${scene.title}": ${scene.metadata.wordCount} words`);
+    if (
+      scene.metadata?.wordCount !== undefined &&
+      scene.metadata?.wordCount !== null
+    ) {
+      console.log(
+        `[BookDropdown] ✅ Using DB wordCount for scene "${scene.title}": ${scene.metadata.wordCount} words`,
+      );
       return { ...scene, wordCount: scene.metadata.wordCount };
     }
-    
+
     // 🔄 FALLBACK: Calculate from TipTap content if DB value is missing
-    console.log(`[BookDropdown] ⚠️ No DB wordCount for scene "${scene.title}", calculating from content...`);
+    console.log(
+      `[BookDropdown] ⚠️ No DB wordCount for scene "${scene.title}", calculating from content...`,
+    );
 
     // Try to get content from scene.content or scene.metadata.content
     const contentSource = scene.content || scene.metadata?.content;
-    
-    if (contentSource && typeof contentSource === 'string') {
+
+    if (contentSource && typeof contentSource === "string") {
       try {
         const parsed = JSON.parse(contentSource);
         const textContent = extractTextFromTiptap(parsed);
-        const wordCount = textContent.trim() 
-          ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
+        const wordCount = textContent.trim()
+          ? textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0).length
           : 0;
         return { ...scene, content: parsed, wordCount };
       } catch (e) {
-        const textContent = typeof contentSource === 'string' ? contentSource : '';
-        const wordCount = textContent.trim() 
-          ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
+        const textContent =
+          typeof contentSource === "string" ? contentSource : "";
+        const wordCount = textContent.trim()
+          ? textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0).length
           : 0;
-        if (contentSource.trim().startsWith('{') || contentSource.trim().startsWith('[')) {
-          console.warn(`[BookDropdown] Could not parse JSON content for scene ${scene.id}`);
+        if (
+          contentSource.trim().startsWith("{") ||
+          contentSource.trim().startsWith("[")
+        ) {
+          console.warn(
+            `[BookDropdown] Could not parse JSON content for scene ${scene.id}`,
+          );
         }
         return { ...scene, wordCount };
       }
     }
-    
+
     // If no content, return scene with wordCount = 0
     return { ...scene, wordCount: 0 };
   };
@@ -444,7 +535,11 @@ export function BookDropdown({
 
       setLoading(true);
 
-      const bundle = (await loadProjectTimelineBundle(projectId, token, true)) as BookTimelineData;
+      const bundle = (await loadProjectTimelineBundle(
+        projectId,
+        token,
+        true,
+      )) as BookTimelineData;
       const actsWithWordCounts = bundle.acts;
       const sequencesWithWordCounts = bundle.sequences;
       const parsedScenes = bundle.scenes;
@@ -464,7 +559,9 @@ export function BookDropdown({
       if (actsWithWordCounts.length > 0 && expandedActs.size === 0) {
         const firstActId = actsWithWordCounts[0].id;
         setExpandedActs(new Set([firstActId]));
-        const firstActSequences = sequencesWithWordCounts.filter((s) => s.actId === firstActId);
+        const firstActSequences = sequencesWithWordCounts.filter(
+          (s) => s.actId === firstActId,
+        );
         if (firstActSequences.length > 0) {
           setExpandedSequences(new Set(firstActSequences.map((s) => s.id)));
         }
@@ -472,16 +569,23 @@ export function BookDropdown({
 
       // Load characters for @-mentions in content editor
       try {
-        const projectCharacters = await CharactersAPI.getCharacters(projectId, token);
-        console.log('[BookDropdown] Loaded characters for project:', projectId, projectCharacters);
+        const projectCharacters = await CharactersAPI.getCharacters(
+          projectId,
+          token,
+        );
+        console.log(
+          "[BookDropdown] Loaded characters for project:",
+          projectId,
+          projectCharacters,
+        );
         setCharacters(projectCharacters || []);
       } catch (error) {
-        console.error('[BookDropdown] Error loading characters:', error);
+        console.error("[BookDropdown] Error loading characters:", error);
         setCharacters([]);
       }
     } catch (error) {
-      console.error('Error loading timeline:', error);
-      toast.error('Fehler beim Laden der Timeline');
+      console.error("Error loading timeline:", error);
+      toast.error("Fehler beim Laden der Timeline");
     } finally {
       setLoading(false);
     }
@@ -497,77 +601,96 @@ export function BookDropdown({
       if (!token) return;
 
       // 🔥 FIX: Reload acts from DB to get accurate node numbers
-      console.log('[BookDropdown] 🔄 Reloading acts before creating new act...');
+      console.log(
+        "[BookDropdown] 🔄 Reloading acts before creating new act...",
+      );
       const freshActs = await TimelineAPI.getActs(projectId, token);
-      
-      const maxActNumber = freshActs.length > 0 
-        ? Math.max(...freshActs.map(a => a.actNumber || 0))
-        : 0;
+
+      const maxActNumber =
+        freshActs.length > 0
+          ? Math.max(...freshActs.map((a) => a.actNumber || 0))
+          : 0;
       const newActNumber = maxActNumber + 1;
 
-      console.log('[BookDropdown] 📊 Act numbers:', {
-        existingActs: freshActs.map(a => a.actNumber),
+      console.log("[BookDropdown] 📊 Act numbers:", {
+        existingActs: freshActs.map((a) => a.actNumber),
         maxNumber: maxActNumber,
-        newNumber: newActNumber
+        newNumber: newActNumber,
       });
 
-      const newAct = await TimelineAPI.createAct(projectId, {
-        actNumber: newActNumber,
-        title: `Act ${newActNumber}`,
-        orderIndex: freshActs.length,
-        wordCount: DEFAULT_WORD_COUNTS.ACT, // 📖 Set default word count
-      }, token);
+      const newAct = await TimelineAPI.createAct(
+        projectId,
+        {
+          actNumber: newActNumber,
+          title: `Act ${newActNumber}`,
+          orderIndex: freshActs.length,
+          wordCount: DEFAULT_WORD_COUNTS.ACT, // 📖 Set default word count
+        },
+        token,
+      );
 
       setActs([...freshActs, newAct]);
-      toast.success('Act erstellt');
+      toast.success("Act erstellt");
     } catch (error) {
-      console.error('Error creating act:', error);
-      toast.error('Fehler beim Erstellen');
+      console.error("Error creating act:", error);
+      toast.error("Fehler beim Erstellen");
     }
   };
 
-  const handleUpdateAct = async (actId: string, updates: { title?: string; description?: string }) => {
+  const handleUpdateAct = async (
+    actId: string,
+    updates: { title?: string; description?: string },
+  ) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       // Optimistic update
-      setActs(acts => acts.map(a => a.id === actId ? { ...a, ...updates } : a));
+      setActs((acts) =>
+        acts.map((a) => (a.id === actId ? { ...a, ...updates } : a)),
+      );
 
       await TimelineAPI.updateAct(actId, updates, token);
       setEditingAct(null);
-      setEditValues(prev => {
+      setEditValues((prev) => {
         const next = { ...prev };
         delete next[actId];
         return next;
       });
     } catch (error) {
-      console.error('Error updating act:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating act:", error);
+      toast.error("Fehler beim Aktualisieren");
       loadTimeline(); // Reload on error
     }
   };
 
   const handleDeleteAct = async (actId: string) => {
-    if (!confirm('Act und alle enthaltenen Kapitel und Abschnitte wirklich löschen?')) return;
+    if (
+      !confirm(
+        "Act und alle enthaltenen Kapitel und Abschnitte wirklich löschen?",
+      )
+    )
+      return;
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       // Optimistic delete
-      setActs(acts => acts.filter(a => a.id !== actId));
-      setSequences(sequences => sequences.filter(s => s.actId !== actId));
-      setScenes(scenes => scenes.filter(sc => {
-        const sequence = sequences.find(s => s.id === sc.sequenceId);
-        return sequence?.actId !== actId;
-      }));
+      setActs((acts) => acts.filter((a) => a.id !== actId));
+      setSequences((sequences) => sequences.filter((s) => s.actId !== actId));
+      setScenes((scenes) =>
+        scenes.filter((sc) => {
+          const sequence = sequences.find((s) => s.id === sc.sequenceId);
+          return sequence?.actId !== actId;
+        }),
+      );
 
       await TimelineAPI.deleteAct(actId, token);
-      toast.success('Act gelöscht');
+      toast.success("Act gelöscht");
     } catch (error) {
-      console.error('Error deleting act:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting act:", error);
+      toast.error("Fehler beim Löschen");
       loadTimeline();
     }
   };
@@ -577,29 +700,34 @@ export function BookDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      const act = acts.find(a => a.id === actId);
+      const act = acts.find((a) => a.id === actId);
       if (!act) return;
 
       // 🔥 FIX: Reload acts from DB to get accurate node numbers
       const freshActs = await TimelineAPI.getActs(projectId, token);
-      const maxActNumber = freshActs.length > 0 
-        ? Math.max(...freshActs.map(a => a.actNumber || 0))
-        : 0;
+      const maxActNumber =
+        freshActs.length > 0
+          ? Math.max(...freshActs.map((a) => a.actNumber || 0))
+          : 0;
       const newActNumber = maxActNumber + 1;
 
-      const duplicatedAct = await TimelineAPI.createAct(projectId, {
-        actNumber: newActNumber,
-        title: `${act.title} (Kopie)`,
-        description: act.description,
-        orderIndex: freshActs.length,
-        wordCount: act.wordCount || DEFAULT_WORD_COUNTS.ACT, // 📖 Copy word count
-      }, token);
+      const duplicatedAct = await TimelineAPI.createAct(
+        projectId,
+        {
+          actNumber: newActNumber,
+          title: `${act.title} (Kopie)`,
+          description: act.description,
+          orderIndex: freshActs.length,
+          wordCount: act.wordCount || DEFAULT_WORD_COUNTS.ACT, // 📖 Copy word count
+        },
+        token,
+      );
 
       setActs([...freshActs, duplicatedAct]);
-      toast.success('Act dupliziert');
+      toast.success("Act dupliziert");
     } catch (error) {
-      console.error('Error duplicating act:', error);
-      toast.error('Fehler beim Duplizieren');
+      console.error("Error duplicating act:", error);
+      toast.error("Fehler beim Duplizieren");
     }
   };
 
@@ -613,72 +741,90 @@ export function BookDropdown({
       if (!token) return;
 
       // 🔥 FIX: Reload sequences from DB to get accurate node numbers
-      console.log('[BookDropdown] 🔄 Reloading sequences before creating new sequence...');
-      const freshSequences = await TimelineAPI.getAllSequencesByProject(projectId, token);
-      
-      const actSequences = freshSequences.filter(s => s.actId === actId);
-      const maxSequenceNumber = actSequences.length > 0 
-        ? Math.max(...actSequences.map(s => s.sequenceNumber || 0))
-        : 0;
+      console.log(
+        "[BookDropdown] 🔄 Reloading sequences before creating new sequence...",
+      );
+      const freshSequences = await TimelineAPI.getAllSequencesByProject(
+        projectId,
+        token,
+      );
+
+      const actSequences = freshSequences.filter((s) => s.actId === actId);
+      const maxSequenceNumber =
+        actSequences.length > 0
+          ? Math.max(...actSequences.map((s) => s.sequenceNumber || 0))
+          : 0;
       const newSequenceNumber = maxSequenceNumber + 1;
 
-      console.log('[BookDropdown] 📊 Sequence numbers:', {
-        existingSequences: actSequences.map(s => s.sequenceNumber),
+      console.log("[BookDropdown] 📊 Sequence numbers:", {
+        existingSequences: actSequences.map((s) => s.sequenceNumber),
         maxNumber: maxSequenceNumber,
-        newNumber: newSequenceNumber
+        newNumber: newSequenceNumber,
       });
 
-      const newSequence = await TimelineAPI.createSequence(actId, {
-        sequenceNumber: newSequenceNumber,
-        title: `Kapitel ${newSequenceNumber}`,
-        orderIndex: actSequences.length,
-        wordCount: DEFAULT_WORD_COUNTS.CHAPTER, // 📖 Set default word count
-      }, token);
+      const newSequence = await TimelineAPI.createSequence(
+        actId,
+        {
+          sequenceNumber: newSequenceNumber,
+          title: `Kapitel ${newSequenceNumber}`,
+          orderIndex: actSequences.length,
+          wordCount: DEFAULT_WORD_COUNTS.CHAPTER, // 📖 Set default word count
+        },
+        token,
+      );
 
       setSequences([...freshSequences, newSequence]);
-      toast.success('Kapitel erstellt');
+      toast.success("Kapitel erstellt");
     } catch (error) {
-      console.error('Error creating sequence:', error);
-      toast.error('Fehler beim Erstellen');
+      console.error("Error creating sequence:", error);
+      toast.error("Fehler beim Erstellen");
     }
   };
 
-  const handleUpdateSequence = async (sequenceId: string, updates: { title?: string; description?: string }) => {
+  const handleUpdateSequence = async (
+    sequenceId: string,
+    updates: { title?: string; description?: string },
+  ) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      setSequences(sequences => sequences.map(s => s.id === sequenceId ? { ...s, ...updates } : s));
+      setSequences((sequences) =>
+        sequences.map((s) => (s.id === sequenceId ? { ...s, ...updates } : s)),
+      );
 
       await TimelineAPI.updateSequence(sequenceId, updates, token);
       setEditingSequence(null);
-      setEditValues(prev => {
+      setEditValues((prev) => {
         const next = { ...prev };
         delete next[sequenceId];
         return next;
       });
     } catch (error) {
-      console.error('Error updating sequence:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating sequence:", error);
+      toast.error("Fehler beim Aktualisieren");
       loadTimeline();
     }
   };
 
   const handleDeleteSequence = async (sequenceId: string) => {
-    if (!confirm('Kapitel und alle enthaltenen Abschnitte wirklich löschen?')) return;
+    if (!confirm("Kapitel und alle enthaltenen Abschnitte wirklich löschen?"))
+      return;
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      setSequences(sequences => sequences.filter(s => s.id !== sequenceId));
-      setScenes(scenes => scenes.filter(sc => sc.sequenceId !== sequenceId));
+      setSequences((sequences) => sequences.filter((s) => s.id !== sequenceId));
+      setScenes((scenes) =>
+        scenes.filter((sc) => sc.sequenceId !== sequenceId),
+      );
 
       await TimelineAPI.deleteSequence(sequenceId, token);
-      toast.success('Kapitel gelöscht');
+      toast.success("Kapitel gelöscht");
     } catch (error) {
-      console.error('Error deleting sequence:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting sequence:", error);
+      toast.error("Fehler beim Löschen");
       loadTimeline();
     }
   };
@@ -688,30 +834,40 @@ export function BookDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      const sequence = sequences.find(s => s.id === sequenceId);
+      const sequence = sequences.find((s) => s.id === sequenceId);
       if (!sequence) return;
 
       // 🔥 FIX: Reload sequences from DB to get accurate node numbers
-      const freshSequences = await TimelineAPI.getAllSequencesByProject(projectId, token);
-      const actSequences = freshSequences.filter(s => s.actId === sequence.actId);
-      const maxSequenceNumber = actSequences.length > 0 
-        ? Math.max(...actSequences.map(s => s.sequenceNumber || 0))
-        : 0;
+      const freshSequences = await TimelineAPI.getAllSequencesByProject(
+        projectId,
+        token,
+      );
+      const actSequences = freshSequences.filter(
+        (s) => s.actId === sequence.actId,
+      );
+      const maxSequenceNumber =
+        actSequences.length > 0
+          ? Math.max(...actSequences.map((s) => s.sequenceNumber || 0))
+          : 0;
       const newSequenceNumber = maxSequenceNumber + 1;
 
-      const duplicatedSequence = await TimelineAPI.createSequence(sequence.actId!, {
-        sequenceNumber: newSequenceNumber,
-        title: `${sequence.title} (Kopie)`,
-        description: sequence.description,
-        orderIndex: actSequences.length,
-        wordCount: sequence.wordCount || DEFAULT_WORD_COUNTS.CHAPTER, // 📖 Copy word count
-      }, token);
+      const duplicatedSequence = await TimelineAPI.createSequence(
+        sequence.actId!,
+        {
+          sequenceNumber: newSequenceNumber,
+          title: `${sequence.title} (Kopie)`,
+          description: sequence.description,
+          orderIndex: actSequences.length,
+          wordCount: sequence.wordCount || DEFAULT_WORD_COUNTS.CHAPTER, // 📖 Copy word count
+        },
+        token,
+      );
 
       setSequences([...freshSequences, duplicatedSequence]);
-      toast.success('Kapitel dupliziert');
+      toast.success("Kapitel dupliziert");
     } catch (error) {
-      console.error('Error duplicating sequence:', error);
-      toast.error('Fehler beim Duplizieren');
+      console.error("Error duplicating sequence:", error);
+      toast.error("Fehler beim Duplizieren");
     }
   };
 
@@ -720,16 +876,22 @@ export function BookDropdown({
   // =====================================================
 
   // 🚀 Handler for opening scene content editor
-  const handleEditSceneContent = useCallback((sceneId: string) => {
-    const scene = scenes.find(sc => sc.id === sceneId);
-    if (!scene) {
-      console.error('[BookDropdown] Scene not found:', sceneId);
-      return;
-    }
-    console.log('[BookDropdown] 🚀 Opening Content Modal for scene:', scene.id);
-    setEditingSceneForModal(scene);
-    setShowContentModal(true);
-  }, [scenes]);
+  const handleEditSceneContent = useCallback(
+    (sceneId: string) => {
+      const scene = scenes.find((sc) => sc.id === sceneId);
+      if (!scene) {
+        console.error("[BookDropdown] Scene not found:", sceneId);
+        return;
+      }
+      console.log(
+        "[BookDropdown] 🚀 Opening Content Modal for scene:",
+        scene.id,
+      );
+      setEditingSceneForModal(scene);
+      setShowContentModal(true);
+    },
+    [scenes],
+  );
 
   const handleAddScene = async (sequenceId: string) => {
     try {
@@ -737,38 +899,53 @@ export function BookDropdown({
       if (!token) return;
 
       // 🔥 FIX: Reload scenes from DB to get accurate node numbers
-      console.log('[BookDropdown] 🔄 Reloading scenes before creating new scene...');
-      const freshScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
-      
-      const sequenceScenes = freshScenes.filter(sc => sc.sequenceId === sequenceId);
+      console.log(
+        "[BookDropdown] 🔄 Reloading scenes before creating new scene...",
+      );
+      const freshScenes = await TimelineAPI.getAllScenesByProject(
+        projectId,
+        token,
+      );
+
+      const sequenceScenes = freshScenes.filter(
+        (sc) => sc.sequenceId === sequenceId,
+      );
       // Find highest sceneNumber to avoid unique constraint violation
-      const maxSceneNumber = sequenceScenes.length > 0 
-        ? Math.max(...sequenceScenes.map(sc => sc.sceneNumber || 0))
-        : 0;
+      const maxSceneNumber =
+        sequenceScenes.length > 0
+          ? Math.max(...sequenceScenes.map((sc) => sc.sceneNumber || 0))
+          : 0;
       const newSceneNumber = maxSceneNumber + 1;
 
-      console.log('[BookDropdown] 📊 Scene numbers:', {
-        existingScenes: sequenceScenes.map(s => s.sceneNumber),
+      console.log("[BookDropdown] 📊 Scene numbers:", {
+        existingScenes: sequenceScenes.map((s) => s.sceneNumber),
         maxNumber: maxSceneNumber,
-        newNumber: newSceneNumber
+        newNumber: newSceneNumber,
       });
 
-      const newScene = await TimelineAPI.createScene(sequenceId, {
-        sceneNumber: newSceneNumber,
-        title: `Abschnitt ${newSceneNumber}`,
-        orderIndex: sequenceScenes.length,
-        wordCount: DEFAULT_WORD_COUNTS.SECTION, // 📖 Set default word count
-      }, token);
+      const newScene = await TimelineAPI.createScene(
+        sequenceId,
+        {
+          sceneNumber: newSceneNumber,
+          title: `Abschnitt ${newSceneNumber}`,
+          orderIndex: sequenceScenes.length,
+          wordCount: DEFAULT_WORD_COUNTS.SECTION, // 📖 Set default word count
+        },
+        token,
+      );
 
       setScenes([...freshScenes, newScene]);
-      toast.success('Abschnitt erstellt');
+      toast.success("Abschnitt erstellt");
     } catch (error) {
-      console.error('Error creating scene:', error);
-      toast.error('Fehler beim Erstellen');
+      console.error("Error creating scene:", error);
+      toast.error("Fehler beim Erstellen");
     }
   };
 
-  const handleUpdateScene = async (sceneId: string, updates: Partial<Scene>) => {
+  const handleUpdateScene = async (
+    sceneId: string,
+    updates: Partial<Scene>,
+  ) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
@@ -779,28 +956,40 @@ export function BookDropdown({
         try {
           const parsed = JSON.parse(updates.content);
           const textContent = extractTextFromTiptap(parsed);
-          const wordCount = textContent.trim() 
-            ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
+          const wordCount = textContent.trim()
+            ? textContent
+                .trim()
+                .split(/\s+/)
+                .filter((w) => w.length > 0).length
             : 0;
           finalUpdates = { ...updates, wordCount } as any;
-          console.log(`[BookDropdown] 💾 Updating scene with ${wordCount} words`);
+          console.log(
+            `[BookDropdown] 💾 Updating scene with ${wordCount} words`,
+          );
         } catch (e) {
-          console.warn('[BookDropdown] Could not parse content for word count:', e);
+          console.warn(
+            "[BookDropdown] Could not parse content for word count:",
+            e,
+          );
         }
       }
 
-      setScenes(scenes => scenes.map(sc => sc.id === sceneId ? { ...sc, ...finalUpdates } : sc));
+      setScenes((scenes) =>
+        scenes.map((sc) =>
+          sc.id === sceneId ? { ...sc, ...finalUpdates } : sc,
+        ),
+      );
 
       await TimelineAPI.updateScene(sceneId, finalUpdates, token);
       setEditingScene(null);
-      setEditValues(prev => {
+      setEditValues((prev) => {
         const next = { ...prev };
         delete next[sceneId];
         return next;
       });
     } catch (error) {
-      console.error('Error updating scene:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating scene:", error);
+      toast.error("Fehler beim Aktualisieren");
       loadTimeline();
     }
   };
@@ -812,7 +1001,7 @@ export function BookDropdown({
       if (!token) return;
 
       // Find current scene to get current metadata
-      const currentScene = scenes.find(sc => sc.id === sceneId);
+      const currentScene = scenes.find((sc) => sc.id === sceneId);
       if (!currentScene) return;
 
       // 📊 CALCULATE WORD COUNT from content
@@ -820,16 +1009,28 @@ export function BookDropdown({
       try {
         const parsed = JSON.parse(content);
         const textContent = extractTextFromTiptap(parsed);
-        wordCount = textContent.trim() 
-          ? textContent.trim().split(/\s+/).filter(w => w.length > 0).length 
+        wordCount = textContent.trim()
+          ? textContent
+              .trim()
+              .split(/\s+/)
+              .filter((w) => w.length > 0).length
           : 0;
-        console.log(`[BookDropdown] 💾 Auto-saving scene "${currentScene.title}": ${wordCount} words`);
+        console.log(
+          `[BookDropdown] 💾 Auto-saving scene "${currentScene.title}": ${wordCount} words`,
+        );
       } catch (e) {
-        console.warn('[BookDropdown] Could not parse content for word count:', e);
+        console.warn(
+          "[BookDropdown] Could not parse content for word count:",
+          e,
+        );
       }
 
       // Optimistic update with wordCount
-      setScenes(scenes => scenes.map(sc => sc.id === sceneId ? { ...sc, content, wordCount } : sc));
+      setScenes((scenes) =>
+        scenes.map((sc) =>
+          sc.id === sceneId ? { ...sc, content, wordCount } : sc,
+        ),
+      );
 
       // Save to backend directly WITHOUT extra GET request
       // This avoids the double API call that was closing the editor
@@ -842,26 +1043,26 @@ export function BookDropdown({
         wordCount, // 📊 SAVE WORD COUNT TO DATABASE
       });
     } catch (error) {
-      console.error('Error auto-saving scene:', error);
-      toast.error('Fehler beim Speichern');
+      console.error("Error auto-saving scene:", error);
+      toast.error("Fehler beim Speichern");
       // DON'T reload timeline on error - just keep editing
     }
   };
 
   const handleDeleteScene = async (sceneId: string) => {
-    if (!confirm('Abschnitt wirklich löschen?')) return;
+    if (!confirm("Abschnitt wirklich löschen?")) return;
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      setScenes(scenes => scenes.filter(sc => sc.id !== sceneId));
+      setScenes((scenes) => scenes.filter((sc) => sc.id !== sceneId));
 
       await TimelineAPI.deleteScene(sceneId, token);
-      toast.success('Abschnitt gelöscht');
+      toast.success("Abschnitt gelöscht");
     } catch (error) {
-      console.error('Error deleting scene:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting scene:", error);
+      toast.error("Fehler beim Löschen");
       loadTimeline();
     }
   };
@@ -871,31 +1072,41 @@ export function BookDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      const scene = scenes.find(sc => sc.id === sceneId);
+      const scene = scenes.find((sc) => sc.id === sceneId);
       if (!scene) return;
 
       // 🔥 FIX: Reload scenes from DB to get accurate node numbers
-      const freshScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
-      const sequenceScenes = freshScenes.filter(sc => sc.sequenceId === scene.sequenceId);
-      const maxSceneNumber = sequenceScenes.length > 0 
-        ? Math.max(...sequenceScenes.map(sc => sc.sceneNumber || 0))
-        : 0;
+      const freshScenes = await TimelineAPI.getAllScenesByProject(
+        projectId,
+        token,
+      );
+      const sequenceScenes = freshScenes.filter(
+        (sc) => sc.sequenceId === scene.sequenceId,
+      );
+      const maxSceneNumber =
+        sequenceScenes.length > 0
+          ? Math.max(...sequenceScenes.map((sc) => sc.sceneNumber || 0))
+          : 0;
       const newSceneNumber = maxSceneNumber + 1;
 
-      const duplicatedScene = await TimelineAPI.createScene(scene.sequenceId!, {
-        sceneNumber: newSceneNumber,
-        title: `${scene.title} (Kopie)`,
-        description: scene.description,
-        content: scene.content,
-        orderIndex: sequenceScenes.length,
-        wordCount: scene.wordCount || DEFAULT_WORD_COUNTS.SECTION, // 📖 Copy word count
-      }, token);
+      const duplicatedScene = await TimelineAPI.createScene(
+        scene.sequenceId!,
+        {
+          sceneNumber: newSceneNumber,
+          title: `${scene.title} (Kopie)`,
+          description: scene.description,
+          content: scene.content,
+          orderIndex: sequenceScenes.length,
+          wordCount: scene.wordCount || DEFAULT_WORD_COUNTS.SECTION, // 📖 Copy word count
+        },
+        token,
+      );
 
       setScenes([...freshScenes, duplicatedScene]);
-      toast.success('Abschnitt dupliziert');
+      toast.success("Abschnitt dupliziert");
     } catch (error) {
-      console.error('Error duplicating scene:', error);
-      toast.error('Fehler beim Duplizieren');
+      console.error("Error duplicating scene:", error);
+      toast.error("Fehler beim Duplizieren");
     }
   };
 
@@ -910,41 +1121,48 @@ export function BookDropdown({
 
       // 1. Create Act (at the end)
       const freshActs = await TimelineAPI.getActs(projectId, token);
-      const maxActNumber = freshActs.length > 0 ? Math.max(...freshActs.map(a => a.actNumber || 0)) : 0;
+      const maxActNumber =
+        freshActs.length > 0
+          ? Math.max(...freshActs.map((a) => a.actNumber || 0))
+          : 0;
       const newActNumber = maxActNumber + 1;
 
-      const newAct = await TimelineAPI.createAct(projectId, {
-        actNumber: newActNumber,
-        title: `Act ${newActNumber}`,
-        orderIndex: freshActs.length,
-      }, token);
+      const newAct = await TimelineAPI.createAct(
+        projectId,
+        {
+          actNumber: newActNumber,
+          title: `Act ${newActNumber}`,
+          orderIndex: freshActs.length,
+        },
+        token,
+      );
 
       // 2. Reorder if needed
       let updatedActs = [...freshActs, newAct];
-      
+
       if (index < freshActs.length) {
         // Remove from end
         updatedActs.pop();
         // Insert at index
         updatedActs.splice(index, 0, newAct);
-        
+
         // Recalculate order indices
         updatedActs = updatedActs.map((a, i) => ({ ...a, orderIndex: i }));
-        
+
         // Update state
         setActs(updatedActs);
-        
+
         // Persist reorder
-        const actIds = updatedActs.map(a => a.id);
+        const actIds = updatedActs.map((a) => a.id);
         await TimelineAPI.reorderActs(projectId, actIds, token);
       } else {
         setActs(updatedActs);
       }
-      
-      toast.success('Act eingefügt');
+
+      toast.success("Act eingefügt");
     } catch (error) {
-      console.error('Error adding act at index:', error);
-      toast.error('Fehler beim Einfügen');
+      console.error("Error adding act at index:", error);
+      toast.error("Fehler beim Einfügen");
     }
   };
 
@@ -954,45 +1172,60 @@ export function BookDropdown({
       if (!token) return;
 
       // 1. Create Sequence (at the end)
-      const freshSequences = await TimelineAPI.getAllSequencesByProject(projectId, token);
-      const actSequences = freshSequences.filter(s => s.actId === actId).sort((a, b) => a.orderIndex - b.orderIndex);
-      
-      const maxSequenceNumber = actSequences.length > 0 ? Math.max(...actSequences.map(s => s.sequenceNumber || 0)) : 0;
+      const freshSequences = await TimelineAPI.getAllSequencesByProject(
+        projectId,
+        token,
+      );
+      const actSequences = freshSequences
+        .filter((s) => s.actId === actId)
+        .sort((a, b) => a.orderIndex - b.orderIndex);
+
+      const maxSequenceNumber =
+        actSequences.length > 0
+          ? Math.max(...actSequences.map((s) => s.sequenceNumber || 0))
+          : 0;
       const newSequenceNumber = maxSequenceNumber + 1;
 
-      const newSequence = await TimelineAPI.createSequence(actId, {
-        sequenceNumber: newSequenceNumber,
-        title: `Kapitel ${newSequenceNumber}`,
-        orderIndex: actSequences.length,
-      }, token);
+      const newSequence = await TimelineAPI.createSequence(
+        actId,
+        {
+          sequenceNumber: newSequenceNumber,
+          title: `Kapitel ${newSequenceNumber}`,
+          orderIndex: actSequences.length,
+        },
+        token,
+      );
 
       // 2. Reorder if needed
       let updatedSequences = [...freshSequences, newSequence];
-      
+
       if (index < actSequences.length) {
-         // We need to reorder ONLY the sequences in this act
-         const otherSequences = freshSequences.filter(s => s.actId !== actId);
-         const targetSequences = [...actSequences];
-         targetSequences.splice(index, 0, newSequence);
-         
-         // Recalculate order indices for this act
-         const finalActSequences = targetSequences.map((s, i) => ({ ...s, orderIndex: i }));
-         
-         // Combine
-         updatedSequences = [...otherSequences, ...finalActSequences];
-         setSequences(updatedSequences);
-         
-         // Persist reorder
-         const sequenceIds = finalActSequences.map(s => s.id);
-         await TimelineAPI.reorderSequences(actId, sequenceIds, token);
+        // We need to reorder ONLY the sequences in this act
+        const otherSequences = freshSequences.filter((s) => s.actId !== actId);
+        const targetSequences = [...actSequences];
+        targetSequences.splice(index, 0, newSequence);
+
+        // Recalculate order indices for this act
+        const finalActSequences = targetSequences.map((s, i) => ({
+          ...s,
+          orderIndex: i,
+        }));
+
+        // Combine
+        updatedSequences = [...otherSequences, ...finalActSequences];
+        setSequences(updatedSequences);
+
+        // Persist reorder
+        const sequenceIds = finalActSequences.map((s) => s.id);
+        await TimelineAPI.reorderSequences(actId, sequenceIds, token);
       } else {
-         setSequences(updatedSequences);
+        setSequences(updatedSequences);
       }
 
-      toast.success('Kapitel eingefügt');
+      toast.success("Kapitel eingefügt");
     } catch (error) {
-      console.error('Error adding sequence at index:', error);
-      toast.error('Fehler beim Einfügen');
+      console.error("Error adding sequence at index:", error);
+      toast.error("Fehler beim Einfügen");
     }
   };
 
@@ -1002,47 +1235,62 @@ export function BookDropdown({
       if (!token) return;
 
       // 1. Create Scene (at the end)
-      const freshScenes = await TimelineAPI.getAllScenesByProject(projectId, token);
+      const freshScenes = await TimelineAPI.getAllScenesByProject(
+        projectId,
+        token,
+      );
       const sequenceScenes = freshScenes
-        .filter(s => s.sequenceId === sequenceId)
+        .filter((s) => s.sequenceId === sequenceId)
         .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-      
-      const maxSceneNumber = sequenceScenes.length > 0 ? Math.max(...sequenceScenes.map(s => s.sceneNumber || 0)) : 0;
+
+      const maxSceneNumber =
+        sequenceScenes.length > 0
+          ? Math.max(...sequenceScenes.map((s) => s.sceneNumber || 0))
+          : 0;
       const newSceneNumber = maxSceneNumber + 1;
 
-      const newScene = await TimelineAPI.createScene(sequenceId, {
-        sceneNumber: newSceneNumber,
-        title: `Abschnitt ${newSceneNumber}`,
-        orderIndex: sequenceScenes.length,
-      }, token);
+      const newScene = await TimelineAPI.createScene(
+        sequenceId,
+        {
+          sceneNumber: newSceneNumber,
+          title: `Abschnitt ${newSceneNumber}`,
+          orderIndex: sequenceScenes.length,
+        },
+        token,
+      );
 
       // 2. Reorder if needed
       let updatedScenes = [...freshScenes, newScene];
-      
+
       if (index < sequenceScenes.length) {
-         // Reorder scenes in this sequence
-         const otherScenes = freshScenes.filter(s => s.sequenceId !== sequenceId);
-         const targetScenes = [...sequenceScenes];
-         targetScenes.splice(index, 0, newScene);
-         
-         // Recalculate
-         const finalSequenceScenes = targetScenes.map((s, i) => ({ ...s, orderIndex: i }));
-         
-         // Combine
-         updatedScenes = [...otherScenes, ...finalSequenceScenes];
-         setScenes(updatedScenes);
-         
-         // Persist
-         const sceneIds = finalSequenceScenes.map(s => s.id);
-         await TimelineAPI.reorderScenes(sequenceId, sceneIds, token);
+        // Reorder scenes in this sequence
+        const otherScenes = freshScenes.filter(
+          (s) => s.sequenceId !== sequenceId,
+        );
+        const targetScenes = [...sequenceScenes];
+        targetScenes.splice(index, 0, newScene);
+
+        // Recalculate
+        const finalSequenceScenes = targetScenes.map((s, i) => ({
+          ...s,
+          orderIndex: i,
+        }));
+
+        // Combine
+        updatedScenes = [...otherScenes, ...finalSequenceScenes];
+        setScenes(updatedScenes);
+
+        // Persist
+        const sceneIds = finalSequenceScenes.map((s) => s.id);
+        await TimelineAPI.reorderScenes(sequenceId, sceneIds, token);
       } else {
-         setScenes(updatedScenes);
+        setScenes(updatedScenes);
       }
 
-      toast.success('Abschnitt eingefügt');
+      toast.success("Abschnitt eingefügt");
     } catch (error) {
-      console.error('Error adding scene at index:', error);
-      toast.error('Fehler beim Einfügen');
+      console.error("Error adding scene at index:", error);
+      toast.error("Fehler beim Einfügen");
     }
   };
 
@@ -1051,10 +1299,10 @@ export function BookDropdown({
   // =====================================================
 
   const handleActDrop = async (draggedActId: string, targetIndex: number) => {
-    const draggedAct = acts.find(a => a.id === draggedActId);
+    const draggedAct = acts.find((a) => a.id === draggedActId);
     if (!draggedAct) return;
 
-    const oldIndex = acts.findIndex(a => a.id === draggedActId);
+    const oldIndex = acts.findIndex((a) => a.id === draggedActId);
     if (oldIndex === targetIndex) return;
 
     // Optimistic reorder
@@ -1068,31 +1316,39 @@ export function BookDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      await TimelineAPI.updateAct(draggedActId, { orderIndex: targetIndex }, token);
+      await TimelineAPI.updateAct(
+        draggedActId,
+        { orderIndex: targetIndex },
+        token,
+      );
     } catch (error) {
-      console.error('Error reordering act:', error);
-      toast.error('Fehler beim Verschieben');
+      console.error("Error reordering act:", error);
+      toast.error("Fehler beim Verschieben");
       loadTimeline();
     }
   };
 
-  const handleSequenceDrop = async (draggedSequenceId: string, targetIndex: number, actId: string) => {
-    const draggedSequence = sequences.find(s => s.id === draggedSequenceId);
+  const handleSequenceDrop = async (
+    draggedSequenceId: string,
+    targetIndex: number,
+    actId: string,
+  ) => {
+    const draggedSequence = sequences.find((s) => s.id === draggedSequenceId);
     if (!draggedSequence) return;
 
-    const actSequences = sequences.filter(s => s.actId === actId);
-    const oldIndex = actSequences.findIndex(s => s.id === draggedSequenceId);
-    
+    const actSequences = sequences.filter((s) => s.actId === actId);
+    const oldIndex = actSequences.findIndex((s) => s.id === draggedSequenceId);
+
     if (draggedSequence.actId === actId && oldIndex === targetIndex) return;
 
     // Optimistic update
-    setSequences(sequences => {
-      const filtered = sequences.filter(s => s.id !== draggedSequenceId);
-      const actSeqs = filtered.filter(s => s.actId === actId);
+    setSequences((sequences) => {
+      const filtered = sequences.filter((s) => s.id !== draggedSequenceId);
+      const actSeqs = filtered.filter((s) => s.actId === actId);
       actSeqs.splice(targetIndex, 0, { ...draggedSequence, actId });
       return [
-        ...filtered.filter(s => s.actId !== actId),
-        ...actSeqs.map((s, i) => ({ ...s, orderIndex: i }))
+        ...filtered.filter((s) => s.actId !== actId),
+        ...actSeqs.map((s, i) => ({ ...s, orderIndex: i })),
       ];
     });
 
@@ -1100,31 +1356,40 @@ export function BookDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      await TimelineAPI.updateSequence(draggedSequenceId, { actId, orderIndex: targetIndex }, token);
+      await TimelineAPI.updateSequence(
+        draggedSequenceId,
+        { actId, orderIndex: targetIndex },
+        token,
+      );
     } catch (error) {
-      console.error('Error moving sequence:', error);
-      toast.error('Fehler beim Verschieben');
+      console.error("Error moving sequence:", error);
+      toast.error("Fehler beim Verschieben");
       loadTimeline();
     }
   };
 
-  const handleSceneDrop = async (draggedSceneId: string, targetIndex: number, sequenceId: string) => {
-    const draggedScene = scenes.find(sc => sc.id === draggedSceneId);
+  const handleSceneDrop = async (
+    draggedSceneId: string,
+    targetIndex: number,
+    sequenceId: string,
+  ) => {
+    const draggedScene = scenes.find((sc) => sc.id === draggedSceneId);
     if (!draggedScene) return;
 
-    const sequenceScenes = scenes.filter(sc => sc.sequenceId === sequenceId);
-    const oldIndex = sequenceScenes.findIndex(sc => sc.id === draggedSceneId);
-    
-    if (draggedScene.sequenceId === sequenceId && oldIndex === targetIndex) return;
+    const sequenceScenes = scenes.filter((sc) => sc.sequenceId === sequenceId);
+    const oldIndex = sequenceScenes.findIndex((sc) => sc.id === draggedSceneId);
+
+    if (draggedScene.sequenceId === sequenceId && oldIndex === targetIndex)
+      return;
 
     // Optimistic update
-    setScenes(scenes => {
-      const filtered = scenes.filter(sc => sc.id !== draggedSceneId);
-      const seqScenes = filtered.filter(sc => sc.sequenceId === sequenceId);
+    setScenes((scenes) => {
+      const filtered = scenes.filter((sc) => sc.id !== draggedSceneId);
+      const seqScenes = filtered.filter((sc) => sc.sequenceId === sequenceId);
       seqScenes.splice(targetIndex, 0, { ...draggedScene, sequenceId });
       return [
-        ...filtered.filter(sc => sc.sequenceId !== sequenceId),
-        ...seqScenes.map((sc, i) => ({ ...sc, orderIndex: i }))
+        ...filtered.filter((sc) => sc.sequenceId !== sequenceId),
+        ...seqScenes.map((sc, i) => ({ ...sc, orderIndex: i })),
       ];
     });
 
@@ -1132,10 +1397,14 @@ export function BookDropdown({
       const token = await getAccessToken();
       if (!token) return;
 
-      await TimelineAPI.updateScene(draggedSceneId, { sequenceId, orderIndex: targetIndex }, token);
+      await TimelineAPI.updateScene(
+        draggedSceneId,
+        { sequenceId, orderIndex: targetIndex },
+        token,
+      );
     } catch (error) {
-      console.error('Error moving scene:', error);
-      toast.error('Fehler beim Verschieben');
+      console.error("Error moving scene:", error);
+      toast.error("Fehler beim Verschieben");
       loadTimeline();
     }
   };
@@ -1146,8 +1415,12 @@ export function BookDropdown({
 
   // 🚀 PERFORMANCE LOGGING (only in development, once per data load)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && !loading && sequences.length > 0) {
-      console.log('📚 [BookDropdown] Performance Stats:', {
+    if (
+      process.env.NODE_ENV === "development" &&
+      !loading &&
+      sequences.length > 0
+    ) {
+      console.log("📚 [BookDropdown] Performance Stats:", {
         totalItems: {
           acts: acts.length,
           sequences: sequences.length,
@@ -1159,8 +1432,14 @@ export function BookDropdown({
           scenes: optimized.stats.visibleScenes,
         },
         renderReduction: {
-          sequences: sequences.length > 0 ? `${Math.round((1 - optimized.stats.visibleSequences / sequences.length) * 100)}%` : '0%',
-          scenes: scenes.length > 0 ? `${Math.round((1 - optimized.stats.visibleScenes / scenes.length) * 100)}%` : '0%',
+          sequences:
+            sequences.length > 0
+              ? `${Math.round((1 - optimized.stats.visibleSequences / sequences.length) * 100)}%`
+              : "0%",
+          scenes:
+            scenes.length > 0
+              ? `${Math.round((1 - optimized.stats.visibleScenes / scenes.length) * 100)}%`
+              : "0%",
         },
         avgStats: {
           wordsPerScene: optimized.stats.avgWordsPerScene,
@@ -1225,10 +1504,14 @@ export function BookDropdown({
             value={editingSceneForModal.content}
             title={`Abschnitt: ${editingSceneForModal.title}`}
             characters={characters}
-            lastModified={editingSceneForModal.updatedAt ? {
-              timestamp: editingSceneForModal.updatedAt,
-              userName: undefined
-            } : undefined}
+            lastModified={
+              editingSceneForModal.updatedAt
+                ? {
+                    timestamp: editingSceneForModal.updatedAt,
+                    userName: undefined,
+                  }
+                : undefined
+            }
             // 🚀 Save props
             sceneId={editingSceneForModal.id}
             sceneTitle={editingSceneForModal.title}
@@ -1236,11 +1519,11 @@ export function BookDropdown({
             updateAPI={TimelineAPIV2.updateNode}
             onOptimisticUpdate={(sceneId, content) => {
               const now = new Date().toISOString();
-              setScenes(scenes => scenes.map(sc => 
-                sc.id === sceneId 
-                  ? { ...sc, content, updatedAt: now } 
-                  : sc
-              ));
+              setScenes((scenes) =>
+                scenes.map((sc) =>
+                  sc.id === sceneId ? { ...sc, content, updatedAt: now } : sc,
+                ),
+              );
             }}
             onError={() => {
               loadTimeline();
@@ -1293,7 +1576,7 @@ export function BookDropdown({
                 act={act}
                 index={actIndex}
                 onStatsClick={() => {
-                  setStatsNode({ type: 'act', data: act });
+                  setStatsNode({ type: "act", data: act });
                   setStatsDialogOpen(true);
                 }}
               >
@@ -1309,17 +1592,17 @@ export function BookDropdown({
                     setExpandedActs(next);
                   }}
                 >
-                  <div 
+                  <div
                     data-act-card
                     data-act-id={act.id}
                     className={cn(
-                      "border-2 rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-700 overflow-hidden"
+                      "border-2 rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-700 overflow-hidden",
                     )}
                   >
                     {/* Act Header */}
                     <div className="flex items-center gap-2 p-3 bg-blue-100 dark:bg-blue-900/40">
                       <GripVertical className="size-4 text-muted-foreground cursor-grab" />
-                      
+
                       <CollapsibleTrigger asChild>
                         <button className="p-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-colors">
                           {isActExpanded ? (
@@ -1333,14 +1616,24 @@ export function BookDropdown({
                       {editingAct === act.id ? (
                         <Input
                           value={editValues[act.id]?.title ?? act.title}
-                          onChange={(e) => setEditValues({ ...editValues, [act.id]: { ...editValues[act.id], title: e.target.value } })}
-                          onBlur={() => handleUpdateAct(act.id, editValues[act.id])}
+                          onChange={(e) =>
+                            setEditValues({
+                              ...editValues,
+                              [act.id]: {
+                                ...editValues[act.id],
+                                title: e.target.value,
+                              },
+                            })
+                          }
+                          onBlur={() =>
+                            handleUpdateAct(act.id, editValues[act.id])
+                          }
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               handleUpdateAct(act.id, editValues[act.id]);
-                            } else if (e.key === 'Escape') {
+                            } else if (e.key === "Escape") {
                               setEditingAct(null);
-                              setEditValues(prev => {
+                              setEditValues((prev) => {
                                 const next = { ...prev };
                                 delete next[act.id];
                                 return next;
@@ -1351,7 +1644,7 @@ export function BookDropdown({
                           className="h-7 flex-1 text-sm font-medium"
                         />
                       ) : (
-                        <span 
+                        <span
                           className="flex-1 text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => {
                             const next = new Set(expandedActs);
@@ -1370,131 +1663,221 @@ export function BookDropdown({
                       {/* 📊 Akt Statistics: Word & Page Count */}
                       {(() => {
                         // DEBUG: Log raw data arrays
-                        console.log(`[ACT ${act.title}] 📋 Total sequences available:`, sequences.length);
-                        console.log(`[ACT ${act.title}] 📋 Total scenes available:`, scenes.length);
-                        console.log(`[ACT ${act.title}] 🔑 Looking for act_id:`, act.id);
-                        if (sequences.length > 0) {
-                          console.log(`[ACT ${act.title}] 🔍 First sequence object:`, sequences[0]);
-                        }
-                        
-                        // Get all chapters (sequences) for this act
-                        const actChapters = sequences.filter(s => s.actId === act.id);
-                        
-                        // Get all sections (scenes) for these chapters
-                        const chapterIds = actChapters.map(c => c.id);
-                        const actSections = scenes.filter(
-                          (s) => s.sequenceId != null && chapterIds.includes(s.sequenceId)
+                        console.log(
+                          `[ACT ${act.title}] 📋 Total sequences available:`,
+                          sequences.length,
                         );
-                        
-                        // DEBUG: Log what we found
-                        console.log(`[ACT ${act.title}] 📋 Total sequences available:`, sequences.length);
-                        console.log(`[ACT ${act.title}] 📋 Total scenes available:`, scenes.length);
-                        console.log(`[ACT ${act.title}] 🔑 Looking for act_id:`, act.id);
+                        console.log(
+                          `[ACT ${act.title}] 📋 Total scenes available:`,
+                          scenes.length,
+                        );
+                        console.log(
+                          `[ACT ${act.title}] 🔑 Looking for act_id:`,
+                          act.id,
+                        );
                         if (sequences.length > 0) {
-                          console.log(`[ACT ${act.title}] 🔍 First sequence object:`, sequences[0]);
+                          console.log(
+                            `[ACT ${act.title}] 🔍 First sequence object:`,
+                            sequences[0],
+                          );
+                        }
+
+                        // Get all chapters (sequences) for this act
+                        const actChapters = sequences.filter(
+                          (s) => s.actId === act.id,
+                        );
+
+                        // Get all sections (scenes) for these chapters
+                        const chapterIds = actChapters.map((c) => c.id);
+                        const actSections = scenes.filter(
+                          (s) =>
+                            s.sequenceId != null &&
+                            chapterIds.includes(s.sequenceId),
+                        );
+
+                        // DEBUG: Log what we found
+                        console.log(
+                          `[ACT ${act.title}] 📋 Total sequences available:`,
+                          sequences.length,
+                        );
+                        console.log(
+                          `[ACT ${act.title}] 📋 Total scenes available:`,
+                          scenes.length,
+                        );
+                        console.log(
+                          `[ACT ${act.title}] 🔑 Looking for act_id:`,
+                          act.id,
+                        );
+                        if (sequences.length > 0) {
+                          console.log(
+                            `[ACT ${act.title}] 🔍 First sequence object:`,
+                            sequences[0],
+                          );
                         }
                         if (scenes.length > 0 && actChapters.length > 0) {
-                          console.log(`[ACT ${act.title}] 🔍 First scene sequenceId:`, scenes[0].sequenceId);
-                          console.log(`[ACT ${act.title}] 🔍 Chapter IDs we're looking for:`, chapterIds);
+                          console.log(
+                            `[ACT ${act.title}] 🔍 First scene sequenceId:`,
+                            scenes[0].sequenceId,
+                          );
+                          console.log(
+                            `[ACT ${act.title}] 🔍 Chapter IDs we're looking for:`,
+                            chapterIds,
+                          );
                         }
-                        console.log(`[ACT ${act.title}] ✅ Chapters found:`, actChapters.length, 'Sections:', actSections.length);
-                        
+                        console.log(
+                          `[ACT ${act.title}] ✅ Chapters found:`,
+                          actChapters.length,
+                          "Sections:",
+                          actSections.length,
+                        );
+
                         // Helper function to recursively extract text from TipTap JSON
                         const extractTextFromTiptap = (node: any): string => {
-                          let text = '';
-                          
+                          let text = "";
+
                           // If this node has text directly, add it
                           if (node.text) {
                             text += node.text;
                           }
-                          
+
                           // If this node has content (children), recursively extract from them
                           if (node.content && Array.isArray(node.content)) {
                             for (const child of node.content) {
-                              text += extractTextFromTiptap(child) + ' ';
+                              text += extractTextFromTiptap(child) + " ";
                             }
                           }
-                          
+
                           return text;
                         };
-                        
+
                         // Count words in all sections
                         let totalWords = 0;
                         actSections.forEach((section, idx) => {
                           // Try scene.content first (already extracted from metadata by nodeToScene), then fallback
-                          const content = section.content || section.metadata?.content || section.description;
-                          
+                          const content =
+                            section.content ||
+                            section.metadata?.content ||
+                            section.description;
+
                           if (content) {
                             try {
                               // If content is a string, parse it as JSON
-                              const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
-                              const textContent = extractTextFromTiptap(contentObj);
-                              
+                              const contentObj =
+                                typeof content === "string"
+                                  ? JSON.parse(content)
+                                  : content;
+                              const textContent =
+                                extractTextFromTiptap(contentObj);
+
                               // Count words
                               if (textContent.trim()) {
-                                const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
-                                console.log(`  Section ${idx + 1} (${section.title || 'Untitled'}): ${words.length} words`);
+                                const words = textContent
+                                  .trim()
+                                  .split(/\s+/)
+                                  .filter((w) => w.length > 0);
+                                console.log(
+                                  `  Section ${idx + 1} (${section.title || "Untitled"}): ${words.length} words`,
+                                );
                                 totalWords += words.length;
                               } else {
-                                console.log(`  Section ${idx + 1} (${section.title || 'Untitled'}): 0 words (empty)`);
+                                console.log(
+                                  `  Section ${idx + 1} (${section.title || "Untitled"}): 0 words (empty)`,
+                                );
                               }
                             } catch (e) {
                               // If content is not JSON, count as plain text
-                              const textContent = typeof content === 'string' ? content : '';
+                              const textContent =
+                                typeof content === "string" ? content : "";
                               if (textContent.trim()) {
-                                const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
-                                console.log(`  Section ${idx + 1} (${section.title || 'Untitled'}): ${words.length} words (plain text)`);
+                                const words = textContent
+                                  .trim()
+                                  .split(/\s+/)
+                                  .filter((w) => w.length > 0);
+                                console.log(
+                                  `  Section ${idx + 1} (${section.title || "Untitled"}): ${words.length} words (plain text)`,
+                                );
                                 totalWords += words.length;
                               } else {
-                                console.log(`  Section ${idx + 1} (${section.title || 'Untitled'}): 0 words (parse error, empty)`);
+                                console.log(
+                                  `  Section ${idx + 1} (${section.title || "Untitled"}): 0 words (parse error, empty)`,
+                                );
                               }
                             }
                           } else {
-                            console.log(`  Section ${idx + 1} (${section.title || 'Untitled'}): No content`);
+                            console.log(
+                              `  Section ${idx + 1} (${section.title || "Untitled"}): No content`,
+                            );
                           }
                         });
-                        
-                        console.log(`[ACT ${act.title}] TOTAL: ${totalWords} words`);
-                        
+
+                        console.log(
+                          `[ACT ${act.title}] TOTAL: ${totalWords} words`,
+                        );
+
                         // Calculate pages (default 250 words per page) with decimal
                         const wordsPerPage = 250;
-                        const totalPages = (totalWords / wordsPerPage).toFixed(1);
-                        
+                        const totalPages = (totalWords / wordsPerPage).toFixed(
+                          1,
+                        );
+
                         return (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="font-medium">{totalWords.toLocaleString('de-DE')} Wörter</span>
+                            <span className="font-medium">
+                              {totalWords.toLocaleString("de-DE")} Wörter
+                            </span>
                             <span>•</span>
-                            <span>~{totalPages} {parseFloat(totalPages) === 1 ? 'Seite' : 'Seiten'}</span>
+                            <span>
+                              ~{totalPages}{" "}
+                              {parseFloat(totalPages) === 1
+                                ? "Seite"
+                                : "Seiten"}
+                            </span>
                           </div>
                         );
                       })()}
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                          >
                             <MoreVertical className="size-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setStatsNode({ type: 'act', data: act });
-                            setStatsDialogOpen(true);
-                          }}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setStatsNode({ type: "act", data: act });
+                              setStatsDialogOpen(true);
+                            }}
+                          >
                             <Info className="size-3.5 mr-2" />
                             Statistik & Logs
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setEditingAct(act.id);
-                            setEditValues({ ...editValues, [act.id]: { title: act.title, description: act.description || '' } });
-                          }}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingAct(act.id);
+                              setEditValues({
+                                ...editValues,
+                                [act.id]: {
+                                  title: act.title,
+                                  description: act.description || "",
+                                },
+                              });
+                            }}
+                          >
                             <Edit className="size-3.5 mr-2" />
                             Bearbeiten
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicateAct(act.id)}>
+                          <DropdownMenuItem
+                            onClick={() => handleDuplicateAct(act.id)}
+                          >
                             <Copy className="size-3.5 mr-2" />
                             Duplizieren
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDeleteAct(act.id)}
                             className="text-red-600 dark:text-red-400"
                           >
@@ -1510,13 +1893,27 @@ export function BookDropdown({
                       <div className="px-3 pb-2">
                         {editingAct === act.id ? (
                           <Textarea
-                            value={editValues[act.id]?.description ?? act.description ?? ''}
-                            onChange={(e) => setEditValues({ ...editValues, [act.id]: { ...editValues[act.id], description: e.target.value } })}
+                            value={
+                              editValues[act.id]?.description ??
+                              act.description ??
+                              ""
+                            }
+                            onChange={(e) =>
+                              setEditValues({
+                                ...editValues,
+                                [act.id]: {
+                                  ...editValues[act.id],
+                                  description: e.target.value,
+                                },
+                              })
+                            }
                             placeholder="Beschreibung..."
                             className="min-h-[60px] text-xs"
                           />
                         ) : (
-                          <p className="text-xs text-muted-foreground mt-1">{act.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {act.description}
+                          </p>
                         )}
                       </div>
                     )}
@@ -1536,25 +1933,36 @@ export function BookDropdown({
 
                         {actSequences.map((sequence, sequenceIndex) => {
                           // 🚀 OPTIMIZED: Use memoized filter instead of scenes.filter()
-                          const sequenceScenes = optimized.getScenesForSequence(sequence.id);
-                          const isSequenceExpanded = expandedSequences.has(sequence.id);
+                          const sequenceScenes = optimized.getScenesForSequence(
+                            sequence.id,
+                          );
+                          const isSequenceExpanded = expandedSequences.has(
+                            sequence.id,
+                          );
 
                           return (
                             <div key={sequence.id}>
                               <DropZone
                                 type={ItemTypes.SEQUENCE}
                                 index={sequenceIndex}
-                                onDrop={(id, idx) => handleSequenceDrop(id, idx, act.id)}
+                                onDrop={(id, idx) =>
+                                  handleSequenceDrop(id, idx, act.id)
+                                }
                                 label={`Vor ${sequence.title}`}
                                 height="sequence"
-                                onAdd={() => handleAddSequenceAt(act.id, sequenceIndex)}
+                                onAdd={() =>
+                                  handleAddSequenceAt(act.id, sequenceIndex)
+                                }
                               />
 
                               <DraggableSequence
                                 sequence={sequence}
                                 index={sequenceIndex}
                                 onStatsClick={() => {
-                                  setStatsNode({ type: 'sequence', data: sequence });
+                                  setStatsNode({
+                                    type: "sequence",
+                                    data: sequence,
+                                  });
                                   setStatsDialogOpen(true);
                                 }}
                               >
@@ -1578,7 +1986,7 @@ export function BookDropdown({
                                     {/* Sequence Header */}
                                     <div className="flex items-center gap-2 p-2.5 bg-green-100 dark:bg-green-900/40">
                                       <GripVertical className="size-3.5 text-muted-foreground cursor-grab" />
-                                      
+
                                       <CollapsibleTrigger asChild>
                                         <button className="p-1 hover:bg-green-200 dark:hover:bg-green-800 rounded transition-colors">
                                           {isSequenceExpanded ? (
@@ -1591,15 +1999,34 @@ export function BookDropdown({
 
                                       {editingSequence === sequence.id ? (
                                         <Input
-                                          value={editValues[sequence.id]?.title ?? sequence.title}
-                                          onChange={(e) => setEditValues({ ...editValues, [sequence.id]: { ...editValues[sequence.id], title: e.target.value } })}
-                                          onBlur={() => handleUpdateSequence(sequence.id, editValues[sequence.id])}
+                                          value={
+                                            editValues[sequence.id]?.title ??
+                                            sequence.title
+                                          }
+                                          onChange={(e) =>
+                                            setEditValues({
+                                              ...editValues,
+                                              [sequence.id]: {
+                                                ...editValues[sequence.id],
+                                                title: e.target.value,
+                                              },
+                                            })
+                                          }
+                                          onBlur={() =>
+                                            handleUpdateSequence(
+                                              sequence.id,
+                                              editValues[sequence.id],
+                                            )
+                                          }
                                           onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              handleUpdateSequence(sequence.id, editValues[sequence.id]);
-                                            } else if (e.key === 'Escape') {
+                                            if (e.key === "Enter") {
+                                              handleUpdateSequence(
+                                                sequence.id,
+                                                editValues[sequence.id],
+                                              );
+                                            } else if (e.key === "Escape") {
                                               setEditingSequence(null);
-                                              setEditValues(prev => {
+                                              setEditValues((prev) => {
                                                 const next = { ...prev };
                                                 delete next[sequence.id];
                                                 return next;
@@ -1610,10 +2037,12 @@ export function BookDropdown({
                                           className="h-6 flex-1 text-xs font-medium"
                                         />
                                       ) : (
-                                        <span 
+                                        <span
                                           className="flex-1 text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity"
                                           onClick={() => {
-                                            const next = new Set(expandedSequences);
+                                            const next = new Set(
+                                              expandedSequences,
+                                            );
                                             if (isSequenceExpanded) {
                                               next.delete(sequence.id);
                                             } else {
@@ -1629,93 +2058,158 @@ export function BookDropdown({
                                       {/* 📊 Kapitel Statistics: Word & Page Count */}
                                       {(() => {
                                         // Get all sections (scenes) for this chapter
-                                        const chapterSections = scenes.filter(s => s.sequenceId === sequence.id);
-                                        
+                                        const chapterSections = scenes.filter(
+                                          (s) => s.sequenceId === sequence.id,
+                                        );
+
                                         // Extract text from TipTap JSON
-                                        const extractTextFromTiptap = (node: any): string => {
-                                          if (!node) return '';
-                                          
-                                          let text = '';
-                                          
+                                        const extractTextFromTiptap = (
+                                          node: any,
+                                        ): string => {
+                                          if (!node) return "";
+
+                                          let text = "";
+
                                           // If node has text, add it
                                           if (node.text) {
                                             text += node.text;
                                           }
-                                          
+
                                           // Recursively process child nodes
-                                          if (node.content && Array.isArray(node.content)) {
+                                          if (
+                                            node.content &&
+                                            Array.isArray(node.content)
+                                          ) {
                                             for (const child of node.content) {
-                                              text += extractTextFromTiptap(child) + ' ';
+                                              text +=
+                                                extractTextFromTiptap(child) +
+                                                " ";
                                             }
                                           }
-                                          
+
                                           return text;
                                         };
-                                        
+
                                         // Count words in all sections
                                         let totalWords = 0;
                                         chapterSections.forEach((section) => {
-                                          const content = section.content || section.metadata?.content || section.description;
-                                          
+                                          const content =
+                                            section.content ||
+                                            section.metadata?.content ||
+                                            section.description;
+
                                           if (content) {
                                             try {
-                                              const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
-                                              const textContent = extractTextFromTiptap(contentObj);
-                                              
+                                              const contentObj =
+                                                typeof content === "string"
+                                                  ? JSON.parse(content)
+                                                  : content;
+                                              const textContent =
+                                                extractTextFromTiptap(
+                                                  contentObj,
+                                                );
+
                                               if (textContent.trim()) {
-                                                const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
+                                                const words = textContent
+                                                  .trim()
+                                                  .split(/\s+/)
+                                                  .filter((w) => w.length > 0);
                                                 totalWords += words.length;
                                               }
                                             } catch (e) {
-                                              const textContent = typeof content === 'string' ? content : '';
+                                              const textContent =
+                                                typeof content === "string"
+                                                  ? content
+                                                  : "";
                                               if (textContent.trim()) {
-                                                const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
+                                                const words = textContent
+                                                  .trim()
+                                                  .split(/\s+/)
+                                                  .filter((w) => w.length > 0);
                                                 totalWords += words.length;
                                               }
                                             }
                                           }
                                         });
-                                        
+
                                         // Calculate pages with decimal
                                         const wordsPerPage = 250;
-                                        const totalPages = (totalWords / wordsPerPage).toFixed(1);
-                                        
+                                        const totalPages = (
+                                          totalWords / wordsPerPage
+                                        ).toFixed(1);
+
                                         return (
                                           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                            <span className="font-medium">{totalWords.toLocaleString('de-DE')} Wörter</span>
+                                            <span className="font-medium">
+                                              {totalWords.toLocaleString(
+                                                "de-DE",
+                                              )}{" "}
+                                              Wörter
+                                            </span>
                                             <span>•</span>
-                                            <span>~{totalPages} {parseFloat(totalPages) === 1 ? 'Seite' : 'Seiten'}</span>
+                                            <span>
+                                              ~{totalPages}{" "}
+                                              {parseFloat(totalPages) === 1
+                                                ? "Seite"
+                                                : "Seiten"}
+                                            </span>
                                           </div>
                                         );
                                       })()}
 
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0"
+                                          >
                                             <MoreVertical className="size-3" />
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => {
-                                            setStatsNode({ type: 'sequence', data: sequence });
-                                            setStatsDialogOpen(true);
-                                          }}>
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              setStatsNode({
+                                                type: "sequence",
+                                                data: sequence,
+                                              });
+                                              setStatsDialogOpen(true);
+                                            }}
+                                          >
                                             <Info className="size-3 mr-2" />
                                             Statistik & Logs
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => {
-                                            setEditingSequence(sequence.id);
-                                            setEditValues({ ...editValues, [sequence.id]: { title: sequence.title, description: sequence.description || '' } });
-                                          }}>
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              setEditingSequence(sequence.id);
+                                              setEditValues({
+                                                ...editValues,
+                                                [sequence.id]: {
+                                                  title: sequence.title,
+                                                  description:
+                                                    sequence.description || "",
+                                                },
+                                              });
+                                            }}
+                                          >
                                             <Edit className="size-3 mr-2" />
                                             Bearbeiten
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleDuplicateSequence(sequence.id)}>
+                                          <DropdownMenuItem
+                                            onClick={() =>
+                                              handleDuplicateSequence(
+                                                sequence.id,
+                                              )
+                                            }
+                                          >
                                             <Copy className="size-3 mr-2" />
                                             Duplizieren
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => handleDeleteSequence(sequence.id)}
+                                          <DropdownMenuItem
+                                            onClick={() =>
+                                              handleDeleteSequence(sequence.id)
+                                            }
                                             className="text-red-600 dark:text-red-400"
                                           >
                                             <Trash2 className="size-3 mr-2" />
@@ -1726,17 +2220,33 @@ export function BookDropdown({
                                     </div>
 
                                     {/* Sequence Description */}
-                                    {(editingSequence === sequence.id || sequence.description) && (
+                                    {(editingSequence === sequence.id ||
+                                      sequence.description) && (
                                       <div className="px-2.5 pb-1.5">
                                         {editingSequence === sequence.id ? (
                                           <Textarea
-                                            value={editValues[sequence.id]?.description ?? sequence.description ?? ''}
-                                            onChange={(e) => setEditValues({ ...editValues, [sequence.id]: { ...editValues[sequence.id], description: e.target.value } })}
+                                            value={
+                                              editValues[sequence.id]
+                                                ?.description ??
+                                              sequence.description ??
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              setEditValues({
+                                                ...editValues,
+                                                [sequence.id]: {
+                                                  ...editValues[sequence.id],
+                                                  description: e.target.value,
+                                                },
+                                              })
+                                            }
                                             placeholder="Beschreibung..."
                                             className="min-h-[50px] text-xs"
                                           />
                                         ) : (
-                                          <p className="text-xs text-muted-foreground mt-1">{sequence.description}</p>
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            {sequence.description}
+                                          </p>
                                         )}
                                       </div>
                                     )}
@@ -1745,7 +2255,9 @@ export function BookDropdown({
                                     <CollapsibleContent>
                                       <div className="flex flex-col gap-1.5 p-2.5 pt-1.5">
                                         <Button
-                                          onClick={() => handleAddScene(sequence.id)}
+                                          onClick={() =>
+                                            handleAddScene(sequence.id)
+                                          }
                                           variant="outline"
                                           size="sm"
                                           className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-white text-center border-2 border-dashed border-amber-200 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
@@ -1754,241 +2266,455 @@ export function BookDropdown({
                                           Abschnitt hinzufügen
                                         </Button>
 
-                                        {sequenceScenes.map((scene, sceneIndex) => {
-                                          const isSceneExpanded = expandedScenes.has(scene.id);
-                                          
-                                          return (
-                                          <div key={scene.id}>
-                                            <DropZone
-                                              type={ItemTypes.SCENE}
-                                              index={sceneIndex}
-                                              onDrop={(id, idx) => handleSceneDrop(id, idx, sequence.id)}
-                                              label={`Vor ${scene.title}`}
-                                              height="scene"
-                                              onAdd={() => handleAddSceneAt(sequence.id, sceneIndex)}
-                                            />
+                                        {sequenceScenes.map(
+                                          (scene, sceneIndex) => {
+                                            const isSceneExpanded =
+                                              expandedScenes.has(scene.id);
 
-                                            <DraggableScene
-                                              scene={scene}
-                                              index={sceneIndex}
-                                              onStatsClick={() => {
-                                                setStatsNode({ type: 'scene', data: scene });
-                                                setStatsDialogOpen(true);
-                                              }}
-                                            >
-                                              <Collapsible
-                                                open={isSceneExpanded}
-                                                onOpenChange={(open) => {
-                                                  const next = new Set(expandedScenes);
-                                                  if (open) {
-                                                    next.add(scene.id);
-                                                  } else {
-                                                    next.delete(scene.id);
+                                            return (
+                                              <div key={scene.id}>
+                                                <DropZone
+                                                  type={ItemTypes.SCENE}
+                                                  index={sceneIndex}
+                                                  onDrop={(id, idx) =>
+                                                    handleSceneDrop(
+                                                      id,
+                                                      idx,
+                                                      sequence.id,
+                                                    )
                                                   }
-                                                  setExpandedScenes(next);
-                                                }}
-                                              >
-                                                <div
-                                                  data-scene-card
-                                                  data-scene-id={scene.id}
-                                                  className="border-2 rounded-md bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-700 overflow-hidden"
+                                                  label={`Vor ${scene.title}`}
+                                                  height="scene"
+                                                  onAdd={() =>
+                                                    handleAddSceneAt(
+                                                      sequence.id,
+                                                      sceneIndex,
+                                                    )
+                                                  }
+                                                />
+
+                                                <DraggableScene
+                                                  scene={scene}
+                                                  index={sceneIndex}
+                                                  onStatsClick={() => {
+                                                    setStatsNode({
+                                                      type: "scene",
+                                                      data: scene,
+                                                    });
+                                                    setStatsDialogOpen(true);
+                                                  }}
                                                 >
-                                                  {/* Scene Header */}
-                                                  <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-900/40">
-                                                    <GripVertical className="size-3 text-muted-foreground cursor-grab" />
-
-                                                    <CollapsibleTrigger asChild>
-                                                      <button className="p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded transition-colors">
-                                                        {isSceneExpanded ? (
-                                                          <ChevronDown className="size-3" />
-                                                        ) : (
-                                                          <ChevronRight className="size-3" />
-                                                        )}
-                                                      </button>
-                                                    </CollapsibleTrigger>
-
-                                                    {editingSceneTitle === scene.id ? (
-                                                      <Input
-                                                        value={editValues[scene.id]?.title ?? scene.title}
-                                                        onChange={(e) => setEditValues({ ...editValues, [scene.id]: { ...editValues[scene.id], title: e.target.value } })}
-                                                        onBlur={() => {
-                                                          handleUpdateScene(scene.id, { title: editValues[scene.id]?.title });
-                                                          setEditingSceneTitle(null);
-                                                        }}
-                                                        onKeyDown={(e) => {
-                                                          if (e.key === 'Enter') {
-                                                            handleUpdateScene(scene.id, { title: editValues[scene.id]?.title });
-                                                            setEditingSceneTitle(null);
-                                                          } else if (e.key === 'Escape') {
-                                                            setEditingSceneTitle(null);
-                                                            setEditValues(prev => {
-                                                              const next = { ...prev };
-                                                              delete next[scene.id];
-                                                              return next;
-                                                            });
-                                                          }
-                                                        }}
-                                                        autoFocus
-                                                        className="h-6 flex-1 text-xs"
-                                                      />
-                                                    ) : (
-                                                      <span 
-                                                        className="flex-1 text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity"
-                                                        onClick={() => {
-                                                          const next = new Set(expandedScenes);
-                                                          if (isSceneExpanded) {
-                                                            next.delete(scene.id);
-                                                          } else {
-                                                            next.add(scene.id);
-                                                          }
-                                                          setExpandedScenes(next);
-                                                        }}
-                                                      >
-                                                        {scene.title}
-                                                      </span>
-                                                    )}
-
-                                                    {/* Word Count */}
-                                                    {(() => {
-                                                      // Helper function to recursively extract text from TipTap JSON
-                                                      const extractTextFromTiptap = (node: any): string => {
-                                                        let text = '';
-                                                        
-                                                        // If this node has text directly, add it
-                                                        if (node.text) {
-                                                          text += node.text;
-                                                        }
-                                                        
-                                                        // If this node has content (children), recursively extract from them
-                                                        if (node.content && Array.isArray(node.content)) {
-                                                          for (const child of node.content) {
-                                                            text += extractTextFromTiptap(child) + ' ';
-                                                          }
-                                                        }
-                                                        
-                                                        return text;
-                                                      };
-                                                      
-                                                      let totalWords = 0;
-                                                      
-                                                      // Count words from scene content
-                                                      const content = scene.content || scene.metadata?.content || scene.description;
-                                                      
-                                                      if (content) {
-                                                        try {
-                                                          const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
-                                                          const textContent = extractTextFromTiptap(contentObj);
-                                                          
-                                                          if (textContent.trim()) {
-                                                            const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
-                                                            totalWords = words.length;
-                                                          }
-                                                        } catch (e) {
-                                                          const textContent = typeof content === 'string' ? content : '';
-                                                          if (textContent.trim()) {
-                                                            const words = textContent.trim().split(/\s+/).filter(w => w.length > 0);
-                                                            totalWords = words.length;
-                                                          }
-                                                        }
-                                                      }
-                                                      
-                                                      // Calculate pages with decimal
-                                                      const wordsPerPage = 250;
-                                                      const totalPages = (totalWords / wordsPerPage).toFixed(1);
-                                                      
-                                                      return (
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                                          <span className="font-medium">{totalWords.toLocaleString('de-DE')} Wörter</span>
-                                                          <span>•</span>
-                                                          <span>~{totalPages} {parseFloat(totalPages) === 1 ? 'Seite' : 'Seiten'}</span>
-                                                        </div>
+                                                  <Collapsible
+                                                    open={isSceneExpanded}
+                                                    onOpenChange={(open) => {
+                                                      const next = new Set(
+                                                        expandedScenes,
                                                       );
-                                                    })()}
-
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                                        <MoreVertical className="size-3" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                      <DropdownMenuItem onClick={() => {
-                                                        setStatsNode({ type: 'scene', data: scene });
-                                                        setStatsDialogOpen(true);
-                                                      }}>
-                                                        <Info className="size-3 mr-2" />
-                                                        Statistik & Logs
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem onClick={() => {
-                                                        setEditingSceneTitle(scene.id);
-                                                        setEditValues({ 
-                                                          ...editValues, 
-                                                          [scene.id]: { 
-                                                            title: scene.title, 
-                                                            description: scene.description || '',
-                                                            content:
-                                                              typeof scene.content === "string"
-                                                                ? scene.content
-                                                                : scene.content != null
-                                                                  ? JSON.stringify(scene.content)
-                                                                  : "",
-                                                          } 
-                                                        });
-                                                      }}>
-                                                        <Edit className="size-3 mr-2" />
-                                                        Titel bearbeiten
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem onClick={() => handleDuplicateScene(scene.id)}>
-                                                        <Copy className="size-3 mr-2" />
-                                                        Duplizieren
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem 
-                                                        onClick={() => handleDeleteScene(scene.id)}
-                                                        className="text-red-600 dark:text-red-400"
-                                                      >
-                                                        <Trash2 className="size-3 mr-2" />
-                                                        Löschen
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                                </div>
-
-                                                {/* 📚 ABSCHNITT CONTENT (Rich Text) */}
-                                                <CollapsibleContent>
-                                                  <div className="p-2">
-                                                    <div 
-                                                      className="border border-amber-400 dark:border-amber-600 bg-white/70 dark:bg-amber-950/40 rounded-md min-h-[80px] text-xs p-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors"
-                                                      onClick={() => {
-                                                        console.log('[BookDropdown] 🚀 Opening Content Modal for scene:', scene.id);
-                                                        setEditingSceneForModal(scene);
-                                                        setShowContentModal(true);
-                                                      }}
+                                                      if (open) {
+                                                        next.add(scene.id);
+                                                      } else {
+                                                        next.delete(scene.id);
+                                                      }
+                                                      setExpandedScenes(next);
+                                                    }}
+                                                  >
+                                                    <div
+                                                      data-scene-card
+                                                      data-scene-id={scene.id}
+                                                      className="border-2 rounded-md bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-700 overflow-hidden"
                                                     >
-                                                      {scene.content && typeof scene.content === 'object' ? (
-                                                        <ReadonlyTiptapView 
-                                                          content={scene.content}
-                                                        />
-                                                      ) : (
-                                                        <em className="text-muted-foreground/50">Klicken zum Schreiben...</em>
-                                                      )}
+                                                      {/* Scene Header */}
+                                                      <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-900/40">
+                                                        <GripVertical className="size-3 text-muted-foreground cursor-grab" />
+
+                                                        <CollapsibleTrigger
+                                                          asChild
+                                                        >
+                                                          <button className="p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded transition-colors">
+                                                            {isSceneExpanded ? (
+                                                              <ChevronDown className="size-3" />
+                                                            ) : (
+                                                              <ChevronRight className="size-3" />
+                                                            )}
+                                                          </button>
+                                                        </CollapsibleTrigger>
+
+                                                        {editingSceneTitle ===
+                                                        scene.id ? (
+                                                          <Input
+                                                            value={
+                                                              editValues[
+                                                                scene.id
+                                                              ]?.title ??
+                                                              scene.title
+                                                            }
+                                                            onChange={(e) =>
+                                                              setEditValues({
+                                                                ...editValues,
+                                                                [scene.id]: {
+                                                                  ...editValues[
+                                                                    scene.id
+                                                                  ],
+                                                                  title:
+                                                                    e.target
+                                                                      .value,
+                                                                },
+                                                              })
+                                                            }
+                                                            onBlur={() => {
+                                                              handleUpdateScene(
+                                                                scene.id,
+                                                                {
+                                                                  title:
+                                                                    editValues[
+                                                                      scene.id
+                                                                    ]?.title,
+                                                                },
+                                                              );
+                                                              setEditingSceneTitle(
+                                                                null,
+                                                              );
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                              if (
+                                                                e.key ===
+                                                                "Enter"
+                                                              ) {
+                                                                handleUpdateScene(
+                                                                  scene.id,
+                                                                  {
+                                                                    title:
+                                                                      editValues[
+                                                                        scene.id
+                                                                      ]?.title,
+                                                                  },
+                                                                );
+                                                                setEditingSceneTitle(
+                                                                  null,
+                                                                );
+                                                              } else if (
+                                                                e.key ===
+                                                                "Escape"
+                                                              ) {
+                                                                setEditingSceneTitle(
+                                                                  null,
+                                                                );
+                                                                setEditValues(
+                                                                  (prev) => {
+                                                                    const next =
+                                                                      {
+                                                                        ...prev,
+                                                                      };
+                                                                    delete next[
+                                                                      scene.id
+                                                                    ];
+                                                                    return next;
+                                                                  },
+                                                                );
+                                                              }
+                                                            }}
+                                                            autoFocus
+                                                            className="h-6 flex-1 text-xs"
+                                                          />
+                                                        ) : (
+                                                          <span
+                                                            className="flex-1 text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                                                            onClick={() => {
+                                                              const next =
+                                                                new Set(
+                                                                  expandedScenes,
+                                                                );
+                                                              if (
+                                                                isSceneExpanded
+                                                              ) {
+                                                                next.delete(
+                                                                  scene.id,
+                                                                );
+                                                              } else {
+                                                                next.add(
+                                                                  scene.id,
+                                                                );
+                                                              }
+                                                              setExpandedScenes(
+                                                                next,
+                                                              );
+                                                            }}
+                                                          >
+                                                            {scene.title}
+                                                          </span>
+                                                        )}
+
+                                                        {/* Word Count */}
+                                                        {(() => {
+                                                          // Helper function to recursively extract text from TipTap JSON
+                                                          const extractTextFromTiptap =
+                                                            (
+                                                              node: any,
+                                                            ): string => {
+                                                              let text = "";
+
+                                                              // If this node has text directly, add it
+                                                              if (node.text) {
+                                                                text +=
+                                                                  node.text;
+                                                              }
+
+                                                              // If this node has content (children), recursively extract from them
+                                                              if (
+                                                                node.content &&
+                                                                Array.isArray(
+                                                                  node.content,
+                                                                )
+                                                              ) {
+                                                                for (const child of node.content) {
+                                                                  text +=
+                                                                    extractTextFromTiptap(
+                                                                      child,
+                                                                    ) + " ";
+                                                                }
+                                                              }
+
+                                                              return text;
+                                                            };
+
+                                                          let totalWords = 0;
+
+                                                          // Count words from scene content
+                                                          const content =
+                                                            scene.content ||
+                                                            scene.metadata
+                                                              ?.content ||
+                                                            scene.description;
+
+                                                          if (content) {
+                                                            try {
+                                                              const contentObj =
+                                                                typeof content ===
+                                                                "string"
+                                                                  ? JSON.parse(
+                                                                      content,
+                                                                    )
+                                                                  : content;
+                                                              const textContent =
+                                                                extractTextFromTiptap(
+                                                                  contentObj,
+                                                                );
+
+                                                              if (
+                                                                textContent.trim()
+                                                              ) {
+                                                                const words =
+                                                                  textContent
+                                                                    .trim()
+                                                                    .split(
+                                                                      /\s+/,
+                                                                    )
+                                                                    .filter(
+                                                                      (w) =>
+                                                                        w.length >
+                                                                        0,
+                                                                    );
+                                                                totalWords =
+                                                                  words.length;
+                                                              }
+                                                            } catch (e) {
+                                                              const textContent =
+                                                                typeof content ===
+                                                                "string"
+                                                                  ? content
+                                                                  : "";
+                                                              if (
+                                                                textContent.trim()
+                                                              ) {
+                                                                const words =
+                                                                  textContent
+                                                                    .trim()
+                                                                    .split(
+                                                                      /\s+/,
+                                                                    )
+                                                                    .filter(
+                                                                      (w) =>
+                                                                        w.length >
+                                                                        0,
+                                                                    );
+                                                                totalWords =
+                                                                  words.length;
+                                                              }
+                                                            }
+                                                          }
+
+                                                          // Calculate pages with decimal
+                                                          const wordsPerPage = 250;
+                                                          const totalPages = (
+                                                            totalWords /
+                                                            wordsPerPage
+                                                          ).toFixed(1);
+
+                                                          return (
+                                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                              <span className="font-medium">
+                                                                {totalWords.toLocaleString(
+                                                                  "de-DE",
+                                                                )}{" "}
+                                                                Wörter
+                                                              </span>
+                                                              <span>•</span>
+                                                              <span>
+                                                                ~{totalPages}{" "}
+                                                                {parseFloat(
+                                                                  totalPages,
+                                                                ) === 1
+                                                                  ? "Seite"
+                                                                  : "Seiten"}
+                                                              </span>
+                                                            </div>
+                                                          );
+                                                        })()}
+
+                                                        <DropdownMenu>
+                                                          <DropdownMenuTrigger
+                                                            asChild
+                                                          >
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              className="h-6 w-6 p-0"
+                                                            >
+                                                              <MoreVertical className="size-3" />
+                                                            </Button>
+                                                          </DropdownMenuTrigger>
+                                                          <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                              onClick={() => {
+                                                                setStatsNode({
+                                                                  type: "scene",
+                                                                  data: scene,
+                                                                });
+                                                                setStatsDialogOpen(
+                                                                  true,
+                                                                );
+                                                              }}
+                                                            >
+                                                              <Info className="size-3 mr-2" />
+                                                              Statistik & Logs
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                              onClick={() => {
+                                                                setEditingSceneTitle(
+                                                                  scene.id,
+                                                                );
+                                                                setEditValues({
+                                                                  ...editValues,
+                                                                  [scene.id]: {
+                                                                    title:
+                                                                      scene.title,
+                                                                    description:
+                                                                      scene.description ||
+                                                                      "",
+                                                                    content:
+                                                                      typeof scene.content ===
+                                                                      "string"
+                                                                        ? scene.content
+                                                                        : scene.content !=
+                                                                            null
+                                                                          ? JSON.stringify(
+                                                                              scene.content,
+                                                                            )
+                                                                          : "",
+                                                                  },
+                                                                });
+                                                              }}
+                                                            >
+                                                              <Edit className="size-3 mr-2" />
+                                                              Titel bearbeiten
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                              onClick={() =>
+                                                                handleDuplicateScene(
+                                                                  scene.id,
+                                                                )
+                                                              }
+                                                            >
+                                                              <Copy className="size-3 mr-2" />
+                                                              Duplizieren
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                              onClick={() =>
+                                                                handleDeleteScene(
+                                                                  scene.id,
+                                                                )
+                                                              }
+                                                              className="text-red-600 dark:text-red-400"
+                                                            >
+                                                              <Trash2 className="size-3 mr-2" />
+                                                              Löschen
+                                                            </DropdownMenuItem>
+                                                          </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                      </div>
+
+                                                      {/* 📚 ABSCHNITT CONTENT (Rich Text) */}
+                                                      <CollapsibleContent>
+                                                        <div className="p-2">
+                                                          <div
+                                                            className="border border-amber-400 dark:border-amber-600 bg-white/70 dark:bg-amber-950/40 rounded-md min-h-[80px] text-xs p-2 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors"
+                                                            onClick={() => {
+                                                              console.log(
+                                                                "[BookDropdown] 🚀 Opening Content Modal for scene:",
+                                                                scene.id,
+                                                              );
+                                                              setEditingSceneForModal(
+                                                                scene,
+                                                              );
+                                                              setShowContentModal(
+                                                                true,
+                                                              );
+                                                            }}
+                                                          >
+                                                            {scene.content &&
+                                                            typeof scene.content ===
+                                                              "object" ? (
+                                                              <ReadonlyTiptapView
+                                                                content={
+                                                                  scene.content
+                                                                }
+                                                              />
+                                                            ) : (
+                                                              <em className="text-muted-foreground/50">
+                                                                Klicken zum
+                                                                Schreiben...
+                                                              </em>
+                                                            )}
+                                                          </div>
+                                                        </div>
+                                                      </CollapsibleContent>
                                                     </div>
-                                                  </div>
-                                                </CollapsibleContent>
+                                                  </Collapsible>
+                                                </DraggableScene>
                                               </div>
-                                            </Collapsible>
-                                            </DraggableScene>
-                                          </div>
-                                        );
-                                        })}
+                                            );
+                                          },
+                                        )}
 
                                         {/* Drop Zone at end of scenes */}
                                         <DropZone
                                           type={ItemTypes.SCENE}
                                           index={sequenceScenes.length}
-                                          onDrop={(id, idx) => handleSceneDrop(id, idx, sequence.id)}
+                                          onDrop={(id, idx) =>
+                                            handleSceneDrop(
+                                              id,
+                                              idx,
+                                              sequence.id,
+                                            )
+                                          }
                                           label="Am Ende"
                                           height="scene"
-                                          onAdd={() => handleAddSceneAt(sequence.id, sequenceScenes.length)}
+                                          onAdd={() =>
+                                            handleAddSceneAt(
+                                              sequence.id,
+                                              sequenceScenes.length,
+                                            )
+                                          }
                                         />
                                       </div>
                                     </CollapsibleContent>
@@ -2003,10 +2729,14 @@ export function BookDropdown({
                         <DropZone
                           type={ItemTypes.SEQUENCE}
                           index={actSequences.length}
-                          onDrop={(id, idx) => handleSequenceDrop(id, idx, act.id)}
+                          onDrop={(id, idx) =>
+                            handleSequenceDrop(id, idx, act.id)
+                          }
                           label="Am Ende"
                           height="sequence"
-                          onAdd={() => handleAddSequenceAt(act.id, actSequences.length)}
+                          onAdd={() =>
+                            handleAddSequenceAt(act.id, actSequences.length)
+                          }
                         />
                       </div>
                     </CollapsibleContent>
@@ -2050,10 +2780,14 @@ export function BookDropdown({
           value={editingSceneForModal.content}
           title={`Abschnitt: ${editingSceneForModal.title}`}
           characters={characters}
-          lastModified={editingSceneForModal.updatedAt ? {
-            timestamp: editingSceneForModal.updatedAt,
-            userName: undefined
-          } : undefined}
+          lastModified={
+            editingSceneForModal.updatedAt
+              ? {
+                  timestamp: editingSceneForModal.updatedAt,
+                  userName: undefined,
+                }
+              : undefined
+          }
           // 🚀 Save props
           sceneId={editingSceneForModal.id}
           sceneTitle={editingSceneForModal.title}
@@ -2061,11 +2795,11 @@ export function BookDropdown({
           updateAPI={TimelineAPIV2.updateNode}
           onOptimisticUpdate={(sceneId, content) => {
             const now = new Date().toISOString();
-            setScenes(scenes => scenes.map(sc => 
-              sc.id === sceneId 
-                ? { ...sc, content, updatedAt: now } 
-                : sc
-            ));
+            setScenes((scenes) =>
+              scenes.map((sc) =>
+                sc.id === sceneId ? { ...sc, content, updatedAt: now } : sc,
+              ),
+            );
           }}
           onError={() => {
             loadTimeline();

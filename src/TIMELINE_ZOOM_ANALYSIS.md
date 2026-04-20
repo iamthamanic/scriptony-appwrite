@@ -12,19 +12,19 @@ Die Timeline in Scriptony verwendet ein **exponentielles Zoom-System** mit Pixel
 
 ### Primäre Variablen
 
-| Variable | Typ | Range | Beschreibung |
-|----------|-----|-------|-------------|
-| `zoom` | `number` | `0.0 - 1.0` | Normalisierter Slider-Wert (unitless) |
-| `pxPerSec` | `number` | `2 - 200` | Pixels per Second (abgeleitet von `zoom`) |
-| `MIN_PX_PER_SEC` | `const` | `2` | Maximum Zoom Out |
-| `MAX_PX_PER_SEC` | `const` | `200` | Maximum Zoom In |
+| Variable         | Typ      | Range       | Beschreibung                              |
+| ---------------- | -------- | ----------- | ----------------------------------------- |
+| `zoom`           | `number` | `0.0 - 1.0` | Normalisierter Slider-Wert (unitless)     |
+| `pxPerSec`       | `number` | `2 - 200`   | Pixels per Second (abgeleitet von `zoom`) |
+| `MIN_PX_PER_SEC` | `const`  | `2`         | Maximum Zoom Out                          |
+| `MAX_PX_PER_SEC` | `const`  | `200`       | Maximum Zoom In                           |
 
 ### Code-Referenzen
 
 ```typescript
 // Lines 38-40
-const MIN_PX_PER_SEC = 2;    // Maximum zoom out
-const MAX_PX_PER_SEC = 200;  // Maximum zoom in
+const MIN_PX_PER_SEC = 2; // Maximum zoom out
+const MAX_PX_PER_SEC = 200; // Maximum zoom in
 
 // Line 126
 const [zoom, setZoom] = useState(0.5);
@@ -63,8 +63,8 @@ timelineWidthPx = totalDurationSec × pxPerSec
 ```typescript
 // Lines 52-56
 function pxPerSecFromZoom(zoom: number): number {
-  const ratio = MAX_PX_PER_SEC / MIN_PX_PER_SEC;  // = 200/2 = 100
-  return MIN_PX_PER_SEC * Math.pow(ratio, zoom);  // = 2 × 100^zoom
+  const ratio = MAX_PX_PER_SEC / MIN_PX_PER_SEC; // = 200/2 = 100
+  return MIN_PX_PER_SEC * Math.pow(ratio, zoom); // = 2 × 100^zoom
 }
 ```
 
@@ -110,13 +110,13 @@ pxPerSec = 2 × 100^zoom
 
 ### Beispiele
 
-| Slider | Zoom | pxPerSec | Berechnung | Beschreibung |
-|--------|------|----------|------------|--------------|
-| `0.0` | 0.0 | `2` | `2 × 100^0.0 = 2 × 1` | **Maximum Zoom Out** |
-| `0.25` | 0.25 | `~5.62` | `2 × 100^0.25 = 2 × 3.16` | Quarter |
-| `0.5` | 0.5 | `20` | `2 × 100^0.5 = 2 × 10` | **Middle** |
-| `0.75` | 0.75 | `~63.25` | `2 × 100^0.75 = 2 × 31.62` | Three Quarters |
-| `1.0` | 1.0 | `200` | `2 × 100^1.0 = 2 × 100` | **Maximum Zoom In** |
+| Slider | Zoom | pxPerSec | Berechnung                 | Beschreibung         |
+| ------ | ---- | -------- | -------------------------- | -------------------- |
+| `0.0`  | 0.0  | `2`      | `2 × 100^0.0 = 2 × 1`      | **Maximum Zoom Out** |
+| `0.25` | 0.25 | `~5.62`  | `2 × 100^0.25 = 2 × 3.16`  | Quarter              |
+| `0.5`  | 0.5  | `20`     | `2 × 100^0.5 = 2 × 10`     | **Middle**           |
+| `0.75` | 0.75 | `~63.25` | `2 × 100^0.75 = 2 × 31.62` | Three Quarters       |
+| `1.0`  | 1.0  | `200`    | `2 × 100^1.0 = 2 × 100`    | **Maximum Zoom In**  |
 
 ### Inverse Formel (pxPerSec → zoom)
 
@@ -165,11 +165,11 @@ visibleDurationSec = viewportWidthPx / 2
 
 Die sichtbare Zeitspanne hängt von der **Viewport-Breite** ab:
 
-| Viewport Width | Visible Duration | Berechnung |
-|----------------|------------------|------------|
-| `800px` | `400s = 6.67 min` | `800 / 2` |
-| `1200px` | `600s = 10 min` | `1200 / 2` |
-| `1920px` | `960s = 16 min` | `1920 / 2` |
+| Viewport Width | Visible Duration  | Berechnung |
+| -------------- | ----------------- | ---------- |
+| `800px`        | `400s = 6.67 min` | `800 / 2`  |
+| `1200px`       | `600s = 10 min`   | `1200 / 2` |
+| `1920px`       | `960s = 16 min`   | `1920 / 2` |
 
 **Die sichtbare Zeitspanne hängt NICHT von der Projektdauer ab!**
 
@@ -182,17 +182,18 @@ Die sichtbare Zeitspanne hängt von der **Viewport-Breite** ab:
 ```typescript
 // Lines 477-498
 useEffect(() => {
-  if (initialZoomSetRef.current || !viewportWidth || totalDurationSec <= 0) return;
-  
+  if (initialZoomSetRef.current || !viewportWidth || totalDurationSec <= 0)
+    return;
+
   // Calculate pixels per second to fit entire timeline in viewport
   const pxFit = viewportWidth / totalDurationSec;
-  
+
   // Clamp to valid range [MIN_PX_PER_SEC, MAX_PX_PER_SEC]
   const clamped = Math.min(MAX_PX_PER_SEC, Math.max(MIN_PX_PER_SEC, pxFit));
-  
+
   // Convert to zoom value
   const z = zoomFromPxPerSec(clamped);
-  
+
   setZoom(z);
   setPxPerSec(clamped);
   initialZoomSetRef.current = true;
@@ -263,20 +264,20 @@ Beim Zoomen bleibt die **Zeit-Position unter dem Cursor fixiert**.
 const setZoomAroundCursor = (newZoom: number, anchorX?: number) => {
   const el = scrollRef.current;
   if (!el || !viewportWidth) return;
-  
+
   const oldPx = pxPerSec;
   const nextPx = pxPerSecFromZoom(newZoom);
   const cursorX = anchorX ?? viewportWidth / 2;
-  
+
   // Calculate time unit under cursor
   const unitUnderCursor = (el.scrollLeft + cursorX) / oldPx;
-  
+
   // Calculate new scroll position to keep same unit under cursor
   const newScrollLeft = unitUnderCursor * nextPx - cursorX;
-  
+
   setZoom(newZoom);
   setPxPerSec(nextPx);
-  
+
   requestAnimationFrame(() => {
     el.scrollLeft = newScrollLeft;
   });
@@ -321,10 +322,10 @@ const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomDelta = -e.deltaY * 0.001;
     const newZoom = Math.max(0, Math.min(1, zoom + zoomDelta));
-    
+
     const rect = viewportRef.current?.getBoundingClientRect();
     const cursorX = rect ? e.clientX - rect.left : viewportWidth / 2;
-    
+
     setZoomAroundCursor(newZoom, cursorX);
   }
 };
@@ -353,16 +354,14 @@ const MIN_LABEL_SPACING_PX = 80; // Minimum space between labels
 
 // Lines 45-50
 const TIME_STEPS_SECONDS = [
-  1, 2, 5, 10, 15, 30,
-  60, 120, 300, 600, 900,
-  1800, 3600, 7200, 10800
+  1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800,
 ];
 
 // Lines 64-71
 function chooseTickStep(pxPerSecond: number): number {
   const minSecondsBetweenTicks = MIN_LABEL_SPACING_PX / pxPerSecond;
   return (
-    TIME_STEPS_SECONDS.find(step => step >= minSecondsBetweenTicks) ??
+    TIME_STEPS_SECONDS.find((step) => step >= minSecondsBetweenTicks) ??
     TIME_STEPS_SECONDS[TIME_STEPS_SECONDS.length - 1]
   );
 }
@@ -377,13 +376,13 @@ tickStep = first(TIME_STEPS_SECONDS where step >= minSecondsBetweenTicks)
 
 ### Beispiele
 
-| pxPerSec | minSecondsBetweenTicks | Chosen Tick Step | Beschreibung |
-|----------|------------------------|------------------|--------------|
-| `2` | `80 / 2 = 40s` | `60s` (1 min) | Zoom Out → große Schritte |
-| `10` | `80 / 10 = 8s` | `10s` | Middle |
-| `20` | `80 / 20 = 4s` | `5s` | Closer |
-| `50` | `80 / 50 = 1.6s` | `2s` | Zoom In |
-| `100` | `80 / 100 = 0.8s` | `1s` | Maximum Detail |
+| pxPerSec | minSecondsBetweenTicks | Chosen Tick Step | Beschreibung              |
+| -------- | ---------------------- | ---------------- | ------------------------- |
+| `2`      | `80 / 2 = 40s`         | `60s` (1 min)    | Zoom Out → große Schritte |
+| `10`     | `80 / 10 = 8s`         | `10s`            | Middle                    |
+| `20`     | `80 / 20 = 4s`         | `5s`             | Closer                    |
+| `50`     | `80 / 50 = 1.6s`       | `2s`             | Zoom In                   |
+| `100`    | `80 / 100 = 0.8s`      | `1s`             | Maximum Detail            |
 
 ---
 
@@ -440,15 +439,16 @@ useEffect(() => {
   const updatePlayheadPositions = () => {
     if (isPlayingRef.current) {
       // Smooth interpolation via delta time
-      const elapsed = (performance.now() - rafPlaybackStartTimeRef.current) / 1000;
+      const elapsed =
+        (performance.now() - rafPlaybackStartTimeRef.current) / 1000;
       displayTime = rafPlaybackStartCurrentTimeRef.current + elapsed;
-      
+
       // Update playhead position at 60fps
       playheadRulerRef.current.style.left = `${displayTime * pxPerSecRef.current}px`;
     }
     smoothPlayheadRAF.current = requestAnimationFrame(updatePlayheadPositions);
   };
-  
+
   smoothPlayheadRAF.current = requestAnimationFrame(updatePlayheadPositions);
   return () => cancelAnimationFrame(smoothPlayheadRAF.current);
 }, []);
@@ -476,8 +476,8 @@ const viewStartSec = scrollLeft / pxPerSec;
 const viewEndSec = viewStartSec + (viewportWidth || 0) / pxPerSec;
 
 // Only render items in visible range
-const visibleItems = items.filter(item => 
-  item.endSec >= viewStartSec && item.startSec <= viewEndSec
+const visibleItems = items.filter(
+  (item) => item.endSec >= viewStartSec && item.startSec <= viewEndSec,
 );
 ```
 
@@ -489,15 +489,15 @@ const visibleItems = items.filter(item =>
 
 ### Kern-Formeln
 
-| Was | Formel |
-|-----|--------|
-| **Timeline Breite** | `timelineWidthPx = durationSec × pxPerSec` |
-| **pxPerSec von Zoom** | `pxPerSec = 2 × 100^zoom` |
-| **Zoom von pxPerSec** | `zoom = ln(pxPerSec / 2) / ln(100)` |
-| **Sichtbare Zeit** | `visibleSec = viewportWidth / pxPerSec` |
-| **Initial Zoom** | `initialPxPerSec = viewportWidth / durationSec` (clamped) |
-| **Anchored Zoom** | `newScrollLeft = (scrollLeft + cursorX) / oldPx × newPx - cursorX` |
-| **Tick Step** | `tickStep = first(STEPS where step ≥ 80 / pxPerSec)` |
+| Was                   | Formel                                                             |
+| --------------------- | ------------------------------------------------------------------ |
+| **Timeline Breite**   | `timelineWidthPx = durationSec × pxPerSec`                         |
+| **pxPerSec von Zoom** | `pxPerSec = 2 × 100^zoom`                                          |
+| **Zoom von pxPerSec** | `zoom = ln(pxPerSec / 2) / ln(100)`                                |
+| **Sichtbare Zeit**    | `visibleSec = viewportWidth / pxPerSec`                            |
+| **Initial Zoom**      | `initialPxPerSec = viewportWidth / durationSec` (clamped)          |
+| **Anchored Zoom**     | `newScrollLeft = (scrollLeft + cursorX) / oldPx × newPx - cursorX` |
+| **Tick Step**         | `tickStep = first(STEPS where step ≥ 80 / pxPerSec)`               |
 
 ### Zoom-Range
 
@@ -511,16 +511,16 @@ Faktor = 100x zwischen Min und Max!
 
 ### Datei-Referenzen
 
-| Feature | Lines |
-|---------|-------|
-| Constants | 38-50 |
-| Zoom Functions | 52-71 |
-| State | 125-133 |
-| Timeline Width | 501 |
-| Anchored Zoom | 612-632 |
-| Trackpad Zoom | 640-652 |
+| Feature          | Lines   |
+| ---------------- | ------- |
+| Constants        | 38-50   |
+| Zoom Functions   | 52-71   |
+| State            | 125-133 |
+| Timeline Width   | 501     |
+| Anchored Zoom    | 612-632 |
+| Trackpad Zoom    | 640-652 |
 | Initial Auto-Fit | 477-498 |
-| RAF Playhead | 524-590 |
+| RAF Playhead     | 524-590 |
 
 ---
 

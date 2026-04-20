@@ -15,7 +15,7 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../_shared/http";
-import { normalizeBeatInput } from "../../_shared/scriptony";
+import { normalizeBeatInput, requireProjectAccess } from "../../_shared/scriptony";
 
 function mapBeatForClient(row: Record<string, any>): Record<string, any> {
   return {
@@ -55,6 +55,9 @@ export default async function handler(
         sendBadRequest(res, "project_id is required");
         return;
       }
+
+      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      if (!_project) return;
 
       const data = await requestGraphql<{
         story_beats: Array<Record<string, any>>;
@@ -103,6 +106,9 @@ export default async function handler(
         sendBadRequest(res, "Missing required fields: project_id, label");
         return;
       }
+
+      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      if (!_project) return;
 
       const created = await requestGraphql<{
         insert_story_beats_one: Record<string, any>;

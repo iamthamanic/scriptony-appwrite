@@ -1,20 +1,20 @@
 /**
  * 🚀 SCRIPTONY PREFETCH MANAGER
- * 
+ *
  * Hover-based prefetching like McMaster-Carr
  * Predictive prefetching based on user behavior
  */
 
-import { cacheManager } from './cache-manager';
-import { perfMonitor } from './performance-monitor';
+import { cacheManager } from "./cache-manager";
+import { perfMonitor } from "./performance-monitor";
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
 interface PrefetchConfig {
-  delay?: number;         // Delay before prefetch starts (ms)
-  priority?: 'high' | 'low';
+  delay?: number; // Delay before prefetch starts (ms)
+  priority?: "high" | "low";
   cache?: {
     ttl?: number;
     staleTime?: number;
@@ -22,11 +22,11 @@ interface PrefetchConfig {
 }
 
 const DEFAULT_CONFIG: Required<PrefetchConfig> = {
-  delay: 100,  // 100ms hover delay
-  priority: 'low',
+  delay: 100, // 100ms hover delay
+  priority: "low",
   cache: {
-    ttl: 5 * 60 * 1000,      // 5 minutes
-    staleTime: 30 * 1000,    // 30 seconds
+    ttl: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds
   },
 };
 
@@ -37,7 +37,11 @@ const DEFAULT_CONFIG: Required<PrefetchConfig> = {
 class PrefetchManager {
   private hoverTimers = new Map<string, number>();
   private prefetchedKeys = new Set<string>();
-  private prefetchQueue: Array<{ key: string; fetcher: () => Promise<any>; priority: 'high' | 'low' }> = [];
+  private prefetchQueue: Array<{
+    key: string;
+    fetcher: () => Promise<any>;
+    priority: "high" | "low";
+  }> = [];
   private isProcessingQueue = false;
 
   /**
@@ -48,7 +52,7 @@ class PrefetchManager {
     element: HTMLElement | null,
     key: string,
     fetcher: () => Promise<any>,
-    config: PrefetchConfig = {}
+    config: PrefetchConfig = {},
   ): () => void {
     if (!element) return () => {};
 
@@ -77,14 +81,14 @@ class PrefetchManager {
       }
     };
 
-    element.addEventListener('mouseenter', handleMouseEnter);
-    element.addEventListener('mouseleave', handleMouseLeave);
+    element.addEventListener("mouseenter", handleMouseEnter);
+    element.addEventListener("mouseleave", handleMouseLeave);
 
     // Cleanup function
     return () => {
       handleMouseLeave();
-      element.removeEventListener('mouseenter', handleMouseEnter);
-      element.removeEventListener('mouseleave', handleMouseLeave);
+      element.removeEventListener("mouseenter", handleMouseEnter);
+      element.removeEventListener("mouseleave", handleMouseLeave);
     };
   }
 
@@ -94,7 +98,7 @@ class PrefetchManager {
   async prefetch(
     key: string,
     fetcher: () => Promise<any>,
-    config: PrefetchConfig = {}
+    config: PrefetchConfig = {},
   ): Promise<void> {
     const fullConfig = { ...DEFAULT_CONFIG, ...config };
 
@@ -132,8 +136,8 @@ class PrefetchManager {
     while (this.prefetchQueue.length > 0) {
       // Sort by priority (high first)
       this.prefetchQueue.sort((a, b) => {
-        if (a.priority === 'high' && b.priority === 'low') return -1;
-        if (a.priority === 'low' && b.priority === 'high') return 1;
+        if (a.priority === "high" && b.priority === "low") return -1;
+        if (a.priority === "low" && b.priority === "high") return 1;
         return 0;
       });
 
@@ -148,7 +152,7 @@ class PrefetchManager {
       }
 
       // Yield to main thread between prefetches
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     this.isProcessingQueue = false;
@@ -159,7 +163,7 @@ class PrefetchManager {
    */
   clearHistory(): void {
     this.prefetchedKeys.clear();
-    console.log('[Prefetch] Cleared prefetch history');
+    console.log("[Prefetch] Cleared prefetch history");
   }
 
   /**
@@ -167,14 +171,14 @@ class PrefetchManager {
    */
   cancelAll(): void {
     // Clear hover timers
-    this.hoverTimers.forEach(timer => window.clearTimeout(timer));
+    this.hoverTimers.forEach((timer) => window.clearTimeout(timer));
     this.hoverTimers.clear();
 
     // Clear queue
     this.prefetchQueue = [];
     this.isProcessingQueue = false;
 
-    console.log('[Prefetch] Cancelled all pending prefetches');
+    console.log("[Prefetch] Cancelled all pending prefetches");
   }
 
   /**
@@ -203,13 +207,13 @@ export function usePrefetch() {
       element: HTMLElement | null,
       key: string,
       fetcher: () => Promise<any>,
-      config?: PrefetchConfig
+      config?: PrefetchConfig,
     ) => prefetchManager.setupHoverPrefetch(element, key, fetcher, config),
-    
+
     prefetch: (
       key: string,
       fetcher: () => Promise<any>,
-      config?: PrefetchConfig
+      config?: PrefetchConfig,
     ) => prefetchManager.prefetch(key, fetcher, config),
   };
 }
@@ -221,17 +225,20 @@ export function usePrefetch() {
 export const prefetchManager = new PrefetchManager();
 
 // Expose to window for debugging
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as any).scriptonyPrefetch = {
     manager: prefetchManager,
     stats: () => prefetchManager.getStats(),
     clearHistory: () => prefetchManager.clearHistory(),
     cancelAll: () => prefetchManager.cancelAll(),
   };
-  
+
   console.log(
-    '%c🔮 SCRIPTONY PREFETCH MANAGER ACTIVE',
-    'color: #6E59A5; font-weight: bold; font-size: 14px;'
+    "%c🔮 SCRIPTONY PREFETCH MANAGER ACTIVE",
+    "color: #6E59A5; font-weight: bold; font-size: 14px;",
   );
-  console.log('%cUse window.scriptonyPrefetch.stats() to see prefetch stats', 'color: #888;');
+  console.log(
+    "%cUse window.scriptonyPrefetch.stats() to see prefetch stats",
+    "color: #888;",
+  );
 }

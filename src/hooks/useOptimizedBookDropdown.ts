@@ -1,12 +1,12 @@
 /**
  * 🚀 OPTIMIZED BOOK DROPDOWN HOOK
- * 
+ *
  * Wraps all performance optimizations for BookDropdown
  * Drop-in replacement that makes the dropdown 10x faster
  */
 
-import { useMemo, useCallback, useRef } from 'react';
-import type { Act, Sequence, Scene } from '../lib/types';
+import { useMemo, useCallback, useRef } from "react";
+import type { Act, Sequence, Scene } from "../lib/types";
 
 interface UseOptimizedBookDropdownOptions {
   acts: Act[];
@@ -37,12 +37,13 @@ export function useOptimizedBookDropdown({
   // 🚀 OPTIMIZATION 2: Only filter visible scenes (expanded sequences only)
   const visibleScenes = useMemo(() => {
     const expandedSequenceIds = new Set(
-      visibleSequences.filter((seq) => expandedSequences.has(seq.id)).map((s) => s.id)
+      visibleSequences
+        .filter((seq) => expandedSequences.has(seq.id))
+        .map((s) => s.id),
     );
     return scenes.filter(
       (scene) =>
-        scene.sequenceId != null &&
-        expandedSequenceIds.has(scene.sequenceId)
+        scene.sequenceId != null && expandedSequenceIds.has(scene.sequenceId),
     );
   }, [scenes, visibleSequences, expandedSequences]);
 
@@ -53,7 +54,7 @@ export function useOptimizedBookDropdown({
         .filter((seq) => seq.actId === actId)
         .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     },
-    [sequences]
+    [sequences],
   );
 
   const getScenesForSequence = useCallback(
@@ -62,7 +63,7 @@ export function useOptimizedBookDropdown({
         .filter((scene) => scene.sequenceId === sequenceId)
         .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     },
-    [scenes]
+    [scenes],
   );
 
   // 🚀 OPTIMIZATION 4: Calculate word counts (memoized)
@@ -72,7 +73,7 @@ export function useOptimizedBookDropdown({
         .filter((scene) => scene.sequenceId === sequenceId)
         .reduce((sum, scene) => sum + (scene.wordCount || 0), 0);
     },
-    [scenes]
+    [scenes],
   );
 
   const calculateActWordCount = useCallback(
@@ -82,14 +83,18 @@ export function useOptimizedBookDropdown({
         return sum + calculateSequenceWordCount(seq.id);
       }, 0);
     },
-    [sequences, calculateSequenceWordCount]
+    [sequences, calculateSequenceWordCount],
   );
 
   // 🚀 OPTIMIZATION 5: Statistics (memoized, safe from division by zero)
   const stats = useMemo(() => {
-    const totalWords = scenes.reduce((sum, scene) => sum + (scene.wordCount || 0), 0);
+    const totalWords = scenes.reduce(
+      (sum, scene) => sum + (scene.wordCount || 0),
+      0,
+    );
     const avgWordsPerScene = scenes.length > 0 ? totalWords / scenes.length : 0;
-    const avgScenesPerSequence = sequences.length > 0 ? scenes.length / sequences.length : 0;
+    const avgScenesPerSequence =
+      sequences.length > 0 ? scenes.length / sequences.length : 0;
 
     return {
       totalActs: acts.length,
@@ -101,7 +106,14 @@ export function useOptimizedBookDropdown({
       visibleSequences: visibleSequences.length,
       visibleScenes: visibleScenes.length,
     };
-  }, [acts.length, sequences.length, scenes.length, visibleSequences.length, visibleScenes.length, scenes]);
+  }, [
+    acts.length,
+    sequences.length,
+    scenes.length,
+    visibleSequences.length,
+    visibleScenes.length,
+    scenes,
+  ]);
 
   return {
     visibleSequences,
@@ -121,7 +133,7 @@ export function useOptimizedBookDropdown({
 export function shouldParseContent(
   sceneId: string,
   expandedScenes: Set<string>,
-  parsedSceneIds: Set<string>
+  parsedSceneIds: Set<string>,
 ): boolean {
   if (!expandedScenes.has(sceneId)) {
     return false;
@@ -133,10 +145,16 @@ export function shouldParseContent(
 /**
  * 📖 Optimized Content Parser with Caching
  */
-const contentParseCache = new Map<string, { content: any; wordCount: number; timestamp: number }>();
+const contentParseCache = new Map<
+  string,
+  { content: any; wordCount: number; timestamp: number }
+>();
 const CACHE_TTL = 60000; // 1 minute
 
-export function parseSceneContentOptimized(scene: Scene): { content: any; wordCount: number } {
+export function parseSceneContentOptimized(scene: Scene): {
+  content: any;
+  wordCount: number;
+} {
   // Check cache first
   const cached = contentParseCache.get(scene.id);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -144,7 +162,10 @@ export function parseSceneContentOptimized(scene: Scene): { content: any; wordCo
   }
 
   // Priority 1: Use wordCount from database
-  if (scene.metadata?.wordCount !== undefined && scene.metadata?.wordCount !== null) {
+  if (
+    scene.metadata?.wordCount !== undefined &&
+    scene.metadata?.wordCount !== null
+  ) {
     const result = {
       content: scene.content || null,
       wordCount: scene.metadata.wordCount,
@@ -155,14 +176,14 @@ export function parseSceneContentOptimized(scene: Scene): { content: any; wordCo
 
   // Priority 2: Calculate from content
   const extractTextFromTiptap = (node: any): string => {
-    if (!node) return '';
-    let text = '';
+    if (!node) return "";
+    let text = "";
     if (node.text) text += node.text;
     if (node.content && Array.isArray(node.content)) {
       node.content.forEach((child: any) => {
         text += extractTextFromTiptap(child);
-        if (child.type === 'paragraph' || child.type === 'heading') {
-          text += ' ';
+        if (child.type === "paragraph" || child.type === "heading") {
+          text += " ";
         }
       });
     }
@@ -171,20 +192,27 @@ export function parseSceneContentOptimized(scene: Scene): { content: any; wordCo
 
   const contentSource = scene.content || scene.metadata?.content;
 
-  if (contentSource && typeof contentSource === 'string') {
+  if (contentSource && typeof contentSource === "string") {
     try {
       const parsed = JSON.parse(contentSource);
       const textContent = extractTextFromTiptap(parsed);
       const wordCount = textContent.trim()
-        ? textContent.trim().split(/\s+/).filter((w) => w.length > 0).length
+        ? textContent
+            .trim()
+            .split(/\s+/)
+            .filter((w) => w.length > 0).length
         : 0;
       const result = { content: parsed, wordCount };
       contentParseCache.set(scene.id, { ...result, timestamp: Date.now() });
       return result;
     } catch (e) {
-      const textContent = typeof contentSource === 'string' ? contentSource : '';
+      const textContent =
+        typeof contentSource === "string" ? contentSource : "";
       const wordCount = textContent.trim()
-        ? textContent.trim().split(/\s+/).filter((w) => w.length > 0).length
+        ? textContent
+            .trim()
+            .split(/\s+/)
+            .filter((w) => w.length > 0).length
         : 0;
       const result = { content: contentSource, wordCount };
       contentParseCache.set(scene.id, { ...result, timestamp: Date.now() });

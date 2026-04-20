@@ -1,16 +1,16 @@
-import { useRef, useMemo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 /**
  * 🚀 VIRTUALIZED TIMELINE TRACKS
- * 
+ *
  * Only renders visible tracks for massive performance gains
  * Activates automatically when >50 tracks
  */
 
 interface Track {
   id: string;
-  type: 'act' | 'sequence' | 'scene' | 'shot' | 'audio' | 'beat';
+  type: "act" | "sequence" | "scene" | "shot" | "audio" | "beat";
   title: string;
   height: number;
   [key: string]: any;
@@ -45,15 +45,15 @@ export function VirtualizedTimeline({
       className="timeline-tracks-virtualized"
       style={{
         height: `${containerHeight}px`,
-        overflow: 'auto',
-        position: 'relative',
+        overflow: "auto",
+        position: "relative",
       }}
     >
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -65,10 +65,10 @@ export function VirtualizedTimeline({
               key={track.id}
               data-index={virtualRow.index}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 top: 0,
                 left: 0,
-                width: '100%',
+                width: "100%",
                 height: `${virtualRow.size}px`,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
@@ -88,13 +88,13 @@ export function VirtualizedTimeline({
 export function useVirtualization(trackCount: number) {
   return useMemo(() => {
     const shouldVirtualize = trackCount > VIRTUALIZATION_THRESHOLD;
-    
+
     if (shouldVirtualize) {
       console.log(
-        `[Virtualization] ✅ ENABLED for ${trackCount} tracks (threshold: ${VIRTUALIZATION_THRESHOLD})`
+        `[Virtualization] ✅ ENABLED for ${trackCount} tracks (threshold: ${VIRTUALIZATION_THRESHOLD})`,
       );
     }
-    
+
     return {
       shouldVirtualize,
       trackCount,

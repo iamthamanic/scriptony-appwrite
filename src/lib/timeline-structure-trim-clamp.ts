@@ -3,7 +3,7 @@
  * edges do not cut inside descendant min/max global times (incl. editorial clips).
  */
 
-import type { TimelineData } from '../components/FilmDropdown';
+import type { TimelineData } from "../components/FilmDropdown";
 
 const EPS = 1e-4;
 
@@ -14,19 +14,27 @@ export function maxDescendantEndInAct(
   actBlocks: Array<{ id: string; startSec: number; endSec: number }>,
   sequenceBlocks: Array<{ id: string; startSec: number; endSec: number }>,
   sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>,
-  shotBlocks: Array<{ id: string; startSec: number; endSec: number; sceneId?: string; scene_id?: string }>,
-  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>
+  shotBlocks: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    sceneId?: string;
+    scene_id?: string;
+  }>,
+  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>,
 ): number {
   const ab = actBlocks.find((b) => b.id === actId);
   let maxE = ab ? ab.endSec : 0;
-  const seqIds = new Set((td.sequences || []).filter((s) => s.actId === actId).map((s) => s.id));
+  const seqIds = new Set(
+    (td.sequences || []).filter((s) => s.actId === actId).map((s) => s.id),
+  );
   for (const sb of sequenceBlocks) {
     if (seqIds.has(sb.id)) maxE = Math.max(maxE, sb.endSec);
   }
   const sceneIds = new Set(
     (td.scenes || [])
       .filter((sc) => sc.sequenceId != null && seqIds.has(sc.sequenceId))
-      .map((sc) => sc.id)
+      .map((sc) => sc.id),
   );
   for (const scb of sceneBlocks) {
     if (sceneIds.has(scb.id)) maxE = Math.max(maxE, scb.endSec);
@@ -47,19 +55,27 @@ export function minDescendantStartInAct(
   actBlocks: Array<{ id: string; startSec: number; endSec: number }>,
   sequenceBlocks: Array<{ id: string; startSec: number; endSec: number }>,
   sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>,
-  shotBlocks: Array<{ id: string; startSec: number; endSec: number; sceneId?: string; scene_id?: string }>,
-  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>
+  shotBlocks: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    sceneId?: string;
+    scene_id?: string;
+  }>,
+  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>,
 ): number {
   const ab = actBlocks.find((b) => b.id === actId);
   let minS = ab ? ab.startSec : Number.POSITIVE_INFINITY;
-  const seqIds = new Set((td.sequences || []).filter((s) => s.actId === actId).map((s) => s.id));
+  const seqIds = new Set(
+    (td.sequences || []).filter((s) => s.actId === actId).map((s) => s.id),
+  );
   for (const sb of sequenceBlocks) {
     if (seqIds.has(sb.id)) minS = Math.min(minS, sb.startSec);
   }
   const sceneIds = new Set(
     (td.scenes || [])
       .filter((sc) => sc.sequenceId != null && seqIds.has(sc.sequenceId))
-      .map((sc) => sc.id)
+      .map((sc) => sc.id),
   );
   for (const scb of sceneBlocks) {
     if (sceneIds.has(scb.id)) minS = Math.min(minS, scb.startSec);
@@ -79,13 +95,21 @@ export function maxDescendantEndInSequence(
   td: TimelineData,
   sequenceBlocks: Array<{ id: string; startSec: number; endSec: number }>,
   sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>,
-  shotBlocks: Array<{ id: string; startSec: number; endSec: number; sceneId?: string; scene_id?: string }>,
-  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>
+  shotBlocks: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    sceneId?: string;
+    scene_id?: string;
+  }>,
+  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>,
 ): number {
   const sb0 = sequenceBlocks.find((b) => b.id === sequenceId);
   let maxE = sb0 ? sb0.endSec : 0;
   const sceneIds = new Set(
-    (td.scenes || []).filter((sc) => sc.sequenceId === sequenceId).map((sc) => sc.id)
+    (td.scenes || [])
+      .filter((sc) => sc.sequenceId === sequenceId)
+      .map((sc) => sc.id),
   );
   for (const scb of sceneBlocks) {
     if (sceneIds.has(scb.id)) maxE = Math.max(maxE, scb.endSec);
@@ -105,13 +129,21 @@ export function minDescendantStartInSequence(
   td: TimelineData,
   sequenceBlocks: Array<{ id: string; startSec: number; endSec: number }>,
   sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>,
-  shotBlocks: Array<{ id: string; startSec: number; endSec: number; sceneId?: string; scene_id?: string }>,
-  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>
+  shotBlocks: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    sceneId?: string;
+    scene_id?: string;
+  }>,
+  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>,
 ): number {
   const sb0 = sequenceBlocks.find((b) => b.id === sequenceId);
   let minS = sb0 ? sb0.startSec : Number.POSITIVE_INFINITY;
   const sceneIds = new Set(
-    (td.scenes || []).filter((sc) => sc.sequenceId === sequenceId).map((sc) => sc.id)
+    (td.scenes || [])
+      .filter((sc) => sc.sequenceId === sequenceId)
+      .map((sc) => sc.id),
   );
   for (const scb of sceneBlocks) {
     if (sceneIds.has(scb.id)) minS = Math.min(minS, scb.startSec);
@@ -129,8 +161,19 @@ export function minDescendantStartInSequence(
 export function maxDescendantEndInScene(
   sceneId: string,
   sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>,
-  shotBlocks: Array<{ id: string; startSec: number; endSec: number; sceneId?: string; scene_id?: string }>,
-  clipBlocks: Array<{ sceneId: string; shotId?: string; startSec: number; endSec: number }>
+  shotBlocks: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    sceneId?: string;
+    scene_id?: string;
+  }>,
+  clipBlocks: Array<{
+    sceneId: string;
+    shotId?: string;
+    startSec: number;
+    endSec: number;
+  }>,
 ): number {
   const scb0 = sceneBlocks.find((b) => b.id === sceneId);
   let maxE = scb0 ? scb0.endSec : 0;
@@ -147,8 +190,14 @@ export function maxDescendantEndInScene(
 export function minDescendantStartInScene(
   sceneId: string,
   sceneBlocks: Array<{ id: string; startSec: number; endSec: number }>,
-  shotBlocks: Array<{ id: string; startSec: number; endSec: number; sceneId?: string; scene_id?: string }>,
-  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>
+  shotBlocks: Array<{
+    id: string;
+    startSec: number;
+    endSec: number;
+    sceneId?: string;
+    scene_id?: string;
+  }>,
+  clipBlocks: Array<{ sceneId: string; startSec: number; endSec: number }>,
 ): number {
   const scb0 = sceneBlocks.find((b) => b.id === sceneId);
   let minS = scb0 ? scb0.startSec : Number.POSITIVE_INFINITY;
@@ -164,7 +213,7 @@ export function minDescendantStartInScene(
 
 export function maxClipEndForShot(
   shotId: string,
-  clipBlocks: Array<{ shotId?: string; startSec: number; endSec: number }>
+  clipBlocks: Array<{ shotId?: string; startSec: number; endSec: number }>,
 ): number | null {
   const rows = clipBlocks.filter((c) => c.shotId === shotId);
   if (rows.length === 0) return null;
@@ -173,7 +222,7 @@ export function maxClipEndForShot(
 
 export function minClipStartForShot(
   shotId: string,
-  clipBlocks: Array<{ shotId?: string; startSec: number; endSec: number }>
+  clipBlocks: Array<{ shotId?: string; startSec: number; endSec: number }>,
 ): number | null {
   const rows = clipBlocks.filter((c) => c.shotId === shotId);
   if (rows.length === 0) return null;
@@ -188,7 +237,7 @@ export function clampBoundaryToChildren(
   minB: number,
   maxB: number,
   childLo: number,
-  childHi: number
+  childHi: number,
 ): number {
   const lo = Math.max(minB, childLo);
   const hi = Math.min(maxB, childHi);

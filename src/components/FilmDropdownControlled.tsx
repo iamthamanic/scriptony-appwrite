@@ -1,9 +1,9 @@
-import { FilmDropdown, type TimelineData } from './FilmDropdown';
-import type { Character } from '../lib/types';
+import { FilmDropdown, type TimelineData } from "./FilmDropdown";
+import type { Character } from "../lib/types";
 
 /**
  * 🎯 CONTROLLED FILM DROPDOWN WRAPPER
- * 
+ *
  * Wrapper um FilmDropdown mit controlled collapse states.
  * Wird von StructureBeatsSection verwendet für dynamisches Beat-Alignment.
  */

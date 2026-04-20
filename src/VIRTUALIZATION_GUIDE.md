@@ -9,6 +9,7 @@
 ## 🎯 Problem
 
 Bei großen Projekten (z.B. 200 Scenes, 1000 Shots):
+
 - Rendering dauert >2 Sekunden
 - Scrolling ist laggy
 - Browser rendert ALLE Elemente (auch unsichtbare)
@@ -40,6 +41,7 @@ npm install @tanstack/react-virtual
 **Datei:** `/components/VideoEditorTimeline.tsx`
 
 **Aktueller Code:**
+
 ```typescript
 // Alle Tracks werden gerendert
 {tracks.map((track, index) => (
@@ -50,6 +52,7 @@ npm install @tanstack/react-virtual
 ```
 
 **Virtualisiert:**
+
 ```typescript
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -65,7 +68,7 @@ function VideoEditorTimeline({ tracks, ... }) {
   });
 
   return (
-    <div 
+    <div
       ref={parentRef}
       className="timeline-tracks-container"
       style={{ height: '600px', overflow: 'auto' }}
@@ -79,7 +82,7 @@ function VideoEditorTimeline({ tracks, ... }) {
       >
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const track = tracks[virtualRow.index];
-          
+
           return (
             <div
               key={track.id}
@@ -133,12 +136,12 @@ function VideoEditorTimeline({ tracks, ... }) {
 
 ### Test Case: 200 Scenes, 800 Shots
 
-| Metric | Before | After (Virtualized) | Improvement |
-|--------|--------|---------------------|-------------|
-| Initial Render | 2100ms | 120ms | **94% faster** |
-| Scroll Performance | 15 FPS | 60 FPS | **4x smoother** |
-| Memory Usage | 450 MB | 80 MB | **82% less** |
-| Rendered Elements | 1000 | ~25 | **97% fewer** |
+| Metric             | Before | After (Virtualized) | Improvement     |
+| ------------------ | ------ | ------------------- | --------------- |
+| Initial Render     | 2100ms | 120ms               | **94% faster**  |
+| Scroll Performance | 15 FPS | 60 FPS              | **4x smoother** |
+| Memory Usage       | 450 MB | 80 MB               | **82% less**    |
+| Rendered Elements  | 1000   | ~25                 | **97% fewer**   |
 
 ---
 
@@ -211,7 +214,7 @@ const scrollToTrack = (trackIndex: number) => {
 ```typescript
 // Wenn Schätzung falsch → Scroll-Probleme!
 // Lieber etwas größer schätzen
-estimateSize: (index) => trackHeights[tracks[index].type] + 8 // +8px padding
+estimateSize: (index) => trackHeights[tracks[index].type] + 8; // +8px padding
 ```
 
 ### 3. **Keys müssen stabil sein**

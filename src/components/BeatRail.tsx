@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { BeatBand } from './BeatBand';
-import type { ContainerData } from './ContainerCard';
+import { useEffect, useRef } from "react";
+import { BeatBand } from "./BeatBand";
+import type { ContainerData } from "./ContainerCard";
 
 /**
  * 🎵 BEAT RAIL
- * 
+ *
  * Lila Spalte links mit %-Skala und dynamischen Beat-Bands.
  * Beobachtet Container-Stack mit ResizeObserver und passt Band-Positionen an.
  */
@@ -28,7 +28,13 @@ interface BeatRailProps {
   className?: string;
 }
 
-export function BeatRail({ beats, containers, containerStackRef, onUpdateBeat, className = '' }: BeatRailProps) {
+export function BeatRail({
+  beats,
+  containers,
+  containerStackRef,
+  onUpdateBeat,
+  className = "",
+}: BeatRailProps) {
   const railRef = useRef<HTMLDivElement>(null);
 
   // Update Beat-Band positions when containers collapse/expand
@@ -36,9 +42,13 @@ export function BeatRail({ beats, containers, containerStackRef, onUpdateBeat, c
     if (!containerStackRef.current || !railRef.current) return;
 
     const updateBeatBands = () => {
-      beats.forEach(beat => {
-        const startEl = document.querySelector(`[data-container-id="${beat.fromContainerId}"]`);
-        const endEl = document.querySelector(`[data-container-id="${beat.toContainerId}"]`);
+      beats.forEach((beat) => {
+        const startEl = document.querySelector(
+          `[data-container-id="${beat.fromContainerId}"]`,
+        );
+        const endEl = document.querySelector(
+          `[data-container-id="${beat.toContainerId}"]`,
+        );
         const bandEl = document.getElementById(`beat-band-${beat.id}`);
 
         if (startEl && endEl && bandEl && railRef.current) {
@@ -66,22 +76,22 @@ export function BeatRail({ beats, containers, containerStackRef, onUpdateBeat, c
     observer.observe(containerStackRef.current);
 
     // Also update on window resize
-    window.addEventListener('resize', updateBeatBands);
+    window.addEventListener("resize", updateBeatBands);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', updateBeatBands);
+      window.removeEventListener("resize", updateBeatBands);
     };
   }, [beats, containerStackRef]);
 
   return (
-    <div 
+    <div
       ref={railRef}
       className={`relative shrink-0 w-20 bg-primary/5 border-r border-primary/10 min-h-full overflow-visible ${className}`}
     >
       {/* Percentage Scale */}
       <div className="absolute inset-0 pointer-events-none">
-        {[0, 25, 50, 75, 100].map(pct => (
+        {[0, 25, 50, 75, 100].map((pct) => (
           <div
             key={pct}
             className="absolute left-0 right-0 border-t border-primary/10"
@@ -95,7 +105,7 @@ export function BeatRail({ beats, containers, containerStackRef, onUpdateBeat, c
       </div>
 
       {/* Beat Bands */}
-      {beats.map(beat => (
+      {beats.map((beat) => (
         <BeatBand
           key={beat.id}
           beat={beat}

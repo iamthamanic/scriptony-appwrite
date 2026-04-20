@@ -24,6 +24,7 @@ import {
 } from "../../_shared/timeline";
 import { C, listDocumentsFull } from "../../_shared/appwrite-db";
 import { mapClip } from "../../_shared/clips-map";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -46,6 +47,9 @@ export default async function handler(
       sendBadRequest(res, "project_id is required");
       return;
     }
+
+    const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+    if (!_project) return;
 
     const includeShots = (getQuery(req, "include_shots") || "true") !== "false";
     const excludeContent =

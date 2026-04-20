@@ -8,12 +8,12 @@
 
 ## 📊 Performance SLAs
 
-| Category | Target | Current | Status |
-|----------|--------|---------|--------|
-| Timeline Load (cached) | <100ms | ~50ms | ✅ |
-| Timeline Load (uncached) | <1000ms | ~800ms | ✅ |
-| Project Card Hover → Data Ready | <200ms | ~150ms | ✅ |
-| Page Refresh → Timeline Visible | <500ms | ~300ms | ✅ |
+| Category                        | Target  | Current | Status |
+| ------------------------------- | ------- | ------- | ------ |
+| Timeline Load (cached)          | <100ms  | ~50ms   | ✅     |
+| Timeline Load (uncached)        | <1000ms | ~800ms  | ✅     |
+| Project Card Hover → Data Ready | <200ms  | ~150ms  | ✅     |
+| Page Refresh → Timeline Visible | <500ms  | ~300ms  | ✅     |
 
 ---
 
@@ -31,6 +31,7 @@
 ```
 
 **Vorteile:**
+
 - ✅ IndexedDB überlebt Page Refreshes (localStorage-Limit oft erreicht)
 - ✅ Automatisches Promotion von localStorage → IndexedDB → Memory
 - ✅ ~85% weniger API-Calls
@@ -47,11 +48,13 @@
 ```
 
 **Implementiert in:**
+
 - ✅ `ProjectCardWithPrefetch.tsx` - Neue Component mit Prefetch
 - ✅ `ProjectCarousel.tsx` - Verwendet neue Card
 - ✅ `useTimelineCache.ts` - Hook für Prefetch Setup
 
 **Vorteile:**
+
 - ✅ Daten sind ready, BEVOR User klickt
 - ✅ Gefühlte Ladezeit: **0ms** (Instant!)
 - ✅ Non-blocking (läuft im Hintergrund)
@@ -70,18 +73,19 @@ if (cached.data) {
   setActs(cached.data.acts);
   setSequences(cached.data.sequences);
   // ...
-  
+
   if (!cached.isStale) {
     setLoading(false);
     return; // Done!
   }
-  
+
   // If stale → revalidate in background
-  console.log('🔄 Revalidating stale cache...');
+  console.log("🔄 Revalidating stale cache...");
 }
 ```
 
 **Vorteile:**
+
 - ✅ UI blockiert NIE
 - ✅ Instant Feedback (alte Daten besser als Loading Spinner)
 - ✅ Automatische Aktualisierung wenn neue Daten da sind
@@ -99,10 +103,12 @@ if (cached.data) {
 ```
 
 **Implementiert:**
+
 - ✅ `_shared/compression.ts` - Compression Middleware
 - ⏳ TODO: In Edge Functions integrieren
 
 **Vorteile:**
+
 - ✅ 60-70% kleinere Response Size
 - ✅ Schnelleres Netzwerk (besonders bei langsamer Verbindung)
 - ✅ Weniger Bandbreite
@@ -117,7 +123,7 @@ if (cached.data) {
 // components/pages/ProjectsPage.tsx
 // Erst initialData laden, dann FilmDropdown rendern
 {timelineData && (
-  <FilmDropdown 
+  <FilmDropdown
     projectId={selectedProject}
     initialData={timelineData}
     // ...
@@ -126,6 +132,7 @@ if (cached.data) {
 ```
 
 **Vorteile:**
+
 - ✅ Verhindert doppelte API-Calls
 - ✅ Consistent Performance (immer cached load)
 
@@ -137,7 +144,7 @@ if (cached.data) {
 
 ```typescript
 // Nur sichtbare Rows rendern
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer } from "@tanstack/react-virtual";
 ```
 
 **Wann:** Wenn Timeline >50 Scenes/Shots hat  
@@ -149,9 +156,9 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 
 ```typescript
 // supabase/functions/scriptony-timeline-v2/index.ts
-import { compress } from '../_shared/compression.ts';
+import { compress } from "../_shared/compression.ts";
 
-app.use('*', compress);
+app.use("*", compress);
 ```
 
 **Status:** Middleware erstellt, muss aktiviert werden  
@@ -178,8 +185,8 @@ app.use('*', compress);
 
 ```typescript
 // Aktiviert in allen relevanten Komponenten:
-console.time('⏱️ [PERF] FilmDropdown Full Load');
-console.timeEnd('⏱️ [PERF] FilmDropdown Full Load');
+console.time("⏱️ [PERF] FilmDropdown Full Load");
+console.timeEnd("⏱️ [PERF] FilmDropdown Full Load");
 ```
 
 ### Performance Monitor
@@ -187,7 +194,7 @@ console.timeEnd('⏱️ [PERF] FilmDropdown Full Load');
 ```typescript
 // lib/performance-monitor.ts
 // Automatische SLA-Überwachung
-perfMonitor.measure('timeline-load', 'TIMELINE_LOAD', async () => {
+perfMonitor.measure("timeline-load", "TIMELINE_LOAD", async () => {
   // ... your code
 });
 ```
@@ -196,10 +203,10 @@ perfMonitor.measure('timeline-load', 'TIMELINE_LOAD', async () => {
 
 ```typescript
 // In Browser Console:
-window.scriptonyCache.stats()
+window.scriptonyCache.stats();
 // → { memoryEntries: 5, localStorageEntries: 3, totalSize: 123456 }
 
-window.scriptonyPrefetch.stats()
+window.scriptonyPrefetch.stats();
 // → { prefetchedKeys: 12, queueLength: 2, isProcessing: false }
 ```
 
@@ -208,30 +215,32 @@ window.scriptonyPrefetch.stats()
 ## 🎯 Performance Best Practices
 
 ### 1. **Immer mit Cache arbeiten**
+
 ```typescript
 // ❌ SCHLECHT
-const data = await fetch('/api/timeline');
+const data = await fetch("/api/timeline");
 
 // ✅ GUT
-const data = await cacheManager.getWithRevalidate(
-  'timeline:123',
-  () => fetch('/api/timeline')
+const data = await cacheManager.getWithRevalidate("timeline:123", () =>
+  fetch("/api/timeline"),
 );
 ```
 
 ### 2. **Prefetch auf Hover**
+
 ```typescript
 // ❌ SCHLECHT
 <Card onClick={() => loadData()} />
 
 // ✅ GUT
-<Card 
+<Card
   onMouseEnter={() => prefetch()}
   onClick={() => navigate()}
 />
 ```
 
 ### 3. **Optimistic UI Updates**
+
 ```typescript
 // ❌ SCHLECHT
 const data = await api.update();
@@ -247,12 +256,12 @@ if (data.error) setData(oldData); // Rollback on error
 
 ## 🔥 Performance Wins
 
-| Optimierung | Vorher | Nachher | Improvement |
-|-------------|--------|---------|-------------|
-| Timeline Load (cached) | 1200ms | ~50ms | **96% faster** |
-| Project Click → Timeline | 1500ms | ~200ms | **87% faster** |
-| Page Refresh → Data Visible | 2000ms | ~300ms | **85% faster** |
-| Network Transfer Size | 250KB | ~80KB | **68% smaller** |
+| Optimierung                 | Vorher | Nachher | Improvement     |
+| --------------------------- | ------ | ------- | --------------- |
+| Timeline Load (cached)      | 1200ms | ~50ms   | **96% faster**  |
+| Project Click → Timeline    | 1500ms | ~200ms  | **87% faster**  |
+| Page Refresh → Data Visible | 2000ms | ~300ms  | **85% faster**  |
+| Network Transfer Size       | 250KB  | ~80KB   | **68% smaller** |
 
 ---
 

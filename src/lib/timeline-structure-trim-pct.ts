@@ -10,7 +10,7 @@
  * inner-boundary drag (preview still updates descendant tracks via merged blocks).
  */
 
-export type StructureTrimInteractionMode = 'outerPair' | 'innerBoundary';
+export type StructureTrimInteractionMode = "outerPair" | "innerBoundary";
 
 /** Map ordered segment durations (seconds) to pct_from/pct_to within [0, budgetSec] on that row. */
 export function buildPctMapFromOrderedSegmentSeconds(args: {

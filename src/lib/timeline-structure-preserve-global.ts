@@ -4,10 +4,16 @@
  * so global [startSec, endSec] intervals stay aligned with frozen snapshots (inverse projection).
  */
 
-import type { TimelineData } from '../components/FilmDropdown';
-import { calculateActBlocks, calculateSequenceBlocks } from '../components/timeline-blocks';
+import type { TimelineData } from "../components/FilmDropdown";
+import {
+  calculateActBlocks,
+  calculateSequenceBlocks,
+} from "../components/timeline-blocks";
 
-export type FrozenGlobalBounds = Record<string, { startSec: number; endSec: number }>;
+export type FrozenGlobalBounds = Record<
+  string,
+  { startSec: number; endSec: number }
+>;
 
 export type PctRange = { pct_from: number; pct_to: number };
 
@@ -46,24 +52,45 @@ function mergeTimelinePct(
   td: TimelineData,
   ma: Record<string, PctRange>,
   msq: Record<string, PctRange>,
-  msc: Record<string, PctRange>
+  msc: Record<string, PctRange>,
 ): TimelineData {
   return {
     ...td,
     acts: (td.acts || []).map((a: any) => {
       const o = ma[a.id];
       if (!o) return a;
-      return { ...a, metadata: { ...(a.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      return {
+        ...a,
+        metadata: {
+          ...(a.metadata || {}),
+          pct_from: o.pct_from,
+          pct_to: o.pct_to,
+        },
+      };
     }),
     sequences: (td.sequences || []).map((s: any) => {
       const o = msq[s.id];
       if (!o) return s;
-      return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      return {
+        ...s,
+        metadata: {
+          ...(s.metadata || {}),
+          pct_from: o.pct_from,
+          pct_to: o.pct_to,
+        },
+      };
     }),
     scenes: (td.scenes || []).map((s: any) => {
       const o = msc[s.id];
       if (!o) return s;
-      return { ...s, metadata: { ...(s.metadata || {}), pct_from: o.pct_from, pct_to: o.pct_to } };
+      return {
+        ...s,
+        metadata: {
+          ...(s.metadata || {}),
+          pct_from: o.pct_from,
+          pct_to: o.pct_to,
+        },
+      };
     }),
   };
 }
@@ -82,7 +109,8 @@ export function preserveSequenceSceneTimingsAfterActPctChange(args: {
   /** Acts whose row changed this frame — reproject descendants under these acts only */
   affectedActIds: string[];
 }): { msq: Record<string, PctRange>; msc: Record<string, PctRange> } {
-  const { td, duration, ma, msq, msc, frozenSeq, frozenScene, affectedActIds } = args;
+  const { td, duration, ma, msq, msc, frozenSeq, frozenScene, affectedActIds } =
+    args;
   const px = 1;
   const viewStart = 0;
   const viewEnd = duration;
@@ -92,10 +120,17 @@ export function preserveSequenceSceneTimingsAfterActPctChange(args: {
   let mscOut: Record<string, PctRange> = { ...msc };
 
   const merged1 = mergeTimelinePct(td, ma, msqOut, mscOut);
-  const actBlocks = calculateActBlocks(merged1, duration, viewStart, viewEnd, px, false);
+  const actBlocks = calculateActBlocks(
+    merged1,
+    duration,
+    viewStart,
+    viewEnd,
+    px,
+    false,
+  );
 
   const sequences = [...(td.sequences || [])].sort(
-    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
   );
 
   for (const actId of affectedActIds) {
@@ -113,10 +148,17 @@ export function preserveSequenceSceneTimingsAfterActPctChange(args: {
   }
 
   const merged2 = mergeTimelinePct(td, ma, msqOut, mscOut);
-  const seqBlocks = calculateSequenceBlocks(merged2, duration, viewStart, viewEnd, px, false);
+  const seqBlocks = calculateSequenceBlocks(
+    merged2,
+    duration,
+    viewStart,
+    viewEnd,
+    px,
+    false,
+  );
 
   const scenes = [...(td.scenes || [])].sort(
-    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
   );
 
   for (const seq of sequences) {
@@ -156,10 +198,17 @@ export function preserveSceneTimingsAfterSequencePctChange(args: {
   let mscOut: Record<string, PctRange> = { ...msc };
 
   const merged = mergeTimelinePct(td, ma, msq, mscOut);
-  const seqBlocks = calculateSequenceBlocks(merged, duration, viewStart, viewEnd, px, false);
+  const seqBlocks = calculateSequenceBlocks(
+    merged,
+    duration,
+    viewStart,
+    viewEnd,
+    px,
+    false,
+  );
 
   const scenes = [...(td.scenes || [])].sort(
-    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+    (a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
   );
 
   for (const seqId of affectedSequenceIds) {

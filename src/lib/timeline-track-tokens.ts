@@ -9,14 +9,20 @@
  * 4. VideoEditorTimeline: Render nutzt `getTimelineTrackClipClasses` / `getTrimGrabHandleStyles`
  */
 
-import { cn } from '../components/ui/utils';
+import { cn } from "../components/ui/utils";
 
 /** Alle Track-Arten der Film-Timeline (eine Union für Registry + Trim-Preset). */
-export const TIMELINE_TRACK_KINDS = ['beat', 'act', 'sequence', 'scene', 'shot'] as const;
+export const TIMELINE_TRACK_KINDS = [
+  "beat",
+  "act",
+  "sequence",
+  "scene",
+  "shot",
+] as const;
 export type TimelineTrackKind = (typeof TIMELINE_TRACK_KINDS)[number];
 
-export type TimelineTrackHoverOpacity = '80' | '90';
-export type TimelineTrackOverflow = 'visible' | 'hidden';
+export type TimelineTrackHoverOpacity = "80" | "90";
+export type TimelineTrackOverflow = "visible" | "hidden";
 
 export type TimelineTrackVisual = {
   /** Standard-Fill (Pastell); bei Beat ohne beat.color; bei Shot wenn kein Full-Bleed-Bild */
@@ -34,59 +40,66 @@ export type TimelineTrackVisual = {
 /**
  * Act-Zeile als Referenz; alle anderen folgen demselben Muster (fill + border + handleBg).
  */
-export const TIMELINE_TRACK_REGISTRY: Record<TimelineTrackKind, TimelineTrackVisual> = {
+export const TIMELINE_TRACK_REGISTRY: Record<
+  TimelineTrackKind,
+  TimelineTrackVisual
+> = {
   act: {
-    fill: 'bg-blue-50 dark:bg-blue-950/40',
-    border: 'border-2 border-blue-200 dark:border-blue-700',
+    fill: "bg-blue-50 dark:bg-blue-950/40",
+    border: "border-2 border-blue-200 dark:border-blue-700",
     /** Etwas heller als der Rand: sonst verschmilzt 2px Border + Griffstreifen optisch zu einem Block. */
-    handleBg: 'bg-blue-300 dark:bg-blue-500',
-    hoverOpacity: '80',
-    overflow: 'hidden',
-    textDefault: 'text-[10px] text-blue-900 dark:text-blue-100 font-medium',
-    textWithCustomColor: 'text-[10px] text-blue-900 dark:text-blue-100 font-medium',
+    handleBg: "bg-blue-300 dark:bg-blue-500",
+    hoverOpacity: "80",
+    overflow: "hidden",
+    textDefault: "text-[10px] text-blue-900 dark:text-blue-100 font-medium",
+    textWithCustomColor:
+      "text-[10px] text-blue-900 dark:text-blue-100 font-medium",
   },
   sequence: {
-    fill: 'bg-green-50 dark:bg-green-950/40',
-    border: 'border-2 border-green-200 dark:border-green-700',
-    handleBg: 'bg-green-300 dark:bg-green-500',
-    hoverOpacity: '80',
-    overflow: 'hidden',
-    textDefault: 'text-[10px] text-green-900 dark:text-green-100 font-medium',
-    textWithCustomColor: 'text-[10px] text-green-900 dark:text-green-100 font-medium',
+    fill: "bg-green-50 dark:bg-green-950/40",
+    border: "border-2 border-green-200 dark:border-green-700",
+    handleBg: "bg-green-300 dark:bg-green-500",
+    hoverOpacity: "80",
+    overflow: "hidden",
+    textDefault: "text-[10px] text-green-900 dark:text-green-100 font-medium",
+    textWithCustomColor:
+      "text-[10px] text-green-900 dark:text-green-100 font-medium",
   },
   scene: {
-    fill: 'bg-pink-50 dark:bg-pink-950/40',
-    border: 'border-2 border-pink-200 dark:border-pink-700',
-    handleBg: 'bg-pink-300 dark:bg-pink-500',
-    hoverOpacity: '90',
-    overflow: 'visible',
-    textDefault: 'text-[10px] text-pink-900 dark:text-pink-100 font-medium',
-    textWithCustomColor: 'text-[10px] text-pink-900 dark:text-pink-100 font-medium',
+    fill: "bg-pink-50 dark:bg-pink-950/40",
+    border: "border-2 border-pink-200 dark:border-pink-700",
+    handleBg: "bg-pink-300 dark:bg-pink-500",
+    hoverOpacity: "90",
+    overflow: "visible",
+    textDefault: "text-[10px] text-pink-900 dark:text-pink-100 font-medium",
+    textWithCustomColor:
+      "text-[10px] text-pink-900 dark:text-pink-100 font-medium",
   },
   shot: {
-    fill: 'bg-yellow-50 dark:bg-yellow-900/20',
-    border: 'border-2 border-yellow-400 dark:border-yellow-600',
-    handleBg: 'bg-yellow-300 dark:bg-yellow-500',
-    hoverOpacity: '90',
-    overflow: 'hidden',
+    fill: "bg-yellow-50 dark:bg-yellow-900/20",
+    border: "border-2 border-yellow-400 dark:border-yellow-600",
+    handleBg: "bg-yellow-300 dark:bg-yellow-500",
+    hoverOpacity: "90",
+    overflow: "hidden",
     textDefault:
-      'text-[10px] font-medium truncate min-w-0 text-yellow-900 dark:text-yellow-100',
+      "text-[10px] font-medium truncate min-w-0 text-yellow-900 dark:text-yellow-100",
     textWithCustomColor:
-      'text-[10px] font-medium truncate min-w-0 text-yellow-900 dark:text-yellow-100',
+      "text-[10px] font-medium truncate min-w-0 text-yellow-900 dark:text-yellow-100",
   },
   beat: {
-    fill: 'bg-purple-50 dark:bg-purple-950/40',
-    border: 'border-2 border-purple-400 dark:border-purple-500',
-    handleBg: 'bg-purple-400 dark:bg-purple-500',
-    hoverOpacity: '80',
-    overflow: 'hidden',
-    textDefault: 'text-[10px] font-medium text-purple-900 dark:text-purple-100',
-    textWithCustomColor: 'text-[10px] font-medium text-[#6956bd] dark:text-[#6956bd]',
+    fill: "bg-purple-50 dark:bg-purple-950/40",
+    border: "border-2 border-purple-400 dark:border-purple-500",
+    handleBg: "bg-purple-400 dark:bg-purple-500",
+    hoverOpacity: "80",
+    overflow: "hidden",
+    textDefault: "text-[10px] font-medium text-purple-900 dark:text-purple-100",
+    textWithCustomColor:
+      "text-[10px] font-medium text-[#6956bd] dark:text-[#6956bd]",
   },
 };
 
 const CLIP_SHELL =
-  'absolute inset-y-0 rounded cursor-pointer transition-opacity group';
+  "absolute inset-y-0 rounded cursor-pointer transition-opacity group";
 
 export type TimelineTrackClipOptions = {
   /** Shot: schmales Shot mit Vollflächen-Preview — kein Pastell-Fill, stattdessen bg-cover */
@@ -101,25 +114,19 @@ export type TimelineTrackClipOptions = {
  */
 export function getTimelineTrackClipClasses(
   kind: TimelineTrackKind,
-  options?: TimelineTrackClipOptions
+  options?: TimelineTrackClipOptions,
 ): string {
   const r = TIMELINE_TRACK_REGISTRY[kind];
   const hover =
-    r.hoverOpacity === '90' ? 'hover:opacity-90' : 'hover:opacity-80';
+    r.hoverOpacity === "90" ? "hover:opacity-90" : "hover:opacity-80";
   const overflow =
-    r.overflow === 'visible' ? 'overflow-visible' : 'overflow-hidden';
+    r.overflow === "visible" ? "overflow-visible" : "overflow-hidden";
 
-  if (kind === 'shot' && options?.shotFullBleedImage) {
-    return cn(
-      CLIP_SHELL,
-      hover,
-      overflow,
-      r.border,
-      'bg-cover bg-center'
-    );
+  if (kind === "shot" && options?.shotFullBleedImage) {
+    return cn(CLIP_SHELL, hover, overflow, r.border, "bg-cover bg-center");
   }
 
-  if (kind === 'beat' && options?.beatSkipFill) {
+  if (kind === "beat" && options?.beatSkipFill) {
     return cn(CLIP_SHELL, hover, overflow, r.border);
   }
 

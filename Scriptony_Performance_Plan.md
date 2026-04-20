@@ -27,13 +27,13 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ## Erwartete Verbesserungen
 
-| Metrik | Vorher | Nachher (Ziel) |
-|--------|--------|----------------|
-| Initiale Ladezeit | 3–5 Sekunden | 300–500ms |
-| API-Payload (initial) | ~2–5 MB (mit Shots+Content) | ~50–200 KB (nur Struktur) |
-| Memory-Verbrauch | ~50 MB | ~20 MB |
-| DnD-Monitore (initial) | ~3.336 | ~50–80 (nur sichtbare) |
-| API-Calls (initial) | 5 parallel | 1 (Ultra-Batch) |
+| Metrik                 | Vorher                      | Nachher (Ziel)            |
+| ---------------------- | --------------------------- | ------------------------- |
+| Initiale Ladezeit      | 3–5 Sekunden                | 300–500ms                 |
+| API-Payload (initial)  | ~2–5 MB (mit Shots+Content) | ~50–200 KB (nur Struktur) |
+| Memory-Verbrauch       | ~50 MB                      | ~20 MB                    |
+| DnD-Monitore (initial) | ~3.336                      | ~50–80 (nur sichtbare)    |
+| API-Calls (initial)    | 5 parallel                  | 1 (Ultra-Batch)           |
 
 ---
 
@@ -45,15 +45,16 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 1.1 — Shots Lazy Loading aktivieren
 
-| | |
-|---|---|
-| **Aufwand** | 0,5 Tage |
-| **Impact** | ⬆️⬆️⬆️ Sehr hoch (−80% Payload) |
-| **Dateien** | `src/components/FilmDropdown.tsx` (Zeilen 559–574, 404–407) |
-| | `src/hooks/useLazyLoadShots.ts` (bereits fertig!) |
-| | `src/components/FilmDropdown.OPTIMIZED_EXAMPLE.tsx` (Referenz) |
+|             |                                                                |
+| ----------- | -------------------------------------------------------------- |
+| **Aufwand** | 0,5 Tage                                                       |
+| **Impact**  | ⬆️⬆️⬆️ Sehr hoch (−80% Payload)                                |
+| **Dateien** | `src/components/FilmDropdown.tsx` (Zeilen 559–574, 404–407)    |
+|             | `src/hooks/useLazyLoadShots.ts` (bereits fertig!)              |
+|             | `src/components/FilmDropdown.OPTIMIZED_EXAMPLE.tsx` (Referenz) |
 
 **Was tun:**
+
 - **`shots`-State und `getAllShotsByProject` aus dem initialen Load entfernen**
 - `useLazyLoadShots`-Hook pro Scene-Komponente einsetzen (lädt Shots erst bei Expand)
 - `SceneWithLazyShots`-Pattern aus `OPTIMIZED_EXAMPLE.tsx` übernehmen
@@ -65,15 +66,16 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 1.2 — Content-Exklusion beim Struktur-Load
 
-| | |
-|---|---|
-| **Aufwand** | 0,5 Tage |
-| **Impact** | ⬆️⬆️ Hoch (−60% Response-Größe) |
+|             |                                                                              |
+| ----------- | ---------------------------------------------------------------------------- |
+| **Aufwand** | 0,5 Tage                                                                     |
+| **Impact**  | ⬆️⬆️ Hoch (−60% Response-Größe)                                              |
 | **Dateien** | `src/lib/api/timeline-api-v2.ts` (`excludeContent`-Parameter, Zeile 110–113) |
-| | `src/lib/timeline-map.ts` (`loadProjectTimelineBundle`) |
-| | Backend: `ultra-batch-load` Endpoint |
+|             | `src/lib/timeline-map.ts` (`loadProjectTimelineBundle`)                      |
+|             | Backend: `ultra-batch-load` Endpoint                                         |
 
 **Was tun:**
+
 - `excludeContent: true` beim initialen `batchLoadTimeline`/`ultraBatchLoadProject` mitschicken
 - Content erst laden wenn eine Scene geöffnet/editiert wird (analog zu `useLazyLoadSceneContent`)
 - Backend-Endpoint anpassen: `ultra-batch-load` soll content-Feld bei `excludeContent` weglassen
@@ -84,15 +86,16 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 1.3 — Doppelten Ladepfad eliminieren
 
-| | |
-|---|---|
-| **Aufwand** | 1 Tag |
-| **Impact** | ⬆️⬆️ Hoch (Architektur-Fix) |
+|             |                                                                        |
+| ----------- | ---------------------------------------------------------------------- |
+| **Aufwand** | 1 Tag                                                                  |
+| **Impact**  | ⬆️⬆️ Hoch (Architektur-Fix)                                            |
 | **Dateien** | `src/components/FilmDropdown.tsx` (`loadTimelineData`, Zeilen 523–654) |
-| | `src/hooks/useProjectTimeline.ts` |
-| | Alle Stellen die `FilmDropdown` ohne `initialData` mounten |
+|             | `src/hooks/useProjectTimeline.ts`                                      |
+|             | Alle Stellen die `FilmDropdown` ohne `initialData` mounten             |
 
 **Was tun:**
+
 - **`loadTimelineData()`-Methode komplett entfernen** aus FilmDropdown
 - FilmDropdown IMMER mit `initialData` aus `useProjectTimeline` versorgen
 - Wenn kein Cache vorhanden: Loading-Skeleton anzeigen während React Query den Ultra-Batch-Call macht
@@ -110,15 +113,16 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 2.1 — Memoized Subcomponents integrieren
 
-| | |
-|---|---|
-| **Aufwand** | 1 Tag |
-| **Impact** | ⬆️⬆️ Hoch (Re-Render-Reduktion) |
-| **Dateien** | `src/components/FilmDropdown.tsx` (gesamte Render-Logik) |
-| | `src/components/OptimizedDropdownComponents.tsx` (`MemoizedActHeader` etc.) |
-| | `src/components/FilmDropdown.OPTIMIZED_EXAMPLE.tsx` (Referenz) |
+|             |                                                                             |
+| ----------- | --------------------------------------------------------------------------- |
+| **Aufwand** | 1 Tag                                                                       |
+| **Impact**  | ⬆️⬆️ Hoch (Re-Render-Reduktion)                                             |
+| **Dateien** | `src/components/FilmDropdown.tsx` (gesamte Render-Logik)                    |
+|             | `src/components/OptimizedDropdownComponents.tsx` (`MemoizedActHeader` etc.) |
+|             | `src/components/FilmDropdown.OPTIMIZED_EXAMPLE.tsx` (Referenz)              |
 
 **Was tun:**
+
 - `MemoizedActHeader`, `MemoizedSequenceHeader`, `MemoizedSceneHeader` aus `OptimizedDropdownComponents.tsx` verwenden
 - Inline-JSX für Act/Sequence/Scene-Header durch die memoisierten Varianten ersetzen
 - Sicherstellen dass Callback-Props mit `useCallback` stabil sind (sonst bricht `React.memo`)
@@ -129,14 +133,15 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 2.2 — State-Updates batchen (useReducer)
 
-| | |
-|---|---|
-| **Aufwand** | 1 Tag |
-| **Impact** | ⬆️ Mittel (4 Re-Renders → 1) |
+|             |                                                                   |
+| ----------- | ----------------------------------------------------------------- |
+| **Aufwand** | 1 Tag                                                             |
+| **Impact**  | ⬆️ Mittel (4 Re-Renders → 1)                                      |
 | **Dateien** | `src/components/FilmDropdown.tsx` (`useState` x4, Zeilen 404–407) |
-| | Neuer Hook: `useTimelineReducer.ts` |
+|             | Neuer Hook: `useTimelineReducer.ts`                               |
 
 **Was tun:**
+
 - Die 4 separaten `useState`-Aufrufe (acts, sequences, scenes, shots) in einen `useReducer` zusammenführen
 - Dispatch-Action: `{ type: "SET_ALL", payload: { acts, sequences, scenes, shots } }`
 - `onDataChange`-Effect vereinfachen: nur bei Reducer-Dispatch triggern
@@ -147,13 +152,14 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 2.3 — DnD-Hooks nur für sichtbare Elemente
 
-| | |
-|---|---|
-| **Aufwand** | 1 Tag |
-| **Impact** | ⬆️ Mittel (3.336 → ~60 Monitore) |
+|             |                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| **Aufwand** | 1 Tag                                                                                        |
+| **Impact**  | ⬆️ Mittel (3.336 → ~60 Monitore)                                                             |
 | **Dateien** | `src/components/FilmDropdown.tsx` (`DraggableAct`/`Sequence`/`Scene`/`Shot`, Zeilen 160–350) |
 
 **Was tun:**
+
 - DnD-Wrapper nur rendern wenn das Parent-Element expandiert ist
 - Kollabierte Acts: keine `DraggableSequence`/`Scene`/`Shot`-Kinder mounten
 - Optional: DnD komplett deaktivieren und erst bei langem Press/Hover aktivieren
@@ -170,16 +176,17 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 3.1 — React.lazy für Heavy Components
 
-| | |
-|---|---|
-| **Aufwand** | 0,5 Tage |
-| **Impact** | ⬆️ Mittel (Bundle-Size) |
+|             |                                                           |
+| ----------- | --------------------------------------------------------- |
+| **Aufwand** | 0,5 Tage                                                  |
+| **Impact**  | ⬆️ Mittel (Bundle-Size)                                   |
 | **Dateien** | `src/components/FilmDropdown.tsx` (Imports, Zeilen 15–55) |
-| | `src/components/ShotCard.tsx` |
-| | `src/components/GifAnimationUploadDialog.tsx` |
-| | `src/components/TimelineNodeStatsDialog.tsx` |
+|             | `src/components/ShotCard.tsx`                             |
+|             | `src/components/GifAnimationUploadDialog.tsx`             |
+|             | `src/components/TimelineNodeStatsDialog.tsx`              |
 
 **Was tun:**
+
 - `const ShotCard = React.lazy(() => import('./ShotCard'))`
 - Gleiches für `GifAnimationUploadDialog` und `TimelineNodeStatsDialog`
 - `Suspense`-Boundary mit Skeleton-Fallback um die lazy-geladenen Bereiche
@@ -191,14 +198,15 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 3.2 — Skeleton-First Rendering
 
-| | |
-|---|---|
-| **Aufwand** | 0,5 Tage |
-| **Impact** | ⬆️⬆️ Hoch (Perceived Performance) |
+|             |                                                                                 |
+| ----------- | ------------------------------------------------------------------------------- |
+| **Aufwand** | 0,5 Tage                                                                        |
+| **Impact**  | ⬆️⬆️ Hoch (Perceived Performance)                                               |
 | **Dateien** | `src/components/OptimizedDropdownComponents.tsx` (`LoadingSkeleton` existiert!) |
-| | `src/components/FilmDropdown.tsx` (loading-State) |
+|             | `src/components/FilmDropdown.tsx` (loading-State)                               |
 
 **Was tun:**
+
 - Sofort 3 leere Act-Boxen (Skeleton) rendern während Daten laden
 - `LoadingSkeleton` aus `OptimizedDropdownComponents.tsx` nutzen (existiert bereits)
 - Staggered Animation: Skeletons erscheinen nacheinander (Delay 100/200/300ms)
@@ -216,15 +224,16 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 4.1 — Ebenenweises Progressive Loading
 
-| | |
-|---|---|
-| **Aufwand** | 2 Tage |
-| **Impact** | ⬆️⬆️⬆️ Sehr hoch (McMaster-Kernprinzip) |
-| **Dateien** | `src/hooks/useProjectTimeline.ts` |
-| | `src/lib/api/timeline-api-v2.ts` |
-| | Backend: Neue Endpoints oder Parameter |
+|             |                                         |
+| ----------- | --------------------------------------- |
+| **Aufwand** | 2 Tage                                  |
+| **Impact**  | ⬆️⬆️⬆️ Sehr hoch (McMaster-Kernprinzip) |
+| **Dateien** | `src/hooks/useProjectTimeline.ts`       |
+|             | `src/lib/api/timeline-api-v2.ts`        |
+|             | Backend: Neue Endpoints oder Parameter  |
 
 **Was tun:**
+
 - **Level 1:** Nur Acts laden (1 Request, ~3 Objekte, <50ms)
 - **Level 2:** Bei Act-Expand: Sequences dieser Act laden (~5 Objekte)
 - **Level 3:** Bei Sequence-Expand: Scenes dieser Sequence laden (~10 Objekte)
@@ -238,15 +247,16 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ### Task 4.2 — API Response-Caching (Edge/CDN)
 
-| | |
-|---|---|
-| **Aufwand** | 1–2 Tage |
-| **Impact** | ⬆️⬆️ Hoch (Netzwerk-Elimination) |
-| **Dateien** | Backend: Appwrite Function Headers |
-| | CDN/Edge Config (falls vorhanden) |
-| | `src/lib/api-client.ts` (Cache-Control Headers) |
+|             |                                                 |
+| ----------- | ----------------------------------------------- |
+| **Aufwand** | 1–2 Tage                                        |
+| **Impact**  | ⬆️⬆️ Hoch (Netzwerk-Elimination)                |
+| **Dateien** | Backend: Appwrite Function Headers              |
+|             | CDN/Edge Config (falls vorhanden)               |
+|             | `src/lib/api-client.ts` (Cache-Control Headers) |
 
 **Was tun:**
+
 - `Cache-Control: public, max-age=30, stale-while-revalidate=300` auf read-only Endpoints
 - ETag-basiertes Conditional Fetching (304 Not Modified)
 - Appwrite Function Responses mit kurzer TTL cachen
@@ -258,18 +268,18 @@ Die Analyse des Scriptony-Frontends zeigt, dass die langsamen Ladezeiten von Tim
 
 ## Zeitplan-Übersicht
 
-| Phase | Aufgabe | Dauer | Impact | Abhängigkeit |
-|-------|---------|-------|--------|-------------|
-| **Phase 1** | 1.1 Lazy Shots | 0,5 Tage | **Sehr hoch** | Keine |
-| | 1.2 Content-Exklusion | 0,5 Tage | **Hoch** | Keine |
-| | 1.3 Single Load-Path | 1 Tag | **Hoch** | Keine |
-| **Phase 2** | 2.1 Memoized Components | 1 Tag | **Hoch** | Phase 1 |
-| | 2.2 State Batching | 1 Tag | Mittel | 1.3 |
-| | 2.3 DnD Virtualisierung | 1 Tag | Mittel | 2.1 |
-| **Phase 3** | 3.1 Code-Splitting | 0,5 Tage | Mittel | Keine |
-| | 3.2 Skeleton UI | 0,5 Tage | **Hoch** | 1.3 |
-| **Phase 4** | 4.1 Progressive Loading | 2 Tage | **Sehr hoch** | Phase 1–3 |
-| | 4.2 Edge Caching | 1–2 Tage | **Hoch** | 4.1 |
+| Phase       | Aufgabe                 | Dauer    | Impact        | Abhängigkeit |
+| ----------- | ----------------------- | -------- | ------------- | ------------ |
+| **Phase 1** | 1.1 Lazy Shots          | 0,5 Tage | **Sehr hoch** | Keine        |
+|             | 1.2 Content-Exklusion   | 0,5 Tage | **Hoch**      | Keine        |
+|             | 1.3 Single Load-Path    | 1 Tag    | **Hoch**      | Keine        |
+| **Phase 2** | 2.1 Memoized Components | 1 Tag    | **Hoch**      | Phase 1      |
+|             | 2.2 State Batching      | 1 Tag    | Mittel        | 1.3          |
+|             | 2.3 DnD Virtualisierung | 1 Tag    | Mittel        | 2.1          |
+| **Phase 3** | 3.1 Code-Splitting      | 0,5 Tage | Mittel        | Keine        |
+|             | 3.2 Skeleton UI         | 0,5 Tage | **Hoch**      | 1.3          |
+| **Phase 4** | 4.1 Progressive Loading | 2 Tage   | **Sehr hoch** | Phase 1–3    |
+|             | 4.2 Edge Caching        | 1–2 Tage | **Hoch**      | 4.1          |
 
 > **Gesamtaufwand: 8–12 Arbeitstage**
 >

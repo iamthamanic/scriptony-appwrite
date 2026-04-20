@@ -20,6 +20,7 @@ import {
   mapCharacter,
   normalizeCharacterInput,
 } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -40,6 +41,9 @@ export default async function handler(
         return;
       }
 
+      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      if (!_project) return;
+
       const characters = await getCharactersByProject(projectId);
       sendJson(res, 200, { characters: characters.map(mapCharacter) });
       return;
@@ -54,6 +58,9 @@ export default async function handler(
         sendBadRequest(res, "project_id and name are required");
         return;
       }
+
+      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      if (!_project) return;
 
       const created = await requestGraphql<{
         insert_characters_one: Record<string, any>;

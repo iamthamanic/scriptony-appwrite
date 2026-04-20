@@ -1,0 +1,9 @@
+[allowlist]
+paths = [
+  '''infra/appwrite/\.env$''',
+  '''src/DEPLOY_BEATS_SYSTEM_COMPLETE\.md$''',
+]
+regexes = [
+  '''Authorization: Bearer YOUR_TOKEN''',
+]
+description = "Placeholder token in documentation curl examples"

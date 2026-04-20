@@ -10,10 +10,12 @@ import {
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
+  sendNotFound,
   sendServerError,
   sendUnauthorized,
 } from "../../../_shared/http";
-import { buildNodePath } from "../../../_shared/timeline";
+import { buildNodePath, getNodeById } from "../../../_shared/timeline";
+import { requireProjectAccess } from "../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -36,6 +38,19 @@ export default async function handler(
       sendBadRequest(res, "id is required");
       return;
     }
+
+    const node = await getNodeById(nodeId);
+    if (!node) {
+      sendNotFound(res, "Node not found");
+      return;
+    }
+
+    const _project = await requireProjectAccess(
+      String(node.project_id),
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
 
     const path = await buildNodePath(nodeId);
     sendJson(res, 200, { path });

@@ -279,11 +279,12 @@ Duration = 30,000 / 150 = 200 minutes (dynamic!)
 If user adds more text:
   New: 40,000 words
   Duration = 40,000 / 150 = 267 minutes
-  
+
   Timeline automatically extends! 🔄
 ```
 
-**Key Difference:** 
+**Key Difference:**
+
 - Film: Duration is **input** (fixed)
 - Book: Duration is **calculated** from content (dynamic)
 

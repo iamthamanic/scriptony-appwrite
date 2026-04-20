@@ -29,6 +29,7 @@ timelineWidthPx = 7200 × 2 = 14,400px
 ```
 
 **Beispiel:**
+
 - Projekt: 2 Stunden (7200s)
 - Viewport: 1200px
 - Zoom = 0 → pxPerSec = 2
@@ -66,6 +67,7 @@ timelineWidthPx = 7200 × 0.167 = 1200px
 ```
 
 **Beispiel:**
+
 - Projekt: 2 Stunden (7200s)
 - Viewport: 1200px
 - fitPxPerSec = 1200 / 7200 = **0.167 px/s**
@@ -82,8 +84,12 @@ timelineWidthPx = 7200 × 0.167 = 1200px
 #### `getFitPxPerSec()`
 
 ```typescript
-function getFitPxPerSec(totalDurationSec: number, viewportWidthPx: number): number {
-  if (totalDurationSec <= 0 || viewportWidthPx <= 0) return FALLBACK_MIN_PX_PER_SEC;
+function getFitPxPerSec(
+  totalDurationSec: number,
+  viewportWidthPx: number,
+): number {
+  if (totalDurationSec <= 0 || viewportWidthPx <= 0)
+    return FALLBACK_MIN_PX_PER_SEC;
   return viewportWidthPx / totalDurationSec;
 }
 ```
@@ -150,10 +156,10 @@ const [fitPxPerSec, setFitPxPerSec] = useState(FALLBACK_MIN_PX_PER_SEC);
 // 🎯 UPDATE FIT PX PER SEC: Recalculate when viewport or duration changes
 useEffect(() => {
   if (!viewportWidth || totalDurationSec <= 0) return;
-  
+
   const dynamicFitPx = getFitPxPerSec(totalDurationSec, viewportWidth);
   setFitPxPerSec(dynamicFitPx);
-  
+
   // Update current pxPerSec based on current zoom and new fitPxPerSec
   if (initialZoomSetRef.current) {
     const newPxPerSec = pxPerSecFromZoom(zoom, dynamicFitPx);
@@ -162,7 +168,8 @@ useEffect(() => {
 }, [viewportWidth, totalDurationSec]);
 ```
 
-**Zweck:** 
+**Zweck:**
+
 - Berechnet `fitPxPerSec` neu, wenn sich Viewport oder Projektdauer ändert
 - Aktualisiert `pxPerSec` basierend auf dem aktuellen Zoom-Level
 
@@ -184,7 +191,8 @@ const initialZoom = 0; // Start bei zoom = 0 (gesamte Timeline)
 const initialPxPerSec = pxPerSecFromZoom(initialZoom, dynamicFitPx);
 ```
 
-**Änderung:** 
+**Änderung:**
+
 - Keine Clamp-Operation mehr auf festes Minimum
 - Start immer bei `zoom = 0` (gesamte Timeline sichtbar)
 
@@ -342,18 +350,18 @@ pxPerSec = fitPxPerSec × (MAX_PX_PER_SEC / fitPxPerSec)^1
 
 ## 📐 Zoom-Range Tabelle
 
-| Projekt-Dauer | fitPxPerSec | Zoom Range | Faktor |
-|---------------|-------------|------------|--------|
-| 30s | 40 px/s | `40 - 200` | 5x |
-| 1min (60s) | 20 px/s | `20 - 200` | 10x |
-| 5min (300s) | 4 px/s | `4 - 200` | 50x |
-| 10min (600s) | 2 px/s | `2 - 200` | 100x |
-| 30min (1800s) | 0.667 px/s | `0.667 - 200` | 300x |
-| 1h (3600s) | 0.333 px/s | `0.333 - 200` | 600x |
-| 2h (7200s) | 0.167 px/s | `0.167 - 200` | 1200x |
-| 10h (36000s) | 0.0333 px/s | `0.0333 - 200` | 6000x |
+| Projekt-Dauer | fitPxPerSec | Zoom Range     | Faktor |
+| ------------- | ----------- | -------------- | ------ |
+| 30s           | 40 px/s     | `40 - 200`     | 5x     |
+| 1min (60s)    | 20 px/s     | `20 - 200`     | 10x    |
+| 5min (300s)   | 4 px/s      | `4 - 200`      | 50x    |
+| 10min (600s)  | 2 px/s      | `2 - 200`      | 100x   |
+| 30min (1800s) | 0.667 px/s  | `0.667 - 200`  | 300x   |
+| 1h (3600s)    | 0.333 px/s  | `0.333 - 200`  | 600x   |
+| 2h (7200s)    | 0.167 px/s  | `0.167 - 200`  | 1200x  |
+| 10h (36000s)  | 0.0333 px/s | `0.0333 - 200` | 6000x  |
 
-*Viewport-Breite: 1200px*
+_Viewport-Breite: 1200px_
 
 **Beobachtung:** Je länger das Projekt, desto größer der Zoom-Range-Faktor!
 
@@ -372,6 +380,7 @@ User müssen nicht scrollen, um zu wissen, wie lang ihr Projekt ist.
 ### 3. ✅ Dynamische Anpassung
 
 Bei Viewport-Resize bleibt das Verhalten konsistent:
+
 - Zoom = 0 → gesamte Timeline passt
 - Zoom = 1 → maximaler Detail-View
 
@@ -404,7 +413,8 @@ Lösung: In diesem Fall könnten wir MAX_PX_PER_SEC anpassen oder
 das Verhalten akzeptieren (Timeline ist kleiner als Viewport).
 ```
 
-**Aktuelles Verhalten:** 
+**Aktuelles Verhalten:**
+
 - `pxPerSec` kann theoretisch > 200 werden
 - Timeline ist kleiner als Viewport (zentriert)
 - **Dies ist akzeptabel** - sehr kurze Projekte sind selten
@@ -412,8 +422,12 @@ das Verhalten akzeptieren (Timeline ist kleiner als Viewport).
 **Alternativ-Lösung (nicht implementiert):**
 
 ```typescript
-function getFitPxPerSec(totalDurationSec: number, viewportWidthPx: number): number {
-  if (totalDurationSec <= 0 || viewportWidthPx <= 0) return FALLBACK_MIN_PX_PER_SEC;
+function getFitPxPerSec(
+  totalDurationSec: number,
+  viewportWidthPx: number,
+): number {
+  if (totalDurationSec <= 0 || viewportWidthPx <= 0)
+    return FALLBACK_MIN_PX_PER_SEC;
   const fit = viewportWidthPx / totalDurationSec;
   // Optional: Clamp auf MAX_PX_PER_SEC
   return Math.min(fit, MAX_PX_PER_SEC);
@@ -426,10 +440,10 @@ function getFitPxPerSec(totalDurationSec: number, viewportWidthPx: number): numb
 // Der neue Effect handled dies automatisch:
 useEffect(() => {
   if (!viewportWidth || totalDurationSec <= 0) return;
-  
+
   const dynamicFitPx = getFitPxPerSec(totalDurationSec, viewportWidth);
   setFitPxPerSec(dynamicFitPx);
-  
+
   // Update pxPerSec mit neuem fitPxPerSec
   if (initialZoomSetRef.current) {
     const newPxPerSec = pxPerSecFromZoom(zoom, dynamicFitPx);
@@ -439,6 +453,7 @@ useEffect(() => {
 ```
 
 **Verhalten:**
+
 - Bei Resize: `fitPxPerSec` wird neu berechnet
 - Aktueller Zoom-Level bleibt gleich
 - `pxPerSec` passt sich an neues `fitPxPerSec` an
@@ -448,15 +463,15 @@ useEffect(() => {
 
 ## 📝 Code-Locations
 
-| Änderung | Datei | Zeilen |
-|----------|-------|--------|
-| `getFitPxPerSec()` | `VideoEditorTimeline.tsx` | ~53-56 |
-| `pxPerSecFromZoom()` aktualisiert | `VideoEditorTimeline.tsx` | ~61-65 |
-| `zoomFromPxPerSec()` aktualisiert | `VideoEditorTimeline.tsx` | ~68-72 |
-| `fitPxPerSec` State | `VideoEditorTimeline.tsx` | ~138 |
-| Update Effect | `VideoEditorTimeline.tsx` | ~489-500 |
-| Initial Zoom Effect | `VideoEditorTimeline.tsx` | ~503-525 |
-| Zoom Handler | `VideoEditorTimeline.tsx` | ~639-650 |
+| Änderung                          | Datei                     | Zeilen   |
+| --------------------------------- | ------------------------- | -------- |
+| `getFitPxPerSec()`                | `VideoEditorTimeline.tsx` | ~53-56   |
+| `pxPerSecFromZoom()` aktualisiert | `VideoEditorTimeline.tsx` | ~61-65   |
+| `zoomFromPxPerSec()` aktualisiert | `VideoEditorTimeline.tsx` | ~68-72   |
+| `fitPxPerSec` State               | `VideoEditorTimeline.tsx` | ~138     |
+| Update Effect                     | `VideoEditorTimeline.tsx` | ~489-500 |
+| Initial Zoom Effect               | `VideoEditorTimeline.tsx` | ~503-525 |
+| Zoom Handler                      | `VideoEditorTimeline.tsx` | ~639-650 |
 
 ---
 

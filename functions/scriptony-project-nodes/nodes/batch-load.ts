@@ -14,6 +14,7 @@ import {
   sendUnauthorized,
 } from "../../_shared/http";
 import { getAllProjectNodes, mapNode } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -38,6 +39,9 @@ export default async function handler(
       sendBadRequest(res, "project_id is required");
       return;
     }
+
+    const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+    if (!_project) return;
 
     const nodes = (await getAllProjectNodes(projectId))
       .map(mapNode)

@@ -50,6 +50,7 @@ export function useDebouncedSave(options: {
 ```
 
 **Key Features:**
+
 - ✅ **Queue System**: Verhindert Race Conditions
 - ✅ **Status Tracking**: Real-time UI feedback
 - ✅ **Auto-Retry**: Optional bei Fehlern
@@ -77,6 +78,7 @@ export function useEditorSave(options: {
 ```
 
 **Integration:**
+
 ```typescript
 // In Component
 const { handleContentChange, saveStatus } = useEditorSave({
@@ -84,7 +86,7 @@ const { handleContentChange, saveStatus } = useEditorSave({
   getAccessToken,
   updateAPI: TimelineAPIV2.updateNode,
   onOptimisticUpdate: (id, content) => {
-    setScenes(scenes => scenes.map(sc => 
+    setScenes(scenes => scenes.map(sc =>
       sc.id === id ? { ...sc, content } : sc
     ));
   },
@@ -105,9 +107,7 @@ const { handleContentChange, saveStatus } = useEditorSave({
 // /lib/api/timeline-api-v2.ts
 
 // Load structure ONLY (no content)
-export async function loadTimelineStructure(
-  projectId: string
-): Promise<{
+export async function loadTimelineStructure(projectId: string): Promise<{
   acts: TimelineNode[];
   sequences: TimelineNode[];
   scenes: TimelineNode[];
@@ -121,7 +121,7 @@ export async function loadTimelineStructure(
 
 // Load content on-demand
 export async function fetchNodeContent(
-  nodeId: string
+  nodeId: string,
 ): Promise<{ content: any; wordCount?: number }> {
   const node = await getNode(nodeId);
   return {
@@ -132,6 +132,7 @@ export async function fetchNodeContent(
 ```
 
 **Usage Pattern:**
+
 ```typescript
 // 1. Initial: Load structure
 const { scenes } = await loadTimelineStructure(projectId);
@@ -139,9 +140,9 @@ const { scenes } = await loadTimelineStructure(projectId);
 
 // 2. On Expand: Load content
 const { content } = await fetchNodeContent(sceneId);
-setScenes(scenes => scenes.map(sc =>
-  sc.id === sceneId ? { ...sc, content } : sc
-));
+setScenes((scenes) =>
+  scenes.map((sc) => (sc.id === sceneId ? { ...sc, content } : sc)),
+);
 ```
 
 ---
@@ -152,13 +153,14 @@ setScenes(scenes => scenes.map(sc =>
 
 ```tsx
 // /components/SaveStatusBadge.tsx
-<SaveStatusBadge 
-  status="saving"     // idle | saving | saved | error
+<SaveStatusBadge
+  status="saving" // idle | saving | saved | error
   lastSaved={new Date()}
 />
 ```
 
 **States:**
+
 - 🔄 `saving`: Grau, Spinner, "Speichert..."
 - ✅ `saved`: Grün, Check, "Gespeichert • vor 3s"
 - ❌ `error`: Rot, Alert, "Fehler"
@@ -182,14 +184,15 @@ setScenes(scenes => scenes.map(sc =>
 // Measured with Performance Observer
 const observer = new PerformanceObserver((list) => {
   for (const entry of list.getEntries()) {
-    if (entry.name === 'keystroke') {
-      console.log('Input Latency:', entry.duration); // ~5ms ✅
+    if (entry.name === "keystroke") {
+      console.log("Input Latency:", entry.duration); // ~5ms ✅
     }
   }
 });
 ```
 
 **Results:**
+
 - Keystroke → UI Update: **~5ms** (Target: < 16ms) ✅
 - Optimistic Update: **~10ms** (Target: < 50ms) ✅
 
@@ -198,13 +201,14 @@ const observer = new PerformanceObserver((list) => {
 ### Save Performance (SLA: < 2s)
 
 ```typescript
-performance.mark('save-start');
+performance.mark("save-start");
 await updateAPI(id, content, token);
-performance.mark('save-end');
-performance.measure('save-duration', 'save-start', 'save-end');
+performance.mark("save-end");
+performance.measure("save-duration", "save-start", "save-end");
 ```
 
 **Results:**
+
 - Debounce Delay: **1000ms** (Fixed)
 - API Call Duration: **~300-500ms** (Target: < 2s) ✅
 - Total: **~1.5s** ✅
@@ -214,6 +218,7 @@ performance.measure('save-duration', 'save-start', 'save-end');
 ### Memory Usage
 
 **Vorher:**
+
 ```
 600-Seiten-Buch:
 - 200 Sections × 750 Words × 5 Bytes = 750KB
@@ -222,6 +227,7 @@ performance.measure('save-duration', 'save-start', 'save-end');
 ```
 
 **Nachher (Lazy Loading):**
+
 ```
 Initial Load:
 - 200 Sections × (Title + Metadata) = ~50KB
@@ -253,7 +259,7 @@ const [loadingContent, setLoadingContent] = useState<Set<string>>(new Set());
   getAccessToken={getAccessToken}
   updateAPI={TimelineAPIV2.updateNode}
   onOptimisticUpdate={(id, content) => {
-    setScenes(scenes => scenes.map(sc => 
+    setScenes(scenes => scenes.map(sc =>
       sc.id === id ? { ...sc, content } : sc
     ));
   }}
@@ -282,7 +288,7 @@ Same pattern as BookDropdown:
   getAccessToken={getAccessToken}
   updateAPI={ShotsAPI.updateShot}
   onOptimisticUpdate={(id, content) => {
-    setShots(shots => shots.map(sh => 
+    setShots(shots => shots.map(sh =>
       sh.id === id ? { ...sh, content } : sh
     ));
   }}
@@ -304,6 +310,7 @@ const { save } = useDebouncedSave({
 ```
 
 **Recommended Values:**
+
 - **1000ms**: Books, long-form content (current)
 - **500ms**: Quick notes, chat messages
 - **2000ms**: Very large documents
@@ -319,9 +326,9 @@ const { save } = useDebouncedSave({
 
 const shouldLoadContent = (scene: Scene) => {
   return (
-    expandedScenes.has(scene.id) &&  // Expanded
-    !scene.content &&                 // Not loaded
-    !loadingContent.has(scene.id)    // Not loading
+    expandedScenes.has(scene.id) && // Expanded
+    !scene.content && // Not loaded
+    !loadingContent.has(scene.id) // Not loading
   );
 };
 
@@ -341,20 +348,20 @@ if (shouldLoadContent(scene)) {
 
 export const WRITE_LAYER_SLAS = {
   INPUT_LATENCY: {
-    target: 16,  // 60fps
-    metric: 'keystroke-latency',
+    target: 16, // 60fps
+    metric: "keystroke-latency",
   },
   OPTIMISTIC_UPDATE: {
     target: 50,
-    metric: 'optimistic-update-duration',
+    metric: "optimistic-update-duration",
   },
   SAVE_DURATION: {
     target: 2000,
-    metric: 'save-duration',
+    metric: "save-duration",
   },
   DEBOUNCE_CONSISTENCY: {
     target: 1000,
-    metric: 'debounce-actual',
+    metric: "debounce-actual",
   },
 };
 ```
@@ -391,15 +398,15 @@ export const WRITE_LAYER_SLAS = {
 const { save, status } = useDebouncedSave({
   onSave: async (data) => {
     const response = await api.update(data);
-    if (!response.ok) throw new Error('Save failed');
+    if (!response.ok) throw new Error("Save failed");
   },
   onError: (error) => {
     // 1. Log error
-    console.error('[useDebouncedSave] Save failed:', error);
-    
+    console.error("[useDebouncedSave] Save failed:", error);
+
     // 2. Show toast
-    toast.error('Speichern fehlgeschlagen');
-    
+    toast.error("Speichern fehlgeschlagen");
+
     // 3. Optionally retry or reload
     if (shouldRetry(error)) {
       setTimeout(() => save(data), 3000);
@@ -415,23 +422,23 @@ const { save, status } = useDebouncedSave({
 
 ```typescript
 const loadSectionContent = async (id: string) => {
-  setLoadingContent(prev => new Set(prev).add(id));
-  
+  setLoadingContent((prev) => new Set(prev).add(id));
+
   try {
     const { content } = await fetchNodeContent(id);
-    setScenes(scenes => scenes.map(sc =>
-      sc.id === id ? { ...sc, content } : sc
-    ));
+    setScenes((scenes) =>
+      scenes.map((sc) => (sc.id === id ? { ...sc, content } : sc)),
+    );
   } catch (error) {
-    console.error('[BookDropdown] Failed to load content:', error);
-    toast.error('Inhalt konnte nicht geladen werden');
-    
+    console.error("[BookDropdown] Failed to load content:", error);
+    toast.error("Inhalt konnte nicht geladen werden");
+
     // Show error state in UI
-    setScenes(scenes => scenes.map(sc =>
-      sc.id === id ? { ...sc, contentError: true } : sc
-    ));
+    setScenes((scenes) =>
+      scenes.map((sc) => (sc.id === id ? { ...sc, contentError: true } : sc)),
+    );
   } finally {
-    setLoadingContent(prev => {
+    setLoadingContent((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
@@ -486,7 +493,7 @@ setInterval(() => {
 // Includes <SaveStatusBadge /> automatically
 
 // ❌ BAD: Silent saves
-<RichTextEditorModal 
+<RichTextEditorModal
   onChange={async (content) => {
     await api.update(content);
     // User has no idea if saved!
@@ -509,7 +516,7 @@ const handleExpand = (id) => {
 
 // ❌ BAD: Load all content eagerly
 useEffect(() => {
-  sections.forEach(s => loadContent(s.id));
+  sections.forEach((s) => loadContent(s.id));
 }, [sections]);
 ```
 
@@ -538,11 +545,11 @@ await db.content.put(id, freshContent);
 const { save } = useDebouncedSave({
   onSave: async (data) => {
     await api.update(data);
-    ws.emit('content-changed', { id, data });
+    ws.emit("content-changed", { id, data });
   },
 });
 
-ws.on('content-changed', ({ id, data }) => {
+ws.on("content-changed", ({ id, data }) => {
   if (id !== currentSceneId) {
     updateContent(id, data);
   }
@@ -561,7 +568,7 @@ const { save } = useDebouncedSave({
       content: data,
       version: currentVersion + 1,
     });
-    
+
     if (result.conflict) {
       showConflictDialog(result.serverVersion, data);
     }
@@ -590,6 +597,7 @@ Wenn du einen neuen Editor hinzufügst:
 ## 🎉 Zusammenfassung
 
 **Write-Layer Performance ist jetzt:**
+
 - ✅ **Debounced**: 95% weniger API Calls
 - ✅ **Optimistic**: Instant UI Updates
 - ✅ **Lazy**: 10x schneller Initial Load
@@ -597,6 +605,7 @@ Wenn du einen neuen Editor hinzufügst:
 - ✅ **User-Friendly**: Klares Status Feedback
 
 **Das Performance-System ist komplett:**
+
 ```
 Read Layer  (✅) + Write Layer (✅) = 🚀 BLAZINGLY FAST
 ```

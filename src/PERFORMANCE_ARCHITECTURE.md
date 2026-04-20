@@ -230,6 +230,7 @@ perfMonitor.measure(id, category, operation, fn)
 ## Cache Invalidation Strategies
 
 ### Strategy 1: Immediate Invalidation (Current)
+
 ```
 USER UPDATES DATA
    ↓
@@ -245,6 +246,7 @@ Next load will hit API (fresh data)
 ```
 
 ### Strategy 2: Smart Invalidation (Future)
+
 ```
 USER UPDATES DATA
    ↓
@@ -259,6 +261,7 @@ Failure → Rollback cache to old data
 ```
 
 ### Strategy 3: Prefix Invalidation
+
 ```
 DELETE PROJECT
    ↓
@@ -417,6 +420,7 @@ Updates every 2 seconds (real-time monitoring)
 **🎯 Architecture Goal:**
 
 Every layer is optimized for speed:
+
 - **UI Layer**: Instant renders with cached data
 - **Performance Layer**: < 50ms overhead
 - **API Layer**: Only hit when absolutely necessary

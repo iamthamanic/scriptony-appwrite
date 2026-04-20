@@ -16,7 +16,7 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../_shared/http";
-import { normalizeBeatInput } from "../../_shared/scriptony";
+import { normalizeBeatInput, requireProjectAccess } from "../../_shared/scriptony";
 
 function mapBeatForClient(
   row: Record<string, any> | null,
@@ -81,6 +81,13 @@ export default async function handler(
       sendNotFound(res, "Beat not found");
       return;
     }
+
+    const _project = await requireProjectAccess(
+      String(beat.project_id),
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
 
     if (req.method === "PATCH") {
       const body = await readJsonBody<Record<string, any>>(req);

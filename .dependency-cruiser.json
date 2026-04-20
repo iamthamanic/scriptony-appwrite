@@ -1,0 +1,11 @@
+{
+  "forbidden": [
+    {
+      "name": "no-circular",
+      "severity": "error",
+      "comment": "Prevent circular dependencies",
+      "from": { "path": "^src/" },
+      "to": { "circular": true }
+    }
+  ]
+}

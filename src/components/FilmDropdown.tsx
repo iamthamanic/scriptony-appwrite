@@ -1,63 +1,73 @@
 /**
  * 🎬 FILM DROPDOWN - Hierarchical Structure View
- * 
+ *
  * Acts > Sequences > Scenes > Shots (Dropdown/Collapsible View)
  * Minimalistic inline editing with clean collapsed/expanded states
  * Drag & Drop: Within containers + Cross-container
  * Optimistic UI + Performance optimizations
- * 
+ *
  * ⚡ PERFORMANCE FIX (2025-11-02):
  * - Removed layout animation from motion.div (conflicts with Collapsible)
  * - Reduced animation complexity for smoother expand/collapse
  * - overflow-hidden on Collapsible prevents layout shift
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, MoreVertical, Copy, Edit, Info } from 'lucide-react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { cn } from './ui/utils';
-import { useIsMobile } from './ui/use-mobile';
-import { pushAppUndoAction } from '../lib/undo-manager';
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  ChevronDown,
+  ChevronRight,
+  MoreVertical,
+  Copy,
+  Edit,
+  Info,
+} from "lucide-react";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { cn } from "./ui/utils";
+import { useIsMobile } from "./ui/use-mobile";
+import { pushAppUndoAction } from "../lib/undo-manager";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+} from "./ui/dropdown-menu";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from './ui/collapsible';
-import { ShotCard } from './ShotCard';
-import { TimelineNodeStatsDialog } from './TimelineNodeStatsDialog';
-import { FilmDropdownMobile } from './FilmDropdownMobile';
-import { useAuth } from '../hooks/useAuth';
-import { useOptionalTimelineState } from '../contexts/TimelineStateContext';
-import * as ShotsAPI from '../lib/api/shots-api';
-import { getCharacters as getTimelineCharacters } from '../lib/api/characters-api';
-import { narrativeStructureInitUiHint } from '../lib/narrative-structure-init';
+} from "./ui/collapsible";
+import { ShotCard } from "./ShotCard";
+import { TimelineNodeStatsDialog } from "./TimelineNodeStatsDialog";
+import { FilmDropdownMobile } from "./FilmDropdownMobile";
+import { useAuth } from "../hooks/useAuth";
+import { useOptionalTimelineState } from "../contexts/TimelineStateContext";
+import * as ShotsAPI from "../lib/api/shots-api";
+import { getCharacters as getTimelineCharacters } from "../lib/api/characters-api";
+import { narrativeStructureInitUiHint } from "../lib/narrative-structure-init";
 import {
   validateImageFile,
   needsGifUserConfirmation,
   type ImageUploadGifMode,
-} from '../lib/api/image-upload-api';
-import { STORAGE_CONFIG } from '../lib/config';
-import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
-import * as TimelineAPI from '../lib/api/timeline-api';
-import type { Act, Sequence, Scene, Shot, Character, Clip } from '../lib/types';
-import { toast } from 'sonner';
-import { perfMonitor } from '../lib/performance-monitor';
-import { cacheManager } from '../lib/cache-manager';
-import { queryKeys } from '../lib/react-query';
-import { useOptimizedFilmDropdown } from '../hooks/useOptimizedFilmDropdown';
-import { LoadingSkeleton } from './OptimizedDropdownComponents';
-import { loadProjectTimelineBundle } from '../lib/timeline-map';
+} from "../lib/api/image-upload-api";
+import { STORAGE_CONFIG } from "../lib/config";
+import { GifAnimationUploadDialog } from "./GifAnimationUploadDialog";
+import * as TimelineAPI from "../lib/api/timeline-api";
+import type { Act, Sequence, Scene, Shot, Character, Clip } from "../lib/types";
+import { toast } from "sonner";
+import { perfMonitor } from "../lib/performance-monitor";
+import { cacheManager } from "../lib/cache-manager";
+import { queryKeys } from "../lib/react-query";
+import { useOptimizedFilmDropdown } from "../hooks/useOptimizedFilmDropdown";
+import { LoadingSkeleton } from "./OptimizedDropdownComponents";
+import { loadProjectTimelineBundle } from "../lib/timeline-map";
 
 // Timeline Cache Data Structure
 export interface TimelineData {
@@ -93,10 +103,10 @@ interface FilmDropdownProps {
 
 // DnD Types
 const ItemTypes = {
-  ACT: 'act',
-  SEQUENCE: 'sequence',
-  SCENE: 'scene',
-  SHOT: 'shot',
+  ACT: "act",
+  SEQUENCE: "sequence",
+  SCENE: "scene",
+  SHOT: "shot",
 };
 
 // =====================================================
@@ -108,10 +118,16 @@ interface DropZoneProps {
   index: number;
   onDrop: (draggedItemId: string, targetIndex: number) => void;
   label: string;
-  height?: 'act' | 'sequence' | 'scene' | 'shot';
+  height?: "act" | "sequence" | "scene" | "shot";
 }
 
-function DropZone({ type, index, onDrop, label, height = 'act' }: DropZoneProps) {
+function DropZone({
+  type,
+  index,
+  onDrop,
+  label,
+  height = "act",
+}: DropZoneProps) {
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: type,
     drop: (item: { id: string; index: number }) => {
@@ -125,17 +141,17 @@ function DropZone({ type, index, onDrop, label, height = 'act' }: DropZoneProps)
 
   // Höhe basierend auf Item-Typ (eingeklappt)
   const heightClass = {
-    act: 'h-20',      // Act Header Höhe
-    sequence: 'h-14', // Sequence Header Höhe
-    scene: 'h-12',    // Scene Header Höhe
-    shot: 'h-24',     // Shot Card Höhe
+    act: "h-20", // Act Header Höhe
+    sequence: "h-14", // Sequence Header Höhe
+    scene: "h-12", // Scene Header Höhe
+    shot: "h-24", // Shot Card Höhe
   }[height];
 
   const normalHeight = {
-    act: 'h-8',       // Basis-Höhe wenn nicht gehovered
-    sequence: 'h-6',
-    scene: 'h-6',
-    shot: 'h-8',
+    act: "h-8", // Basis-Höhe wenn nicht gehovered
+    sequence: "h-6",
+    scene: "h-6",
+    shot: "h-8",
   }[height];
 
   return (
@@ -144,17 +160,19 @@ function DropZone({ type, index, onDrop, label, height = 'act' }: DropZoneProps)
         drop(el);
       }}
       className={cn(
-        'transition-all duration-100 flex items-center justify-center my-1',
-        canDrop ? (isOver ? heightClass : normalHeight) : 'h-1'
+        "transition-all duration-100 flex items-center justify-center my-1",
+        canDrop ? (isOver ? heightClass : normalHeight) : "h-1",
       )}
     >
       {canDrop && (
-        <div className={cn(
-          'w-full h-full rounded-lg flex items-center justify-center transition-all duration-100',
-          isOver 
-            ? 'border-2 border-dashed border-violet-400 dark:border-violet-500 bg-violet-50/60 dark:bg-violet-900/20'
-            : 'border border-dashed border-gray-300/50 dark:border-gray-600/30 bg-transparent'
-        )}>
+        <div
+          className={cn(
+            "w-full h-full rounded-lg flex items-center justify-center transition-all duration-100",
+            isOver
+              ? "border-2 border-dashed border-violet-400 dark:border-violet-500 bg-violet-50/60 dark:bg-violet-900/20"
+              : "border border-dashed border-gray-300/50 dark:border-gray-600/30 bg-transparent",
+          )}
+        >
           {isOver && (
             <span className="text-violet-700 dark:text-violet-300 text-sm font-medium">
               ↓ {label} hier einfügen
@@ -205,13 +223,13 @@ function DraggableAct({ act, index, onSwap, children }: DraggableActProps) {
       }}
       className={cn(
         "relative transition-opacity duration-150",
-        isDragging && "opacity-40 scale-[0.98]"
+        isDragging && "opacity-40 scale-[0.98]",
       )}
     >
       {isOver && !isDragging && (
         <div className="absolute -inset-0.5 border-2 border-blue-400 dark:border-blue-500 bg-blue-50/20 dark:bg-blue-900/10 rounded-lg pointer-events-none z-10" />
       )}
-      
+
       {children}
     </div>
   );
@@ -228,7 +246,12 @@ interface DraggableSequenceProps {
   children: React.ReactNode;
 }
 
-function DraggableSequence({ sequence, index, onSwap, children }: DraggableSequenceProps) {
+function DraggableSequence({
+  sequence,
+  index,
+  onSwap,
+  children,
+}: DraggableSequenceProps) {
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.SEQUENCE,
     item: { id: sequence.id, index },
@@ -256,13 +279,13 @@ function DraggableSequence({ sequence, index, onSwap, children }: DraggableSeque
       }}
       className={cn(
         "relative transition-opacity duration-150",
-        isDragging && "opacity-40 scale-[0.98]"
+        isDragging && "opacity-40 scale-[0.98]",
       )}
     >
       {isOver && !isDragging && (
         <div className="absolute -inset-0.5 border-2 border-green-400 dark:border-green-500 bg-green-50/20 dark:bg-green-900/10 rounded-lg pointer-events-none z-10" />
       )}
-      
+
       {children}
     </div>
   );
@@ -279,7 +302,12 @@ interface DraggableSceneProps {
   children: React.ReactNode;
 }
 
-function DraggableScene({ scene, index, onSwap, children }: DraggableSceneProps) {
+function DraggableScene({
+  scene,
+  index,
+  onSwap,
+  children,
+}: DraggableSceneProps) {
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.SCENE,
     item: { id: scene.id, index },
@@ -307,13 +335,13 @@ function DraggableScene({ scene, index, onSwap, children }: DraggableSceneProps)
       }}
       className={cn(
         "relative transition-opacity duration-150",
-        isDragging && "opacity-40 scale-[0.98]"
+        isDragging && "opacity-40 scale-[0.98]",
       )}
     >
       {isOver && !isDragging && (
         <div className="absolute -inset-0.5 border-2 border-orange-400 dark:border-orange-500 bg-orange-50/20 dark:bg-orange-900/10 rounded-lg pointer-events-none z-10" />
       )}
-      
+
       {children}
     </div>
   );
@@ -358,13 +386,13 @@ function DraggableShot({ shot, index, onSwap, children }: DraggableShotProps) {
       }}
       className={cn(
         "relative transition-opacity duration-150",
-        isDragging && "opacity-40 scale-[0.98]"
+        isDragging && "opacity-40 scale-[0.98]",
       )}
     >
       {isOver && !isDragging && (
         <div className="absolute -inset-0.5 border-2 border-red-400 dark:border-red-500 bg-red-50/20 dark:bg-red-900/10 rounded-lg pointer-events-none z-10" />
       )}
-      
+
       {children}
     </div>
   );
@@ -374,9 +402,9 @@ function DraggableShot({ shot, index, onSwap, children }: DraggableShotProps) {
 // MAIN COMPONENT
 // =====================================================
 
-export function FilmDropdown({ 
+export function FilmDropdown({
   projectId,
-  projectType = 'film', // Default to film if not provided
+  projectType = "film", // Default to film if not provided
   characters: externalCharacters,
   initialData,
   onDataChange,
@@ -390,57 +418,61 @@ export function FilmDropdown({
   const isMobile = useIsMobile();
 
   const invalidateTimelineQueries = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.timeline.byProject(projectId) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.timeline.byProject(projectId),
+    });
   };
 
   const narrativeInitHint = useMemo(
     () => narrativeStructureInitUiHint(narrativeStructure),
-    [narrativeStructure]
+    [narrativeStructure],
   );
 
   const narrativeEmptyStateParagraph = useMemo(() => {
     switch (narrativeInitHint.kind) {
-      case 'ready':
-        return 'Noch keine Struktur. Ebene hinzufügen oder die gewählte Narrativ-Vorlage anlegen.';
-      case 'need_structure':
-        return 'Noch keine Struktur. Wähle zuerst unter Projekt-Informationen eine Narrativ-Struktur, oder füge manuell eine Ebene hinzu.';
-      case 'custom_structure':
-        return 'Noch keine Struktur. Für eine individuelle Narrativ-Struktur legst du Ebenen manuell an.';
+      case "ready":
+        return "Noch keine Struktur. Ebene hinzufügen oder die gewählte Narrativ-Vorlage anlegen.";
+      case "need_structure":
+        return "Noch keine Struktur. Wähle zuerst unter Projekt-Informationen eine Narrativ-Struktur, oder füge manuell eine Ebene hinzu.";
+      case "custom_structure":
+        return "Noch keine Struktur. Für eine individuelle Narrativ-Struktur legst du Ebenen manuell an.";
       default:
-        return 'Noch keine Struktur. Für diese Option gibt es keine automatische Vorlage — bitte Ebenen manuell hinzufügen.';
+        return "Noch keine Struktur. Für diese Option gibt es keine automatische Vorlage — bitte Ebenen manuell hinzufügen.";
     }
   }, [narrativeInitHint]);
 
   const narrativeInitButtonLabel =
-    narrativeInitHint.kind === 'ready' ? narrativeInitHint.shortLabel : 'Struktur aus Vorlage anlegen';
+    narrativeInitHint.kind === "ready"
+      ? narrativeInitHint.shortLabel
+      : "Struktur aus Vorlage anlegen";
 
   // 🎯 DYNAMIC LABELS based on project type
   const getLabels = () => {
-    if (projectType === 'book') {
+    if (projectType === "book") {
       return {
-        sequence: 'Kapitel',
-        sequences: 'Kapitel',
-        addSequence: 'Kapitel hinzufügen',
-        scene: 'Abschnitt',
-        scenes: 'Abschnitte',
-        addScene: 'Abschnitt hinzufügen',
-        shot: 'Shot', // Not used for books
-        shots: 'Shots',
-        addShot: 'Shot hinzufügen',
+        sequence: "Kapitel",
+        sequences: "Kapitel",
+        addSequence: "Kapitel hinzufügen",
+        scene: "Abschnitt",
+        scenes: "Abschnitte",
+        addScene: "Abschnitt hinzufügen",
+        shot: "Shot", // Not used for books
+        shots: "Shots",
+        addShot: "Shot hinzufügen",
         showShots: false, // Hide shots for books
       };
     }
     // Default: film/series/audio
     return {
-      sequence: 'Sequence',
-      sequences: 'Sequences',
-      addSequence: 'Sequence hinzufügen',
-      scene: 'Szene',
-      scenes: 'Szenen',
-      addScene: 'Szene hinzufügen',
-      shot: 'Shot',
-      shots: 'Shots',
-      addShot: 'Shot hinzufügen',
+      sequence: "Sequence",
+      sequences: "Sequences",
+      addSequence: "Sequence hinzufügen",
+      scene: "Szene",
+      scenes: "Szenen",
+      addScene: "Szene hinzufügen",
+      shot: "Shot",
+      shots: "Shots",
+      addShot: "Shot hinzufügen",
       showShots: true,
     };
   };
@@ -451,7 +483,9 @@ export function FilmDropdown({
 
   // State - Initialize with initialData if available for instant rendering 🚀
   const [acts, setActs] = useState<Act[]>(initialData?.acts || []);
-  const [sequences, setSequences] = useState<Sequence[]>(initialData?.sequences || []);
+  const [sequences, setSequences] = useState<Sequence[]>(
+    initialData?.sequences || [],
+  );
   const [scenes, setScenes] = useState<Scene[]>(initialData?.scenes || []);
   const [shots, setShots] = useState<Shot[]>(initialData?.shots || []);
   const [loading, setLoading] = useState(!initialData); // No loading if we have initialData!
@@ -459,20 +493,28 @@ export function FilmDropdown({
 
   // Expand/Collapse State
   const [expandedActs, setExpandedActs] = useState<Set<string>>(new Set());
-  const [expandedSequences, setExpandedSequences] = useState<Set<string>>(new Set());
+  const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
   const [expandedShots, setExpandedShots] = useState<Set<string>>(new Set());
-  const [loadingSceneShots, setLoadingSceneShots] = useState<Set<string>>(new Set());
-  
+  const [loadingSceneShots, setLoadingSceneShots] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Project Characters for @-mentions
   // Use external characters if provided, otherwise load from API
-  const [characters, setCharacters] = useState<Character[]>(externalCharacters || []);
+  const [characters, setCharacters] = useState<Character[]>(
+    externalCharacters || [],
+  );
 
   // Edit State (for inline editing)
   const [editingAct, setEditingAct] = useState<string | null>(null);
   const [editingSequence, setEditingSequence] = useState<string | null>(null);
   const [editingScene, setEditingScene] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, { title?: string; description?: string }>>({});
+  const [editValues, setEditValues] = useState<
+    Record<string, { title?: string; description?: string }>
+  >({});
 
   // Creating State
   const [creating, setCreating] = useState<string | null>(null);
@@ -481,12 +523,17 @@ export function FilmDropdown({
   // Info Dialog State
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [infoDialogData, setInfoDialogData] = useState<{
-    type: 'act' | 'sequence' | 'scene' | 'shot';
+    type: "act" | "sequence" | "scene" | "shot";
     node: Act | Sequence | Scene | Shot;
   } | null>(null);
 
-  const [gifShotPending, setGifShotPending] = useState<{ shotId: string; file: File } | null>(null);
-  const [shotImageUploadingId, setShotImageUploadingId] = useState<string | null>(null);
+  const [gifShotPending, setGifShotPending] = useState<{
+    shotId: string;
+    file: File;
+  } | null>(null);
+  const [shotImageUploadingId, setShotImageUploadingId] = useState<
+    string | null
+  >(null);
   /** Verhindert, dass beim Schließen des GIF-Dialogs nach „Konvertieren“ der Upload-Overlay sofort gelöscht wird */
   const shotImageUploadInFlightRef = useRef(false);
 
@@ -501,31 +548,38 @@ export function FilmDropdown({
     expandedScenes,
   });
 
-  const ensureSceneShotsLoaded = useCallback(async (sceneId: string) => {
-    if (!labels.showShots) return;
-    if (!sceneId || loadingSceneShots.has(sceneId)) return;
-    const hasLoaded = shots.some((s) => s.sceneId === sceneId);
-    if (hasLoaded) return;
+  const ensureSceneShotsLoaded = useCallback(
+    async (sceneId: string) => {
+      if (!labels.showShots) return;
+      if (!sceneId || loadingSceneShots.has(sceneId)) return;
+      const hasLoaded = shots.some((s) => s.sceneId === sceneId);
+      if (hasLoaded) return;
 
-    try {
-      setLoadingSceneShots((prev) => new Set(prev).add(sceneId));
-      const token = await getAccessToken();
-      if (!token) return;
-      const sceneShots = await ShotsAPI.getShots(sceneId, token);
-      setShots((prev) => {
-        const others = prev.filter((s) => s.sceneId !== sceneId);
-        return [...others, ...(sceneShots || [])];
-      });
-    } catch (error) {
-      console.error('[FilmDropdown] Failed lazy loading shots for scene:', sceneId, error);
-    } finally {
-      setLoadingSceneShots((prev) => {
-        const next = new Set(prev);
-        next.delete(sceneId);
-        return next;
-      });
-    }
-  }, [getAccessToken, labels.showShots, loadingSceneShots, shots]);
+      try {
+        setLoadingSceneShots((prev) => new Set(prev).add(sceneId));
+        const token = await getAccessToken();
+        if (!token) return;
+        const sceneShots = await ShotsAPI.getShots(sceneId, token);
+        setShots((prev) => {
+          const others = prev.filter((s) => s.sceneId !== sceneId);
+          return [...others, ...(sceneShots || [])];
+        });
+      } catch (error) {
+        console.error(
+          "[FilmDropdown] Failed lazy loading shots for scene:",
+          sceneId,
+          error,
+        );
+      } finally {
+        setLoadingSceneShots((prev) => {
+          const next = new Set(prev);
+          next.delete(sceneId);
+          return next;
+        });
+      }
+    },
+    [getAccessToken, labels.showShots, loadingSceneShots, shots],
+  );
 
   // =====================================================
   // LOAD DATA - Single path (ultra batch) + optional initialData
@@ -547,7 +601,10 @@ export function FilmDropdown({
   // Update characters when external characters change
   useEffect(() => {
     if (externalCharacters) {
-      console.log('[FilmDropdown] External characters updated:', externalCharacters.length);
+      console.log(
+        "[FilmDropdown] External characters updated:",
+        externalCharacters.length,
+      );
       setCharacters(externalCharacters);
     }
   }, [externalCharacters]);
@@ -573,11 +630,19 @@ export function FilmDropdown({
 
     const t = window.setTimeout(() => {
       const el = document.querySelector(`[data-shot-id="${expandShotId}"]`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
       onExpandShotIdConsumed?.();
     }, 120);
     return () => window.clearTimeout(t);
-  }, [expandShotId, shots, scenes, sequences, acts, onExpandShotIdConsumed, ensureSceneShotsLoaded]);
+  }, [
+    expandShotId,
+    shots,
+    scenes,
+    sequences,
+    acts,
+    onExpandShotIdConsumed,
+    ensureSceneShotsLoaded,
+  ]);
 
   // 🚀 PERFORMANCE: Notify parent of data changes to update cache
   // Use ref to avoid re-triggering the effect on every render
@@ -608,33 +673,45 @@ export function FilmDropdown({
       setLoading(true);
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         return;
       }
 
       // 🚀 CACHE: Try to load from cache first (Stale-While-Revalidate)
       const cached = cacheManager.get<TimelineData>(cacheKey);
       if (cached.data) {
-        console.log(`[FilmDropdown] 💾 Loading from cache (${cached.isStale ? 'stale' : 'fresh'})`);
+        console.log(
+          `[FilmDropdown] 💾 Loading from cache (${cached.isStale ? "stale" : "fresh"})`,
+        );
         setActs(cached.data.acts);
         setSequences(cached.data.sequences);
         setScenes(cached.data.scenes);
         setShots(cached.data.shots ?? []);
-        
+
         // If fresh, we're done!
         if (!cached.isStale) {
           setLoading(false);
-          perfMonitor.end(perfId, 'CACHE_READ', `Timeline Load (cached): ${projectId}`);
+          perfMonitor.end(
+            perfId,
+            "CACHE_READ",
+            `Timeline Load (cached): ${projectId}`,
+          );
           return;
         }
         // If stale, continue loading in background
-        console.log('[FilmDropdown] 🔄 Revalidating stale cache in background...');
+        console.log(
+          "[FilmDropdown] 🔄 Revalidating stale cache in background...",
+        );
       }
 
       perfMonitor.start(perfId);
 
       // Shared robust loader: ultra-batch first, then silent fallback to batch+shots/clips.
-      const bundle = (await loadProjectTimelineBundle(projectId, token, false)) as TimelineData;
+      const bundle = (await loadProjectTimelineBundle(
+        projectId,
+        token,
+        false,
+      )) as TimelineData;
       const loadedActs = bundle.acts || [];
       const loadedSequences = bundle.sequences || [];
       const loadedScenes = bundle.scenes || [];
@@ -644,12 +721,15 @@ export function FilmDropdown({
         try {
           loadedCharacters = await getTimelineCharacters(projectId, token);
         } catch (characterError) {
-          console.error('[FilmDropdown] Character fallback load failed:', characterError);
+          console.error(
+            "[FilmDropdown] Character fallback load failed:",
+            characterError,
+          );
           loadedCharacters = [];
         }
       }
-      
-      console.log('[FilmDropdown] ✅ Parallel load complete:', {
+
+      console.log("[FilmDropdown] ✅ Parallel load complete:", {
         acts: loadedActs.length,
         sequences: loadedSequences.length,
         scenes: loadedScenes.length,
@@ -668,10 +748,16 @@ export function FilmDropdown({
 
       // Use characters from parallel load (only if not provided by parent)
       if (!externalCharacters) {
-        console.log('[FilmDropdown] Using characters from parallel load:', loadedCharacters.length);
+        console.log(
+          "[FilmDropdown] Using characters from parallel load:",
+          loadedCharacters.length,
+        );
         setCharacters(loadedCharacters);
       } else {
-        console.log('[FilmDropdown] Using characters from parent:', externalCharacters.length);
+        console.log(
+          "[FilmDropdown] Using characters from parent:",
+          externalCharacters.length,
+        );
       }
 
       // 🚀 CACHE: Save to cache
@@ -682,21 +768,29 @@ export function FilmDropdown({
         shots: loadedShots,
       };
       cacheManager.set(cacheKey, timelineData, {
-        ttl: 10 * 60 * 1000,     // 10 minutes (increased from 5)
-        staleTime: 60 * 1000,    // 60 seconds (increased from 30)
+        ttl: 10 * 60 * 1000, // 10 minutes (increased from 5)
+        staleTime: 60 * 1000, // 60 seconds (increased from 30)
       });
 
-      perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (API): ${projectId}`, {
-        acts: finalActs.length,
-        sequences: finalSequences.length,
-        scenes: finalScenes.length,
-        shots: loadedShots.length,
-      });
-
+      perfMonitor.end(
+        perfId,
+        "TIMELINE_LOAD",
+        `Timeline Load (API): ${projectId}`,
+        {
+          acts: finalActs.length,
+          sequences: finalSequences.length,
+          scenes: finalScenes.length,
+          shots: loadedShots.length,
+        },
+      );
     } catch (error) {
-      console.error('Error loading timeline data:', error);
-      toast.error('Fehler beim Laden der Timeline-Daten');
-      perfMonitor.end(perfId, 'TIMELINE_LOAD', `Timeline Load (ERROR): ${projectId}`);
+      console.error("Error loading timeline data:", error);
+      toast.error("Fehler beim Laden der Timeline-Daten");
+      perfMonitor.end(
+        perfId,
+        "TIMELINE_LOAD",
+        `Timeline Load (ERROR): ${projectId}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -705,14 +799,18 @@ export function FilmDropdown({
   /** Explicit user action: create top-level structure from project narrative_structure (not from loaders). */
   const handleInitializeNarrativeStructure = async () => {
     if (initializingThreeAct) return;
-    if (narrativeInitHint.kind !== 'ready') {
-      if (narrativeInitHint.kind === 'need_structure') {
-        toast.error('Bitte wähle im Projekt unter Informationen eine Narrativ-Struktur.');
-      } else if (narrativeInitHint.kind === 'custom_structure') {
-        toast.error('Für eine individuelle Struktur legst du Ebenen manuell über „Act hinzufügen“ an.');
+    if (narrativeInitHint.kind !== "ready") {
+      if (narrativeInitHint.kind === "need_structure") {
+        toast.error(
+          "Bitte wähle im Projekt unter Informationen eine Narrativ-Struktur.",
+        );
+      } else if (narrativeInitHint.kind === "custom_structure") {
+        toast.error(
+          "Für eine individuelle Struktur legst du Ebenen manuell über „Act hinzufügen“ an.",
+        );
       } else {
         toast.error(
-          'Für diese Narrativ-Option gibt es keine automatische Vorlage. Bitte Acts oder Ebenen manuell hinzufügen.'
+          "Für diese Narrativ-Option gibt es keine automatische Vorlage. Bitte Acts oder Ebenen manuell hinzufügen.",
         );
       }
       return;
@@ -721,16 +819,27 @@ export function FilmDropdown({
       setInitializingThreeAct(true);
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         return;
       }
-      await ShotsAPI.initializeTimelineStructureFromNarrative(projectId, token, narrativeStructure);
+      await ShotsAPI.initializeTimelineStructureFromNarrative(
+        projectId,
+        token,
+        narrativeStructure,
+      );
       cacheManager.invalidate(`timeline:${projectId}`);
       await loadTimelineData();
-      toast.success('Struktur angelegt');
+      toast.success("Struktur angelegt");
     } catch (e) {
-      console.error('[FilmDropdown] initializeTimelineStructureFromNarrative:', e);
-      toast.error(e instanceof Error ? e.message : 'Struktur konnte nicht angelegt werden');
+      console.error(
+        "[FilmDropdown] initializeTimelineStructureFromNarrative:",
+        e,
+      );
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Struktur konnte nicht angelegt werden",
+      );
     } finally {
       setInitializingThreeAct(false);
     }
@@ -741,13 +850,16 @@ export function FilmDropdown({
   // =====================================================
 
   const handleAddAct = async () => {
-    if (creating === 'act') return;
+    if (creating === "act") return;
 
     // 🔥 FIX: Filter out temp acts and calculate correct act number
-    const realActs = acts.filter(a => !a.id.startsWith('temp-'));
-    const maxActNumber = realActs.reduce((max, a) => Math.max(max, a.actNumber), 0);
+    const realActs = acts.filter((a) => !a.id.startsWith("temp-"));
+    const maxActNumber = realActs.reduce(
+      (max, a) => Math.max(max, a.actNumber),
+      0,
+    );
     const newActNumber = maxActNumber + 1;
-    
+
     const tempId = `temp-act-${Date.now()}`;
     const now = new Date().toISOString();
     const optimisticAct: Act = {
@@ -755,7 +867,7 @@ export function FilmDropdown({
       projectId,
       actNumber: newActNumber,
       title: `Act ${newActNumber}`,
-      description: '',
+      description: "",
       orderIndex: realActs.length,
       createdAt: now,
       updatedAt: now,
@@ -763,49 +875,53 @@ export function FilmDropdown({
 
     setActs([...acts, optimisticAct]);
     setExpandedActs(new Set([...expandedActs, tempId]));
-    setPendingIds(prev => new Set([...prev, tempId]));
-    setCreating('act');
+    setPendingIds((prev) => new Set([...prev, tempId]));
+    setCreating("act");
 
     try {
       const token = await getAccessToken();
       if (!token) {
-        setActs(acts.filter(a => a.id !== tempId));
-        setPendingIds(prev => {
+        setActs(acts.filter((a) => a.id !== tempId));
+        setPendingIds((prev) => {
           const next = new Set(prev);
           next.delete(tempId);
           return next;
         });
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         setCreating(null);
         return;
       }
 
-      const newAct = await TimelineAPI.createAct(projectId, {
-        actNumber: newActNumber,
-        title: `Act ${newActNumber}`,
-      }, token);
+      const newAct = await TimelineAPI.createAct(
+        projectId,
+        {
+          actNumber: newActNumber,
+          title: `Act ${newActNumber}`,
+        },
+        token,
+      );
 
       // 🚀 PERFORMANCE: Batch state updates
-      setActs(acts => acts.map(a => a.id === tempId ? newAct : a));
-      setPendingIds(prev => {
+      setActs((acts) => acts.map((a) => (a.id === tempId ? newAct : a)));
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
-      
+
       // 🚀 CACHE: Invalidate timeline cache
       cacheManager.invalidate(`timeline:${projectId}`);
-      
+
       // Success toast removed for instant feel - user sees the node appear!
     } catch (error) {
-      console.error('Error creating act:', error);
-      setActs(acts.filter(a => a.id !== tempId));
-      setPendingIds(prev => {
+      console.error("Error creating act:", error);
+      setActs(acts.filter((a) => a.id !== tempId));
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
-      toast.error('Fehler beim Erstellen des Acts');
+      toast.error("Fehler beim Erstellen des Acts");
     } finally {
       setCreating(null);
     }
@@ -815,16 +931,17 @@ export function FilmDropdown({
     if (creating === `sequence-${actId}`) return;
 
     // 🔥 FIX: Filter out temp sequences and calculate correct sequence number
-    const actSequences = sequences.filter(s => 
-      s && 
-      s.actId === actId && 
-      !s.id.startsWith('temp-')
+    const actSequences = sequences.filter(
+      (s) => s && s.actId === actId && !s.id.startsWith("temp-"),
     );
-    
+
     // Find max sequence number to avoid duplicates
-    const maxSeqNumber = actSequences.reduce((max, s) => Math.max(max, s.sequenceNumber), 0);
+    const maxSeqNumber = actSequences.reduce(
+      (max, s) => Math.max(max, s.sequenceNumber),
+      0,
+    );
     const newSeqNumber = maxSeqNumber + 1;
-    
+
     const tempId = `temp-seq-${Date.now()}`;
     const now = new Date().toISOString();
     const optimisticSequence: Sequence = {
@@ -833,8 +950,8 @@ export function FilmDropdown({
       actId,
       sequenceNumber: newSeqNumber,
       title: `Sequence ${newSeqNumber}`,
-      description: '',
-      color: '#ECFDF5',
+      description: "",
+      color: "#ECFDF5",
       orderIndex: actSequences.length,
       createdAt: now,
       updatedAt: now,
@@ -842,46 +959,52 @@ export function FilmDropdown({
 
     setSequences([...sequences, optimisticSequence]);
     setExpandedActs(new Set([...expandedActs, actId]));
-    setPendingIds(prev => new Set([...prev, tempId]));
+    setPendingIds((prev) => new Set([...prev, tempId]));
     setCreating(`sequence-${actId}`);
 
     try {
       const token = await getAccessToken();
       if (!token) {
-        setSequences(sequences.filter(s => s.id !== tempId));
-        setPendingIds(prev => {
+        setSequences(sequences.filter((s) => s.id !== tempId));
+        setPendingIds((prev) => {
           const next = new Set(prev);
           next.delete(tempId);
           return next;
         });
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         setCreating(null);
         return;
       }
 
-      const newSequence = await TimelineAPI.createSequence(actId, {
-        sequenceNumber: newSeqNumber,
-        title: `Sequence ${newSeqNumber}`,
-        color: '#ECFDF5',
-      }, token);
+      const newSequence = await TimelineAPI.createSequence(
+        actId,
+        {
+          sequenceNumber: newSeqNumber,
+          title: `Sequence ${newSeqNumber}`,
+          color: "#ECFDF5",
+        },
+        token,
+      );
 
       // 🚀 PERFORMANCE: Batch state updates
-      setSequences(seqs => seqs.map(s => s.id === tempId ? newSequence : s));
-      setPendingIds(prev => {
+      setSequences((seqs) =>
+        seqs.map((s) => (s.id === tempId ? newSequence : s)),
+      );
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
       // Success toast removed for instant feel - user sees the node appear!
     } catch (error) {
-      console.error('Error creating sequence:', error);
-      setSequences(seqs => seqs.filter(s => s.id !== tempId));
-      setPendingIds(prev => {
+      console.error("Error creating sequence:", error);
+      setSequences((seqs) => seqs.filter((s) => s.id !== tempId));
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
-      toast.error('Fehler beim Erstellen der Sequenz');
+      toast.error("Fehler beim Erstellen der Sequenz");
     } finally {
       setCreating(null);
     }
@@ -891,22 +1014,23 @@ export function FilmDropdown({
     if (creating === `scene-${sequenceId}`) return;
 
     // 🚨 CRITICAL FIX: Don't allow scene creation under temp sequences
-    if (sequenceId.startsWith('temp-')) {
-      toast.error('Bitte warte, bis die Sequence gespeichert wurde');
+    if (sequenceId.startsWith("temp-")) {
+      toast.error("Bitte warte, bis die Sequence gespeichert wurde");
       return;
     }
 
     // 🔥 FIX: Filter out temp scenes and calculate correct scene number
-    const seqScenes = scenes.filter(s => 
-      s && 
-      s.sequenceId === sequenceId && 
-      !s.id.startsWith('temp-')
+    const seqScenes = scenes.filter(
+      (s) => s && s.sequenceId === sequenceId && !s.id.startsWith("temp-"),
     );
-    
+
     // Find max scene number to avoid duplicates
-    const maxSceneNumber = seqScenes.reduce((max, s) => Math.max(max, s.sceneNumber), 0);
+    const maxSceneNumber = seqScenes.reduce(
+      (max, s) => Math.max(max, s.sceneNumber),
+      0,
+    );
     const newSceneNumber = maxSceneNumber + 1;
-    
+
     const tempId = `temp-scene-${Date.now()}`;
     const now = new Date().toISOString();
     const optimisticScene: Scene = {
@@ -915,9 +1039,9 @@ export function FilmDropdown({
       sequenceId,
       sceneNumber: newSceneNumber,
       title: `Scene ${newSceneNumber}`,
-      description: '',
-      location: '',
-      timeOfDay: 'day',
+      description: "",
+      location: "",
+      timeOfDay: "day",
       characters: [],
       orderIndex: seqScenes.length,
       createdAt: now,
@@ -926,45 +1050,51 @@ export function FilmDropdown({
 
     setScenes([...scenes, optimisticScene]);
     setExpandedSequences(new Set([...expandedSequences, sequenceId]));
-    setPendingIds(prev => new Set([...prev, tempId]));
+    setPendingIds((prev) => new Set([...prev, tempId]));
     setCreating(`scene-${sequenceId}`);
 
     try {
       const token = await getAccessToken();
       if (!token) {
-        setScenes(scenes.filter(s => s.id !== tempId));
-        setPendingIds(prev => {
+        setScenes(scenes.filter((s) => s.id !== tempId));
+        setPendingIds((prev) => {
           const next = new Set(prev);
           next.delete(tempId);
           return next;
         });
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         setCreating(null);
         return;
       }
 
-      const newScene = await TimelineAPI.createScene(sequenceId, {
-        sceneNumber: newSceneNumber,
-        title: `Scene ${newSceneNumber}`,
-      }, token);
+      const newScene = await TimelineAPI.createScene(
+        sequenceId,
+        {
+          sceneNumber: newSceneNumber,
+          title: `Scene ${newSceneNumber}`,
+        },
+        token,
+      );
 
       // 🚀 PERFORMANCE: Batch state updates
-      setScenes(scenes => scenes.map(s => s.id === tempId ? newScene : s));
-      setPendingIds(prev => {
+      setScenes((scenes) =>
+        scenes.map((s) => (s.id === tempId ? newScene : s)),
+      );
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
       // Success toast removed for instant feel - user sees the node appear!
     } catch (error) {
-      console.error('Error creating scene:', error);
-      setScenes(scenes => scenes.filter(s => s.id !== tempId));
-      setPendingIds(prev => {
+      console.error("Error creating scene:", error);
+      setScenes((scenes) => scenes.filter((s) => s.id !== tempId));
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
-      toast.error('Fehler beim Erstellen der Scene');
+      toast.error("Fehler beim Erstellen der Scene");
     } finally {
       setCreating(null);
     }
@@ -972,20 +1102,18 @@ export function FilmDropdown({
 
   const handleAddShot = async (sceneId: string) => {
     // 🚫 Block if scene is still pending (temp-ID)
-    if (sceneId.startsWith('temp-')) {
-      toast.error('Warte bis die Scene erstellt ist');
+    if (sceneId.startsWith("temp-")) {
+      toast.error("Warte bis die Scene erstellt ist");
       return;
     }
-    
+
     if (creating === `shot-${sceneId}`) return;
 
     // 🔥 FIX: Filter out temp shots and calculate correct shot number
-    const sceneShots = shots.filter(s => 
-      s && 
-      s.sceneId === sceneId && 
-      !s.id.startsWith('temp-')
+    const sceneShots = shots.filter(
+      (s) => s && s.sceneId === sceneId && !s.id.startsWith("temp-"),
     );
-    
+
     // Find max shot number to avoid duplicates
     // shotNumber is stored as string like "Shot 1", so we need to extract the number
     const maxShotNumber = sceneShots.reduce((max, s) => {
@@ -994,7 +1122,7 @@ export function FilmDropdown({
       return Math.max(max, num);
     }, 0);
     const newShotNumber = maxShotNumber + 1;
-    
+
     const tempId = `temp-shot-${Date.now()}`;
     const now = new Date().toISOString();
     const optimisticShot: Shot = {
@@ -1002,7 +1130,7 @@ export function FilmDropdown({
       projectId,
       sceneId,
       shotNumber: `Shot ${newShotNumber}`,
-      description: '',
+      description: "",
       orderIndex: sceneShots.length,
       createdAt: now,
       updatedAt: now,
@@ -1010,46 +1138,50 @@ export function FilmDropdown({
 
     setShots([...shots, optimisticShot]);
     setExpandedScenes(new Set([...expandedScenes, sceneId]));
-    setPendingIds(prev => new Set([...prev, tempId]));
+    setPendingIds((prev) => new Set([...prev, tempId]));
     setCreating(`shot-${sceneId}`);
 
     try {
       const token = await getAccessToken();
       if (!token) {
-        setShots(shots.filter(s => s.id !== tempId));
-        setPendingIds(prev => {
+        setShots(shots.filter((s) => s.id !== tempId));
+        setPendingIds((prev) => {
           const next = new Set(prev);
           next.delete(tempId);
           return next;
         });
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         setCreating(null);
         return;
       }
 
-      const newShot = await ShotsAPI.createShot(sceneId, {
-        shotNumber: `Shot ${newShotNumber}`,
-        description: '',
-        projectId, // ✅ Add projectId
-      }, token);
+      const newShot = await ShotsAPI.createShot(
+        sceneId,
+        {
+          shotNumber: `Shot ${newShotNumber}`,
+          description: "",
+          projectId, // ✅ Add projectId
+        },
+        token,
+      );
 
       // 🚀 PERFORMANCE: Batch state updates
-      setShots(shots => shots.map(s => s.id === tempId ? newShot : s));
-      setPendingIds(prev => {
+      setShots((shots) => shots.map((s) => (s.id === tempId ? newShot : s)));
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
       // Success toast removed for instant feel - user sees the node appear!
     } catch (error) {
-      console.error('Error creating shot:', error);
-      setShots(shots.filter(s => s.id !== tempId));
-      setPendingIds(prev => {
+      console.error("Error creating shot:", error);
+      setShots(shots.filter((s) => s.id !== tempId));
+      setPendingIds((prev) => {
         const next = new Set(prev);
         next.delete(tempId);
         return next;
       });
-      toast.error('Fehler beim Erstellen des Shots');
+      toast.error("Fehler beim Erstellen des Shots");
     } finally {
       setCreating(null);
     }
@@ -1068,22 +1200,22 @@ export function FilmDropdown({
       if (!token) return;
 
       await TimelineAPI.updateAct(actId, updates, token);
-      
-      setActs(acts => acts.map(a => 
-        a.id === actId ? { ...a, ...updates } : a
-      ));
-      
+
+      setActs((acts) =>
+        acts.map((a) => (a.id === actId ? { ...a, ...updates } : a)),
+      );
+
       setEditingAct(null);
-      setEditValues(prev => {
+      setEditValues((prev) => {
         const next = { ...prev };
         delete next[actId];
         return next;
       });
-      
-      toast.success('Act aktualisiert');
+
+      toast.success("Act aktualisiert");
     } catch (error) {
-      console.error('Error updating act:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating act:", error);
+      toast.error("Fehler beim Aktualisieren");
     }
   };
 
@@ -1096,22 +1228,22 @@ export function FilmDropdown({
       if (!token) return;
 
       await TimelineAPI.updateSequence(sequenceId, updates, token);
-      
-      setSequences(seqs => seqs.map(s => 
-        s.id === sequenceId ? { ...s, ...updates } : s
-      ));
-      
+
+      setSequences((seqs) =>
+        seqs.map((s) => (s.id === sequenceId ? { ...s, ...updates } : s)),
+      );
+
       setEditingSequence(null);
-      setEditValues(prev => {
+      setEditValues((prev) => {
         const next = { ...prev };
         delete next[sequenceId];
         return next;
       });
-      
-      toast.success('Sequenz aktualisiert');
+
+      toast.success("Sequenz aktualisiert");
     } catch (error) {
-      console.error('Error updating sequence:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating sequence:", error);
+      toast.error("Fehler beim Aktualisieren");
     }
   };
 
@@ -1124,22 +1256,22 @@ export function FilmDropdown({
       if (!token) return;
 
       await TimelineAPI.updateScene(sceneId, updates, token);
-      
-      setScenes(scenes => scenes.map(s => 
-        s.id === sceneId ? { ...s, ...updates } : s
-      ));
-      
+
+      setScenes((scenes) =>
+        scenes.map((s) => (s.id === sceneId ? { ...s, ...updates } : s)),
+      );
+
       setEditingScene(null);
-      setEditValues(prev => {
+      setEditValues((prev) => {
         const next = { ...prev };
         delete next[sceneId];
         return next;
       });
-      
-      toast.success('Szene aktualisiert');
+
+      toast.success("Szene aktualisiert");
     } catch (error) {
-      console.error('Error updating scene:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating scene:", error);
+      toast.error("Fehler beim Aktualisieren");
     }
   };
 
@@ -1149,58 +1281,61 @@ export function FilmDropdown({
 
   const handleDeleteAct = async (actId: string) => {
     // Find the act to get its title for confirmation
-    const actToDelete = acts.find(a => a.id === actId);
+    const actToDelete = acts.find((a) => a.id === actId);
     if (!actToDelete) {
-      console.error('[FilmDropdown] Act not found for deletion:', actId);
-      toast.error('Act nicht gefunden');
+      console.error("[FilmDropdown] Act not found for deletion:", actId);
+      toast.error("Act nicht gefunden");
       return;
     }
 
-    console.log('[FilmDropdown] 🗑️ Deleting act:', {
+    console.log("[FilmDropdown] 🗑️ Deleting act:", {
       id: actId,
       title: actToDelete.title,
-      number: actToDelete.actNumber
+      number: actToDelete.actNumber,
     });
 
-    if (!confirm(`Act "${actToDelete.title}" und alle untergeordneten Elemente löschen?`)) {
-      console.log('[FilmDropdown] Deletion cancelled by user');
+    if (
+      !confirm(
+        `Act "${actToDelete.title}" und alle untergeordneten Elemente löschen?`,
+      )
+    ) {
+      console.log("[FilmDropdown] Deletion cancelled by user");
       return;
     }
 
-    const actSequences = sequences.filter(s => s.actId === actId);
-    const sequenceIds = actSequences.map(s => s.id);
+    const actSequences = sequences.filter((s) => s.actId === actId);
+    const sequenceIds = actSequences.map((s) => s.id);
     const actScenes = scenes.filter(
-      (s) => s.sequenceId != null && sequenceIds.includes(s.sequenceId)
+      (s) => s.sequenceId != null && sequenceIds.includes(s.sequenceId),
     );
-    const sceneIds = actScenes.map(s => s.id);
+    const sceneIds = actScenes.map((s) => s.id);
 
-    console.log('[FilmDropdown] Deleting act with:', {
+    console.log("[FilmDropdown] Deleting act with:", {
       sequences: actSequences.length,
       scenes: actScenes.length,
       sequenceIds,
-      sceneIds
+      sceneIds,
     });
 
     // Optimistic delete
-    setActs(prevActs => prevActs.filter(a => a.id !== actId));
-    setSequences(seqs => seqs.filter(s => s.actId !== actId));
+    setActs((prevActs) => prevActs.filter((a) => a.id !== actId));
+    setSequences((seqs) => seqs.filter((s) => s.actId !== actId));
     setScenes((sc) =>
       sc.filter(
-        (s) =>
-          s.sequenceId == null || !sequenceIds.includes(s.sequenceId)
-      )
+        (s) => s.sequenceId == null || !sequenceIds.includes(s.sequenceId),
+      ),
     );
     setShots((sh) =>
-      sh.filter((s) => s.sceneId != null && !sceneIds.includes(s.sceneId))
+      sh.filter((s) => s.sceneId != null && !sceneIds.includes(s.sceneId)),
     );
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      console.log('[FilmDropdown] Calling API to delete act:', actId);
+      console.log("[FilmDropdown] Calling API to delete act:", actId);
       await TimelineAPI.deleteAct(actId, token);
-      console.log('[FilmDropdown] ✅ Act deleted successfully');
+      console.log("[FilmDropdown] ✅ Act deleted successfully");
 
       invalidateTimelineQueries();
 
@@ -1210,7 +1345,7 @@ export function FilmDropdown({
         description: `Act "${actToDelete.title}" gelöscht`,
         undo: async () => {
           const t = await getAccessToken();
-          if (!t) throw new Error('Not authenticated');
+          if (!t) throw new Error("Not authenticated");
 
           const newAct = await TimelineAPI.createAct(
             projectId,
@@ -1219,11 +1354,13 @@ export function FilmDropdown({
               title: actToDelete.title,
               description: actToDelete.description,
             },
-            t
+            t,
           );
           restoredActId = newAct.id;
 
-          setActs((prevActs) => [...prevActs, newAct].sort((a, b) => a.actNumber - b.actNumber));
+          setActs((prevActs) =>
+            [...prevActs, newAct].sort((a, b) => a.actNumber - b.actNumber),
+          );
 
           invalidateTimelineQueries();
           toast.success(`Act "${actToDelete.title}" wiederhergestellt`);
@@ -1238,16 +1375,16 @@ export function FilmDropdown({
         },
       });
 
-      toast.success('Act gelöscht (CMD+Z zum Rückgängigmachen)');
+      toast.success("Act gelöscht (CMD+Z zum Rückgängigmachen)");
     } catch (error) {
-      console.error('Error deleting act:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting act:", error);
+      toast.error("Fehler beim Löschen");
       loadTimelineData(); // Reload on error
     }
   };
 
   const handleDuplicateAct = async (actId: string) => {
-    const actToDuplicate = acts.find(a => a.id === actId);
+    const actToDuplicate = acts.find((a) => a.id === actId);
     if (!actToDuplicate) return;
 
     try {
@@ -1255,40 +1392,47 @@ export function FilmDropdown({
       if (!token) return;
 
       // Show loading toast
-      toast.loading('Act wird dupliziert...');
+      toast.loading("Act wird dupliziert...");
 
       // Create new act with duplicated data
-      const maxActNumber = acts.reduce((max, a) => Math.max(max, a.actNumber), 0);
-      const newAct = await TimelineAPI.createAct(projectId, {
-        actNumber: maxActNumber + 1,
-        title: `${actToDuplicate.title} (Kopie)`,
-        description: actToDuplicate.description,
-        color: actToDuplicate.color,
-      }, token);
+      const maxActNumber = acts.reduce(
+        (max, a) => Math.max(max, a.actNumber),
+        0,
+      );
+      const newAct = await TimelineAPI.createAct(
+        projectId,
+        {
+          actNumber: maxActNumber + 1,
+          title: `${actToDuplicate.title} (Kopie)`,
+          description: actToDuplicate.description,
+          color: actToDuplicate.color,
+        },
+        token,
+      );
 
       // Get all sequences in this act
-      const actSequences = sequences.filter(s => s.actId === actId);
-      
+      const actSequences = sequences.filter((s) => s.actId === actId);
+
       // 🚀 OPTIMISTIC UI: Create ALL temp data INSTANTLY
       const tempSequences = actSequences.map((seq, seqIdx) => ({
         ...seq,
         id: `temp-seq-${Date.now()}-${seqIdx}`,
         actId: newAct.id,
       }));
-      
+
       const tempScenesMap: Record<string, typeof scenes> = {};
       const tempShotsMap: Record<string, typeof shots> = {};
-      
+
       actSequences.forEach((seq, seqIdx) => {
-        const seqScenes = scenes.filter(sc => sc.sequenceId === seq.id);
+        const seqScenes = scenes.filter((sc) => sc.sequenceId === seq.id);
         tempScenesMap[seq.id] = seqScenes.map((sc, scIdx) => ({
           ...sc,
           id: `temp-scene-${Date.now()}-${seqIdx}-${scIdx}`,
           sequenceId: tempSequences[seqIdx].id,
         }));
-        
+
         seqScenes.forEach((sc, scIdx) => {
-          const sceneShots = shots.filter(sh => sh.sceneId === sc.id);
+          const sceneShots = shots.filter((sh) => sh.sceneId === sc.id);
           const tempSceneId = tempScenesMap[seq.id][scIdx].id;
           tempShotsMap[sc.id] = sceneShots.map((shot, shotIdx) => ({
             ...shot,
@@ -1297,47 +1441,223 @@ export function FilmDropdown({
           }));
         });
       });
-      
+
       const allTempScenes = Object.values(tempScenesMap).flat();
       const allTempShots = Object.values(tempShotsMap).flat();
-      
+
       // Show EVERYTHING immediately! User sees instant result 🚀
-      setActs(prevActs => [...prevActs, newAct]);
-      setSequences(prevSequences => [...prevSequences, ...tempSequences]);
-      setScenes(prevScenes => [...prevScenes, ...allTempScenes]);
-      setShots(prevShots => [...prevShots, ...allTempShots]);
+      setActs((prevActs) => [...prevActs, newAct]);
+      setSequences((prevSequences) => [...prevSequences, ...tempSequences]);
+      setScenes((prevScenes) => [...prevScenes, ...allTempScenes]);
+      setShots((prevShots) => [...prevShots, ...allTempShots]);
       toast.dismiss();
-      toast.success(`Act mit ${tempSequences.length} Sequenzen, ${allTempScenes.length} Szenen und ${allTempShots.length} Shots dupliziert`);
-      
+      toast.success(
+        `Act mit ${tempSequences.length} Sequenzen, ${allTempScenes.length} Szenen und ${allTempShots.length} Shots dupliziert`,
+      );
+
       // 🚀 PARALLEL: Create everything in background with maximum parallelization
       const sequencePromises = actSequences.map(async (seq, seqIdx) => {
-        const newSeq = await TimelineAPI.createSequence(newAct.id, {
-          sequenceNumber: seq.sequenceNumber,
-          title: seq.title,
-          description: seq.description,
-          color: seq.color,
-        }, token);
-        
+        const newSeq = await TimelineAPI.createSequence(
+          newAct.id,
+          {
+            sequenceNumber: seq.sequenceNumber,
+            title: seq.title,
+            description: seq.description,
+            color: seq.color,
+          },
+          token,
+        );
+
         const seqScenes = tempScenesMap[seq.id];
-        const originalScenes = scenes.filter(sc => sc.sequenceId === seq.id);
-        
+        const originalScenes = scenes.filter((sc) => sc.sequenceId === seq.id);
+
         // Create ALL scenes in this sequence in PARALLEL
         const scenePromises = originalScenes.map(async (scene, scIdx) => {
-          const newScene = await TimelineAPI.createScene(newSeq.id, {
+          const newScene = await TimelineAPI.createScene(
+            newSeq.id,
+            {
+              sceneNumber: scene.sceneNumber,
+              title: scene.title,
+              description: scene.description,
+              location: scene.location,
+              timeOfDay: scene.timeOfDay,
+              characters: scene.characters,
+            },
+            token,
+          );
+
+          const originalShots = shots.filter((sh) => sh.sceneId === scene.id);
+          const tempSceneShots = tempShotsMap[scene.id];
+
+          // Create ALL shots for this scene in PARALLEL
+          const shotPromises = originalShots.map((shot, shotIdx) =>
+            ShotsAPI.createShot(
+              newScene.id,
+              {
+                shotNumber: shot.shotNumber,
+                description: shot.description,
+                cameraAngle: shot.cameraAngle,
+                cameraMovement: shot.cameraMovement,
+                framing: shot.framing,
+                lens: shot.lens,
+                duration: shot.duration,
+                shotlengthMinutes: shot.shotlengthMinutes,
+                shotlengthSeconds: shot.shotlengthSeconds,
+                notes: shot.notes,
+                dialog: shot.dialog,
+                projectId, // ✅ Add projectId
+              },
+              token,
+            ).then((realShot) => ({
+              tempId: tempSceneShots[shotIdx].id,
+              realShot,
+            })),
+          );
+
+          const shotResults = await Promise.all(shotPromises);
+
+          return {
+            tempSceneId: seqScenes[scIdx].id,
+            realScene: newScene,
+            shotResults,
+          };
+        });
+
+        const sceneResults = await Promise.all(scenePromises);
+
+        return {
+          tempSeqId: tempSequences[seqIdx].id,
+          realSeq: newSeq,
+          sceneResults,
+        };
+      });
+
+      const sequenceResults = await Promise.all(sequencePromises);
+
+      // Replace ALL temp data with real data
+      setSequences((prevSequences) => {
+        const updated = [...prevSequences];
+        sequenceResults.forEach(({ tempSeqId, realSeq }) => {
+          const idx = updated.findIndex((s) => s.id === tempSeqId);
+          if (idx >= 0) updated[idx] = realSeq;
+        });
+        return updated;
+      });
+
+      setScenes((prevScenes) => {
+        const updated = [...prevScenes];
+        sequenceResults.forEach(({ sceneResults }) => {
+          sceneResults.forEach(({ tempSceneId, realScene }) => {
+            const idx = updated.findIndex((s) => s.id === tempSceneId);
+            if (idx >= 0) updated[idx] = realScene;
+          });
+        });
+        return updated;
+      });
+
+      setShots((prevShots) => {
+        const updated = [...prevShots];
+        sequenceResults.forEach(({ sceneResults }) => {
+          sceneResults.forEach(({ shotResults }) => {
+            shotResults.forEach(({ tempId, realShot }) => {
+              const idx = updated.findIndex((s) => s.id === tempId);
+              if (idx >= 0) updated[idx] = realShot;
+            });
+          });
+        });
+        return updated;
+      });
+    } catch (error) {
+      console.error("Error duplicating act:", error);
+      toast.dismiss();
+      toast.error("Fehler beim Duplizieren");
+    }
+  };
+
+  const handleDuplicateSequence = async (sequenceId: string) => {
+    const sequenceToDuplicate = sequences.find((s) => s.id === sequenceId);
+    if (!sequenceToDuplicate) return;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      // Show loading toast
+      toast.loading("Sequenz wird dupliziert...");
+
+      // Create new sequence with duplicated data
+      const actSequences = sequences.filter(
+        (s) => s.actId === sequenceToDuplicate.actId,
+      );
+      const maxSeqNumber = actSequences.reduce(
+        (max, s) => Math.max(max, s.sequenceNumber),
+        0,
+      );
+      const newSequence = await TimelineAPI.createSequence(
+        sequenceToDuplicate.actId,
+        {
+          sequenceNumber: maxSeqNumber + 1,
+          title: `${sequenceToDuplicate.title} (Kopie)`,
+          description: sequenceToDuplicate.description,
+          color: sequenceToDuplicate.color,
+        },
+        token,
+      );
+
+      // Get all scenes in this sequence
+      const seqScenes = scenes.filter((sc) => sc.sequenceId === sequenceId);
+
+      // 🚀 OPTIMISTIC UI: Create temp data instantly
+      const tempScenes = seqScenes.map((sc, idx) => ({
+        ...sc,
+        id: `temp-scene-${Date.now()}-${idx}`,
+        sequenceId: newSequence.id,
+      }));
+
+      const tempShotsMap: Record<string, typeof shots> = {};
+      seqScenes.forEach((sc, idx) => {
+        const sceneShots = shots.filter((sh) => sh.sceneId === sc.id);
+        tempShotsMap[sc.id] = sceneShots.map((shot, shotIdx) => ({
+          ...shot,
+          id: `temp-shot-${Date.now()}-${idx}-${shotIdx}`,
+          sceneId: tempScenes[idx].id,
+        }));
+      });
+
+      const allTempShots = Object.values(tempShotsMap).flat();
+
+      // Show everything immediately!
+      setSequences((prevSequences) => [...prevSequences, newSequence]);
+      setScenes((prevScenes) => [...prevScenes, ...tempScenes]);
+      setShots((prevShots) => [...prevShots, ...allTempShots]);
+      toast.dismiss();
+      toast.success(
+        `Sequenz mit ${tempScenes.length} Szenen und ${allTempShots.length} Shots dupliziert`,
+      );
+
+      // 🚀 PARALLEL: Create scenes and shots in background
+      const scenePromises = seqScenes.map(async (scene, sceneIdx) => {
+        const newScene = await TimelineAPI.createScene(
+          newSequence.id,
+          {
             sceneNumber: scene.sceneNumber,
             title: scene.title,
             description: scene.description,
             location: scene.location,
             timeOfDay: scene.timeOfDay,
             characters: scene.characters,
-          }, token);
-          
-          const originalShots = shots.filter(sh => sh.sceneId === scene.id);
-          const tempSceneShots = tempShotsMap[scene.id];
-          
-          // Create ALL shots for this scene in PARALLEL
-          const shotPromises = originalShots.map((shot, shotIdx) =>
-            ShotsAPI.createShot(newScene.id, {
+          },
+          token,
+        );
+
+        const sceneShots = tempShotsMap[scene.id];
+        const originalShots = shots.filter((sh) => sh.sceneId === scene.id);
+
+        // Create ALL shots for this scene in PARALLEL
+        const shotPromises = originalShots.map((shot, shotIdx) =>
+          ShotsAPI.createShot(
+            newScene.id,
+            {
               shotNumber: shot.shotNumber,
               description: shot.description,
               cameraAngle: shot.cameraAngle,
@@ -1350,139 +1670,105 @@ export function FilmDropdown({
               notes: shot.notes,
               dialog: shot.dialog,
               projectId, // ✅ Add projectId
-            }, token).then(realShot => ({
-              tempId: tempSceneShots[shotIdx].id,
-              realShot
-            }))
-          );
-          
-          const shotResults = await Promise.all(shotPromises);
-          
-          return {
-            tempSceneId: seqScenes[scIdx].id,
-            realScene: newScene,
-            shotResults
-          };
-        });
-        
-        const sceneResults = await Promise.all(scenePromises);
-        
+            },
+            token,
+          ).then((realShot) => ({
+            tempId: sceneShots[shotIdx].id,
+            realShot,
+          })),
+        );
+
+        const shotResults = await Promise.all(shotPromises);
+
         return {
-          tempSeqId: tempSequences[seqIdx].id,
-          realSeq: newSeq,
-          sceneResults
+          tempSceneId: tempScenes[sceneIdx].id,
+          realScene: newScene,
+          shotResults,
         };
       });
-      
-      const sequenceResults = await Promise.all(sequencePromises);
-      
-      // Replace ALL temp data with real data
-      setSequences(prevSequences => {
-        const updated = [...prevSequences];
-        sequenceResults.forEach(({ tempSeqId, realSeq }) => {
-          const idx = updated.findIndex(s => s.id === tempSeqId);
-          if (idx >= 0) updated[idx] = realSeq;
-        });
-        return updated;
-      });
-      
-      setScenes(prevScenes => {
+
+      const sceneResults = await Promise.all(scenePromises);
+
+      // Replace temp data with real data
+      setScenes((prevScenes) => {
         const updated = [...prevScenes];
-        sequenceResults.forEach(({ sceneResults }) => {
-          sceneResults.forEach(({ tempSceneId, realScene }) => {
-            const idx = updated.findIndex(s => s.id === tempSceneId);
-            if (idx >= 0) updated[idx] = realScene;
-          });
+        sceneResults.forEach(({ tempSceneId, realScene }) => {
+          const idx = updated.findIndex((s) => s.id === tempSceneId);
+          if (idx >= 0) updated[idx] = realScene;
         });
         return updated;
       });
-      
-      setShots(prevShots => {
+
+      setShots((prevShots) => {
         const updated = [...prevShots];
-        sequenceResults.forEach(({ sceneResults }) => {
-          sceneResults.forEach(({ shotResults }) => {
-            shotResults.forEach(({ tempId, realShot }) => {
-              const idx = updated.findIndex(s => s.id === tempId);
-              if (idx >= 0) updated[idx] = realShot;
-            });
+        sceneResults.forEach(({ shotResults }) => {
+          shotResults.forEach(({ tempId, realShot }) => {
+            const idx = updated.findIndex((s) => s.id === tempId);
+            if (idx >= 0) updated[idx] = realShot;
           });
         });
         return updated;
       });
     } catch (error) {
-      console.error('Error duplicating act:', error);
+      console.error("Error duplicating sequence:", error);
       toast.dismiss();
-      toast.error('Fehler beim Duplizieren');
+      toast.error("Fehler beim Duplizieren");
     }
   };
 
-  const handleDuplicateSequence = async (sequenceId: string) => {
-    const sequenceToDuplicate = sequences.find(s => s.id === sequenceId);
-    if (!sequenceToDuplicate) return;
+  const handleDuplicateScene = async (sceneId: string) => {
+    const sceneToDuplicate = scenes.find((s) => s.id === sceneId);
+    if (!sceneToDuplicate?.sequenceId) return;
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       // Show loading toast
-      toast.loading('Sequenz wird dupliziert...');
+      toast.loading("Scene wird dupliziert...");
 
-      // Create new sequence with duplicated data
-      const actSequences = sequences.filter(s => s.actId === sequenceToDuplicate.actId);
-      const maxSeqNumber = actSequences.reduce((max, s) => Math.max(max, s.sequenceNumber), 0);
-      const newSequence = await TimelineAPI.createSequence(sequenceToDuplicate.actId, {
-        sequenceNumber: maxSeqNumber + 1,
-        title: `${sequenceToDuplicate.title} (Kopie)`,
-        description: sequenceToDuplicate.description,
-        color: sequenceToDuplicate.color,
-      }, token);
+      // Create new scene with duplicated data
+      const seqScenes = scenes.filter(
+        (s) => s.sequenceId === sceneToDuplicate.sequenceId,
+      );
+      const maxSceneNumber = seqScenes.reduce(
+        (max, s) => Math.max(max, s.sceneNumber),
+        0,
+      );
+      const newScene = await TimelineAPI.createScene(
+        sceneToDuplicate.sequenceId,
+        {
+          sceneNumber: maxSceneNumber + 1,
+          title: `${sceneToDuplicate.title} (Kopie)`,
+          description: sceneToDuplicate.description,
+          location: sceneToDuplicate.location,
+          timeOfDay: sceneToDuplicate.timeOfDay,
+          characters: sceneToDuplicate.characters,
+        },
+        token,
+      );
 
-      // Get all scenes in this sequence
-      const seqScenes = scenes.filter(sc => sc.sequenceId === sequenceId);
-      
-      // 🚀 OPTIMISTIC UI: Create temp data instantly
-      const tempScenes = seqScenes.map((sc, idx) => ({
-        ...sc,
-        id: `temp-scene-${Date.now()}-${idx}`,
-        sequenceId: newSequence.id,
+      // Get all shots in this scene
+      const sceneShots = shots.filter((sh) => sh.sceneId === sceneId);
+
+      // 🚀 PERFORMANCE: Create temp shots for instant UI update
+      const tempShots = sceneShots.map((shot, idx) => ({
+        ...shot,
+        id: `temp-shot-${Date.now()}-${idx}`,
+        sceneId: newScene.id,
       }));
-      
-      const tempShotsMap: Record<string, typeof shots> = {};
-      seqScenes.forEach((sc, idx) => {
-        const sceneShots = shots.filter(sh => sh.sceneId === sc.id);
-        tempShotsMap[sc.id] = sceneShots.map((shot, shotIdx) => ({
-          ...shot,
-          id: `temp-shot-${Date.now()}-${idx}-${shotIdx}`,
-          sceneId: tempScenes[idx].id,
-        }));
-      });
-      
-      const allTempShots = Object.values(tempShotsMap).flat();
-      
-      // Show everything immediately!
-      setSequences(prevSequences => [...prevSequences, newSequence]);
-      setScenes(prevScenes => [...prevScenes, ...tempScenes]);
-      setShots(prevShots => [...prevShots, ...allTempShots]);
+
+      // Show shots immediately (optimistic UI)
+      setScenes((prevScenes) => [...prevScenes, newScene]);
+      setShots((prevShots) => [...prevShots, ...tempShots]);
       toast.dismiss();
-      toast.success(`Sequenz mit ${tempScenes.length} Szenen und ${allTempShots.length} Shots dupliziert`);
-      
-      // 🚀 PARALLEL: Create scenes and shots in background
-      const scenePromises = seqScenes.map(async (scene, sceneIdx) => {
-        const newScene = await TimelineAPI.createScene(newSequence.id, {
-          sceneNumber: scene.sceneNumber,
-          title: scene.title,
-          description: scene.description,
-          location: scene.location,
-          timeOfDay: scene.timeOfDay,
-          characters: scene.characters,
-        }, token);
-        
-        const sceneShots = tempShotsMap[scene.id];
-        const originalShots = shots.filter(sh => sh.sceneId === scene.id);
-        
-        // Create ALL shots for this scene in PARALLEL
-        const shotPromises = originalShots.map((shot, shotIdx) => 
-          ShotsAPI.createShot(newScene.id, {
+      toast.success(`Scene mit ${tempShots.length} Shots dupliziert`);
+
+      // 🚀 PERFORMANCE: Create ALL shots in PARALLEL (not serial!)
+      const shotPromises = sceneShots.map((shot, idx) =>
+        ShotsAPI.createShot(
+          newScene.id,
+          {
             shotNumber: shot.shotNumber,
             description: shot.description,
             cameraAngle: shot.cameraAngle,
@@ -1495,141 +1781,43 @@ export function FilmDropdown({
             notes: shot.notes,
             dialog: shot.dialog,
             projectId, // ✅ Add projectId
-          }, token).then(realShot => ({
-            tempId: sceneShots[shotIdx].id,
-            realShot
-          }))
-        );
-        
-        const shotResults = await Promise.all(shotPromises);
-        
-        return {
-          tempSceneId: tempScenes[sceneIdx].id,
-          realScene: newScene,
-          shotResults
-        };
-      });
-      
-      const sceneResults = await Promise.all(scenePromises);
-      
-      // Replace temp data with real data
-      setScenes(prevScenes => {
-        const updated = [...prevScenes];
-        sceneResults.forEach(({ tempSceneId, realScene }) => {
-          const idx = updated.findIndex(s => s.id === tempSceneId);
-          if (idx >= 0) updated[idx] = realScene;
-        });
-        return updated;
-      });
-      
-      setShots(prevShots => {
-        const updated = [...prevShots];
-        sceneResults.forEach(({ shotResults }) => {
-          shotResults.forEach(({ tempId, realShot }) => {
-            const idx = updated.findIndex(s => s.id === tempId);
-            if (idx >= 0) updated[idx] = realShot;
-          });
-        });
-        return updated;
-      });
-    } catch (error) {
-      console.error('Error duplicating sequence:', error);
-      toast.dismiss();
-      toast.error('Fehler beim Duplizieren');
-    }
-  };
-
-  const handleDuplicateScene = async (sceneId: string) => {
-    const sceneToDuplicate = scenes.find(s => s.id === sceneId);
-    if (!sceneToDuplicate?.sequenceId) return;
-
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      // Show loading toast
-      toast.loading('Scene wird dupliziert...');
-
-      // Create new scene with duplicated data
-      const seqScenes = scenes.filter(s => s.sequenceId === sceneToDuplicate.sequenceId);
-      const maxSceneNumber = seqScenes.reduce((max, s) => Math.max(max, s.sceneNumber), 0);
-      const newScene = await TimelineAPI.createScene(sceneToDuplicate.sequenceId, {
-        sceneNumber: maxSceneNumber + 1,
-        title: `${sceneToDuplicate.title} (Kopie)`,
-        description: sceneToDuplicate.description,
-        location: sceneToDuplicate.location,
-        timeOfDay: sceneToDuplicate.timeOfDay,
-        characters: sceneToDuplicate.characters,
-      }, token);
-
-      // Get all shots in this scene
-      const sceneShots = shots.filter(sh => sh.sceneId === sceneId);
-      
-      // 🚀 PERFORMANCE: Create temp shots for instant UI update
-      const tempShots = sceneShots.map((shot, idx) => ({
-        ...shot,
-        id: `temp-shot-${Date.now()}-${idx}`,
-        sceneId: newScene.id,
-      }));
-      
-      // Show shots immediately (optimistic UI)
-      setScenes(prevScenes => [...prevScenes, newScene]);
-      setShots(prevShots => [...prevShots, ...tempShots]);
-      toast.dismiss();
-      toast.success(`Scene mit ${tempShots.length} Shots dupliziert`);
-      
-      // 🚀 PERFORMANCE: Create ALL shots in PARALLEL (not serial!)
-      const shotPromises = sceneShots.map((shot, idx) => 
-        ShotsAPI.createShot(newScene.id, {
-          shotNumber: shot.shotNumber,
-          description: shot.description,
-          cameraAngle: shot.cameraAngle,
-          cameraMovement: shot.cameraMovement,
-          framing: shot.framing,
-          lens: shot.lens,
-          duration: shot.duration,
-          shotlengthMinutes: shot.shotlengthMinutes,
-          shotlengthSeconds: shot.shotlengthSeconds,
-          notes: shot.notes,
-          dialog: shot.dialog,
-          projectId, // ✅ Add projectId
-        }, token).then(realShot => ({ tempId: tempShots[idx].id, realShot }))
+          },
+          token,
+        ).then((realShot) => ({ tempId: tempShots[idx].id, realShot })),
       );
-      
+
       // Wait for all shots to be created
       const shotResults = await Promise.all(shotPromises);
-      
+
       // Replace temp shots with real shots
-      setShots(prevShots => {
+      setShots((prevShots) => {
         const updated = [...prevShots];
         shotResults.forEach(({ tempId, realShot }) => {
-          const tempIdx = updated.findIndex(s => s.id === tempId);
+          const tempIdx = updated.findIndex((s) => s.id === tempId);
           if (tempIdx >= 0) {
             updated[tempIdx] = realShot;
           }
         });
         return updated;
       });
-
-
     } catch (error) {
-      console.error('Error duplicating scene:', error);
+      console.error("Error duplicating scene:", error);
       toast.dismiss();
-      toast.error('Fehler beim Duplizieren');
+      toast.error("Fehler beim Duplizieren");
     }
   };
 
   const handleDeleteSequence = async (sequenceId: string) => {
-    if (!confirm('Sequenz und alle Szenen löschen?')) return;
+    if (!confirm("Sequenz und alle Szenen löschen?")) return;
 
-    const seqScenes = scenes.filter(s => s.sequenceId === sequenceId);
-    const sceneIds = seqScenes.map(s => s.id);
+    const seqScenes = scenes.filter((s) => s.sequenceId === sequenceId);
+    const sceneIds = seqScenes.map((s) => s.id);
 
     // Optimistic delete
-    setSequences(seqs => seqs.filter(s => s.id !== sequenceId));
-    setScenes(sc => sc.filter(s => s.sequenceId !== sequenceId));
+    setSequences((seqs) => seqs.filter((s) => s.id !== sequenceId));
+    setScenes((sc) => sc.filter((s) => s.sequenceId !== sequenceId));
     setShots((sh) =>
-      sh.filter((s) => s.sceneId != null && !sceneIds.includes(s.sceneId))
+      sh.filter((s) => s.sceneId != null && !sceneIds.includes(s.sceneId)),
     );
 
     try {
@@ -1641,10 +1829,10 @@ export function FilmDropdown({
       cacheManager.invalidate(`timeline:${projectId}`);
       invalidateTimelineQueries();
 
-      toast.success('Sequenz gelöscht');
+      toast.success("Sequenz gelöscht");
     } catch (error) {
-      console.error('Error deleting sequence:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting sequence:", error);
+      toast.error("Fehler beim Löschen");
       loadTimelineData();
     }
   };
@@ -1652,10 +1840,10 @@ export function FilmDropdown({
   const handleDeleteScene = async (sceneId: string) => {
     const sceneToDelete = scenes.find((s) => s.id === sceneId);
     if (!sceneToDelete?.sequenceId) {
-      toast.error('Szene nicht gefunden');
+      toast.error("Szene nicht gefunden");
       return;
     }
-    if (!confirm('Scene und alle Shots löschen?')) return;
+    if (!confirm("Scene und alle Shots löschen?")) return;
 
     const shotsForScene = shots.filter((s) => s.sceneId === sceneId);
 
@@ -1674,10 +1862,10 @@ export function FilmDropdown({
       let restoredSceneId: string | null = null;
 
       pushAppUndoAction({
-        description: `Szene „${sceneToDelete.title || 'Szene'}“ gelöscht`,
+        description: `Szene „${sceneToDelete.title || "Szene"}“ gelöscht`,
         undo: async () => {
           const t = await getAccessToken();
-          if (!t) throw new Error('Not authenticated');
+          if (!t) throw new Error("Not authenticated");
           const newScene = await TimelineAPI.createScene(
             sceneToDelete.sequenceId!,
             {
@@ -1692,7 +1880,7 @@ export function FilmDropdown({
               metadata: sceneToDelete.metadata,
               wordCount: sceneToDelete.wordCount,
             },
-            t
+            t,
           );
           restoredSceneId = newScene.id;
 
@@ -1702,7 +1890,7 @@ export function FilmDropdown({
             const ns = await ShotsAPI.createShot(
               newScene.id,
               { ...shotPayload, projectId, sceneId: newScene.id },
-              t
+              t,
             );
             createdShots.push(ns);
           }
@@ -1711,7 +1899,7 @@ export function FilmDropdown({
           setShots((prev) => [...prev, ...createdShots]);
           cacheManager.invalidate(`timeline:${projectId}`);
           invalidateTimelineQueries();
-          toast.success('Szene wiederhergestellt');
+          toast.success("Szene wiederhergestellt");
         },
         redo: async () => {
           const t = await getAccessToken();
@@ -1719,14 +1907,14 @@ export function FilmDropdown({
           await TimelineAPI.deleteScene(restoredSceneId, t);
           invalidateTimelineQueries();
           await loadTimelineData();
-          toast.success('Szene erneut gelöscht');
+          toast.success("Szene erneut gelöscht");
         },
       });
 
-      toast.success('Scene gelöscht (CMD+Z zum Rückgängigmachen)');
+      toast.success("Scene gelöscht (CMD+Z zum Rückgängigmachen)");
     } catch (error) {
-      console.error('Error deleting scene:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting scene:", error);
+      toast.error("Fehler beim Löschen");
       loadTimelineData();
     }
   };
@@ -1748,21 +1936,21 @@ export function FilmDropdown({
       let restoredShotId: string | null = null;
 
       pushAppUndoAction({
-        description: `Shot „${shotToDelete.shotNumber || shotToDelete.description || 'Shot'}“ gelöscht`,
+        description: `Shot „${shotToDelete.shotNumber || shotToDelete.description || "Shot"}“ gelöscht`,
         undo: async () => {
           const t = await getAccessToken();
-          if (!t) throw new Error('Not authenticated');
+          if (!t) throw new Error("Not authenticated");
           const { id: _id, sceneId: _sc, ...shotPayload } = shotToDelete;
           const newShot = await ShotsAPI.createShot(
             shotToDelete.sceneId,
             { ...shotPayload, projectId, sceneId: shotToDelete.sceneId },
-            t
+            t,
           );
           restoredShotId = newShot.id;
           setShots((prev) => [...prev, newShot]);
           cacheManager.invalidate(`timeline:${projectId}`);
           invalidateTimelineQueries();
-          toast.success('Shot wiederhergestellt');
+          toast.success("Shot wiederhergestellt");
         },
         redo: async () => {
           const t = await getAccessToken();
@@ -1770,14 +1958,14 @@ export function FilmDropdown({
           await ShotsAPI.deleteShot(restoredShotId, t);
           invalidateTimelineQueries();
           await loadTimelineData();
-          toast.success('Shot erneut gelöscht');
+          toast.success("Shot erneut gelöscht");
         },
       });
 
-      toast.success('Shot gelöscht (CMD+Z zum Rückgängigmachen)');
+      toast.success("Shot gelöscht (CMD+Z zum Rückgängigmachen)");
     } catch (error) {
-      console.error('Error deleting shot:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting shot:", error);
+      toast.error("Fehler beim Löschen");
       loadTimelineData();
     }
   };
@@ -1788,10 +1976,11 @@ export function FilmDropdown({
 
   // ACTS - Einfügen an Index (Drop Zone)
   const handleActDropAtIndex = (draggedId: string, targetIndex: number) => {
-    const draggedIndex = acts.findIndex(a => a.id === draggedId);
+    const draggedIndex = acts.findIndex((a) => a.id === draggedId);
     if (draggedIndex === -1) return;
 
-    const adjustedTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const adjustedTargetIndex =
+      draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
 
     const reordered = [...acts];
     const [removed] = reordered.splice(draggedIndex, 1);
@@ -1805,12 +1994,12 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const actIds = reordered.map(a => a.id);
+          const actIds = reordered.map((a) => a.id);
           await TimelineAPI.reorderNodes(actIds);
         }
       } catch (error) {
-        console.error('Error reordering acts:', error);
-        toast.error('Fehler beim Sortieren');
+        console.error("Error reordering acts:", error);
+        toast.error("Fehler beim Sortieren");
         loadTimelineData();
       }
     })();
@@ -1818,8 +2007,8 @@ export function FilmDropdown({
 
   // ACTS - Platz tauschen (Drop auf Item)
   const handleActSwap = (draggedId: string, targetId: string) => {
-    const draggedIndex = acts.findIndex(a => a.id === draggedId);
-    const targetIndex = acts.findIndex(a => a.id === targetId);
+    const draggedIndex = acts.findIndex((a) => a.id === draggedId);
+    const targetIndex = acts.findIndex((a) => a.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
@@ -1835,34 +2024,39 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const actIds = reordered.map(a => a.id);
+          const actIds = reordered.map((a) => a.id);
           await TimelineAPI.reorderNodes(actIds);
         }
       } catch (error) {
-        console.error('Error swapping acts:', error);
-        toast.error('Fehler beim Tauschen');
+        console.error("Error swapping acts:", error);
+        toast.error("Fehler beim Tauschen");
         loadTimelineData();
       }
     })();
   };
 
   // SEQUENCES - Einfügen an Index
-  const handleSequenceDropAtIndex = (draggedId: string, targetIndex: number, actId: string) => {
-    const draggedSeq = sequences.find(s => s.id === draggedId);
+  const handleSequenceDropAtIndex = (
+    draggedId: string,
+    targetIndex: number,
+    actId: string,
+  ) => {
+    const draggedSeq = sequences.find((s) => s.id === draggedId);
     if (!draggedSeq || draggedSeq.actId !== actId) return;
 
-    const actSequences = sequences.filter(s => s.actId === actId);
-    const draggedIndex = actSequences.findIndex(s => s.id === draggedId);
+    const actSequences = sequences.filter((s) => s.actId === actId);
+    const draggedIndex = actSequences.findIndex((s) => s.id === draggedId);
     if (draggedIndex === -1) return;
 
-    const adjustedTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const adjustedTargetIndex =
+      draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
 
     const reordered = [...actSequences];
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(adjustedTargetIndex, 0, removed);
 
-    const otherSequences = sequences.filter(s => s.actId !== actId);
-    
+    const otherSequences = sequences.filter((s) => s.actId !== actId);
+
     // Optimistic Update - SOFORT!
     setSequences([...otherSequences, ...reordered]);
 
@@ -1871,12 +2065,12 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const seqIds = reordered.map(s => s.id);
+          const seqIds = reordered.map((s) => s.id);
           await TimelineAPI.reorderNodes(seqIds);
         }
       } catch (error) {
-        console.error('Error reordering sequences:', error);
-        toast.error('Fehler beim Sortieren');
+        console.error("Error reordering sequences:", error);
+        toast.error("Fehler beim Sortieren");
         loadTimelineData();
       }
     })();
@@ -1884,14 +2078,15 @@ export function FilmDropdown({
 
   // SEQUENCES - Platz tauschen
   const handleSequenceSwap = (draggedId: string, targetId: string) => {
-    const draggedSeq = sequences.find(s => s.id === draggedId);
-    const targetSeq = sequences.find(s => s.id === targetId);
-    
-    if (!draggedSeq || !targetSeq || draggedSeq.actId !== targetSeq.actId) return;
+    const draggedSeq = sequences.find((s) => s.id === draggedId);
+    const targetSeq = sequences.find((s) => s.id === targetId);
 
-    const actSequences = sequences.filter(s => s.actId === draggedSeq.actId);
-    const draggedIndex = actSequences.findIndex(s => s.id === draggedId);
-    const targetIndex = actSequences.findIndex(s => s.id === targetId);
+    if (!draggedSeq || !targetSeq || draggedSeq.actId !== targetSeq.actId)
+      return;
+
+    const actSequences = sequences.filter((s) => s.actId === draggedSeq.actId);
+    const draggedIndex = actSequences.findIndex((s) => s.id === draggedId);
+    const targetIndex = actSequences.findIndex((s) => s.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
@@ -1899,8 +2094,10 @@ export function FilmDropdown({
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, removed);
 
-    const otherSequences = sequences.filter(s => s.actId !== draggedSeq.actId);
-    
+    const otherSequences = sequences.filter(
+      (s) => s.actId !== draggedSeq.actId,
+    );
+
     // Optimistic Update - SOFORT!
     setSequences([...otherSequences, ...reordered]);
 
@@ -1909,34 +2106,39 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const seqIds = reordered.map(s => s.id);
+          const seqIds = reordered.map((s) => s.id);
           await TimelineAPI.reorderNodes(seqIds);
         }
       } catch (error) {
-        console.error('Error swapping sequences:', error);
-        toast.error('Fehler beim Tauschen');
+        console.error("Error swapping sequences:", error);
+        toast.error("Fehler beim Tauschen");
         loadTimelineData();
       }
     })();
   };
 
   // SCENES - Einfügen an Index
-  const handleSceneDropAtIndex = (draggedId: string, targetIndex: number, sequenceId: string) => {
-    const draggedScene = scenes.find(s => s.id === draggedId);
+  const handleSceneDropAtIndex = (
+    draggedId: string,
+    targetIndex: number,
+    sequenceId: string,
+  ) => {
+    const draggedScene = scenes.find((s) => s.id === draggedId);
     if (!draggedScene || draggedScene.sequenceId !== sequenceId) return;
 
-    const seqScenes = scenes.filter(s => s.sequenceId === sequenceId);
-    const draggedIndex = seqScenes.findIndex(s => s.id === draggedId);
+    const seqScenes = scenes.filter((s) => s.sequenceId === sequenceId);
+    const draggedIndex = seqScenes.findIndex((s) => s.id === draggedId);
     if (draggedIndex === -1) return;
 
-    const adjustedTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const adjustedTargetIndex =
+      draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
 
     const reordered = [...seqScenes];
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(adjustedTargetIndex, 0, removed);
 
-    const otherScenes = scenes.filter(s => s.sequenceId !== sequenceId);
-    
+    const otherScenes = scenes.filter((s) => s.sequenceId !== sequenceId);
+
     // Optimistic Update - SOFORT!
     setScenes([...otherScenes, ...reordered]);
 
@@ -1945,12 +2147,12 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const sceneIds = reordered.map(s => s.id);
+          const sceneIds = reordered.map((s) => s.id);
           await TimelineAPI.reorderNodes(sceneIds);
         }
       } catch (error) {
-        console.error('Error reordering scenes:', error);
-        toast.error('Fehler beim Sortieren');
+        console.error("Error reordering scenes:", error);
+        toast.error("Fehler beim Sortieren");
         loadTimelineData();
       }
     })();
@@ -1958,14 +2160,21 @@ export function FilmDropdown({
 
   // SCENES - Platz tauschen
   const handleSceneSwap = (draggedId: string, targetId: string) => {
-    const draggedScene = scenes.find(s => s.id === draggedId);
-    const targetScene = scenes.find(s => s.id === targetId);
-    
-    if (!draggedScene || !targetScene || draggedScene.sequenceId !== targetScene.sequenceId) return;
+    const draggedScene = scenes.find((s) => s.id === draggedId);
+    const targetScene = scenes.find((s) => s.id === targetId);
 
-    const seqScenes = scenes.filter(s => s.sequenceId === draggedScene.sequenceId);
-    const draggedIndex = seqScenes.findIndex(s => s.id === draggedId);
-    const targetIndex = seqScenes.findIndex(s => s.id === targetId);
+    if (
+      !draggedScene ||
+      !targetScene ||
+      draggedScene.sequenceId !== targetScene.sequenceId
+    )
+      return;
+
+    const seqScenes = scenes.filter(
+      (s) => s.sequenceId === draggedScene.sequenceId,
+    );
+    const draggedIndex = seqScenes.findIndex((s) => s.id === draggedId);
+    const targetIndex = seqScenes.findIndex((s) => s.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
@@ -1973,8 +2182,10 @@ export function FilmDropdown({
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, removed);
 
-    const otherScenes = scenes.filter(s => s.sequenceId !== draggedScene.sequenceId);
-    
+    const otherScenes = scenes.filter(
+      (s) => s.sequenceId !== draggedScene.sequenceId,
+    );
+
     // Optimistic Update - SOFORT!
     setScenes([...otherScenes, ...reordered]);
 
@@ -1983,12 +2194,12 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const sceneIds = reordered.map(s => s.id);
+          const sceneIds = reordered.map((s) => s.id);
           await TimelineAPI.reorderNodes(sceneIds);
         }
       } catch (error) {
-        console.error('Error swapping scenes:', error);
-        toast.error('Fehler beim Tauschen');
+        console.error("Error swapping scenes:", error);
+        toast.error("Fehler beim Tauschen");
         loadTimelineData();
       }
     })();
@@ -1998,64 +2209,85 @@ export function FilmDropdown({
   // CROSS-CONTAINER DRAG & DROP
   // =====================================================
 
-  const handleSceneMoveToSequence = async (sceneId: string, targetSequenceId: string) => {
-    const scene = scenes.find(s => s.id === sceneId);
+  const handleSceneMoveToSequence = async (
+    sceneId: string,
+    targetSequenceId: string,
+  ) => {
+    const scene = scenes.find((s) => s.id === sceneId);
     if (!scene || scene.sequenceId === targetSequenceId) return;
 
-    console.log('🔄 Moving scene to new sequence:', { sceneId, targetSequenceId });
+    console.log("🔄 Moving scene to new sequence:", {
+      sceneId,
+      targetSequenceId,
+    });
 
     // Optimistic update
-    setScenes(scenes => scenes.map(s => 
-      s.id === sceneId ? { ...s, sequenceId: targetSequenceId } : s
-    ));
+    setScenes((scenes) =>
+      scenes.map((s) =>
+        s.id === sceneId ? { ...s, sequenceId: targetSequenceId } : s,
+      ),
+    );
 
     try {
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         loadTimelineData();
         return;
       }
 
-      await TimelineAPI.updateScene(sceneId, { 
-        sequenceId: targetSequenceId 
-      }, token);
-      
-      toast.success('Szene verschoben');
+      await TimelineAPI.updateScene(
+        sceneId,
+        {
+          sequenceId: targetSequenceId,
+        },
+        token,
+      );
+
+      toast.success("Szene verschoben");
     } catch (error) {
-      console.error('Error moving scene:', error);
-      toast.error('Fehler beim Verschieben');
+      console.error("Error moving scene:", error);
+      toast.error("Fehler beim Verschieben");
       loadTimelineData();
     }
   };
 
-  const handleShotMoveToScene = async (shotId: string, targetSceneId: string) => {
-    const shot = shots.find(s => s.id === shotId);
+  const handleShotMoveToScene = async (
+    shotId: string,
+    targetSceneId: string,
+  ) => {
+    const shot = shots.find((s) => s.id === shotId);
     if (!shot || shot.sceneId === targetSceneId) return;
 
-    console.log('🔄 Moving shot to new scene:', { shotId, targetSceneId });
+    console.log("🔄 Moving shot to new scene:", { shotId, targetSceneId });
 
     // Optimistic update
-    setShots(shots => shots.map(s => 
-      s.id === shotId ? { ...s, sceneId: targetSceneId } : s
-    ));
+    setShots((shots) =>
+      shots.map((s) =>
+        s.id === shotId ? { ...s, sceneId: targetSceneId } : s,
+      ),
+    );
 
     try {
       const token = await getAccessToken();
       if (!token) {
-        toast.error('Nicht angemeldet');
+        toast.error("Nicht angemeldet");
         loadTimelineData();
         return;
       }
 
-      await ShotsAPI.updateShot(shotId, { 
-        sceneId: targetSceneId 
-      }, token);
-      
-      toast.success('Shot verschoben');
+      await ShotsAPI.updateShot(
+        shotId,
+        {
+          sceneId: targetSceneId,
+        },
+        token,
+      );
+
+      toast.success("Shot verschoben");
     } catch (error) {
-      console.error('Error moving shot:', error);
-      toast.error('Fehler beim Verschieben');
+      console.error("Error moving shot:", error);
+      toast.error("Fehler beim Verschieben");
       loadTimelineData();
     }
   };
@@ -2066,9 +2298,9 @@ export function FilmDropdown({
 
   const handleUpdateShot = async (shotId: string, updates: Partial<Shot>) => {
     // Optimistic update
-    setShots(shots => shots.map(s => 
-      s.id === shotId ? { ...s, ...updates } : s
-    ));
+    setShots((shots) =>
+      shots.map((s) => (s.id === shotId ? { ...s, ...updates } : s)),
+    );
 
     try {
       const token = await getAccessToken();
@@ -2076,72 +2308,83 @@ export function FilmDropdown({
 
       const saved = await ShotsAPI.updateShot(shotId, updates, token);
       if (saved !== undefined) {
-        toast.success('Shot aktualisiert');
+        toast.success("Shot aktualisiert");
       }
     } catch (error) {
-      console.error('Error updating shot:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating shot:", error);
+      toast.error("Fehler beim Aktualisieren");
       loadTimelineData();
     }
   };
 
   const handleDuplicateShot = async (shotId: string) => {
-    const shot = shots.find(s => s.id === shotId);
+    const shot = shots.find((s) => s.id === shotId);
     if (!shot) return;
 
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      const sceneShots = shots.filter(s => s.sceneId === shot.sceneId && !s.id.startsWith('temp-'));
-      
+      const sceneShots = shots.filter(
+        (s) => s.sceneId === shot.sceneId && !s.id.startsWith("temp-"),
+      );
+
       // Extract numeric part from shotNumber strings like "Shot 1", "Shot 2"
-      const shotNumbers = sceneShots.map(s => {
+      const shotNumbers = sceneShots.map((s) => {
         const match = String(s.shotNumber).match(/\d+/);
         return match ? parseInt(match[0]) : 0;
       });
       const maxShotNumber = Math.max(0, ...shotNumbers);
-      
-      const newShot = await ShotsAPI.createShot(shot.sceneId, {
-        shotNumber: `${shot.shotNumber} (Kopie)`,
-        description: shot.description,
-        cameraAngle: shot.cameraAngle,
-        cameraMovement: shot.cameraMovement,
-        framing: shot.framing,
-        lens: shot.lens,
-        duration: shot.duration,
-        shotlengthMinutes: shot.shotlengthMinutes,
-        shotlengthSeconds: shot.shotlengthSeconds,
-        notes: shot.notes,
-        dialog: shot.dialog,
-        projectId, // ✅ Add projectId
-      }, token);
+
+      const newShot = await ShotsAPI.createShot(
+        shot.sceneId,
+        {
+          shotNumber: `${shot.shotNumber} (Kopie)`,
+          description: shot.description,
+          cameraAngle: shot.cameraAngle,
+          cameraMovement: shot.cameraMovement,
+          framing: shot.framing,
+          lens: shot.lens,
+          duration: shot.duration,
+          shotlengthMinutes: shot.shotlengthMinutes,
+          shotlengthSeconds: shot.shotlengthSeconds,
+          notes: shot.notes,
+          dialog: shot.dialog,
+          projectId, // ✅ Add projectId
+        },
+        token,
+      );
 
       setShots([...shots, newShot]);
-      toast.success('Shot dupliziert');
+      toast.success("Shot dupliziert");
     } catch (error) {
-      console.error('Error duplicating shot:', error);
-      toast.error('Fehler beim Duplizieren');
+      console.error("Error duplicating shot:", error);
+      toast.error("Fehler beim Duplizieren");
     }
   };
 
   // SHOTS - Einfügen an Index
-  const handleShotDropAtIndex = (draggedId: string, targetIndex: number, sceneId: string) => {
-    const draggedShot = shots.find(s => s.id === draggedId);
+  const handleShotDropAtIndex = (
+    draggedId: string,
+    targetIndex: number,
+    sceneId: string,
+  ) => {
+    const draggedShot = shots.find((s) => s.id === draggedId);
     if (!draggedShot || draggedShot.sceneId !== sceneId) return;
 
-    const sceneShots = shots.filter(s => s.sceneId === sceneId);
-    const draggedIndex = sceneShots.findIndex(s => s.id === draggedId);
+    const sceneShots = shots.filter((s) => s.sceneId === sceneId);
+    const draggedIndex = sceneShots.findIndex((s) => s.id === draggedId);
     if (draggedIndex === -1) return;
 
-    const adjustedTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const adjustedTargetIndex =
+      draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
 
     const reordered = [...sceneShots];
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(adjustedTargetIndex, 0, removed);
 
-    const otherShots = shots.filter(s => s.sceneId !== sceneId);
-    
+    const otherShots = shots.filter((s) => s.sceneId !== sceneId);
+
     // Optimistic Update - SOFORT!
     setShots([...otherShots, ...reordered]);
 
@@ -2150,12 +2393,12 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const shotIds = reordered.map(s => s.id);
+          const shotIds = reordered.map((s) => s.id);
           await ShotsAPI.reorderShots(sceneId, shotIds, token);
         }
       } catch (error) {
-        console.error('Error reordering shots:', error);
-        toast.error('Fehler beim Sortieren');
+        console.error("Error reordering shots:", error);
+        toast.error("Fehler beim Sortieren");
         loadTimelineData();
       }
     })();
@@ -2163,14 +2406,19 @@ export function FilmDropdown({
 
   // SHOTS - Platz tauschen
   const handleShotSwap = (draggedId: string, targetId: string) => {
-    const draggedShot = shots.find(s => s.id === draggedId);
-    const targetShot = shots.find(s => s.id === targetId);
-    
-    if (!draggedShot || !targetShot || draggedShot.sceneId !== targetShot.sceneId) return;
+    const draggedShot = shots.find((s) => s.id === draggedId);
+    const targetShot = shots.find((s) => s.id === targetId);
 
-    const sceneShots = shots.filter(s => s.sceneId === draggedShot.sceneId);
-    const draggedIndex = sceneShots.findIndex(s => s.id === draggedId);
-    const targetIndex = sceneShots.findIndex(s => s.id === targetId);
+    if (
+      !draggedShot ||
+      !targetShot ||
+      draggedShot.sceneId !== targetShot.sceneId
+    )
+      return;
+
+    const sceneShots = shots.filter((s) => s.sceneId === draggedShot.sceneId);
+    const draggedIndex = sceneShots.findIndex((s) => s.id === draggedId);
+    const targetIndex = sceneShots.findIndex((s) => s.id === targetId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
@@ -2178,8 +2426,8 @@ export function FilmDropdown({
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, removed);
 
-    const otherShots = shots.filter(s => s.sceneId !== draggedShot.sceneId);
-    
+    const otherShots = shots.filter((s) => s.sceneId !== draggedShot.sceneId);
+
     // Optimistic Update - SOFORT!
     setShots([...otherShots, ...reordered]);
 
@@ -2188,12 +2436,12 @@ export function FilmDropdown({
       try {
         const token = await getAccessToken();
         if (token) {
-          const shotIds = reordered.map(s => s.id);
+          const shotIds = reordered.map((s) => s.id);
           await ShotsAPI.reorderShots(draggedShot.sceneId, shotIds, token);
         }
       } catch (error) {
-        console.error('Error swapping shots:', error);
-        toast.error('Fehler beim Tauschen');
+        console.error("Error swapping shots:", error);
+        toast.error("Fehler beim Tauschen");
         loadTimelineData();
       }
     })();
@@ -2202,50 +2450,54 @@ export function FilmDropdown({
   const runShotImageUpload = async (
     shotId: string,
     file: File,
-    gifMode?: ImageUploadGifMode
+    gifMode?: ImageUploadGifMode,
   ) => {
     shotImageUploadInFlightRef.current = true;
     setShotImageUploadingId(shotId);
     const previewUrl = URL.createObjectURL(file);
     setShots((shots) =>
-      shots.map((s) => (s.id === shotId ? { ...s, imageUrl: previewUrl } : s))
+      shots.map((s) => (s.id === shotId ? { ...s, imageUrl: previewUrl } : s)),
     );
 
-    toast.loading('Bild wird hochgeladen...');
+    toast.loading("Bild wird hochgeladen...");
 
     try {
       const token = await getAccessToken();
       if (!token) {
         toast.dismiss();
-        toast.error('Nicht authentifiziert');
+        toast.error("Nicht authentifiziert");
         URL.revokeObjectURL(previewUrl);
         setShots((shots) =>
-          shots.map((s) => (s.id === shotId ? { ...s, imageUrl: undefined } : s))
+          shots.map((s) =>
+            s.id === shotId ? { ...s, imageUrl: undefined } : s,
+          ),
         );
         return;
       }
 
-      const imageUrl = await ShotsAPI.uploadShotImage(shotId, file, token, { gifMode });
+      const imageUrl = await ShotsAPI.uploadShotImage(shotId, file, token, {
+        gifMode,
+      });
 
       URL.revokeObjectURL(previewUrl);
 
       setShots((shots) =>
-        shots.map((s) => (s.id === shotId ? { ...s, imageUrl } : s))
+        shots.map((s) => (s.id === shotId ? { ...s, imageUrl } : s)),
       );
 
       toast.dismiss();
-      toast.success('Bild hochgeladen! ✅');
+      toast.success("Bild hochgeladen! ✅");
     } catch (error) {
-      console.error('❌ Error uploading shot image:', error);
+      console.error("❌ Error uploading shot image:", error);
 
       URL.revokeObjectURL(previewUrl);
       setShots((shots) =>
-        shots.map((s) => (s.id === shotId ? { ...s, imageUrl: undefined } : s))
+        shots.map((s) => (s.id === shotId ? { ...s, imageUrl: undefined } : s)),
       );
 
       toast.dismiss();
       toast.error(
-        `Fehler beim Hochladen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+        `Fehler beim Hochladen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
       );
       throw error;
     } finally {
@@ -2258,7 +2510,7 @@ export function FilmDropdown({
     try {
       validateImageFile(file, 5);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Ungültiges Bild');
+      toast.error(e instanceof Error ? e.message : "Ungültiges Bild");
       return;
     }
 
@@ -2272,29 +2524,41 @@ export function FilmDropdown({
   };
 
   const handleShotAudioUpload = async (
-    shotId: string, 
-    file: File, 
-    type: 'music' | 'sfx', 
+    shotId: string,
+    file: File,
+    type: "music" | "sfx",
     label?: string,
     startTime?: number,
     endTime?: number,
     fadeIn?: number,
-    fadeOut?: number
+    fadeOut?: number,
   ) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      await ShotsAPI.uploadShotAudio(shotId, file, type, token, label, startTime, endTime, fadeIn, fadeOut);
-      
+      await ShotsAPI.uploadShotAudio(
+        shotId,
+        file,
+        type,
+        token,
+        label,
+        startTime,
+        endTime,
+        fadeIn,
+        fadeOut,
+      );
+
       // Reload shot data to get new audio
       const updatedShot = await ShotsAPI.getShot(shotId, token);
-      setShots(shots => shots.map(s => s.id === shotId ? updatedShot : s));
-      
-      toast.success('Audio hochgeladen');
+      setShots((shots) =>
+        shots.map((s) => (s.id === shotId ? updatedShot : s)),
+      );
+
+      toast.success("Audio hochgeladen");
     } catch (error) {
-      console.error('Error uploading shot audio:', error);
-      toast.error('Fehler beim Hochladen');
+      console.error("Error uploading shot audio:", error);
+      toast.error("Fehler beim Hochladen");
     }
   };
 
@@ -2304,139 +2568,169 @@ export function FilmDropdown({
       if (!token) return;
 
       await ShotsAPI.deleteShotAudio(audioId, token);
-      
+
       // Remove audio from local state
-      setShots(shots => shots.map(shot => ({
-        ...shot,
-        audioFiles: shot.audioFiles?.filter(a => a.id !== audioId)
-      })));
-      
-      toast.success('Audio gelöscht');
+      setShots((shots) =>
+        shots.map((shot) => ({
+          ...shot,
+          audioFiles: shot.audioFiles?.filter((a) => a.id !== audioId),
+        })),
+      );
+
+      toast.success("Audio gelöscht");
     } catch (error) {
-      console.error('Error deleting shot audio:', error);
-      toast.error('Fehler beim Löschen');
+      console.error("Error deleting shot audio:", error);
+      toast.error("Fehler beim Löschen");
     }
   };
 
   const handleShotAudioUpdate = async (
-    audioId: string, 
-    updates: { 
-      label?: string; 
-      startTime?: number; 
-      endTime?: number; 
-      fadeIn?: number; 
-      fadeOut?: number 
-    }
+    audioId: string,
+    updates: {
+      label?: string;
+      startTime?: number;
+      endTime?: number;
+      fadeIn?: number;
+      fadeOut?: number;
+    },
   ) => {
     try {
       const token = await getAccessToken();
       if (!token) return;
 
       await ShotsAPI.updateShotAudio(audioId, updates, token);
-      
+
       // Update audio in local state
-      setShots(shots => shots.map(shot => ({
-        ...shot,
-        audioFiles: shot.audioFiles?.map(a => 
-          a.id === audioId ? { ...a, ...updates } : a
-        )
-      })));
-      
-      toast.success('Audio aktualisiert');
+      setShots((shots) =>
+        shots.map((shot) => ({
+          ...shot,
+          audioFiles: shot.audioFiles?.map((a) =>
+            a.id === audioId ? { ...a, ...updates } : a,
+          ),
+        })),
+      );
+
+      toast.success("Audio aktualisiert");
     } catch (error) {
-      console.error('Error updating shot audio:', error);
-      toast.error('Fehler beim Aktualisieren');
+      console.error("Error updating shot audio:", error);
+      toast.error("Fehler beim Aktualisieren");
     }
   };
 
-  const handleShotCharacterAdd = async (shotId: string, characterId: string) => {
-    const shot = shots.find(s => s.id === shotId);
+  const handleShotCharacterAdd = async (
+    shotId: string,
+    characterId: string,
+  ) => {
+    const shot = shots.find((s) => s.id === shotId);
     if (!shot) return;
 
     const currentCharacters = shot.characters || [];
-    if (currentCharacters.some(c => c.id === characterId)) {
-      toast.error('Character bereits hinzugefügt');
+    if (currentCharacters.some((c) => c.id === characterId)) {
+      toast.error("Character bereits hinzugefügt");
       return;
     }
 
     // Find character data for optimistic update
-    const character = characters.find(c => c.id === characterId);
+    const character = characters.find((c) => c.id === characterId);
     if (!character) {
-      toast.error('Character nicht gefunden');
+      toast.error("Character nicht gefunden");
       return;
     }
 
     const optimisticCharacters = [...currentCharacters, character];
 
     // Optimistic update
-    setShots(shots => shots.map(s => 
-      s.id === shotId ? { ...s, characters: optimisticCharacters } : s
-    ));
+    setShots((shots) =>
+      shots.map((s) =>
+        s.id === shotId ? { ...s, characters: optimisticCharacters } : s,
+      ),
+    );
 
     try {
       const token = await getAccessToken();
       if (!token) {
         // Rollback
-        setShots(shots => shots.map(s => 
-          s.id === shotId ? { ...s, characters: currentCharacters } : s
-        ));
-        toast.error('Nicht angemeldet');
+        setShots((shots) =>
+          shots.map((s) =>
+            s.id === shotId ? { ...s, characters: currentCharacters } : s,
+          ),
+        );
+        toast.error("Nicht angemeldet");
         return;
       }
 
       // Use the new dedicated API endpoint
-      const updatedShot = await ShotsAPI.addCharacterToShot(shotId, characterId, token);
-      
+      const updatedShot = await ShotsAPI.addCharacterToShot(
+        shotId,
+        characterId,
+        token,
+      );
+
       // Update with real data from server
-      setShots(shots => shots.map(s => 
-        s.id === shotId ? { ...s, characters: updatedShot.characters } : s
-      ));
-      
-      toast.success('Character hinzugefügt');
+      setShots((shots) =>
+        shots.map((s) =>
+          s.id === shotId ? { ...s, characters: updatedShot.characters } : s,
+        ),
+      );
+
+      toast.success("Character hinzugefügt");
     } catch (error) {
-      console.error('Error adding character to shot:', error);
-      toast.error('Fehler beim Hinzufügen');
+      console.error("Error adding character to shot:", error);
+      toast.error("Fehler beim Hinzufügen");
       // Rollback
-      setShots(shots => shots.map(s => 
-        s.id === shotId ? { ...s, characters: currentCharacters } : s
-      ));
+      setShots((shots) =>
+        shots.map((s) =>
+          s.id === shotId ? { ...s, characters: currentCharacters } : s,
+        ),
+      );
     }
   };
 
-  const handleShotCharacterRemove = async (shotId: string, characterId: string) => {
-    const shot = shots.find(s => s.id === shotId);
+  const handleShotCharacterRemove = async (
+    shotId: string,
+    characterId: string,
+  ) => {
+    const shot = shots.find((s) => s.id === shotId);
     if (!shot) return;
 
     const currentCharacters = shot.characters || [];
-    const updatedCharacters = currentCharacters.filter(c => c.id !== characterId);
+    const updatedCharacters = currentCharacters.filter(
+      (c) => c.id !== characterId,
+    );
 
     // Optimistic update
-    setShots(shots => shots.map(s => 
-      s.id === shotId ? { ...s, characters: updatedCharacters } : s
-    ));
+    setShots((shots) =>
+      shots.map((s) =>
+        s.id === shotId ? { ...s, characters: updatedCharacters } : s,
+      ),
+    );
 
     try {
       const token = await getAccessToken();
       if (!token) {
         // Rollback
-        setShots(shots => shots.map(s => 
-          s.id === shotId ? { ...s, characters: currentCharacters } : s
-        ));
-        toast.error('Nicht angemeldet');
+        setShots((shots) =>
+          shots.map((s) =>
+            s.id === shotId ? { ...s, characters: currentCharacters } : s,
+          ),
+        );
+        toast.error("Nicht angemeldet");
         return;
       }
 
       // Use the dedicated API endpoint
       await ShotsAPI.removeCharacterFromShot(shotId, characterId, token);
-      
-      toast.success('Character entfernt');
+
+      toast.success("Character entfernt");
     } catch (error) {
-      console.error('Error removing character from shot:', error);
-      toast.error('Fehler beim Entfernen');
+      console.error("Error removing character from shot:", error);
+      toast.error("Fehler beim Entfernen");
       // Rollback
-      setShots(shots => shots.map(s => 
-        s.id === shotId ? { ...s, characters: currentCharacters } : s
-      ));
+      setShots((shots) =>
+        shots.map((s) =>
+          s.id === shotId ? { ...s, characters: currentCharacters } : s,
+        ),
+      );
     }
   };
 
@@ -2446,8 +2740,12 @@ export function FilmDropdown({
 
   // 🚀 PERFORMANCE LOGGING (only in development, once per data load)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && !loading && sequences.length > 0) {
-      console.log('🚀 [FilmDropdown] Performance Stats:', {
+    if (
+      process.env.NODE_ENV === "development" &&
+      !loading &&
+      sequences.length > 0
+    ) {
+      console.log("🚀 [FilmDropdown] Performance Stats:", {
         totalItems: {
           acts: acts.length,
           sequences: sequences.length,
@@ -2460,9 +2758,18 @@ export function FilmDropdown({
           shots: optimized.stats.visibleShots,
         },
         renderReduction: {
-          sequences: sequences.length > 0 ? `${Math.round((1 - optimized.stats.visibleSequences / sequences.length) * 100)}%` : '0%',
-          scenes: scenes.length > 0 ? `${Math.round((1 - optimized.stats.visibleScenes / scenes.length) * 100)}%` : '0%',
-          shots: shots.length > 0 ? `${Math.round((1 - optimized.stats.visibleShots / shots.length) * 100)}%` : '0%',
+          sequences:
+            sequences.length > 0
+              ? `${Math.round((1 - optimized.stats.visibleSequences / sequences.length) * 100)}%`
+              : "0%",
+          scenes:
+            scenes.length > 0
+              ? `${Math.round((1 - optimized.stats.visibleScenes / scenes.length) * 100)}%`
+              : "0%",
+          shots:
+            shots.length > 0
+              ? `${Math.round((1 - optimized.stats.visibleShots / shots.length) * 100)}%`
+              : "0%",
         },
       });
     }
@@ -2481,12 +2788,14 @@ export function FilmDropdown({
       }}
       fileName={gifShotPending?.file.name}
       allowKeepGif={
-        gifShotPending ? gifShotPending.file.size <= STORAGE_CONFIG.MAX_FILE_SIZE : true
+        gifShotPending
+          ? gifShotPending.file.size <= STORAGE_CONFIG.MAX_FILE_SIZE
+          : true
       }
       onConvert={() => {
         const p = gifShotPending;
         if (!p) return;
-        void runShotImageUpload(p.shotId, p.file, 'convert-static');
+        void runShotImageUpload(p.shotId, p.file, "convert-static");
         setGifShotPending(null);
       }}
       onKeepGif={() => {
@@ -2494,11 +2803,11 @@ export function FilmDropdown({
         if (!p) return;
         if (p.file.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
           toast.error(
-            `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`
+            `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`,
           );
           return;
         }
-        void runShotImageUpload(p.shotId, p.file, 'keep-animation');
+        void runShotImageUpload(p.shotId, p.file, "keep-animation");
         setGifShotPending(null);
       }}
     />
@@ -2517,60 +2826,64 @@ export function FilmDropdown({
   if (isMobile) {
     return (
       <>
-      <DndProvider backend={HTML5Backend}>
-        <div ref={containerRef} data-beat-container className="p-2 space-y-2">
-          {acts.length === 0 && (
-            <div className="rounded-lg border border-dashed border-muted-foreground/35 bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground">
-              <p className="mb-2">{narrativeEmptyStateParagraph}</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="w-full"
-                disabled={initializingThreeAct || narrativeInitHint.kind !== 'ready'}
-                title={
-                  narrativeInitHint.kind !== 'ready'
-                    ? 'Nicht verfügbar für die aktuelle Narrativ-Struktur'
-                    : undefined
-                }
-                onClick={() => void handleInitializeNarrativeStructure()}
-              >
-                {initializingThreeAct ? 'Wird angelegt…' : narrativeInitButtonLabel}
-              </Button>
-            </div>
-          )}
-          <FilmDropdownMobile
-            acts={acts}
-            sequences={sequences}
-            scenes={scenes}
-            shots={shots}
-            characters={characters}
-            onAddAct={handleAddAct}
-            onAddSequence={handleAddSequence}
-            onAddScene={handleAddScene}
-            onAddShot={handleAddShot}
-            onUpdateAct={handleUpdateAct}
-            onUpdateSequence={handleUpdateSequence}
-            onUpdateScene={handleUpdateScene}
-            onUpdateShot={handleUpdateShot}
-            onDeleteAct={handleDeleteAct}
-            onDeleteSequence={handleDeleteSequence}
-            onDeleteScene={handleDeleteScene}
-            onDeleteShot={handleDeleteShot}
-            onDuplicateShot={handleDuplicateShot}
-            onShotImageUpload={handleShotImageUpload}
-            onShotAudioUpload={handleShotAudioUpload}
-            onShotAudioDelete={handleShotAudioDelete}
-            onShotAudioUpdate={handleShotAudioUpdate}
-            onShotCharacterAdd={handleShotCharacterAdd}
-            onShotCharacterRemove={handleShotCharacterRemove}
-            onShotReorder={handleShotSwap}
-            projectId={projectId}
-            projectType={projectType}
-          />
-        </div>
-      </DndProvider>
-      {gifUploadDialog}
+        <DndProvider backend={HTML5Backend}>
+          <div ref={containerRef} data-beat-container className="p-2 space-y-2">
+            {acts.length === 0 && (
+              <div className="rounded-lg border border-dashed border-muted-foreground/35 bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground">
+                <p className="mb-2">{narrativeEmptyStateParagraph}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="w-full"
+                  disabled={
+                    initializingThreeAct || narrativeInitHint.kind !== "ready"
+                  }
+                  title={
+                    narrativeInitHint.kind !== "ready"
+                      ? "Nicht verfügbar für die aktuelle Narrativ-Struktur"
+                      : undefined
+                  }
+                  onClick={() => void handleInitializeNarrativeStructure()}
+                >
+                  {initializingThreeAct
+                    ? "Wird angelegt…"
+                    : narrativeInitButtonLabel}
+                </Button>
+              </div>
+            )}
+            <FilmDropdownMobile
+              acts={acts}
+              sequences={sequences}
+              scenes={scenes}
+              shots={shots}
+              characters={characters}
+              onAddAct={handleAddAct}
+              onAddSequence={handleAddSequence}
+              onAddScene={handleAddScene}
+              onAddShot={handleAddShot}
+              onUpdateAct={handleUpdateAct}
+              onUpdateSequence={handleUpdateSequence}
+              onUpdateScene={handleUpdateScene}
+              onUpdateShot={handleUpdateShot}
+              onDeleteAct={handleDeleteAct}
+              onDeleteSequence={handleDeleteSequence}
+              onDeleteScene={handleDeleteScene}
+              onDeleteShot={handleDeleteShot}
+              onDuplicateShot={handleDuplicateShot}
+              onShotImageUpload={handleShotImageUpload}
+              onShotAudioUpload={handleShotAudioUpload}
+              onShotAudioDelete={handleShotAudioDelete}
+              onShotAudioUpdate={handleShotAudioUpdate}
+              onShotCharacterAdd={handleShotCharacterAdd}
+              onShotCharacterRemove={handleShotCharacterRemove}
+              onShotReorder={handleShotSwap}
+              projectId={projectId}
+              projectType={projectType}
+            />
+          </div>
+        </DndProvider>
+        {gifUploadDialog}
       </>
     );
   }
@@ -2578,767 +2891,1171 @@ export function FilmDropdown({
   // 💻 DESKTOP VIEW: Full nested structure with Drag & Drop
   return (
     <>
-    <DndProvider backend={HTML5Backend}>
-      <div ref={containerRef} data-beat-container className="flex flex-col gap-1.5 p-4">
-        {/* Add Act Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleAddAct}
-          disabled={creating === 'act'}
-          className="w-1/2 md:w-1/4 ml-auto bg-background dark:bg-card text-center border-2 border-dashed border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+      <DndProvider backend={HTML5Backend}>
+        <div
+          ref={containerRef}
+          data-beat-container
+          className="flex flex-col gap-1.5 p-4"
         >
-          <Plus className="size-3.5 mr-1.5" />
-          Act hinzufügen
-        </Button>
+          {/* Add Act Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleAddAct}
+            disabled={creating === "act"}
+            className="w-1/2 md:w-1/4 ml-auto bg-background dark:bg-card text-center border-2 border-dashed border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+          >
+            <Plus className="size-3.5 mr-1.5" />
+            Act hinzufügen
+          </Button>
 
-        {acts.length === 0 && (
-          <div className="rounded-lg border border-dashed border-muted-foreground/35 bg-muted/25 px-4 py-3 text-sm text-muted-foreground">
-            <p className="mb-2">{narrativeEmptyStateParagraph}</p>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={initializingThreeAct || narrativeInitHint.kind !== 'ready'}
-              title={
-                narrativeInitHint.kind !== 'ready'
-                  ? 'Nicht verfügbar für die aktuelle Narrativ-Struktur'
-                  : undefined
-              }
-              onClick={() => void handleInitializeNarrativeStructure()}
-            >
-              {initializingThreeAct ? 'Wird angelegt…' : narrativeInitButtonLabel}
-            </Button>
-          </div>
-        )}
-
-        {/* Acts mit Drop Zones */}
-        {acts.map((act, actIndex) => {
-          // 🚀 OPTIMIZED: Use memoized filter instead of sequences.filter()
-          const actSequences = optimized.getSequencesForAct(act.id);
-          const isExpanded = expandedActs.has(act.id);
-          const isEditing = editingAct === act.id;
-          const isPending = pendingIds.has(act.id);
-
-          return (
-            <div key={act.id}>
-              {/* Drop Zone VOR diesem Act */}
-              <DropZone
-                type={ItemTypes.ACT}
-                index={actIndex}
-                onDrop={handleActDropAtIndex}
-                label="Act"
-                height="act"
-              />
-              
-              {/* Act selbst (droppable für Swap) */}
-              <DraggableAct
-                act={act}
-                index={actIndex}
-                onSwap={handleActSwap}
+          {acts.length === 0 && (
+            <div className="rounded-lg border border-dashed border-muted-foreground/35 bg-muted/25 px-4 py-3 text-sm text-muted-foreground">
+              <p className="mb-2">{narrativeEmptyStateParagraph}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={
+                  initializingThreeAct || narrativeInitHint.kind !== "ready"
+                }
+                title={
+                  narrativeInitHint.kind !== "ready"
+                    ? "Nicht verfügbar für die aktuelle Narrativ-Struktur"
+                    : undefined
+                }
+                onClick={() => void handleInitializeNarrativeStructure()}
               >
-                <Collapsible
-                  open={isExpanded}
-                  onOpenChange={(open) => {
-                    const next = new Set(expandedActs);
-                    if (open) {
-                      next.add(act.id);
-                    } else {
-                      next.delete(act.id);
-                    }
-                    setExpandedActs(next);
-                  }}
-                >
-                  <div 
-                    data-act-card
-                    data-act-id={act.id}
-                    className={cn(
-                      "border-2 rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-700 overflow-hidden",
-                      isPending && "opacity-90 animate-pulse"
-                    )}
+                {initializingThreeAct
+                  ? "Wird angelegt…"
+                  : narrativeInitButtonLabel}
+              </Button>
+            </div>
+          )}
+
+          {/* Acts mit Drop Zones */}
+          {acts.map((act, actIndex) => {
+            // 🚀 OPTIMIZED: Use memoized filter instead of sequences.filter()
+            const actSequences = optimized.getSequencesForAct(act.id);
+            const isExpanded = expandedActs.has(act.id);
+            const isEditing = editingAct === act.id;
+            const isPending = pendingIds.has(act.id);
+
+            return (
+              <div key={act.id}>
+                {/* Drop Zone VOR diesem Act */}
+                <DropZone
+                  type={ItemTypes.ACT}
+                  index={actIndex}
+                  onDrop={handleActDropAtIndex}
+                  label="Act"
+                  height="act"
+                />
+
+                {/* Act selbst (droppable für Swap) */}
+                <DraggableAct act={act} index={actIndex} onSwap={handleActSwap}>
+                  <Collapsible
+                    open={isExpanded}
+                    onOpenChange={(open) => {
+                      const next = new Set(expandedActs);
+                      if (open) {
+                        next.add(act.id);
+                      } else {
+                        next.delete(act.id);
+                      }
+                      setExpandedActs(next);
+                    }}
                   >
-                    {/* Act Header */}
-                  <div 
-                    data-act-header
-                    data-act-header-id={act.id}
-                    className="flex items-center gap-2 py-4 px-3"
-                  >
-                    <GripVertical className="size-4 text-muted-foreground cursor-move flex-shrink-0" />
-                    
-                    <CollapsibleTrigger asChild>
-                      <button className="flex-shrink-0">
-                        {isExpanded ? (
-                          <ChevronDown className="size-4" />
-                        ) : (
-                          <ChevronRight className="size-4" />
-                        )}
-                      </button>
-                    </CollapsibleTrigger>
-
-                  {isEditing ? (
-                    <>
-                      <Input
-                        value={editValues[act.id]?.title ?? act.title}
-                        onChange={(e) => setEditValues(prev => ({
-                          ...prev,
-                          [act.id]: { ...prev[act.id], title: e.target.value }
-                        }))}
-                        className="h-7 flex-1 bg-input-background text-foreground text-[18px] border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
-                        placeholder="Titel"
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleUpdateAct(act.id)}
-                        className="h-7 px-2"
-                      >
-                        Speichern
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span 
-                        className="flex-1 font-semibold text-[18px] text-[rgb(21,93,252)] cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => {
-                          const next = new Set(expandedActs);
-                          if (isExpanded) {
-                            next.delete(act.id);
-                          } else {
-                            next.add(act.id);
-                          }
-                          setExpandedActs(next);
-                        }}
-                      >
-                        {act.title}
-                      </span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="size-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setInfoDialogData({ type: 'act', node: act });
-                              setInfoDialogOpen(true);
-                            }}
-                          >
-                            <Info className="size-3.5 mr-2" />
-                            Informationen
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setEditingAct(act.id);
-                              setEditValues(prev => ({
-                                ...prev,
-                                [act.id]: { title: act.title, description: act.description }
-                              }));
-                            }}
-                          >
-                            <Edit className="size-3.5 mr-2" />
-                            Edit Act
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicateAct(act.id)}>
-                            <Copy className="size-3.5 mr-2" />
-                            Duplicate Act
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteAct(act.id)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="size-3.5 mr-2" />
-                            Delete Act
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
-                </div>
-
-                <CollapsibleContent>
-                  {/* Act Description */}
-                  <div className="px-3 pb-2 space-y-2">
-                    {isEditing ? (
-                      <Textarea
-                        value={editValues[act.id]?.description ?? act.description ?? ''}
-                        onChange={(e) => setEditValues(prev => ({
-                          ...prev,
-                          [act.id]: { ...prev[act.id], description: e.target.value }
-                        }))}
-                        className="bg-input-background text-foreground text-sm border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
-                        placeholder="Beschreibung"
-                        rows={2}
-                      />
-                    ) : (
-                      <div
-                        onClick={() => {
-                          setEditingAct(act.id);
-                          setEditValues(prev => ({
-                            ...prev,
-                            [act.id]: { title: act.title, description: act.description }
-                          }));
-                        }}
-                        className="text-sm text-[rgb(21,93,252)] cursor-pointer hover:text-foreground transition-colors min-h-[2rem] flex items-center"
-                      >
-                        {act.description || '+ Beschreibung'}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Sequences */}
-                  <div className="px-3 pb-3 flex flex-col gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleAddSequence(act.id)}
-                      disabled={creating === `sequence-${act.id}`}
-                      className="w-1/2 md:w-1/4 ml-auto h-7 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
+                    <div
+                      data-act-card
+                      data-act-id={act.id}
+                      className={cn(
+                        "border-2 rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-700 overflow-hidden",
+                        isPending && "opacity-90 animate-pulse",
+                      )}
                     >
-                      <Plus className="size-3 mr-1" />
-                      Sequenz hinzufügen
-                    </Button>
+                      {/* Act Header */}
+                      <div
+                        data-act-header
+                        data-act-header-id={act.id}
+                        className="flex items-center gap-2 py-4 px-3"
+                      >
+                        <GripVertical className="size-4 text-muted-foreground cursor-move flex-shrink-0" />
 
-                    {actSequences.map((sequence, seqIndex) => {
-                      // 🚀 OPTIMIZED: Use memoized filter instead of scenes.filter()
-                      const seqScenes = optimized.getScenesForSequence(sequence.id);
-                      const isSeqExpanded = expandedSequences.has(sequence.id);
-                      const isSeqEditing = editingSequence === sequence.id;
-                      const isSeqPending = pendingIds.has(sequence.id);
+                        <CollapsibleTrigger asChild>
+                          <button className="flex-shrink-0">
+                            {isExpanded ? (
+                              <ChevronDown className="size-4" />
+                            ) : (
+                              <ChevronRight className="size-4" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
 
-                      return (
-                        <div key={sequence.id}>
-                          {/* Drop Zone VOR dieser Sequence */}
-                          <DropZone
-                            type={ItemTypes.SEQUENCE}
-                            index={seqIndex}
-                            onDrop={(draggedId, targetIndex) => handleSequenceDropAtIndex(draggedId, targetIndex, act.id)}
-                            label="Sequence"
-                            height="sequence"
-                          />
-                          
-                          {/* Sequence selbst (droppable für Swap) */}
-                          <DraggableSequence
-                            sequence={sequence}
-                            index={seqIndex}
-                            onSwap={handleSequenceSwap}
-                          >
-                            <Collapsible
-                              open={isSeqExpanded}
-                              onOpenChange={(open) => {
-                                const next = new Set(expandedSequences);
-                                if (open) {
-                                  next.add(sequence.id);
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editValues[act.id]?.title ?? act.title}
+                              onChange={(e) =>
+                                setEditValues((prev) => ({
+                                  ...prev,
+                                  [act.id]: {
+                                    ...prev[act.id],
+                                    title: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="h-7 flex-1 bg-input-background text-foreground text-[18px] border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
+                              placeholder="Titel"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleUpdateAct(act.id)}
+                              className="h-7 px-2"
+                            >
+                              Speichern
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className="flex-1 font-semibold text-[18px] text-[rgb(21,93,252)] cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => {
+                                const next = new Set(expandedActs);
+                                if (isExpanded) {
+                                  next.delete(act.id);
                                 } else {
-                                  next.delete(sequence.id);
+                                  next.add(act.id);
                                 }
-                                setExpandedSequences(next);
+                                setExpandedActs(next);
                               }}
                             >
-                              <div 
-                                data-sequence-id={sequence.id}
-                                className={cn(
-                                  "border-2 rounded-lg bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-700 overflow-hidden",
-                                  isSeqPending && "opacity-90 animate-pulse"
-                                )}
-                              >
-                                {/* Sequence Header */}
-                              <div className="flex items-center gap-2 p-2">
-                                <GripVertical className="size-3 text-muted-foreground cursor-move flex-shrink-0" />
-                                
-                                <CollapsibleTrigger asChild>
-                                  <button className="flex-shrink-0">
-                                    {isSeqExpanded ? (
-                                      <ChevronDown className="size-3.5" />
-                                    ) : (
-                                      <ChevronRight className="size-3.5" />
-                                    )}
-                                  </button>
-                                </CollapsibleTrigger>
-
-                              {isSeqEditing ? (
-                                <>
-                                  <Input
-                                    value={editValues[sequence.id]?.title ?? sequence.title}
-                                    onChange={(e) => setEditValues(prev => ({
+                              {act.title}
+                            </span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="size-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setInfoDialogData({
+                                      type: "act",
+                                      node: act,
+                                    });
+                                    setInfoDialogOpen(true);
+                                  }}
+                                >
+                                  <Info className="size-3.5 mr-2" />
+                                  Informationen
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingAct(act.id);
+                                    setEditValues((prev) => ({
                                       ...prev,
-                                      [sequence.id]: { ...prev[sequence.id], title: e.target.value }
-                                    }))}
-                                    className="h-6 flex-1 bg-input-background text-foreground text-sm border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
-                                    placeholder="Titel"
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleUpdateSequence(sequence.id)}
-                                    className="h-6 px-2 text-xs"
-                                  >
-                                    Speichern
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <span 
-                                    className="flex-1 text-sm font-semibold text-[14px] text-[rgb(0,166,62)] cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => {
+                                      [act.id]: {
+                                        title: act.title,
+                                        description: act.description,
+                                      },
+                                    }));
+                                  }}
+                                >
+                                  <Edit className="size-3.5 mr-2" />
+                                  Edit Act
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDuplicateAct(act.id)}
+                                >
+                                  <Copy className="size-3.5 mr-2" />
+                                  Duplicate Act
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteAct(act.id)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="size-3.5 mr-2" />
+                                  Delete Act
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                      </div>
+
+                      <CollapsibleContent>
+                        {/* Act Description */}
+                        <div className="px-3 pb-2 space-y-2">
+                          {isEditing ? (
+                            <Textarea
+                              value={
+                                editValues[act.id]?.description ??
+                                act.description ??
+                                ""
+                              }
+                              onChange={(e) =>
+                                setEditValues((prev) => ({
+                                  ...prev,
+                                  [act.id]: {
+                                    ...prev[act.id],
+                                    description: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="bg-input-background text-foreground text-sm border-blue-200 dark:border-blue-700 focus:border-blue-400 dark:focus:border-blue-500 focus-visible:ring-blue-400/20"
+                              placeholder="Beschreibung"
+                              rows={2}
+                            />
+                          ) : (
+                            <div
+                              onClick={() => {
+                                setEditingAct(act.id);
+                                setEditValues((prev) => ({
+                                  ...prev,
+                                  [act.id]: {
+                                    title: act.title,
+                                    description: act.description,
+                                  },
+                                }));
+                              }}
+                              className="text-sm text-[rgb(21,93,252)] cursor-pointer hover:text-foreground transition-colors min-h-[2rem] flex items-center"
+                            >
+                              {act.description || "+ Beschreibung"}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Sequences */}
+                        <div className="px-3 pb-3 flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAddSequence(act.id)}
+                            disabled={creating === `sequence-${act.id}`}
+                            className="w-1/2 md:w-1/4 ml-auto h-7 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
+                          >
+                            <Plus className="size-3 mr-1" />
+                            Sequenz hinzufügen
+                          </Button>
+
+                          {actSequences.map((sequence, seqIndex) => {
+                            // 🚀 OPTIMIZED: Use memoized filter instead of scenes.filter()
+                            const seqScenes = optimized.getScenesForSequence(
+                              sequence.id,
+                            );
+                            const isSeqExpanded = expandedSequences.has(
+                              sequence.id,
+                            );
+                            const isSeqEditing =
+                              editingSequence === sequence.id;
+                            const isSeqPending = pendingIds.has(sequence.id);
+
+                            return (
+                              <div key={sequence.id}>
+                                {/* Drop Zone VOR dieser Sequence */}
+                                <DropZone
+                                  type={ItemTypes.SEQUENCE}
+                                  index={seqIndex}
+                                  onDrop={(draggedId, targetIndex) =>
+                                    handleSequenceDropAtIndex(
+                                      draggedId,
+                                      targetIndex,
+                                      act.id,
+                                    )
+                                  }
+                                  label="Sequence"
+                                  height="sequence"
+                                />
+
+                                {/* Sequence selbst (droppable für Swap) */}
+                                <DraggableSequence
+                                  sequence={sequence}
+                                  index={seqIndex}
+                                  onSwap={handleSequenceSwap}
+                                >
+                                  <Collapsible
+                                    open={isSeqExpanded}
+                                    onOpenChange={(open) => {
                                       const next = new Set(expandedSequences);
-                                      if (isSeqExpanded) {
-                                        next.delete(sequence.id);
-                                      } else {
+                                      if (open) {
                                         next.add(sequence.id);
+                                      } else {
+                                        next.delete(sequence.id);
                                       }
                                       setExpandedSequences(next);
                                     }}
                                   >
-                                    {sequence.title}
-                                  </span>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 px-2"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <MoreVertical className="size-3" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setInfoDialogData({ type: 'sequence', node: sequence });
-                                          setInfoDialogOpen(true);
-                                        }}
-                                      >
-                                        <Info className="size-3 mr-2" />
-                                        Informationen
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => {
-                                          setEditingSequence(sequence.id);
-                                          setEditValues(prev => ({
-                                            ...prev,
-                                            [sequence.id]: { title: sequence.title, description: sequence.description }
-                                          }));
-                                        }}
-                                      >
-                                        <Edit className="size-3 mr-2" />
-                                        Edit Sequence
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleDuplicateSequence(sequence.id)}>
-                                        <Copy className="size-3 mr-2" />
-                                        Duplicate Sequence
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => handleDeleteSequence(sequence.id)}
-                                        className="text-red-600 focus:text-red-600"
-                                      >
-                                        <Trash2 className="size-3 mr-2" />
-                                        Delete Sequence
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </>
-                              )}
-                            </div>
+                                    <div
+                                      data-sequence-id={sequence.id}
+                                      className={cn(
+                                        "border-2 rounded-lg bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-700 overflow-hidden",
+                                        isSeqPending &&
+                                          "opacity-90 animate-pulse",
+                                      )}
+                                    >
+                                      {/* Sequence Header */}
+                                      <div className="flex items-center gap-2 p-2">
+                                        <GripVertical className="size-3 text-muted-foreground cursor-move flex-shrink-0" />
 
-                            <CollapsibleContent>
-                              {/* Sequence Description */}
-                              <div className="px-2 pb-2 space-y-2">
-                                {isSeqEditing ? (
-                                  <Textarea
-                                    value={editValues[sequence.id]?.description ?? sequence.description ?? ''}
-                                    onChange={(e) => setEditValues(prev => ({
-                                      ...prev,
-                                      [sequence.id]: { ...prev[sequence.id], description: e.target.value }
-                                    }))}
-                                    className="bg-input-background text-foreground text-xs border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
-                                    placeholder="Beschreibung"
-                                    rows={2}
-                                  />
-                                ) : (
-                                  <div
-                                    onClick={() => {
-                                      setEditingSequence(sequence.id);
-                                      setEditValues(prev => ({
-                                        ...prev,
-                                        [sequence.id]: { title: sequence.title, description: sequence.description }
-                                      }));
-                                    }}
-                                    className="text-xs text-[rgb(0,166,62)] cursor-pointer hover:text-foreground transition-colors min-h-[1.5rem] flex items-center"
-                                  >
-                                    {sequence.description || '+ Beschreibung'}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Scenes */}
-                              <div className="px-2 pb-2 flex flex-col gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleAddScene(sequence.id)}
-                                  disabled={creating === `scene-${sequence.id}` || pendingIds.has(sequence.id)}
-                                  className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
-                                >
-                                  <Plus className="size-3 mr-1" />
-                                  {pendingIds.has(sequence.id) ? 'Wird gespeichert...' : 'Scene hinzufügen'}
-                                </Button>
-
-                                {seqScenes.map((scene, sceneIndex) => {
-                                  // 🚀 OPTIMIZED: Use memoized filter instead of shots.filter()
-                                  const sceneShots = optimized.getShotsForScene(scene.id);
-                                  const isSceneExpanded = expandedScenes.has(scene.id);
-                                  const isSceneEditing = editingScene === scene.id;
-                                  const isScenePending = pendingIds.has(scene.id);
-
-                                  return (
-                                    <div key={scene.id}>
-                                      {/* Drop Zone VOR dieser Scene */}
-                                      <DropZone
-                                        type={ItemTypes.SCENE}
-                                        index={sceneIndex}
-                                        onDrop={(draggedId, targetIndex) => handleSceneDropAtIndex(draggedId, targetIndex, sequence.id)}
-                                        label="Scene"
-                                        height="scene"
-                                      />
-                                      
-                                      {/* Scene selbst (droppable für Swap) */}
-                                      <DraggableScene
-                                        scene={scene}
-                                        index={sceneIndex}
-                                        onSwap={handleSceneSwap}
-                                      >
-                                        <Collapsible
-                                          open={isSceneExpanded}
-                                          onOpenChange={(open) => {
-                                            const next = new Set(expandedScenes);
-                                            if (open) {
-                                              next.add(scene.id);
-                                              void ensureSceneShotsLoaded(scene.id);
-                                            } else {
-                                              next.delete(scene.id);
-                                            }
-                                            setExpandedScenes(next);
-                                          }}
-                                        >
-                                          <div 
-                                            data-scene-id={scene.id}
-                                            className={cn(
-                                              "border-2 rounded-lg bg-pink-50 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden",
-                                              isScenePending && "opacity-90 animate-pulse"
+                                        <CollapsibleTrigger asChild>
+                                          <button className="flex-shrink-0">
+                                            {isSeqExpanded ? (
+                                              <ChevronDown className="size-3.5" />
+                                            ) : (
+                                              <ChevronRight className="size-3.5" />
                                             )}
-                                          >
-                                            {/* Scene Header */}
-                                            <div className="flex items-center gap-2 p-2">
-                                              <GripVertical className="size-3 text-muted-foreground cursor-move flex-shrink-0" />
-                                              
-                                              <CollapsibleTrigger asChild>
-                                                <button className="flex-shrink-0">
-                                                  {isSceneExpanded ? (
-                                                    <ChevronDown className="size-3.5" />
-                                                  ) : (
-                                                    <ChevronRight className="size-3.5" />
-                                                  )}
-                                                </button>
-                                              </CollapsibleTrigger>
+                                          </button>
+                                        </CollapsibleTrigger>
 
-                                          {isSceneEditing ? (
-                                            <>
-                                              <Input
-                                                value={editValues[scene.id]?.title ?? scene.title}
-                                                onChange={(e) => setEditValues(prev => ({
+                                        {isSeqEditing ? (
+                                          <>
+                                            <Input
+                                              value={
+                                                editValues[sequence.id]
+                                                  ?.title ?? sequence.title
+                                              }
+                                              onChange={(e) =>
+                                                setEditValues((prev) => ({
                                                   ...prev,
-                                                  [scene.id]: { ...prev[scene.id], title: e.target.value }
-                                                }))}
-                                                className="h-6 flex-1 bg-input-background text-foreground text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
-                                                placeholder="Titel"
-                                              />
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => handleUpdateScene(scene.id)}
-                                                className="h-6 px-2 text-xs"
-                                              >
-                                                Speichern
-                                              </Button>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <span 
-                                                className="flex-1 text-xs font-semibold text-[14px] text-[rgb(230,0,118)] cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => {
-                                                  const next = new Set(expandedScenes);
-                                                  if (isSceneExpanded) {
-                                                    next.delete(scene.id);
-                                                  } else {
-                                                    next.add(scene.id);
-                                                    void ensureSceneShotsLoaded(scene.id);
+                                                  [sequence.id]: {
+                                                    ...prev[sequence.id],
+                                                    title: e.target.value,
+                                                  },
+                                                }))
+                                              }
+                                              className="h-6 flex-1 bg-input-background text-foreground text-sm border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
+                                              placeholder="Titel"
+                                            />
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() =>
+                                                handleUpdateSequence(
+                                                  sequence.id,
+                                                )
+                                              }
+                                              className="h-6 px-2 text-xs"
+                                            >
+                                              Speichern
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span
+                                              className="flex-1 text-sm font-semibold text-[14px] text-[rgb(0,166,62)] cursor-pointer hover:opacity-80 transition-opacity"
+                                              onClick={() => {
+                                                const next = new Set(
+                                                  expandedSequences,
+                                                );
+                                                if (isSeqExpanded) {
+                                                  next.delete(sequence.id);
+                                                } else {
+                                                  next.add(sequence.id);
+                                                }
+                                                setExpandedSequences(next);
+                                              }}
+                                            >
+                                              {sequence.title}
+                                            </span>
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-6 px-2"
+                                                  onClick={(e) =>
+                                                    e.stopPropagation()
                                                   }
-                                                  setExpandedScenes(next);
-                                                }}
-                                              >
-                                                {scene.title}
-                                              </span>
-                                              <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-6 px-1.5"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                  >
-                                                    <MoreVertical className="size-3" />
-                                                  </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                  <DropdownMenuItem 
-                                                    onClick={() => {
-                                                      setInfoDialogData({ type: 'scene', node: scene });
-                                                      setInfoDialogOpen(true);
-                                                    }}
-                                                  >
-                                                    <Info className="size-3 mr-2" />
-                                                    Informationen
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem 
-                                                    onClick={() => {
-                                                      setEditingScene(scene.id);
-                                                      setEditValues(prev => ({
-                                                        ...prev,
-                                                        [scene.id]: { title: scene.title, description: scene.description }
-                                                      }));
-                                                    }}
-                                                  >
-                                                    <Edit className="size-3 mr-2" />
-                                                    Edit Scene
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem onClick={() => handleDuplicateScene(scene.id)}>
-                                                    <Copy className="size-3 mr-2" />
-                                                    Duplicate Scene
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem 
-                                                    onClick={() => handleDeleteScene(scene.id)}
-                                                    className="text-red-600 focus:text-red-600"
-                                                  >
-                                                    <Trash2 className="size-3 mr-2" />
-                                                    Delete Scene
-                                                  </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                              </DropdownMenu>
-                                            </>
+                                                >
+                                                  <MoreVertical className="size-3" />
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                  onClick={() => {
+                                                    setInfoDialogData({
+                                                      type: "sequence",
+                                                      node: sequence,
+                                                    });
+                                                    setInfoDialogOpen(true);
+                                                  }}
+                                                >
+                                                  <Info className="size-3 mr-2" />
+                                                  Informationen
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={() => {
+                                                    setEditingSequence(
+                                                      sequence.id,
+                                                    );
+                                                    setEditValues((prev) => ({
+                                                      ...prev,
+                                                      [sequence.id]: {
+                                                        title: sequence.title,
+                                                        description:
+                                                          sequence.description,
+                                                      },
+                                                    }));
+                                                  }}
+                                                >
+                                                  <Edit className="size-3 mr-2" />
+                                                  Edit Sequence
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={() =>
+                                                    handleDuplicateSequence(
+                                                      sequence.id,
+                                                    )
+                                                  }
+                                                >
+                                                  <Copy className="size-3 mr-2" />
+                                                  Duplicate Sequence
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={() =>
+                                                    handleDeleteSequence(
+                                                      sequence.id,
+                                                    )
+                                                  }
+                                                  className="text-red-600 focus:text-red-600"
+                                                >
+                                                  <Trash2 className="size-3 mr-2" />
+                                                  Delete Sequence
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </>
+                                        )}
+                                      </div>
+
+                                      <CollapsibleContent>
+                                        {/* Sequence Description */}
+                                        <div className="px-2 pb-2 space-y-2">
+                                          {isSeqEditing ? (
+                                            <Textarea
+                                              value={
+                                                editValues[sequence.id]
+                                                  ?.description ??
+                                                sequence.description ??
+                                                ""
+                                              }
+                                              onChange={(e) =>
+                                                setEditValues((prev) => ({
+                                                  ...prev,
+                                                  [sequence.id]: {
+                                                    ...prev[sequence.id],
+                                                    description: e.target.value,
+                                                  },
+                                                }))
+                                              }
+                                              className="bg-input-background text-foreground text-xs border-green-200 dark:border-green-700 focus:border-green-400 dark:focus:border-green-500 focus-visible:ring-green-400/20"
+                                              placeholder="Beschreibung"
+                                              rows={2}
+                                            />
+                                          ) : (
+                                            <div
+                                              onClick={() => {
+                                                setEditingSequence(sequence.id);
+                                                setEditValues((prev) => ({
+                                                  ...prev,
+                                                  [sequence.id]: {
+                                                    title: sequence.title,
+                                                    description:
+                                                      sequence.description,
+                                                  },
+                                                }));
+                                              }}
+                                              className="text-xs text-[rgb(0,166,62)] cursor-pointer hover:text-foreground transition-colors min-h-[1.5rem] flex items-center"
+                                            >
+                                              {sequence.description ||
+                                                "+ Beschreibung"}
+                                            </div>
                                           )}
                                         </div>
 
-                                        <CollapsibleContent>
-                                          {/* Scene Description */}
-                                          <div className="px-2 pb-2 space-y-2">
-                                            {isSceneEditing ? (
-                                              <Textarea
-                                                value={editValues[scene.id]?.description ?? scene.description ?? ''}
-                                                onChange={(e) => setEditValues(prev => ({
-                                                  ...prev,
-                                                  [scene.id]: { ...prev[scene.id], description: e.target.value }
-                                                }))}
-                                                className="bg-input-background text-foreground text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
-                                                placeholder="Beschreibung"
-                                                rows={2}
-                                              />
-                                            ) : (
-                                              <div
-                                                onClick={() => {
-                                                  setEditingScene(scene.id);
-                                                  setEditValues(prev => ({
-                                                    ...prev,
-                                                    [scene.id]: { title: scene.title, description: scene.description }
-                                                  }));
-                                                }}
-                                                className="text-xs text-[rgb(230,0,118)] cursor-pointer hover:text-foreground transition-colors min-h-[1.5rem] flex items-center"
-                                              >
-                                                {scene.description || '+ Beschreibung'}
-                                              </div>
-                                            )}
-                                          </div>
+                                        {/* Scenes */}
+                                        <div className="px-2 pb-2 flex flex-col gap-1">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() =>
+                                              handleAddScene(sequence.id)
+                                            }
+                                            disabled={
+                                              creating ===
+                                                `scene-${sequence.id}` ||
+                                              pendingIds.has(sequence.id)
+                                            }
+                                            className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-pink-200 dark:border-pink-700 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
+                                          >
+                                            <Plus className="size-3 mr-1" />
+                                            {pendingIds.has(sequence.id)
+                                              ? "Wird gespeichert..."
+                                              : "Scene hinzufügen"}
+                                          </Button>
 
-                                          {/* Shots */}
-                                          <div className="px-2 pb-2 flex flex-col gap-1">
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => handleAddShot(scene.id)}
-                                              disabled={creating === `shot-${scene.id}` || scene.id.startsWith('temp-') || pendingIds.has(scene.id)}
-                                              className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-yellow-400 dark:border-yellow-600 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-                                            >
-                                              <Plus className="size-3 mr-1" />
-                                              {pendingIds.has(scene.id) ? 'Wird gespeichert...' : 'Shot hinzufügen'}
-                                            </Button>
+                                          {seqScenes.map(
+                                            (scene, sceneIndex) => {
+                                              // 🚀 OPTIMIZED: Use memoized filter instead of shots.filter()
+                                              const sceneShots =
+                                                optimized.getShotsForScene(
+                                                  scene.id,
+                                                );
+                                              const isSceneExpanded =
+                                                expandedScenes.has(scene.id);
+                                              const isSceneEditing =
+                                                editingScene === scene.id;
+                                              const isScenePending =
+                                                pendingIds.has(scene.id);
 
-                                            {loadingSceneShots.has(scene.id) ? (
-                                              <div className="text-[11px] text-muted-foreground px-1 py-1">
-                                                Shots werden geladen…
-                                              </div>
-                                            ) : null}
-
-                                            {sceneShots.map((shot, shotIndex) => {
-                                              const isShotPending = pendingIds.has(shot.id);
-                                              
                                               return (
-                                                <div key={shot.id}>
-                                                  {/* Drop Zone VOR diesem Shot */}
+                                                <div key={scene.id}>
+                                                  {/* Drop Zone VOR dieser Scene */}
                                                   <DropZone
-                                                    type={ItemTypes.SHOT}
-                                                    index={shotIndex}
-                                                    onDrop={(draggedId, targetIndex) => handleShotDropAtIndex(draggedId, targetIndex, scene.id)}
-                                                    label="Shot"
-                                                    height="shot"
+                                                    type={ItemTypes.SCENE}
+                                                    index={sceneIndex}
+                                                    onDrop={(
+                                                      draggedId,
+                                                      targetIndex,
+                                                    ) =>
+                                                      handleSceneDropAtIndex(
+                                                        draggedId,
+                                                        targetIndex,
+                                                        sequence.id,
+                                                      )
+                                                    }
+                                                    label="Scene"
+                                                    height="scene"
                                                   />
-                                                  
-                                                  {/* Shot selbst (droppable für Swap) */}
-                                                  <DraggableShot
-                                                    shot={shot}
-                                                    index={shotIndex}
-                                                    onSwap={handleShotSwap}
-                                                  >
-                                                    <ShotCard
-                                                    shot={shot}
-                                                    sceneId={scene.id}
-                                                    projectId={projectId}
-                                                    isPending={isShotPending}
-                                                    imageUploadWaiting={shotImageUploadingId === shot.id}
-                                                  projectCharacters={characters}
-                                                  isExpanded={expandedShots.has(shot.id)}
-                                                  onToggleExpand={() => {
-                                                    const next = new Set(expandedShots);
-                                                    if (expandedShots.has(shot.id)) {
-                                                      next.delete(shot.id);
-                                                    } else {
-                                                      next.add(shot.id);
-                                                    }
-                                                    setExpandedShots(next);
-                                                  }}
-                                                  onUpdate={handleUpdateShot}
-                                                  onDelete={handleDeleteShot}
-                                                  onDuplicate={handleDuplicateShot}
-                                                  onShowInfo={(shotId) => {
-                                                    const shotData = shots.find(s => s.id === shotId);
-                                                    if (shotData) {
-                                                      setInfoDialogData({ type: 'shot', node: shotData });
-                                                      setInfoDialogOpen(true);
-                                                    }
-                                                  }}
-                                                  onImageUpload={handleShotImageUpload}
-                                                  onAudioUpload={handleShotAudioUpload}
-                                                  onAudioDelete={handleShotAudioDelete}
-                                                  onAudioUpdate={handleShotAudioUpdate}
-                                                  onCharacterAdd={handleShotCharacterAdd}
-                                                  onCharacterRemove={handleShotCharacterRemove}
-                                                  onReorder={handleShotSwap}
-                                                />
-                                                  {(() => {
-                                                    const forShot = editorialClips.filter((c) => c.shotId === shot.id);
-                                                    if (forShot.length === 0) return null;
-                                                    const dur = forShot.reduce(
-                                                      (s, c) => s + Math.max(0, c.endSec - c.startSec),
-                                                      0
-                                                    );
-                                                    return (
-                                                      <p className="text-[10px] text-muted-foreground pl-2 mt-0.5">
-                                                        Editorial: {forShot.length} Clip(s), {dur.toFixed(1)}s
-                                                      </p>
-                                                    );
-                                                  })()}
-                                              </DraggableShot>
-                                              
-                                              {/* Drop Zone NACH diesem Shot (nur beim letzten) */}
-                                              {shotIndex === sceneShots.length - 1 && (
-                                                <DropZone
-                                                  type={ItemTypes.SHOT}
-                                                  index={sceneShots.length}
-                                                  onDrop={(draggedId, targetIndex) => handleShotDropAtIndex(draggedId, targetIndex, scene.id)}
-                                                  label="Shot"
-                                                  height="shot"
-                                                />
-                                              )}
-                                              </div>
-                                            );
-                                            })}
-                                          </div>
-                                        </CollapsibleContent>
-                                      </div>
-                                    </Collapsible>
-                                    </DraggableScene>
-                                    
-                                    {/* Drop Zone NACH dieser Scene (nur beim letzten) */}
-                                    {sceneIndex === seqScenes.length - 1 && (
-                                      <DropZone
-                                        type={ItemTypes.SCENE}
-                                        index={seqScenes.length}
-                                        onDrop={(draggedId, targetIndex) => handleSceneDropAtIndex(draggedId, targetIndex, sequence.id)}
-                                        label="Scene"
-                                        height="scene"
-                                      />
-                                    )}
-                                  </div>
-                                  );
-                                })}
-                              </div>
-                            </CollapsibleContent>
-                          </div>
-                        </Collapsible>
-                        </DraggableSequence>
-                        
-                        {/* Drop Zone NACH dieser Sequence (nur beim letzten) */}
-                        {seqIndex === actSequences.length - 1 && (
-                          <DropZone
-                            type={ItemTypes.SEQUENCE}
-                            index={actSequences.length}
-                            onDrop={(draggedId, targetIndex) => handleSequenceDropAtIndex(draggedId, targetIndex, act.id)}
-                            label="Sequence"
-                            height="sequence"
-                          />
-                        )}
-                      </div>
-                      );
-                    })}
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-            </DraggableAct>
-            
-            {/* Drop Zone NACH diesem Act (nur beim letzten) */}
-            {actIndex === acts.length - 1 && (
-              <DropZone
-                type={ItemTypes.ACT}
-                index={acts.length}
-                onDrop={handleActDropAtIndex}
-                label="Act"
-                height="act"
-              />
-            )}
-          </div>
-          );
-        })}
-      </div>
 
-      {/* Statistics & Logs Dialog */}
-      {infoDialogData && (
-        <TimelineNodeStatsDialog
-          open={infoDialogOpen}
-          onOpenChange={setInfoDialogOpen}
-          nodeType={infoDialogData.type}
-          node={infoDialogData.node}
-          projectId={projectId}
-          projectType={projectType}
-        />
-      )}
-    </DndProvider>
-    {gifUploadDialog}
+                                                  {/* Scene selbst (droppable für Swap) */}
+                                                  <DraggableScene
+                                                    scene={scene}
+                                                    index={sceneIndex}
+                                                    onSwap={handleSceneSwap}
+                                                  >
+                                                    <Collapsible
+                                                      open={isSceneExpanded}
+                                                      onOpenChange={(open) => {
+                                                        const next = new Set(
+                                                          expandedScenes,
+                                                        );
+                                                        if (open) {
+                                                          next.add(scene.id);
+                                                          void ensureSceneShotsLoaded(
+                                                            scene.id,
+                                                          );
+                                                        } else {
+                                                          next.delete(scene.id);
+                                                        }
+                                                        setExpandedScenes(next);
+                                                      }}
+                                                    >
+                                                      <div
+                                                        data-scene-id={scene.id}
+                                                        className={cn(
+                                                          "border-2 rounded-lg bg-pink-50 border-pink-200 dark:bg-pink-950/40 dark:border-pink-700 overflow-hidden",
+                                                          isScenePending &&
+                                                            "opacity-90 animate-pulse",
+                                                        )}
+                                                      >
+                                                        {/* Scene Header */}
+                                                        <div className="flex items-center gap-2 p-2">
+                                                          <GripVertical className="size-3 text-muted-foreground cursor-move flex-shrink-0" />
+
+                                                          <CollapsibleTrigger
+                                                            asChild
+                                                          >
+                                                            <button className="flex-shrink-0">
+                                                              {isSceneExpanded ? (
+                                                                <ChevronDown className="size-3.5" />
+                                                              ) : (
+                                                                <ChevronRight className="size-3.5" />
+                                                              )}
+                                                            </button>
+                                                          </CollapsibleTrigger>
+
+                                                          {isSceneEditing ? (
+                                                            <>
+                                                              <Input
+                                                                value={
+                                                                  editValues[
+                                                                    scene.id
+                                                                  ]?.title ??
+                                                                  scene.title
+                                                                }
+                                                                onChange={(e) =>
+                                                                  setEditValues(
+                                                                    (prev) => ({
+                                                                      ...prev,
+                                                                      [scene.id]:
+                                                                        {
+                                                                          ...prev[
+                                                                            scene
+                                                                              .id
+                                                                          ],
+                                                                          title:
+                                                                            e
+                                                                              .target
+                                                                              .value,
+                                                                        },
+                                                                    }),
+                                                                  )
+                                                                }
+                                                                className="h-6 flex-1 bg-input-background text-foreground text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
+                                                                placeholder="Titel"
+                                                              />
+                                                              <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() =>
+                                                                  handleUpdateScene(
+                                                                    scene.id,
+                                                                  )
+                                                                }
+                                                                className="h-6 px-2 text-xs"
+                                                              >
+                                                                Speichern
+                                                              </Button>
+                                                            </>
+                                                          ) : (
+                                                            <>
+                                                              <span
+                                                                className="flex-1 text-xs font-semibold text-[14px] text-[rgb(230,0,118)] cursor-pointer hover:opacity-80 transition-opacity"
+                                                                onClick={() => {
+                                                                  const next =
+                                                                    new Set(
+                                                                      expandedScenes,
+                                                                    );
+                                                                  if (
+                                                                    isSceneExpanded
+                                                                  ) {
+                                                                    next.delete(
+                                                                      scene.id,
+                                                                    );
+                                                                  } else {
+                                                                    next.add(
+                                                                      scene.id,
+                                                                    );
+                                                                    void ensureSceneShotsLoaded(
+                                                                      scene.id,
+                                                                    );
+                                                                  }
+                                                                  setExpandedScenes(
+                                                                    next,
+                                                                  );
+                                                                }}
+                                                              >
+                                                                {scene.title}
+                                                              </span>
+                                                              <DropdownMenu>
+                                                                <DropdownMenuTrigger
+                                                                  asChild
+                                                                >
+                                                                  <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-6 px-1.5"
+                                                                    onClick={(
+                                                                      e,
+                                                                    ) =>
+                                                                      e.stopPropagation()
+                                                                    }
+                                                                  >
+                                                                    <MoreVertical className="size-3" />
+                                                                  </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                  <DropdownMenuItem
+                                                                    onClick={() => {
+                                                                      setInfoDialogData(
+                                                                        {
+                                                                          type: "scene",
+                                                                          node: scene,
+                                                                        },
+                                                                      );
+                                                                      setInfoDialogOpen(
+                                                                        true,
+                                                                      );
+                                                                    }}
+                                                                  >
+                                                                    <Info className="size-3 mr-2" />
+                                                                    Informationen
+                                                                  </DropdownMenuItem>
+                                                                  <DropdownMenuItem
+                                                                    onClick={() => {
+                                                                      setEditingScene(
+                                                                        scene.id,
+                                                                      );
+                                                                      setEditValues(
+                                                                        (
+                                                                          prev,
+                                                                        ) => ({
+                                                                          ...prev,
+                                                                          [scene.id]:
+                                                                            {
+                                                                              title:
+                                                                                scene.title,
+                                                                              description:
+                                                                                scene.description,
+                                                                            },
+                                                                        }),
+                                                                      );
+                                                                    }}
+                                                                  >
+                                                                    <Edit className="size-3 mr-2" />
+                                                                    Edit Scene
+                                                                  </DropdownMenuItem>
+                                                                  <DropdownMenuItem
+                                                                    onClick={() =>
+                                                                      handleDuplicateScene(
+                                                                        scene.id,
+                                                                      )
+                                                                    }
+                                                                  >
+                                                                    <Copy className="size-3 mr-2" />
+                                                                    Duplicate
+                                                                    Scene
+                                                                  </DropdownMenuItem>
+                                                                  <DropdownMenuItem
+                                                                    onClick={() =>
+                                                                      handleDeleteScene(
+                                                                        scene.id,
+                                                                      )
+                                                                    }
+                                                                    className="text-red-600 focus:text-red-600"
+                                                                  >
+                                                                    <Trash2 className="size-3 mr-2" />
+                                                                    Delete Scene
+                                                                  </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                              </DropdownMenu>
+                                                            </>
+                                                          )}
+                                                        </div>
+
+                                                        <CollapsibleContent>
+                                                          {/* Scene Description */}
+                                                          <div className="px-2 pb-2 space-y-2">
+                                                            {isSceneEditing ? (
+                                                              <Textarea
+                                                                value={
+                                                                  editValues[
+                                                                    scene.id
+                                                                  ]
+                                                                    ?.description ??
+                                                                  scene.description ??
+                                                                  ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                  setEditValues(
+                                                                    (prev) => ({
+                                                                      ...prev,
+                                                                      [scene.id]:
+                                                                        {
+                                                                          ...prev[
+                                                                            scene
+                                                                              .id
+                                                                          ],
+                                                                          description:
+                                                                            e
+                                                                              .target
+                                                                              .value,
+                                                                        },
+                                                                    }),
+                                                                  )
+                                                                }
+                                                                className="bg-input-background text-foreground text-xs border-pink-200 dark:border-pink-700 focus:border-pink-400 dark:focus:border-pink-500 focus-visible:ring-pink-400/20"
+                                                                placeholder="Beschreibung"
+                                                                rows={2}
+                                                              />
+                                                            ) : (
+                                                              <div
+                                                                onClick={() => {
+                                                                  setEditingScene(
+                                                                    scene.id,
+                                                                  );
+                                                                  setEditValues(
+                                                                    (prev) => ({
+                                                                      ...prev,
+                                                                      [scene.id]:
+                                                                        {
+                                                                          title:
+                                                                            scene.title,
+                                                                          description:
+                                                                            scene.description,
+                                                                        },
+                                                                    }),
+                                                                  );
+                                                                }}
+                                                                className="text-xs text-[rgb(230,0,118)] cursor-pointer hover:text-foreground transition-colors min-h-[1.5rem] flex items-center"
+                                                              >
+                                                                {scene.description ||
+                                                                  "+ Beschreibung"}
+                                                              </div>
+                                                            )}
+                                                          </div>
+
+                                                          {/* Shots */}
+                                                          <div className="px-2 pb-2 flex flex-col gap-1">
+                                                            <Button
+                                                              size="sm"
+                                                              variant="outline"
+                                                              onClick={() =>
+                                                                handleAddShot(
+                                                                  scene.id,
+                                                                )
+                                                              }
+                                                              disabled={
+                                                                creating ===
+                                                                  `shot-${scene.id}` ||
+                                                                scene.id.startsWith(
+                                                                  "temp-",
+                                                                ) ||
+                                                                pendingIds.has(
+                                                                  scene.id,
+                                                                )
+                                                              }
+                                                              className="w-1/2 md:w-1/4 ml-auto h-6 text-xs bg-background dark:bg-card text-center border-2 border-dashed border-yellow-400 dark:border-yellow-600 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                                                            >
+                                                              <Plus className="size-3 mr-1" />
+                                                              {pendingIds.has(
+                                                                scene.id,
+                                                              )
+                                                                ? "Wird gespeichert..."
+                                                                : "Shot hinzufügen"}
+                                                            </Button>
+
+                                                            {loadingSceneShots.has(
+                                                              scene.id,
+                                                            ) ? (
+                                                              <div className="text-[11px] text-muted-foreground px-1 py-1">
+                                                                Shots werden
+                                                                geladen…
+                                                              </div>
+                                                            ) : null}
+
+                                                            {sceneShots.map(
+                                                              (
+                                                                shot,
+                                                                shotIndex,
+                                                              ) => {
+                                                                const isShotPending =
+                                                                  pendingIds.has(
+                                                                    shot.id,
+                                                                  );
+
+                                                                return (
+                                                                  <div
+                                                                    key={
+                                                                      shot.id
+                                                                    }
+                                                                  >
+                                                                    {/* Drop Zone VOR diesem Shot */}
+                                                                    <DropZone
+                                                                      type={
+                                                                        ItemTypes.SHOT
+                                                                      }
+                                                                      index={
+                                                                        shotIndex
+                                                                      }
+                                                                      onDrop={(
+                                                                        draggedId,
+                                                                        targetIndex,
+                                                                      ) =>
+                                                                        handleShotDropAtIndex(
+                                                                          draggedId,
+                                                                          targetIndex,
+                                                                          scene.id,
+                                                                        )
+                                                                      }
+                                                                      label="Shot"
+                                                                      height="shot"
+                                                                    />
+
+                                                                    {/* Shot selbst (droppable für Swap) */}
+                                                                    <DraggableShot
+                                                                      shot={
+                                                                        shot
+                                                                      }
+                                                                      index={
+                                                                        shotIndex
+                                                                      }
+                                                                      onSwap={
+                                                                        handleShotSwap
+                                                                      }
+                                                                    >
+                                                                      <ShotCard
+                                                                        shot={
+                                                                          shot
+                                                                        }
+                                                                        sceneId={
+                                                                          scene.id
+                                                                        }
+                                                                        projectId={
+                                                                          projectId
+                                                                        }
+                                                                        isPending={
+                                                                          isShotPending
+                                                                        }
+                                                                        imageUploadWaiting={
+                                                                          shotImageUploadingId ===
+                                                                          shot.id
+                                                                        }
+                                                                        projectCharacters={
+                                                                          characters
+                                                                        }
+                                                                        isExpanded={expandedShots.has(
+                                                                          shot.id,
+                                                                        )}
+                                                                        onToggleExpand={() => {
+                                                                          const next =
+                                                                            new Set(
+                                                                              expandedShots,
+                                                                            );
+                                                                          if (
+                                                                            expandedShots.has(
+                                                                              shot.id,
+                                                                            )
+                                                                          ) {
+                                                                            next.delete(
+                                                                              shot.id,
+                                                                            );
+                                                                          } else {
+                                                                            next.add(
+                                                                              shot.id,
+                                                                            );
+                                                                          }
+                                                                          setExpandedShots(
+                                                                            next,
+                                                                          );
+                                                                        }}
+                                                                        onUpdate={
+                                                                          handleUpdateShot
+                                                                        }
+                                                                        onDelete={
+                                                                          handleDeleteShot
+                                                                        }
+                                                                        onDuplicate={
+                                                                          handleDuplicateShot
+                                                                        }
+                                                                        onShowInfo={(
+                                                                          shotId,
+                                                                        ) => {
+                                                                          const shotData =
+                                                                            shots.find(
+                                                                              (
+                                                                                s,
+                                                                              ) =>
+                                                                                s.id ===
+                                                                                shotId,
+                                                                            );
+                                                                          if (
+                                                                            shotData
+                                                                          ) {
+                                                                            setInfoDialogData(
+                                                                              {
+                                                                                type: "shot",
+                                                                                node: shotData,
+                                                                              },
+                                                                            );
+                                                                            setInfoDialogOpen(
+                                                                              true,
+                                                                            );
+                                                                          }
+                                                                        }}
+                                                                        onImageUpload={
+                                                                          handleShotImageUpload
+                                                                        }
+                                                                        onAudioUpload={
+                                                                          handleShotAudioUpload
+                                                                        }
+                                                                        onAudioDelete={
+                                                                          handleShotAudioDelete
+                                                                        }
+                                                                        onAudioUpdate={
+                                                                          handleShotAudioUpdate
+                                                                        }
+                                                                        onCharacterAdd={
+                                                                          handleShotCharacterAdd
+                                                                        }
+                                                                        onCharacterRemove={
+                                                                          handleShotCharacterRemove
+                                                                        }
+                                                                        onReorder={
+                                                                          handleShotSwap
+                                                                        }
+                                                                      />
+                                                                      {(() => {
+                                                                        const forShot =
+                                                                          editorialClips.filter(
+                                                                            (
+                                                                              c,
+                                                                            ) =>
+                                                                              c.shotId ===
+                                                                              shot.id,
+                                                                          );
+                                                                        if (
+                                                                          forShot.length ===
+                                                                          0
+                                                                        )
+                                                                          return null;
+                                                                        const dur =
+                                                                          forShot.reduce(
+                                                                            (
+                                                                              s,
+                                                                              c,
+                                                                            ) =>
+                                                                              s +
+                                                                              Math.max(
+                                                                                0,
+                                                                                c.endSec -
+                                                                                  c.startSec,
+                                                                              ),
+                                                                            0,
+                                                                          );
+                                                                        return (
+                                                                          <p className="text-[10px] text-muted-foreground pl-2 mt-0.5">
+                                                                            Editorial:{" "}
+                                                                            {
+                                                                              forShot.length
+                                                                            }{" "}
+                                                                            Clip(s),{" "}
+                                                                            {dur.toFixed(
+                                                                              1,
+                                                                            )}
+                                                                            s
+                                                                          </p>
+                                                                        );
+                                                                      })()}
+                                                                    </DraggableShot>
+
+                                                                    {/* Drop Zone NACH diesem Shot (nur beim letzten) */}
+                                                                    {shotIndex ===
+                                                                      sceneShots.length -
+                                                                        1 && (
+                                                                      <DropZone
+                                                                        type={
+                                                                          ItemTypes.SHOT
+                                                                        }
+                                                                        index={
+                                                                          sceneShots.length
+                                                                        }
+                                                                        onDrop={(
+                                                                          draggedId,
+                                                                          targetIndex,
+                                                                        ) =>
+                                                                          handleShotDropAtIndex(
+                                                                            draggedId,
+                                                                            targetIndex,
+                                                                            scene.id,
+                                                                          )
+                                                                        }
+                                                                        label="Shot"
+                                                                        height="shot"
+                                                                      />
+                                                                    )}
+                                                                  </div>
+                                                                );
+                                                              },
+                                                            )}
+                                                          </div>
+                                                        </CollapsibleContent>
+                                                      </div>
+                                                    </Collapsible>
+                                                  </DraggableScene>
+
+                                                  {/* Drop Zone NACH dieser Scene (nur beim letzten) */}
+                                                  {sceneIndex ===
+                                                    seqScenes.length - 1 && (
+                                                    <DropZone
+                                                      type={ItemTypes.SCENE}
+                                                      index={seqScenes.length}
+                                                      onDrop={(
+                                                        draggedId,
+                                                        targetIndex,
+                                                      ) =>
+                                                        handleSceneDropAtIndex(
+                                                          draggedId,
+                                                          targetIndex,
+                                                          sequence.id,
+                                                        )
+                                                      }
+                                                      label="Scene"
+                                                      height="scene"
+                                                    />
+                                                  )}
+                                                </div>
+                                              );
+                                            },
+                                          )}
+                                        </div>
+                                      </CollapsibleContent>
+                                    </div>
+                                  </Collapsible>
+                                </DraggableSequence>
+
+                                {/* Drop Zone NACH dieser Sequence (nur beim letzten) */}
+                                {seqIndex === actSequences.length - 1 && (
+                                  <DropZone
+                                    type={ItemTypes.SEQUENCE}
+                                    index={actSequences.length}
+                                    onDrop={(draggedId, targetIndex) =>
+                                      handleSequenceDropAtIndex(
+                                        draggedId,
+                                        targetIndex,
+                                        act.id,
+                                      )
+                                    }
+                                    label="Sequence"
+                                    height="sequence"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                </DraggableAct>
+
+                {/* Drop Zone NACH diesem Act (nur beim letzten) */}
+                {actIndex === acts.length - 1 && (
+                  <DropZone
+                    type={ItemTypes.ACT}
+                    index={acts.length}
+                    onDrop={handleActDropAtIndex}
+                    label="Act"
+                    height="act"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Statistics & Logs Dialog */}
+        {infoDialogData && (
+          <TimelineNodeStatsDialog
+            open={infoDialogOpen}
+            onOpenChange={setInfoDialogOpen}
+            nodeType={infoDialogData.type}
+            node={infoDialogData.node}
+            projectId={projectId}
+            projectType={projectType}
+          />
+        )}
+      </DndProvider>
+      {gifUploadDialog}
     </>
   );
 }

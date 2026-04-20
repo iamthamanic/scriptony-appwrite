@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Scissors, Play, Pause } from 'lucide-react';
-import WaveSurfer from 'wavesurfer.js@7.8.10';
-import RegionsPlugin from 'wavesurfer.js@7.8.10/dist/plugins/regions.esm.js';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Scissors, Play, Pause } from "lucide-react";
+import WaveSurfer from "wavesurfer.js@7.8.10";
+import RegionsPlugin from "wavesurfer.js@7.8.10/dist/plugins/regions.esm.js";
 
 interface AudioEditDialogProps {
   open: boolean;
@@ -18,20 +25,34 @@ interface AudioEditDialogProps {
     endTime?: number;
     url: string; // Audio URL for waveform
   } | null;
-  onSave: (audioId: string, updates: { label?: string; startTime?: number; endTime?: number; fadeIn?: number; fadeOut?: number }) => void;
+  onSave: (
+    audioId: string,
+    updates: {
+      label?: string;
+      startTime?: number;
+      endTime?: number;
+      fadeIn?: number;
+      fadeOut?: number;
+    },
+  ) => void;
 }
 
-export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: AudioEditDialogProps) {
-  const [label, setLabel] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+export function AudioEditDialog({
+  open,
+  onOpenChange,
+  audioFile,
+  onSave,
+}: AudioEditDialogProps) {
+  const [label, setLabel] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [fadeInLength, setFadeInLength] = useState(0); // in seconds
   const [fadeOutLength, setFadeOutLength] = useState(0); // in seconds
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [isDraggingFadeIn, setIsDraggingFadeIn] = useState(false);
   const [isDraggingFadeOut, setIsDraggingFadeOut] = useState(false);
-  
+
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsPluginRef = useRef<any>(null);
@@ -42,12 +63,12 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = (seconds % 60).toFixed(2);
-    return `${String(mins).padStart(2, '0')}:${secs.padStart(5, '0')}`;
+    return `${String(mins).padStart(2, "0")}:${secs.padStart(5, "0")}`;
   };
 
   const parseTime = (timeStr: string): number | undefined => {
     if (!timeStr) return undefined;
-    const parts = timeStr.split(':');
+    const parts = timeStr.split(":");
     if (parts.length !== 2) return undefined;
     const mins = parseInt(parts[0], 10);
     const secs = parseFloat(parts[1]);
@@ -59,8 +80,14 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
   useEffect(() => {
     if (audioFile) {
       setLabel(audioFile.label || audioFile.fileName);
-      setStartTime(audioFile.startTime !== undefined ? formatTime(audioFile.startTime) : '00:00');
-      setEndTime(audioFile.endTime !== undefined ? formatTime(audioFile.endTime) : '');
+      setStartTime(
+        audioFile.startTime !== undefined
+          ? formatTime(audioFile.startTime)
+          : "00:00",
+      );
+      setEndTime(
+        audioFile.endTime !== undefined ? formatTime(audioFile.endTime) : "",
+      );
       setFadeInLength(0);
       setFadeOutLength(0);
     }
@@ -88,7 +115,7 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
       const rect = waveformRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const waveformWidth = rect.width;
-      
+
       const parsedStart = parseTime(startTime) || 0;
       const parsedEnd = parseTime(endTime) || duration;
       const regionDuration = parsedEnd - parsedStart;
@@ -101,13 +128,19 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
       if (isDraggingFadeIn) {
         // Fade In: position relative to region START, max 50% of region
         const distanceFromRegionStart = Math.max(0, x - regionStartX);
-        const fadeInPercentage = Math.min(distanceFromRegionStart / regionWidth, 0.5);
+        const fadeInPercentage = Math.min(
+          distanceFromRegionStart / regionWidth,
+          0.5,
+        );
         const newFadeIn = fadeInPercentage * regionDuration;
         setFadeInLength(newFadeIn);
       } else if (isDraggingFadeOut) {
         // Fade Out: position relative to region END, max 50% of region
         const distanceFromRegionEnd = Math.max(0, regionEndX - x);
-        const fadeOutPercentage = Math.min(distanceFromRegionEnd / regionWidth, 0.5);
+        const fadeOutPercentage = Math.min(
+          distanceFromRegionEnd / regionWidth,
+          0.5,
+        );
         const newFadeOut = fadeOutPercentage * regionDuration;
         setFadeOutLength(newFadeOut);
       }
@@ -118,26 +151,28 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
       setIsDraggingFadeOut(false);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDraggingFadeIn, isDraggingFadeOut, startTime, endTime, duration]);
 
   // Initialize WaveSurfer - ONLY when dialog opens with audio file
   useEffect(() => {
-    console.log('[AudioEditDialog] useEffect triggered:', { 
-      open, 
-      hasAudioFile: !!audioFile, 
+    console.log("[AudioEditDialog] useEffect triggered:", {
+      open,
+      hasAudioFile: !!audioFile,
       hasWaveformRef: !!waveformRef.current,
-      audioFileUrl: audioFile?.url 
+      audioFileUrl: audioFile?.url,
     });
 
     if (!open || !audioFile?.url) {
-      console.log('[AudioEditDialog] Early return - dialog not open or no audio file');
+      console.log(
+        "[AudioEditDialog] Early return - dialog not open or no audio file",
+      );
       return;
     }
 
@@ -147,11 +182,16 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
     // Wait for DOM to be ready
     const initTimer = setTimeout(() => {
       if (!waveformRef.current || isDestroyedRef.current) {
-        console.log('[AudioEditDialog] Early return - waveformRef not ready or already destroyed');
+        console.log(
+          "[AudioEditDialog] Early return - waveformRef not ready or already destroyed",
+        );
         return;
       }
 
-      console.log('[AudioEditDialog] Initializing WaveSurfer:', { audioFile, url: audioFile.url });
+      console.log("[AudioEditDialog] Initializing WaveSurfer:", {
+        audioFile,
+        url: audioFile.url,
+      });
 
       let wavesurfer: WaveSurfer | null = null;
       let regionsPlugin: any = null;
@@ -164,109 +204,127 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
         // Create WaveSurfer instance
         wavesurfer = WaveSurfer.create({
           container: waveformRef.current,
-          waveColor: '#9CA3AF', // Gray
-          progressColor: '#6B7280', // Darker gray
-          cursorColor: '#6E59A5', // Purple
+          waveColor: "#9CA3AF", // Gray
+          progressColor: "#6B7280", // Darker gray
+          cursorColor: "#6E59A5", // Purple
           barWidth: 2,
           barGap: 1,
           barRadius: 2,
           height: 120,
           normalize: true,
-          backend: 'WebAudio',
+          backend: "WebAudio",
           plugins: [regionsPlugin],
         });
 
         wavesurferRef.current = wavesurfer;
 
-        console.log('[AudioEditDialog] WaveSurfer instance created');
+        console.log("[AudioEditDialog] WaveSurfer instance created");
 
         // Load audio with error handling
         try {
           wavesurfer.load(audioFile.url);
-          console.log('[AudioEditDialog] Loading audio from URL:', audioFile.url);
+          console.log(
+            "[AudioEditDialog] Loading audio from URL:",
+            audioFile.url,
+          );
         } catch (loadError) {
-          console.error('[AudioEditDialog] Error loading audio:', loadError);
+          console.error("[AudioEditDialog] Error loading audio:", loadError);
           return;
         }
 
         // On ready, create region and set duration
-        wavesurfer.on('ready', () => {
+        wavesurfer.on("ready", () => {
           if (isDestroyedRef.current) {
-            console.log('[AudioEditDialog] Instance already destroyed, skipping ready handler');
+            console.log(
+              "[AudioEditDialog] Instance already destroyed, skipping ready handler",
+            );
             return;
           }
-          
-          console.log('[AudioEditDialog] WaveSurfer READY event fired');
-          
+
+          console.log("[AudioEditDialog] WaveSurfer READY event fired");
+
           const audioDuration = wavesurfer!.getDuration();
           setDuration(audioDuration);
-          console.log('[AudioEditDialog] Duration:', audioDuration);
+          console.log("[AudioEditDialog] Duration:", audioDuration);
 
           // Create initial region
           const start = audioFile.startTime || 0;
           const end = audioFile.endTime || audioDuration;
 
-          console.log('[AudioEditDialog] Creating region:', { start, end });
+          console.log("[AudioEditDialog] Creating region:", { start, end });
 
           try {
             const region = regionsPlugin.addRegion({
               start,
               end,
-              color: 'rgba(110, 89, 165, 0.3)', // Purple with transparency
+              color: "rgba(110, 89, 165, 0.3)", // Purple with transparency
               drag: true,
               resize: true,
             });
 
-            console.log('[AudioEditDialog] Region created successfully:', region);
+            console.log(
+              "[AudioEditDialog] Region created successfully:",
+              region,
+            );
 
             // Update time inputs and fade handles when region changes
-            region.on('update', () => {
+            region.on("update", () => {
               // Sync fade handles with trim region in real-time
               const regionDuration = region.end - region.start;
-              
+
               // Clamp fade in handle to not exceed 50% of region duration
-              setFadeInLength(prev => Math.min(prev, regionDuration * 0.5));
-              
+              setFadeInLength((prev) => Math.min(prev, regionDuration * 0.5));
+
               // Clamp fade out handle to not exceed 50% of region duration
-              setFadeOutLength(prev => Math.min(prev, regionDuration * 0.5));
+              setFadeOutLength((prev) => Math.min(prev, regionDuration * 0.5));
             });
-            
-            region.on('update-end', () => {
-              console.log('[AudioEditDialog] Region updated:', { start: region.start, end: region.end });
+
+            region.on("update-end", () => {
+              console.log("[AudioEditDialog] Region updated:", {
+                start: region.start,
+                end: region.end,
+              });
               setStartTime(formatTime(region.start));
               setEndTime(formatTime(region.end));
             });
           } catch (regionError) {
-            console.error('[AudioEditDialog] Error creating region:', regionError);
+            console.error(
+              "[AudioEditDialog] Error creating region:",
+              regionError,
+            );
           }
         });
 
         // Error handling - ignore AbortError during cleanup
-        wavesurfer.on('error', (error) => {
-          if (error.name === 'AbortError') {
-            console.log('[AudioEditDialog] Audio load aborted (likely due to cleanup)');
+        wavesurfer.on("error", (error) => {
+          if (error.name === "AbortError") {
+            console.log(
+              "[AudioEditDialog] Audio load aborted (likely due to cleanup)",
+            );
           } else {
-            console.error('[AudioEditDialog] WaveSurfer error:', error);
+            console.error("[AudioEditDialog] WaveSurfer error:", error);
           }
         });
 
-        wavesurfer.on('loading', (percent) => {
-          console.log('[AudioEditDialog] Loading:', percent + '%');
+        wavesurfer.on("loading", (percent) => {
+          console.log("[AudioEditDialog] Loading:", percent + "%");
         });
 
         // Play/pause events
-        wavesurfer.on('play', () => {
-          console.log('[AudioEditDialog] Playing');
+        wavesurfer.on("play", () => {
+          console.log("[AudioEditDialog] Playing");
           setIsPlaying(true);
         });
-        
-        wavesurfer.on('pause', () => {
-          console.log('[AudioEditDialog] Paused');
+
+        wavesurfer.on("pause", () => {
+          console.log("[AudioEditDialog] Paused");
           setIsPlaying(false);
         });
-
       } catch (error) {
-        console.error('[AudioEditDialog] Error initializing WaveSurfer:', error);
+        console.error(
+          "[AudioEditDialog] Error initializing WaveSurfer:",
+          error,
+        );
       }
     }, 100); // 100ms delay to ensure DOM is ready
 
@@ -274,13 +332,13 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
     return () => {
       clearTimeout(initTimer);
       isDestroyedRef.current = true;
-      console.log('[AudioEditDialog] Cleaning up WaveSurfer');
+      console.log("[AudioEditDialog] Cleaning up WaveSurfer");
       if (wavesurferRef.current) {
         try {
           wavesurferRef.current.destroy();
           wavesurferRef.current = null;
         } catch (e) {
-          console.error('[AudioEditDialog] Error destroying WaveSurfer:', e);
+          console.error("[AudioEditDialog] Error destroying WaveSurfer:", e);
         }
       }
     };
@@ -321,17 +379,20 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
       // Play only the region
       const parsedStart = parseTime(startTime);
       const parsedEnd = parseTime(endTime);
-      
+
       if (parsedStart !== undefined) {
         wavesurferRef.current.setTime(parsedStart);
       }
-      
+
       wavesurferRef.current.play();
 
       // Stop at end time
       if (parsedEnd !== undefined) {
         const checkTime = setInterval(() => {
-          if (wavesurferRef.current && wavesurferRef.current.getCurrentTime() >= parsedEnd) {
+          if (
+            wavesurferRef.current &&
+            wavesurferRef.current.getCurrentTime() >= parsedEnd
+          ) {
             wavesurferRef.current.pause();
             clearInterval(checkTime);
           }
@@ -343,8 +404,14 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
   const handleSave = () => {
     if (!audioFile) return;
 
-    const updates: { label?: string; startTime?: number; endTime?: number; fadeIn?: number; fadeOut?: number } = {};
-    
+    const updates: {
+      label?: string;
+      startTime?: number;
+      endTime?: number;
+      fadeIn?: number;
+      fadeOut?: number;
+    } = {};
+
     if (label && label !== audioFile.fileName) {
       updates.label = label;
     }
@@ -374,7 +441,7 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSave();
     }
   };
@@ -421,14 +488,14 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
             <Label className="text-sm text-neutral-700 mb-3 block">
               Audio zuschneiden
             </Label>
-            
+
             <div className="bg-neutral-50 rounded-lg border border-neutral-200 p-4 space-y-3">
               {/* Waveform Container with Fade Overlays */}
               <div className="relative">
-                <div 
-                  ref={waveformRef} 
+                <div
+                  ref={waveformRef}
                   className="w-full min-h-[120px] bg-white rounded relative"
-                  style={{ minHeight: '120px' }}
+                  style={{ minHeight: "120px" }}
                 >
                   {/* Debug Info */}
                   <div className="absolute bottom-2 left-2 text-xs text-neutral-400 z-10">
@@ -437,90 +504,96 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
                 </div>
 
                 {/* Fade Overlays */}
-                <div 
+                <div
                   ref={fadeOverlayRef}
                   className="absolute inset-0 pointer-events-none"
-                  style={{ height: '120px' }}
+                  style={{ height: "120px" }}
                 >
                   {/* Fade In Overlay - positioned relative to TRIM REGION */}
-                  {fadeInLength > 0 && (() => {
-                    const parsedStart = parseTime(startTime) || 0;
-                    const parsedEnd = parseTime(endTime) || duration;
-                    const regionStartPercent = (parsedStart / duration) * 100;
-                    const fadeWidthPercent = (fadeInLength / duration) * 100;
-                    
-                    return (
-                      <div
-                        className="absolute top-0 bottom-0"
-                        style={{
-                          left: `${regionStartPercent}%`,
-                          width: `${fadeWidthPercent}%`,
-                          background: 'linear-gradient(to right, rgba(110, 89, 165, 0.15), transparent)',
-                          pointerEvents: 'none'
-                        }}
-                      >
-                        {/* Fade In Curve */}
-                        <svg
-                          className="absolute inset-0 w-full h-full"
-                          preserveAspectRatio="none"
+                  {fadeInLength > 0 &&
+                    (() => {
+                      const parsedStart = parseTime(startTime) || 0;
+                      const parsedEnd = parseTime(endTime) || duration;
+                      const regionStartPercent = (parsedStart / duration) * 100;
+                      const fadeWidthPercent = (fadeInLength / duration) * 100;
+
+                      return (
+                        <div
+                          className="absolute top-0 bottom-0"
+                          style={{
+                            left: `${regionStartPercent}%`,
+                            width: `${fadeWidthPercent}%`,
+                            background:
+                              "linear-gradient(to right, rgba(110, 89, 165, 0.15), transparent)",
+                            pointerEvents: "none",
+                          }}
                         >
-                          <path
-                            d={`M 0,${120} Q 0,0 ${100},0`}
-                            fill="none"
-                            stroke="#6E59A5"
-                            strokeWidth="2"
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        </svg>
-                      </div>
-                    );
-                  })()}
+                          {/* Fade In Curve */}
+                          <svg
+                            className="absolute inset-0 w-full h-full"
+                            preserveAspectRatio="none"
+                          >
+                            <path
+                              d={`M 0,${120} Q 0,0 ${100},0`}
+                              fill="none"
+                              stroke="#6E59A5"
+                              strokeWidth="2"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          </svg>
+                        </div>
+                      );
+                    })()}
 
                   {/* Fade Out Overlay - positioned relative to TRIM REGION */}
-                  {fadeOutLength > 0 && (() => {
-                    const parsedStart = parseTime(startTime) || 0;
-                    const parsedEnd = parseTime(endTime) || duration;
-                    const regionEndPercent = (parsedEnd / duration) * 100;
-                    const fadeWidthPercent = (fadeOutLength / duration) * 100;
-                    
-                    return (
-                      <div
-                        className="absolute top-0 bottom-0"
-                        style={{
-                          right: `${100 - regionEndPercent}%`,
-                          width: `${fadeWidthPercent}%`,
-                          background: 'linear-gradient(to left, rgba(110, 89, 165, 0.15), transparent)',
-                          pointerEvents: 'none'
-                        }}
-                      >
-                        {/* Fade Out Curve */}
-                        <svg
-                          className="absolute inset-0 w-full h-full"
-                          preserveAspectRatio="none"
+                  {fadeOutLength > 0 &&
+                    (() => {
+                      const parsedStart = parseTime(startTime) || 0;
+                      const parsedEnd = parseTime(endTime) || duration;
+                      const regionEndPercent = (parsedEnd / duration) * 100;
+                      const fadeWidthPercent = (fadeOutLength / duration) * 100;
+
+                      return (
+                        <div
+                          className="absolute top-0 bottom-0"
+                          style={{
+                            right: `${100 - regionEndPercent}%`,
+                            width: `${fadeWidthPercent}%`,
+                            background:
+                              "linear-gradient(to left, rgba(110, 89, 165, 0.15), transparent)",
+                            pointerEvents: "none",
+                          }}
                         >
-                          <path
-                            d={`M 0,0 Q ${100},0 ${100},${120}`}
-                            fill="none"
-                            stroke="#6E59A5"
-                            strokeWidth="2"
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        </svg>
-                      </div>
-                    );
-                  })()}
+                          {/* Fade Out Curve */}
+                          <svg
+                            className="absolute inset-0 w-full h-full"
+                            preserveAspectRatio="none"
+                          >
+                            <path
+                              d={`M 0,0 Q ${100},0 ${100},${120}`}
+                              fill="none"
+                              stroke="#6E59A5"
+                              strokeWidth="2"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          </svg>
+                        </div>
+                      );
+                    })()}
                 </div>
 
                 {/* Fade In Handle - positioned at TRIM START + fade length */}
                 <div
                   className={`absolute top-0 w-3 h-full cursor-ew-resize z-20 group ${
-                    isDraggingFadeIn ? 'bg-violet-200' : 'hover:bg-violet-100'
+                    isDraggingFadeIn ? "bg-violet-200" : "hover:bg-violet-100"
                   }`}
                   onMouseDown={handleFadeInMouseDown}
                   style={{
                     left: `${((parseTime(startTime) || 0) / duration) * 100}%`,
                     transform: `translateX(${(fadeInLength / duration) * (waveformRef.current?.clientWidth || 0)}px)`,
-                    transition: isDraggingFadeIn ? 'none' : 'background-color 0.2s'
+                    transition: isDraggingFadeIn
+                      ? "none"
+                      : "background-color 0.2s",
                   }}
                 >
                   {/* Handle Triangle */}
@@ -531,13 +604,15 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
                 {/* Fade Out Handle - positioned at TRIM END - fade length */}
                 <div
                   className={`absolute top-0 w-3 h-full cursor-ew-resize z-20 group ${
-                    isDraggingFadeOut ? 'bg-violet-200' : 'hover:bg-violet-100'
+                    isDraggingFadeOut ? "bg-violet-200" : "hover:bg-violet-100"
                   }`}
                   onMouseDown={handleFadeOutMouseDown}
                   style={{
                     left: `${((parseTime(endTime) || duration) / duration) * 100}%`,
                     transform: `translateX(-${(fadeOutLength / duration) * (waveformRef.current?.clientWidth || 0)}px)`,
-                    transition: isDraggingFadeOut ? 'none' : 'background-color 0.2s'
+                    transition: isDraggingFadeOut
+                      ? "none"
+                      : "background-color 0.2s",
                   }}
                 >
                   {/* Handle Triangle */}
@@ -545,7 +620,7 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
                   <div className="absolute inset-0 bg-violet-600 group-hover:bg-violet-700 opacity-20"></div>
                 </div>
               </div>
-              
+
               {/* Play Button Below Waveform */}
               <div className="flex items-center justify-center pt-2">
                 <Button
@@ -565,14 +640,15 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
 
           {/* Time Inputs */}
           <div className="space-y-3">
-            <Label className="text-sm text-neutral-700">
-              Cut from:
-            </Label>
-            
+            <Label className="text-sm text-neutral-700">Cut from:</Label>
+
             <div className="grid grid-cols-2 gap-3">
               {/* Start Time */}
               <div className="space-y-1.5">
-                <Label htmlFor="start-time" className="text-xs text-neutral-600">
+                <Label
+                  htmlFor="start-time"
+                  className="text-xs text-neutral-600"
+                >
                   Start (mm:ss.ms)
                 </Label>
                 <Input
@@ -608,12 +684,18 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
               <div className="text-xs text-violet-700 space-y-1">
                 {fadeInLength > 0 && (
                   <div>
-                    Fade In: <span className="font-medium">{fadeInLength.toFixed(2)}s</span>
+                    Fade In:{" "}
+                    <span className="font-medium">
+                      {fadeInLength.toFixed(2)}s
+                    </span>
                   </div>
                 )}
                 {fadeOutLength > 0 && (
                   <div>
-                    Fade Out: <span className="font-medium">{fadeOutLength.toFixed(2)}s</span>
+                    Fade Out:{" "}
+                    <span className="font-medium">
+                      {fadeOutLength.toFixed(2)}s
+                    </span>
                   </div>
                 )}
                 <div className="text-violet-600 italic mt-1">
@@ -628,7 +710,9 @@ export function AudioEditDialog({ open, onOpenChange, audioFile, onSave }: Audio
             <div className="flex items-center justify-between text-sm">
               <div>
                 <span className="text-neutral-600">Final output: </span>
-                <span className="font-medium text-violet-700">{finalOutputDuration()}</span>
+                <span className="font-medium text-violet-700">
+                  {finalOutputDuration()}
+                </span>
               </div>
               <div>
                 <span className="text-neutral-600">Format: </span>

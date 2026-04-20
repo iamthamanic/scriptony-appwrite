@@ -1,14 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ResizableBeatBlock, type BeatBlockData } from './ResizableBeatBlock';
-import { Button } from './ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { SAVE_THE_CAT_TEMPLATE, LITE_7_TEMPLATE, HEROES_JOURNEY_TEMPLATE, SYD_FIELD_TEMPLATE, SEVEN_POINT_TEMPLATE, getAllTemplateOptions } from '../lib/beat-templates';
-import { Plus, RotateCcw } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { useState, useEffect, useCallback } from "react";
+import { ResizableBeatBlock, type BeatBlockData } from "./ResizableBeatBlock";
+import { Button } from "./ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import {
+  SAVE_THE_CAT_TEMPLATE,
+  LITE_7_TEMPLATE,
+  HEROES_JOURNEY_TEMPLATE,
+  SYD_FIELD_TEMPLATE,
+  SEVEN_POINT_TEMPLATE,
+  getAllTemplateOptions,
+} from "../lib/beat-templates";
+import { Plus, RotateCcw } from "lucide-react";
+import { toast } from "sonner@2.0.3";
 
 /**
  * 🎬 BEAT TIMELINE
- * 
+ *
  * New beat system with:
  * - Resizable beat blocks (independent of containers)
  * - FL Studio-style UI with top/bottom handles
@@ -29,7 +42,7 @@ export function BeatTimeline({
 }: BeatTimelineProps) {
   const [beats, setBeats] = useState<BeatBlockData[]>([]);
   const [activeBeatId, setActiveBeatId] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState('save-the-cat');
+  const [selectedTemplate, setSelectedTemplate] = useState("save-the-cat");
   const [timelineHeight] = useState(2400); // Increased height for better visibility
 
   // Initialize with Save the Cat template
@@ -49,7 +62,7 @@ export function BeatTimeline({
       } else if (beat.pctTo - beat.pctFrom < 2) {
         endPercent = beat.pctFrom + 2;
       }
-      
+
       return {
         id: `beat-${Date.now()}-${index}`,
         label: beat.label,
@@ -61,48 +74,49 @@ export function BeatTimeline({
       };
     });
 
-    console.log('[BeatTimeline] Loaded beats:', initialBeats.length, initialBeats);
+    console.log(
+      "[BeatTimeline] Loaded beats:",
+      initialBeats.length,
+      initialBeats,
+    );
     setBeats(initialBeats);
   };
 
-  const handleResize = useCallback((id: string, startPercent: number, endPercent: number) => {
-    setBeats((prev) =>
-      prev.map((beat) =>
-        beat.id === id
-          ? { ...beat, startPercent, endPercent }
-          : beat
-      )
-    );
-  }, []);
+  const handleResize = useCallback(
+    (id: string, startPercent: number, endPercent: number) => {
+      setBeats((prev) =>
+        prev.map((beat) =>
+          beat.id === id ? { ...beat, startPercent, endPercent } : beat,
+        ),
+      );
+    },
+    [],
+  );
 
   const handleNotesChange = useCallback((id: string, notes: string) => {
     setBeats((prev) =>
-      prev.map((beat) =>
-        beat.id === id
-          ? { ...beat, notes }
-          : beat
-      )
+      prev.map((beat) => (beat.id === id ? { ...beat, notes } : beat)),
     );
   }, []);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplate(templateId);
-    
+
     let template;
     switch (templateId) {
-      case 'save-the-cat':
+      case "save-the-cat":
         template = SAVE_THE_CAT_TEMPLATE;
         break;
-      case 'lite-7':
+      case "lite-7":
         template = LITE_7_TEMPLATE;
         break;
-      case 'heroes-journey':
+      case "heroes-journey":
         template = HEROES_JOURNEY_TEMPLATE;
         break;
-      case 'syd-field':
+      case "syd-field":
         template = SYD_FIELD_TEMPLATE;
         break;
-      case 'seven-point':
+      case "seven-point":
         template = SEVEN_POINT_TEMPLATE;
         break;
       default:
@@ -126,11 +140,11 @@ export function BeatTimeline({
   const handleSaveBeats = async () => {
     try {
       // TODO: Save to API
-      console.log('Saving beats:', beats);
-      toast.success('Beats gespeichert!');
+      console.log("Saving beats:", beats);
+      toast.success("Beats gespeichert!");
     } catch (error) {
-      console.error('Error saving beats:', error);
-      toast.error('Fehler beim Speichern');
+      console.error("Error saving beats:", error);
+      toast.error("Fehler beim Speichern");
     }
   };
 
@@ -140,7 +154,10 @@ export function BeatTimeline({
       <div className="flex-shrink-0 border-b border-border p-4 bg-card">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+            <Select
+              value={selectedTemplate}
+              onValueChange={handleTemplateChange}
+            >
               <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Template wählen..." />
               </SelectTrigger>
@@ -148,7 +165,9 @@ export function BeatTimeline({
                 {getAllTemplateOptions().map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-muted-foreground">{option.abbr}</span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {option.abbr}
+                      </span>
                       <span>{option.label}</span>
                     </div>
                   </SelectItem>
@@ -208,7 +227,10 @@ export function BeatTimeline({
                 <div
                   key={pct}
                   className="absolute left-0 right-0 flex items-center justify-center text-[9px] text-muted-foreground"
-                  style={{ top: `${(pct / 100) * timelineHeight}px`, transform: 'translateY(-50%)' }}
+                  style={{
+                    top: `${(pct / 100) * timelineHeight}px`,
+                    transform: "translateY(-50%)",
+                  }}
                 >
                   <span className="bg-card px-1 rounded">{pct}%</span>
                 </div>
@@ -236,13 +258,17 @@ export function BeatTimeline({
             {firstActStartPercent > 0 && (
               <div
                 className="absolute left-12 right-0 border-t-2 border-dashed border-primary/50"
-                style={{ top: `${(firstActStartPercent / 100) * timelineHeight}px` }}
+                style={{
+                  top: `${(firstActStartPercent / 100) * timelineHeight}px`,
+                }}
               />
             )}
             {lastActEndPercent < 100 && (
               <div
                 className="absolute left-12 right-0 border-t-2 border-dashed border-primary/50"
-                style={{ top: `${(lastActEndPercent / 100) * timelineHeight}px` }}
+                style={{
+                  top: `${(lastActEndPercent / 100) * timelineHeight}px`,
+                }}
               />
             )}
           </div>

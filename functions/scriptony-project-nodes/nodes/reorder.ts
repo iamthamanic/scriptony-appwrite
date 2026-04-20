@@ -11,9 +11,12 @@ import {
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
+  sendNotFound,
   sendServerError,
   sendUnauthorized,
 } from "../../_shared/http";
+import { getNodeById } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -37,6 +40,18 @@ export default async function handler(
       sendBadRequest(res, "nodeIds is required");
       return;
     }
+
+    const firstNode = await getNodeById(nodeIds[0]);
+    if (!firstNode?.project_id) {
+      sendNotFound(res, "Node not found");
+      return;
+    }
+    const _project = await requireProjectAccess(
+      String(firstNode.project_id),
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
 
     await Promise.all(
       nodeIds.map((id, index) =>

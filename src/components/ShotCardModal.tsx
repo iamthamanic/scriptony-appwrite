@@ -16,27 +16,25 @@
  *   />
  */
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Badge } from "./ui/badge";
+import { ShotCard } from "./ShotCard";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import { Badge } from './ui/badge';
-import { ShotCard } from './ShotCard';
-import { useTimelineState, useShotBreadcrumb } from '../contexts/TimelineStateContext';
-import { useAuth } from '../hooks/useAuth';
-import * as ShotsAPI from '../lib/api/shots-api';
+  useTimelineState,
+  useShotBreadcrumb,
+} from "../contexts/TimelineStateContext";
+import { useAuth } from "../hooks/useAuth";
+import * as ShotsAPI from "../lib/api/shots-api";
 import {
   validateImageFile,
   needsGifUserConfirmation,
   type ImageUploadGifMode,
-} from '../lib/api/image-upload-api';
-import { STORAGE_CONFIG } from '../lib/config';
-import { GifAnimationUploadDialog } from './GifAnimationUploadDialog';
-import { toast } from 'sonner';
-import type { Shot } from '../lib/types';
+} from "../lib/api/image-upload-api";
+import { STORAGE_CONFIG } from "../lib/config";
+import { GifAnimationUploadDialog } from "./GifAnimationUploadDialog";
+import { toast } from "sonner";
+import type { Shot } from "../lib/types";
 
 interface ShotCardModalProps {
   open: boolean;
@@ -45,260 +43,354 @@ interface ShotCardModalProps {
   projectId: string;
 }
 
-export function ShotCardModal({ open, onOpenChange, shotId, projectId }: ShotCardModalProps) {
+export function ShotCardModal({
+  open,
+  onOpenChange,
+  shotId,
+  projectId,
+}: ShotCardModalProps) {
   const { shots, characters, dispatch } = useTimelineState();
   const breadcrumb = useShotBreadcrumb(shotId || undefined);
   const { getAccessToken } = useAuth();
 
   // GIF confirmation dialog state
-  const [gifPending, setGifPending] = useState<{ shotId: string; file: File } | null>(null);
+  const [gifPending, setGifPending] = useState<{
+    shotId: string;
+    file: File;
+  } | null>(null);
   const [imageUploadingId, setImageUploadingId] = useState<string | null>(null);
   const imageUploadInFlightRef = useRef(false);
 
-  const shot = shotId ? shots.find(s => s.id === shotId) : undefined;
+  const shot = shotId ? shots.find((s) => s.id === shotId) : undefined;
 
   // ─── Shot Callbacks (mirror FilmDropdown handlers) ──────────────
 
-  const handleUpdateShot = useCallback(async (id: string, updates: Partial<Shot>) => {
-    // Optimistic update via context
-    dispatch({ type: 'UPDATE_SHOT', id, payload: updates });
+  const handleUpdateShot = useCallback(
+    async (id: string, updates: Partial<Shot>) => {
+      // Optimistic update via context
+      dispatch({ type: "UPDATE_SHOT", id, payload: updates });
 
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await ShotsAPI.updateShot(id, updates, token);
-    } catch (error) {
-      console.error('Error updating shot:', error);
-      toast.error('Fehler beim Aktualisieren');
-    }
-  }, [dispatch, getAccessToken]);
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        await ShotsAPI.updateShot(id, updates, token);
+      } catch (error) {
+        console.error("Error updating shot:", error);
+        toast.error("Fehler beim Aktualisieren");
+      }
+    },
+    [dispatch, getAccessToken],
+  );
 
-  const handleDeleteShot = useCallback(async (id: string) => {
-    dispatch({ type: 'DELETE_SHOT', id });
-    onOpenChange(false); // Close modal after delete
+  const handleDeleteShot = useCallback(
+    async (id: string) => {
+      dispatch({ type: "DELETE_SHOT", id });
+      onOpenChange(false); // Close modal after delete
 
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await ShotsAPI.deleteShot(id, token);
-      toast.success('Shot gelöscht');
-    } catch (error) {
-      console.error('Error deleting shot:', error);
-      toast.error('Fehler beim Löschen');
-    }
-  }, [dispatch, getAccessToken, onOpenChange]);
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        await ShotsAPI.deleteShot(id, token);
+        toast.success("Shot gelöscht");
+      } catch (error) {
+        console.error("Error deleting shot:", error);
+        toast.error("Fehler beim Löschen");
+      }
+    },
+    [dispatch, getAccessToken, onOpenChange],
+  );
 
-  const handleDuplicateShot = useCallback(async (id: string) => {
-    const shotToDuplicate = shots.find(s => s.id === id);
-    if (!shotToDuplicate) return;
+  const handleDuplicateShot = useCallback(
+    async (id: string) => {
+      const shotToDuplicate = shots.find((s) => s.id === id);
+      if (!shotToDuplicate) return;
 
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
 
-      const newShot = await ShotsAPI.createShot(shotToDuplicate.sceneId, {
-        shotNumber: `${shotToDuplicate.shotNumber} (Kopie)`,
-        description: shotToDuplicate.description,
-        cameraAngle: shotToDuplicate.cameraAngle,
-        cameraMovement: shotToDuplicate.cameraMovement,
-        framing: shotToDuplicate.framing,
-        lens: shotToDuplicate.lens,
-        duration: shotToDuplicate.duration,
-        shotlengthMinutes: shotToDuplicate.shotlengthMinutes,
-        shotlengthSeconds: shotToDuplicate.shotlengthSeconds,
-        notes: shotToDuplicate.notes,
-        dialog: shotToDuplicate.dialog,
-        projectId,
-      }, token);
+        const newShot = await ShotsAPI.createShot(
+          shotToDuplicate.sceneId,
+          {
+            shotNumber: `${shotToDuplicate.shotNumber} (Kopie)`,
+            description: shotToDuplicate.description,
+            cameraAngle: shotToDuplicate.cameraAngle,
+            cameraMovement: shotToDuplicate.cameraMovement,
+            framing: shotToDuplicate.framing,
+            lens: shotToDuplicate.lens,
+            duration: shotToDuplicate.duration,
+            shotlengthMinutes: shotToDuplicate.shotlengthMinutes,
+            shotlengthSeconds: shotToDuplicate.shotlengthSeconds,
+            notes: shotToDuplicate.notes,
+            dialog: shotToDuplicate.dialog,
+            projectId,
+          },
+          token,
+        );
 
-      dispatch({ type: 'ADD_SHOT', payload: newShot });
-      toast.success('Shot dupliziert');
-    } catch (error) {
-      console.error('Error duplicating shot:', error);
-      toast.error('Fehler beim Duplizieren');
-    }
-  }, [shots, dispatch, getAccessToken, projectId]);
+        dispatch({ type: "ADD_SHOT", payload: newShot });
+        toast.success("Shot dupliziert");
+      } catch (error) {
+        console.error("Error duplicating shot:", error);
+        toast.error("Fehler beim Duplizieren");
+      }
+    },
+    [shots, dispatch, getAccessToken, projectId],
+  );
 
-  const runShotImageUpload = useCallback(async (id: string, file: File, gifMode?: ImageUploadGifMode) => {
-    imageUploadInFlightRef.current = true;
-    setImageUploadingId(id);
+  const runShotImageUpload = useCallback(
+    async (id: string, file: File, gifMode?: ImageUploadGifMode) => {
+      imageUploadInFlightRef.current = true;
+      setImageUploadingId(id);
 
-    const previewUrl = URL.createObjectURL(file);
-    dispatch({ type: 'UPDATE_SHOT', id, payload: { imageUrl: previewUrl } });
-    toast.loading('Bild wird hochgeladen...');
+      const previewUrl = URL.createObjectURL(file);
+      dispatch({ type: "UPDATE_SHOT", id, payload: { imageUrl: previewUrl } });
+      toast.loading("Bild wird hochgeladen...");
 
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        toast.dismiss();
-        toast.error('Nicht authentifiziert');
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          toast.dismiss();
+          toast.error("Nicht authentifiziert");
+          URL.revokeObjectURL(previewUrl);
+          dispatch({
+            type: "UPDATE_SHOT",
+            id,
+            payload: { imageUrl: undefined },
+          });
+          return;
+        }
+
+        const imageUrl = await ShotsAPI.uploadShotImage(id, file, token, {
+          gifMode,
+        });
         URL.revokeObjectURL(previewUrl);
-        dispatch({ type: 'UPDATE_SHOT', id, payload: { imageUrl: undefined } });
+        dispatch({ type: "UPDATE_SHOT", id, payload: { imageUrl } });
+        toast.dismiss();
+        toast.success("Bild hochgeladen!");
+      } catch (error) {
+        console.error("Error uploading shot image:", error);
+        URL.revokeObjectURL(previewUrl);
+        dispatch({ type: "UPDATE_SHOT", id, payload: { imageUrl: undefined } });
+        toast.dismiss();
+        toast.error(
+          `Fehler beim Hochladen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
+        );
+      } finally {
+        setImageUploadingId(null);
+        imageUploadInFlightRef.current = false;
+      }
+    },
+    [dispatch, getAccessToken],
+  );
+
+  const handleImageUpload = useCallback(
+    async (id: string, file: File) => {
+      try {
+        validateImageFile(file, 5);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Ungültiges Bild");
         return;
       }
 
-      const imageUrl = await ShotsAPI.uploadShotImage(id, file, token, { gifMode });
-      URL.revokeObjectURL(previewUrl);
-      dispatch({ type: 'UPDATE_SHOT', id, payload: { imageUrl } });
-      toast.dismiss();
-      toast.success('Bild hochgeladen!');
-    } catch (error) {
-      console.error('Error uploading shot image:', error);
-      URL.revokeObjectURL(previewUrl);
-      dispatch({ type: 'UPDATE_SHOT', id, payload: { imageUrl: undefined } });
-      toast.dismiss();
-      toast.error(`Fehler beim Hochladen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
-    } finally {
-      setImageUploadingId(null);
-      imageUploadInFlightRef.current = false;
-    }
-  }, [dispatch, getAccessToken]);
+      if (needsGifUserConfirmation(file)) {
+        setImageUploadingId(id);
+        setGifPending({ shotId: id, file });
+        return;
+      }
 
-  const handleImageUpload = useCallback(async (id: string, file: File) => {
-    try {
-      validateImageFile(file, 5);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Ungültiges Bild');
-      return;
-    }
+      await runShotImageUpload(id, file, undefined);
+    },
+    [runShotImageUpload],
+  );
 
-    if (needsGifUserConfirmation(file)) {
-      setImageUploadingId(id);
-      setGifPending({ shotId: id, file });
-      return;
-    }
+  const handleAudioUpload = useCallback(
+    async (
+      id: string,
+      file: File,
+      type: "music" | "sfx",
+      label?: string,
+      startTime?: number,
+      endTime?: number,
+      fadeIn?: number,
+      fadeOut?: number,
+    ) => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
 
-    await runShotImageUpload(id, file, undefined);
-  }, [runShotImageUpload]);
+        await ShotsAPI.uploadShotAudio(
+          id,
+          file,
+          type,
+          token,
+          label,
+          startTime,
+          endTime,
+          fadeIn,
+          fadeOut,
+        );
+        const updatedShot = await ShotsAPI.getShot(id, token);
+        dispatch({
+          type: "UPDATE_SHOT",
+          id,
+          payload: { audioFiles: updatedShot.audioFiles },
+        });
+        toast.success("Audio hochgeladen");
+      } catch (error) {
+        console.error("Error uploading audio:", error);
+        toast.error("Fehler beim Hochladen");
+      }
+    },
+    [dispatch, getAccessToken],
+  );
 
-  const handleAudioUpload = useCallback(async (
-    id: string,
-    file: File,
-    type: 'music' | 'sfx',
-    label?: string,
-    startTime?: number,
-    endTime?: number,
-    fadeIn?: number,
-    fadeOut?: number,
-  ) => {
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
+  const handleAudioDelete = useCallback(
+    async (audioId: string) => {
+      // Find which shot has this audio and update locally
+      const parentShot = shots.find((s) =>
+        s.audioFiles?.some((a) => a.id === audioId),
+      );
+      if (parentShot) {
+        dispatch({
+          type: "UPDATE_SHOT",
+          id: parentShot.id,
+          payload: {
+            audioFiles: parentShot.audioFiles?.filter((a) => a.id !== audioId),
+          },
+        });
+      }
 
-      await ShotsAPI.uploadShotAudio(id, file, type, token, label, startTime, endTime, fadeIn, fadeOut);
-      const updatedShot = await ShotsAPI.getShot(id, token);
-      dispatch({ type: 'UPDATE_SHOT', id, payload: { audioFiles: updatedShot.audioFiles } });
-      toast.success('Audio hochgeladen');
-    } catch (error) {
-      console.error('Error uploading audio:', error);
-      toast.error('Fehler beim Hochladen');
-    }
-  }, [dispatch, getAccessToken]);
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        await ShotsAPI.deleteShotAudio(audioId, token);
+        toast.success("Audio gelöscht");
+      } catch (error) {
+        console.error("Error deleting audio:", error);
+        toast.error("Fehler beim Löschen");
+      }
+    },
+    [shots, dispatch, getAccessToken],
+  );
 
-  const handleAudioDelete = useCallback(async (audioId: string) => {
-    // Find which shot has this audio and update locally
-    const parentShot = shots.find(s => s.audioFiles?.some(a => a.id === audioId));
-    if (parentShot) {
+  const handleAudioUpdate = useCallback(
+    async (
+      audioId: string,
+      updates: {
+        label?: string;
+        startTime?: number;
+        endTime?: number;
+        fadeIn?: number;
+        fadeOut?: number;
+      },
+    ) => {
+      // Optimistic: find parent shot and update audio in place
+      const parentShot = shots.find((s) =>
+        s.audioFiles?.some((a) => a.id === audioId),
+      );
+      if (parentShot) {
+        dispatch({
+          type: "UPDATE_SHOT",
+          id: parentShot.id,
+          payload: {
+            audioFiles: parentShot.audioFiles?.map((a) =>
+              a.id === audioId ? { ...a, ...updates } : a,
+            ),
+          },
+        });
+      }
+
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        await ShotsAPI.updateShotAudio(audioId, updates, token);
+      } catch (error) {
+        console.error("Error updating audio:", error);
+        toast.error("Fehler beim Aktualisieren");
+      }
+    },
+    [shots, dispatch, getAccessToken],
+  );
+
+  const handleCharacterAdd = useCallback(
+    async (id: string, characterId: string) => {
+      const shotData = shots.find((s) => s.id === id);
+      if (!shotData) return;
+
+      const character = characters.find((c) => c.id === characterId);
+      if (!character) return;
+
+      const currentCharacters = shotData.characters || [];
+      if (currentCharacters.some((c) => c.id === characterId)) {
+        toast.error("Character bereits hinzugefügt");
+        return;
+      }
+
       dispatch({
-        type: 'UPDATE_SHOT',
-        id: parentShot.id,
-        payload: { audioFiles: parentShot.audioFiles?.filter(a => a.id !== audioId) },
+        type: "UPDATE_SHOT",
+        id,
+        payload: { characters: [...currentCharacters, character] },
       });
-    }
 
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await ShotsAPI.deleteShotAudio(audioId, token);
-      toast.success('Audio gelöscht');
-    } catch (error) {
-      console.error('Error deleting audio:', error);
-      toast.error('Fehler beim Löschen');
-    }
-  }, [shots, dispatch, getAccessToken]);
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        const updatedShot = await ShotsAPI.addCharacterToShot(
+          id,
+          characterId,
+          token,
+        );
+        dispatch({
+          type: "UPDATE_SHOT",
+          id,
+          payload: { characters: updatedShot.characters },
+        });
+        toast.success("Character hinzugefügt");
+      } catch (error) {
+        console.error("Error adding character:", error);
+        toast.error("Fehler beim Hinzufügen");
+        dispatch({
+          type: "UPDATE_SHOT",
+          id,
+          payload: { characters: currentCharacters },
+        });
+      }
+    },
+    [shots, characters, dispatch, getAccessToken],
+  );
 
-  const handleAudioUpdate = useCallback(async (
-    audioId: string,
-    updates: { label?: string; startTime?: number; endTime?: number; fadeIn?: number; fadeOut?: number },
-  ) => {
-    // Optimistic: find parent shot and update audio in place
-    const parentShot = shots.find(s => s.audioFiles?.some(a => a.id === audioId));
-    if (parentShot) {
+  const handleCharacterRemove = useCallback(
+    async (id: string, characterId: string) => {
+      const shotData = shots.find((s) => s.id === id);
+      if (!shotData) return;
+
+      const currentCharacters = shotData.characters || [];
       dispatch({
-        type: 'UPDATE_SHOT',
-        id: parentShot.id,
+        type: "UPDATE_SHOT",
+        id,
         payload: {
-          audioFiles: parentShot.audioFiles?.map(a =>
-            a.id === audioId ? { ...a, ...updates } : a
-          ),
+          characters: currentCharacters.filter((c) => c.id !== characterId),
         },
       });
-    }
 
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await ShotsAPI.updateShotAudio(audioId, updates, token);
-    } catch (error) {
-      console.error('Error updating audio:', error);
-      toast.error('Fehler beim Aktualisieren');
-    }
-  }, [shots, dispatch, getAccessToken]);
-
-  const handleCharacterAdd = useCallback(async (id: string, characterId: string) => {
-    const shotData = shots.find(s => s.id === id);
-    if (!shotData) return;
-
-    const character = characters.find(c => c.id === characterId);
-    if (!character) return;
-
-    const currentCharacters = shotData.characters || [];
-    if (currentCharacters.some(c => c.id === characterId)) {
-      toast.error('Character bereits hinzugefügt');
-      return;
-    }
-
-    dispatch({
-      type: 'UPDATE_SHOT',
-      id,
-      payload: { characters: [...currentCharacters, character] },
-    });
-
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const updatedShot = await ShotsAPI.addCharacterToShot(id, characterId, token);
-      dispatch({ type: 'UPDATE_SHOT', id, payload: { characters: updatedShot.characters } });
-      toast.success('Character hinzugefügt');
-    } catch (error) {
-      console.error('Error adding character:', error);
-      toast.error('Fehler beim Hinzufügen');
-      dispatch({ type: 'UPDATE_SHOT', id, payload: { characters: currentCharacters } });
-    }
-  }, [shots, characters, dispatch, getAccessToken]);
-
-  const handleCharacterRemove = useCallback(async (id: string, characterId: string) => {
-    const shotData = shots.find(s => s.id === id);
-    if (!shotData) return;
-
-    const currentCharacters = shotData.characters || [];
-    dispatch({
-      type: 'UPDATE_SHOT',
-      id,
-      payload: { characters: currentCharacters.filter(c => c.id !== characterId) },
-    });
-
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-      await ShotsAPI.removeCharacterFromShot(id, characterId, token);
-      toast.success('Character entfernt');
-    } catch (error) {
-      console.error('Error removing character:', error);
-      toast.error('Fehler beim Entfernen');
-      dispatch({ type: 'UPDATE_SHOT', id, payload: { characters: currentCharacters } });
-    }
-  }, [shots, dispatch, getAccessToken]);
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        await ShotsAPI.removeCharacterFromShot(id, characterId, token);
+        toast.success("Character entfernt");
+      } catch (error) {
+        console.error("Error removing character:", error);
+        toast.error("Fehler beim Entfernen");
+        dispatch({
+          type: "UPDATE_SHOT",
+          id,
+          payload: { characters: currentCharacters },
+        });
+      }
+    },
+    [shots, dispatch, getAccessToken],
+  );
 
   // No-op reorder in modal context (single shot view)
   const handleReorder = useCallback(() => {}, []);
@@ -315,23 +407,32 @@ export function ShotCardModal({ open, onOpenChange, shotId, projectId }: ShotCar
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 {breadcrumb.act && (
                   <>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {breadcrumb.act.title || `Akt ${breadcrumb.act.actNumber}`}
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {breadcrumb.act.title ||
+                        `Akt ${breadcrumb.act.actNumber}`}
                     </Badge>
                     <span className="text-muted-foreground/50">&gt;</span>
                   </>
                 )}
                 {breadcrumb.sequence && (
                   <>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {breadcrumb.sequence.title || `Sequenz ${breadcrumb.sequence.sequenceNumber}`}
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {breadcrumb.sequence.title ||
+                        `Sequenz ${breadcrumb.sequence.sequenceNumber}`}
                     </Badge>
                     <span className="text-muted-foreground/50">&gt;</span>
                   </>
                 )}
                 {breadcrumb.scene && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                    {breadcrumb.scene.title || `Szene ${breadcrumb.scene.sceneNumber}`}
+                    {breadcrumb.scene.title ||
+                      `Szene ${breadcrumb.scene.sceneNumber}`}
                   </Badge>
                 )}
               </div>
@@ -340,7 +441,9 @@ export function ShotCardModal({ open, onOpenChange, shotId, projectId }: ShotCar
               Shot {shot.shotNumber}
               {shot.description && (
                 <span className="font-normal text-muted-foreground ml-2 text-sm">
-                  {shot.description.length > 60 ? shot.description.slice(0, 60) + '...' : shot.description}
+                  {shot.description.length > 60
+                    ? shot.description.slice(0, 60) + "..."
+                    : shot.description}
                 </span>
               )}
             </DialogTitle>
@@ -352,7 +455,9 @@ export function ShotCardModal({ open, onOpenChange, shotId, projectId }: ShotCar
               projectId={projectId}
               projectCharacters={characters}
               isExpanded={true}
-              imageUploadWaiting={imageUploadInFlightRef.current && imageUploadingId === shotId}
+              imageUploadWaiting={
+                imageUploadInFlightRef.current && imageUploadingId === shotId
+              }
               onToggleExpand={() => {}} // Already expanded in modal
               onUpdate={handleUpdateShot}
               onDelete={handleDeleteShot}

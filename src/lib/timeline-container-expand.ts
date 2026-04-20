@@ -24,7 +24,13 @@ function computePctTripleFromTargetSceneSpan(args: {
   sequenceBlock: { id: string; startSec: number; endSec: number };
   totalDur: number;
 }): { act: PctRange; sequence: PctRange; scene: PctRange } | null {
-  const { targetSceneStart, targetSceneEnd, actBlock, sequenceBlock, totalDur } = args;
+  const {
+    targetSceneStart,
+    targetSceneEnd,
+    actBlock,
+    sequenceBlock,
+    totalDur,
+  } = args;
 
   const actLo = actBlock.startSec;
   const actHi = actBlock.endSec;
@@ -88,7 +94,14 @@ export function expandStructurePctToFitGlobalNeed(args: {
   sceneBlock: { id: string; startSec: number; endSec: number };
   totalDur: number;
 }): { act?: PctRange; sequence?: PctRange; scene?: PctRange } {
-  const { needStartSec, needEndSec, sceneBlock, sequenceBlock, actBlock, totalDur } = args;
+  const {
+    needStartSec,
+    needEndSec,
+    sceneBlock,
+    sequenceBlock,
+    actBlock,
+    totalDur,
+  } = args;
   const eps = 1e-3;
   if (
     needStartSec >= sceneBlock.startSec - eps &&
@@ -128,7 +141,10 @@ export function expandStructurePctToFitClip(args: {
   const { clip, actBlock, sequenceBlock, sceneBlock, totalDur } = args;
   if (clip.sceneId !== sceneBlock.id) return {};
 
-  if (clip.startSec >= sceneBlock.startSec && clip.endSec <= sceneBlock.endSec) {
+  if (
+    clip.startSec >= sceneBlock.startSec &&
+    clip.endSec <= sceneBlock.endSec
+  ) {
     return {};
   }
 
@@ -205,11 +221,18 @@ export function expandActPctToFitGlobalNeed(args: {
 }): { act?: PctRange } {
   const { needStartSec, needEndSec, actBlock, totalDur } = args;
   const eps = 1e-3;
-  if (needStartSec >= actBlock.startSec - eps && needEndSec <= actBlock.endSec + eps) {
+  if (
+    needStartSec >= actBlock.startSec - eps &&
+    needEndSec <= actBlock.endSec + eps
+  ) {
     return {};
   }
 
-  const needActLo = clamp(Math.min(needStartSec, actBlock.startSec), 0, totalDur);
+  const needActLo = clamp(
+    Math.min(needStartSec, actBlock.startSec),
+    0,
+    totalDur,
+  );
   const needActHi = clamp(Math.max(needEndSec, actBlock.endSec), 0, totalDur);
   if (needActHi - needActLo < 1e-3) return {};
 

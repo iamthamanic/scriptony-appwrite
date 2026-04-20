@@ -23,6 +23,7 @@ User muss scrollen, um Projekt-Übersicht zu bekommen.
 ```
 
 **Console Log (Vorher):**
+
 ```
 [VideoEditorTimeline] 🎯 Initial zoom:
   viewportWidth: 1200
@@ -58,6 +59,7 @@ User sieht komplette Projekt-Übersicht.
 ```
 
 **Console Log (Nachher):**
+
 ```
 [VideoEditorTimeline] 🎯 Initial zoom (CapCut-style):
   viewportWidth: 1200
@@ -123,7 +125,7 @@ zoom = 0:
   Sichtbar:     600s (10 min)          │       60s (1 min) ✅
 
 Ergebnis:       Timeline viel kleiner  │       Timeline passt perfekt!
-                als Viewport ⚠️        │       
+                als Viewport ⚠️        │
 ═══════════════════════════════════════════════════════════════════
 ```
 
@@ -227,7 +229,7 @@ pxPerSec
    │
   2│●──────────────────────────────────────→ zoom
    0.0    0.2    0.4    0.6    0.8    1.0
-   
+
    Minimum: immer 2 px/s (fest!)
    Range: 2 - 200 (Faktor 100x)
 ```
@@ -254,7 +256,7 @@ pxPerSec
    │╱
  20│●──────────────────────────────────────→ zoom
    0.0    0.2    0.4    0.6    0.8    1.0
-   
+
    Minimum: 20 px/s (dynamisch!)
    Range: 20 - 200 (Faktor 10x)
 ```
@@ -286,7 +288,7 @@ pxPerSec
 0.5│
 0.2│●──────────────────────────────────────→ zoom
    0.0    0.2    0.4    0.6    0.8    1.0
-   
+
    Minimum: 0.167 px/s (dynamisch!)
    Range: 0.167 - 200 (Faktor 1198x!)
 ```
@@ -304,16 +306,16 @@ pxPerSec
 ```
 1. User öffnet Timeline
    → Sieht nur 10 Minuten (8% des Films)
-   
+
 2. User zoomt aus (zoom = 0)
    → Immer noch nur 10 Minuten!
-   
+
 3. User scrollen nach rechts
    → Sieht weitere 10 Minuten
-   
+
 4. User scrollt weiter...
    → Frustrierend! Keine Übersicht! ❌
-   
+
 5. User fragt: "Wo ist mein Film-Ende?"
    → Muss manuell zu 1:54:00 scrollen
 ```
@@ -328,16 +330,16 @@ pxPerSec
 1. User öffnet Timeline
    → Sieht GESAMTEN Film (0:00 - 2:00)
    → Alle Acts, Sequences, Scenes sichtbar
-   
+
 2. User hat sofortige Übersicht
    → "Ah, mein Film ist 2 Stunden lang!"
    → "Act 1 endet bei 30min"
    → "Midpoint ist bei 1h"
-   
+
 3. User zoomt zu interessantem Teil
    → zoom = 0.5 → ~3.5 Minuten sichtbar
    → Detaillierte Bearbeitung
-   
+
 4. User zoomt wieder aus (zoom = 0)
    → Komplette Übersicht wieder da!
 ```
@@ -354,29 +356,29 @@ pxPerSec
 Gegeben:
   totalDurationSec = D
   viewportWidth = W
-  
+
 Behauptung:
   Bei zoom = 0 passt die gesamte Timeline in den Viewport.
-  
+
 Beweis:
-  
+
   1. Definition von fitPxPerSec:
      fitPxPerSec = W / D
-  
+
   2. Bei zoom = 0:
      pxPerSec = fitPxPerSec × (MAX / fitPxPerSec)^0
               = fitPxPerSec × 1
               = fitPxPerSec
               = W / D
-  
+
   3. Timeline-Breite:
      timelineWidthPx = D × pxPerSec
                      = D × (W / D)
                      = W
-  
+
   4. Sichtbare Breite = Viewport-Breite:
      W = W ✅
-     
+
   Q.E.D. - Die gesamte Timeline passt exakt in den Viewport!
 ```
 
@@ -384,15 +386,15 @@ Beweis:
 
 ## 🎓 Zusammenfassung
 
-| Aspekt | Vorher ❌ | Nachher ✅ |
-|--------|----------|-----------|
-| **Minimum pxPerSec** | Fest: 2 px/s | Dynamisch: `viewportWidth / duration` |
-| **Zoom = 0 Verhalten** | Zeigt max. 600s (bei 1200px Viewport) | Zeigt GESAMTE Timeline |
-| **Kurze Projekte (< 10min)** | Timeline kleiner als Viewport | Timeline passt perfekt |
-| **Lange Projekte (> 10min)** | Nur Bruchteil sichtbar | Gesamte Timeline sichtbar |
-| **Zoom Range** | Immer Faktor 100x | Dynamisch: 10x - 6000x |
-| **User Experience** | Frustrierend bei langen Projekten | Intuitiv wie CapCut |
-| **Konsistenz** | Inkonsistent (abhängig von Projektlänge) | Konsistent (zoom=0 = alles) |
+| Aspekt                       | Vorher ❌                                | Nachher ✅                            |
+| ---------------------------- | ---------------------------------------- | ------------------------------------- |
+| **Minimum pxPerSec**         | Fest: 2 px/s                             | Dynamisch: `viewportWidth / duration` |
+| **Zoom = 0 Verhalten**       | Zeigt max. 600s (bei 1200px Viewport)    | Zeigt GESAMTE Timeline                |
+| **Kurze Projekte (< 10min)** | Timeline kleiner als Viewport            | Timeline passt perfekt                |
+| **Lange Projekte (> 10min)** | Nur Bruchteil sichtbar                   | Gesamte Timeline sichtbar             |
+| **Zoom Range**               | Immer Faktor 100x                        | Dynamisch: 10x - 6000x                |
+| **User Experience**          | Frustrierend bei langen Projekten        | Intuitiv wie CapCut                   |
+| **Konsistenz**               | Inkonsistent (abhängig von Projektlänge) | Konsistent (zoom=0 = alles)           |
 
 ---
 
@@ -401,6 +403,7 @@ Beweis:
 Die neue Implementierung macht die Timeline **intuitiver, konsistenter und professioneller**!
 
 **Key Insight:**
+
 ```
 zoom = 0 bedeutet jetzt IMMER "zeige die gesamte Timeline"
 - Genau wie in CapCut, Premiere Pro, DaVinci Resolve

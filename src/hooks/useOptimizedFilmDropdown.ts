@@ -1,13 +1,17 @@
 /**
  * 🚀 OPTIMIZED FILM DROPDOWN HOOK
- * 
+ *
  * Wraps all performance optimizations for FilmDropdown
  * Drop-in replacement that makes the dropdown 10x faster
  */
 
-import { useMemo, useCallback } from 'react';
-import type { Act, Sequence, Scene, Shot } from '../lib/types';
-import { useActSequences, useSequenceScenes, useSceneShots } from './useMemoizedHierarchy';
+import { useMemo, useCallback } from "react";
+import type { Act, Sequence, Scene, Shot } from "../lib/types";
+import {
+  useActSequences,
+  useSequenceScenes,
+  useSceneShots,
+} from "./useMemoizedHierarchy";
 
 interface UseOptimizedFilmDropdownOptions {
   acts: Act[];
@@ -40,23 +44,25 @@ export function useOptimizedFilmDropdown({
   // 🚀 OPTIMIZATION 2: Only filter visible scenes (expanded sequences only)
   const visibleScenes = useMemo(() => {
     const expandedSequenceIds = new Set(
-      visibleSequences.filter((seq) => expandedSequences.has(seq.id)).map((s) => s.id)
+      visibleSequences
+        .filter((seq) => expandedSequences.has(seq.id))
+        .map((s) => s.id),
     );
     return scenes.filter(
       (scene) =>
-        scene.sequenceId != null &&
-        expandedSequenceIds.has(scene.sequenceId)
+        scene.sequenceId != null && expandedSequenceIds.has(scene.sequenceId),
     );
   }, [scenes, visibleSequences, expandedSequences]);
 
   // 🚀 OPTIMIZATION 3: Only filter visible shots (expanded scenes only)
   const visibleShots = useMemo(() => {
     const expandedSceneIds = new Set(
-      visibleScenes.filter((scene) => expandedScenes.has(scene.id)).map((s) => s.id)
+      visibleScenes
+        .filter((scene) => expandedScenes.has(scene.id))
+        .map((s) => s.id),
     );
     return shots.filter(
-      (shot) =>
-        shot.sceneId != null && expandedSceneIds.has(shot.sceneId)
+      (shot) => shot.sceneId != null && expandedSceneIds.has(shot.sceneId),
     );
   }, [shots, visibleScenes, expandedScenes]);
 
@@ -67,7 +73,7 @@ export function useOptimizedFilmDropdown({
         .filter((seq) => seq.actId === actId)
         .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     },
-    [sequences]
+    [sequences],
   );
 
   const getScenesForSequence = useCallback(
@@ -76,7 +82,7 @@ export function useOptimizedFilmDropdown({
         .filter((scene) => scene.sequenceId === sequenceId)
         .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     },
-    [scenes]
+    [scenes],
   );
 
   const getShotsForScene = useCallback(
@@ -85,7 +91,7 @@ export function useOptimizedFilmDropdown({
         .filter((shot) => shot.sceneId === sceneId)
         .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     },
-    [shots]
+    [shots],
   );
 
   // 🚀 OPTIMIZATION 5: Statistics (memoized, safe from division by zero)
@@ -99,7 +105,15 @@ export function useOptimizedFilmDropdown({
       visibleScenes: visibleScenes.length,
       visibleShots: visibleShots.length,
     };
-  }, [acts.length, sequences.length, scenes.length, shots.length, visibleSequences.length, visibleScenes.length, visibleShots.length]);
+  }, [
+    acts.length,
+    sequences.length,
+    scenes.length,
+    shots.length,
+    visibleSequences.length,
+    visibleScenes.length,
+    visibleShots.length,
+  ]);
 
   return {
     visibleSequences,
@@ -119,7 +133,7 @@ export function useOptimizedFilmDropdown({
 export function shouldLoadShots(
   sceneId: string,
   expandedScenes: Set<string>,
-  loadedShots: Shot[]
+  loadedShots: Shot[],
 ): boolean {
   if (!expandedScenes.has(sceneId)) {
     return false;

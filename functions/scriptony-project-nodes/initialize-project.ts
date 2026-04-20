@@ -15,6 +15,7 @@ import {
   sendUnauthorized,
 } from "../_shared/http";
 import { getTimelineNodes, mapNode } from "../_shared/timeline";
+import { requireProjectAccess } from "../_shared/scriptony";
 
 interface PredefinedNodeInput {
   number: number;
@@ -50,6 +51,9 @@ export default async function handler(
       sendBadRequest(res, "project_id and template_id are required");
       return;
     }
+
+    const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+    if (!_project) return;
 
     const levelOneCount = Number(
       structure.level_1_count ?? predefinedLevelOne.length ?? 0,
