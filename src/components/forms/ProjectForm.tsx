@@ -18,7 +18,13 @@ import { Button } from "@/components/ui/button";
 import { ProjectFieldTooltipIcon } from "@/components/ProjectFieldLabel";
 import type { ProjectTooltipField } from "@/hooks/useProjectTooltips";
 
-export type ProjectType = "film" | "series" | "book" | "audio" | "theater" | "docu";
+export type ProjectType =
+  | "film"
+  | "series"
+  | "book"
+  | "audio"
+  | "theater"
+  | "docu";
 
 export interface ProjectFormData {
   title: string;
@@ -41,10 +47,19 @@ export interface ProjectFormProps {
   isSeries: boolean;
 }
 
-export function ProjectForm({ data, onChange, worlds, isSeries }: ProjectFormProps) {
+export function ProjectForm({
+  data,
+  onChange,
+  worlds,
+  isSeries,
+}: ProjectFormProps) {
   const durationId = useId();
 
-  const labelWithTooltip = (label: string, field: ProjectTooltipField, htmlFor?: string) => (
+  const labelWithTooltip = (
+    label: string,
+    field: ProjectTooltipField,
+    htmlFor?: string,
+  ) => (
     <div className="flex items-center gap-1">
       <Label htmlFor={htmlFor}>{label}</Label>
       <ProjectFieldTooltipIcon field={field} tooltipSide="top" />
@@ -101,7 +116,11 @@ export function ProjectForm({ data, onChange, worlds, isSeries }: ProjectFormPro
       {/* Narrative Structure & Beat Template */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          {labelWithTooltip("Narrative Structure", "narrativeStructure", "narrative-structure")}
+          {labelWithTooltip(
+            "Narrative Structure",
+            "narrativeStructure",
+            "narrative-structure",
+          )}
           <Select
             value={data.narrativeStructure}
             onValueChange={(value) => onChange({ narrativeStructure: value })}
@@ -118,7 +137,11 @@ export function ProjectForm({ data, onChange, worlds, isSeries }: ProjectFormPro
           </Select>
         </div>
         <div className="space-y-2">
-          {labelWithTooltip("Story Beat Template", "beatTemplate", "beat-template")}
+          {labelWithTooltip(
+            "Story Beat Template",
+            "beatTemplate",
+            "beat-template",
+          )}
           <Select
             value={data.beatTemplate}
             onValueChange={(value) => onChange({ beatTemplate: value })}
@@ -249,7 +272,9 @@ export function ProjectForm({ data, onChange, worlds, isSeries }: ProjectFormPro
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  const updated = data.inspirations.filter((_, idx) => idx !== i);
+                  const updated = data.inspirations.filter(
+                    (_, idx) => idx !== i,
+                  );
                   onChange({ inspirations: updated });
                 }}
               >
