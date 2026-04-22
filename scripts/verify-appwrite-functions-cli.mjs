@@ -25,7 +25,10 @@ function parseEnvFile(text) {
     if (i === -1) continue;
     const k = t.slice(0, i).trim();
     let v = t.slice(i + 1).trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
       v = v.slice(1, -1);
     }
     out[k] = v;
@@ -44,7 +47,12 @@ async function fetchHealth(url) {
     const res = await fetch(url, { signal: ctrl.signal });
     const text = await res.text();
     const looksJson = text.trim().startsWith("{");
-    return { status: res.status, ok: res.ok, snippet: text.slice(0, 160), looksJson };
+    return {
+      status: res.status,
+      ok: res.ok,
+      snippet: text.slice(0, 160),
+      looksJson,
+    };
   } catch (e) {
     return {
       status: 0,
@@ -69,7 +77,7 @@ try {
 } catch (e) {
   console.error(
     "appwrite CLI fehlgeschlagen (client konfigurieren: appwrite client …):\n",
-    e instanceof Error ? e.message : e
+    e instanceof Error ? e.message : e,
   );
   process.exit(1);
 }
@@ -85,12 +93,16 @@ for (const id of ids) {
     continue;
   }
   console.log(
-    `  enabled=${f.enabled} live=${f.live} deployment=${f.deploymentId || "(none)"} status=${f.latestDeploymentStatus || "?"}`
+    `  enabled=${f.enabled} live=${f.live} deployment=${f.deploymentId || "(none)"} status=${f.latestDeploymentStatus || "?"}`,
   );
   console.log("");
 }
 
-const httpKeys = ["scriptony-assistant", "scriptony-projects", "scriptony-mcp-appwrite"];
+const httpKeys = [
+  "scriptony-assistant",
+  "scriptony-projects",
+  "scriptony-mcp-appwrite",
+];
 const httpUrls = {};
 
 if (existsSync(envPath)) {
@@ -122,7 +134,7 @@ for (const key of httpKeys) {
 if (Object.keys(httpResults).length === 0) {
   console.log(
     "→ HTTP: Keine URLs für Functions in .env.local\n" +
-      "  (VITE_BACKEND_FUNCTION_DOMAIN_MAP: scriptony-assistant, scriptony-projects, scriptony-mcp-appwrite) — übersprungen.\n"
+      "  (VITE_BACKEND_FUNCTION_DOMAIN_MAP: scriptony-assistant, scriptony-projects, scriptony-mcp-appwrite) — übersprungen.\n",
   );
 } else {
   console.log("→ HTTP GET /health (aus .env.local)\n");
@@ -135,7 +147,10 @@ if (Object.keys(httpResults).length === 0) {
     }
     console.log(`  [${key}]`);
     console.log(`    ${url}`);
-    const tag = r.ok && r.looksJson ? `OK (${r.status})` : `FEHLER (${r.status || "network"})`;
+    const tag =
+      r.ok && r.looksJson
+        ? `OK (${r.status})`
+        : `FEHLER (${r.status || "network"})`;
     console.log(`    ${tag}`, r.snippet.replace(/\s+/g, " ").trim());
     console.log("");
   }
@@ -145,19 +160,22 @@ if (Object.keys(httpResults).length === 0) {
   if (a && p && p.ok && p.looksJson && (!a.ok || !a.looksJson)) {
     console.log(
       "→ Kontrast: scriptony-projects liefert JSON/OK, scriptony-assistant nicht — Ursache liegt bei\n" +
-        "  Assistant (Domain, Executor, Proxy oder Runtime), nicht bei der generellen Function-Routing-Kette.\n"
+        "  Assistant (Domain, Executor, Proxy oder Runtime), nicht bei der generellen Function-Routing-Kette.\n",
     );
   }
   if (a?.status === 503) {
     console.log(
       "→ Hinweis: CLI kann „live/ready“ melden, HTTP-Domain liefert 503 — Executor/Proxy, Logs in der\n" +
-        "  Console, Domain-Eintrag vs. Map prüfen.\n"
+        "  Console, Domain-Eintrag vs. Map prüfen.\n",
     );
   }
 
   // scriptony-assistant must be healthy for KI settings; optional functions (e.g. scriptony-mcp-appwrite)
   // are reported above but do not fail this script — keeps CI green when MCP host is not deployed.
-  if (httpResults["scriptony-assistant"] && !httpResults["scriptony-assistant"].ok) {
+  if (
+    httpResults["scriptony-assistant"] &&
+    !httpResults["scriptony-assistant"].ok
+  ) {
     process.exitCode = 1;
   }
 }

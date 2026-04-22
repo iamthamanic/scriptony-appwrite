@@ -37,8 +37,8 @@ docker compose ps
 
 **`docker-compose.legacy.yml`** — nur Experimente (`profile: local-dev`):
 
-- Postgres  
-- optional **local_graphql_console** (Hasura-Image, Port **8080** — nicht parallel zu Appwrite-Traefik auf demselben Port starten)  
+- Postgres
+- optional **local_graphql_console** (Hasura-Image, Port **8080** — nicht parallel zu Appwrite-Traefik auf demselben Port starten)
 - Lucia **backend/auth** (Port 3001)
 
 **Start:**

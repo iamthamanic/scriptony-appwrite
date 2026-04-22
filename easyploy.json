@@ -4,10 +4,7 @@
   "staticSite": true,
   "spaRouting": true,
   "envFile": ".env.example",
-  "requiredEnv": [
-    "VITE_NHOST_SUBDOMAIN",
-    "VITE_NHOST_REGION"
-  ],
+  "requiredEnv": ["VITE_NHOST_SUBDOMAIN", "VITE_NHOST_REGION"],
   "optionalEnv": [
     "VITE_NHOST_AUTH_URL",
     "VITE_NHOST_GRAPHQL_URL",

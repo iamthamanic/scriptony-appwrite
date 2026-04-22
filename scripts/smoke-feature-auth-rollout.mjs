@@ -3,8 +3,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Client, Functions, ID, Users } from "../functions/node_modules/node-appwrite/dist/index.mjs";
-import { loadAppwriteCliEnv, getMissingAppwriteServerEnvKeys } from "../functions/scripts/load-appwrite-cli-env.mjs";
+import {
+  Client,
+  Functions,
+  ID,
+  Users,
+} from "../functions/node_modules/node-appwrite/dist/index.mjs";
+import {
+  loadAppwriteCliEnv,
+  getMissingAppwriteServerEnvKeys,
+} from "../functions/scripts/load-appwrite-cli-env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const localEnvPath = resolve(root, ".env.local");
@@ -94,8 +102,11 @@ function parseDomainMap(raw) {
   }
   return Object.fromEntries(
     Object.entries(parsed)
-      .map(([key, value]) => [String(key).trim(), trimSlash(String(value || ""))])
-      .filter(([key, value]) => key && value)
+      .map(([key, value]) => [
+        String(key).trim(),
+        trimSlash(String(value || "")),
+      ])
+      .filter(([key, value]) => key && value),
   );
 }
 
@@ -146,7 +157,8 @@ async function executeJson(functions, flow, headers) {
   }
 
   return {
-    ok: execution.responseStatusCode >= 200 && execution.responseStatusCode < 300,
+    ok:
+      execution.responseStatusCode >= 200 && execution.responseStatusCode < 300,
     status: execution.responseStatusCode,
     text: execution.responseBody || "",
     json,
@@ -162,11 +174,18 @@ if (missingEnv.length > 0) {
 }
 
 const localEnv = loadEnv(localEnvPath);
-const domainMap = parseDomainMap(localEnv.VITE_BACKEND_FUNCTION_DOMAIN_MAP || "");
+const domainMap = parseDomainMap(
+  localEnv.VITE_BACKEND_FUNCTION_DOMAIN_MAP || "",
+);
 
 for (const flow of FLOWS) {
-  if ((flow.transport || "domain") === "domain" && !domainMap[flow.functionId]) {
-    console.error(`Missing ${flow.functionId} in VITE_BACKEND_FUNCTION_DOMAIN_MAP.`);
+  if (
+    (flow.transport || "domain") === "domain" &&
+    !domainMap[flow.functionId]
+  ) {
+    console.error(
+      `Missing ${flow.functionId} in VITE_BACKEND_FUNCTION_DOMAIN_MAP.`,
+    );
     process.exit(1);
   }
 }
@@ -181,7 +200,9 @@ const serverClient = new Client()
 const users = new Users(serverClient);
 let userList = await users.list({ search: DEMO_EMAIL, total: false });
 let demoUser =
-  userList.users.find((entry) => (entry.email || "").trim().toLowerCase() === DEMO_EMAIL) || null;
+  userList.users.find(
+    (entry) => (entry.email || "").trim().toLowerCase() === DEMO_EMAIL,
+  ) || null;
 
 if (!demoUser) {
   try {
@@ -198,7 +219,9 @@ if (!demoUser) {
     }
     userList = await users.list({ search: DEMO_EMAIL, total: false });
     demoUser =
-      userList.users.find((entry) => (entry.email || "").trim().toLowerCase() === DEMO_EMAIL) || null;
+      userList.users.find(
+        (entry) => (entry.email || "").trim().toLowerCase() === DEMO_EMAIL,
+      ) || null;
   }
 }
 
@@ -208,7 +231,10 @@ if (!demoUser) {
 }
 
 const session = await users.createSession({ userId: demoUser.$id });
-const jwt = await users.createJWT({ userId: demoUser.$id, sessionId: session.$id });
+const jwt = await users.createJWT({
+  userId: demoUser.$id,
+  sessionId: session.$id,
+});
 const userClient = new Client()
   .setEndpoint(process.env.APPWRITE_ENDPOINT)
   .setProject(process.env.APPWRITE_PROJECT_ID)
@@ -222,15 +248,21 @@ const authHeaders = {
 let failures = 0;
 
 for (const flow of FLOWS) {
-    if ((flow.transport || "domain") === "execution") {
-    const result = await executeJson(userFunctions, flow, { Accept: authHeaders.Accept });
+  if ((flow.transport || "domain") === "execution") {
+    const result = await executeJson(userFunctions, flow, {
+      Accept: authHeaders.Accept,
+    });
     if (!result.ok) {
-      console.log(`- ${flow.id}: FAIL EXEC ${result.status} ${result.text.slice(0, 220)}`);
+      console.log(
+        `- ${flow.id}: FAIL EXEC ${result.status} ${result.text.slice(0, 220)}`,
+      );
       failures += 1;
       continue;
     }
     if (!validateExpectedValue(flow, result.json)) {
-      console.log(`- ${flow.id}: FAIL invalid payload ${result.text.slice(0, 220)}`);
+      console.log(
+        `- ${flow.id}: FAIL invalid payload ${result.text.slice(0, 220)}`,
+      );
       failures += 1;
       continue;
     }
@@ -241,7 +273,9 @@ for (const flow of FLOWS) {
   const url = joinUrl(domainMap[flow.functionId], flow.route);
   const { response, text, json } = await fetchJson(url, authHeaders);
   if (!response.ok) {
-    console.log(`- ${flow.id}: FAIL HTTP ${response.status} ${text.slice(0, 220)}`);
+    console.log(
+      `- ${flow.id}: FAIL HTTP ${response.status} ${text.slice(0, 220)}`,
+    );
     failures += 1;
     continue;
   }
@@ -254,7 +288,9 @@ for (const flow of FLOWS) {
 }
 
 if (failures > 0) {
-  console.error(`\nFeature auth rollout smoke FAILED (${failures} flow${failures === 1 ? "" : "s"}).`);
+  console.error(
+    `\nFeature auth rollout smoke FAILED (${failures} flow${failures === 1 ? "" : "s"}).`,
+  );
   process.exit(1);
 }
 

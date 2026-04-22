@@ -19,7 +19,10 @@ function loadOne(filePath) {
       const key = m[1];
       if (process.env[key] === undefined) {
         let val = m[2].trim();
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        )
           val = val.slice(1, -1).replace(/\\n/g, "\n");
         process.env[key] = val;
       }

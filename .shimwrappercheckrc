@@ -1,65 +1,37 @@
 # shimwrappercheck config for scriptony-appwrite
-# Managed by dashboard or manual edits.
-
-# Trigger commands (enforce = checks before command, hooks = post-deploy hooks)
-SHIM_ENFORCE_COMMANDS="functions,db,migration,deploy"
-SHIM_HOOK_COMMANDS="functions,db,migration,deploy"
-
-# Backend path patterns (Appwrite Functions = Deno)
-SHIM_BACKEND_PATH_PATTERNS="functions"
-
-# Default function for health/logs hooks
-SHIM_DEFAULT_FUNCTION="scriptony-ai"
-
-# Auto-push after successful deploy (0 = off)
-SHIM_AUTO_PUSH=0
-
-# AI review: off initially (needs API key setup)
-SHIM_AI_REVIEW_PROVIDER="auto"
 CHECK_MODE="commit"
+SHIM_AI_REVIEW_PROVIDER="auto"
+SHIM_AUTO_PUSH=0
+SHIM_BACKEND_PATH_PATTERNS="functions"
 SHIM_CHECKS_ARGS="--no-ai-review --no-explanation-check"
-
-# Git check mode on push (snippet = diff only)
-SHIM_GIT_CHECK_MODE_ON_PUSH="snippet"
-
-# Refactor mode: off
-SHIM_REFACTOR_MODE="off"
-
-# Continue on error: run all checks, report failures at end
 SHIM_CONTINUE_ON_ERROR=1
-
-# Check toggles (1 = on, 0 = off)
-# Frontend
-SHIM_RUN_PRETTIER=1
-SHIM_RUN_LINT=1
-SHIM_RUN_TYPECHECK=1
-SHIM_RUN_VITE_BUILD=1
-SHIM_RUN_TEST_RUN=1
-SHIM_RUN_NPM_AUDIT=1
-SHIM_RUN_SNYK=0
+SHIM_DEFAULT_FUNCTION="scriptony-ai"
+SHIM_ENFORCE_COMMANDS="functions,db,migration,deploy"
+SHIM_GIT_CHECK_MODE_ON_PUSH="snippet"
+SHIM_HOOK_COMMANDS="functions,db,migration,deploy"
+SHIM_REFACTOR_MODE="off"
+SHIM_RUN_AI_REVIEW=1
+SHIM_RUN_ARCHITECTURE=1
 SHIM_RUN_CHECK_MOCK_DATA=0
-SHIM_RUN_UPDATE_README=0
-SHIM_RUN_PROJECT_RULES=0
-SHIM_RUN_I18N_CHECK=0
-
-# Backend (Deno / Appwrite Functions)
+SHIM_RUN_COMPLEXITY=0
+SHIM_RUN_DENO_AUDIT=0
 SHIM_RUN_DENO_FMT=1
 SHIM_RUN_DENO_LINT=1
-SHIM_RUN_DENO_AUDIT=0
-
-# Hard Rules
-SHIM_RUN_SAST=0
-SHIM_RUN_GITLEAKS=0
-SHIM_RUN_LICENSE_CHECKER=0
-SHIM_RUN_ARCHITECTURE=0
-SHIM_RUN_COMPLEXITY=0
-SHIM_RUN_MUTATION=0
 SHIM_RUN_E2E=0
-
-# AI / Explanation (off initially)
-SHIM_RUN_AI_REVIEW=0
 SHIM_RUN_EXPLANATION_CHECK=0
-
-# Shellcheck / Ruff (not relevant yet)
-SHIM_RUN_SHELLCHECK=0
+SHIM_RUN_GITLEAKS=1
+SHIM_RUN_I18N_CHECK=0
+SHIM_RUN_LICENSE_CHECKER=1
+SHIM_RUN_LINT=1
+SHIM_RUN_MUTATION=0
+SHIM_RUN_NPM_AUDIT=1
+SHIM_RUN_PRETTIER=1
+SHIM_RUN_PROJECT_RULES=0
 SHIM_RUN_RUFF=0
+SHIM_RUN_SAST=0
+SHIM_RUN_SHELLCHECK=1
+SHIM_RUN_SNYK=0
+SHIM_RUN_TEST_RUN=1
+SHIM_RUN_TYPECHECK=1
+SHIM_RUN_UPDATE_README=1
+SHIM_RUN_VITE_BUILD=1

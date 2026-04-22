@@ -83,11 +83,14 @@ async function listAllFunctions(endpoint, projectId, apiKey) {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error(`List functions: HTTP ${res.status} — ${text.slice(0, 200)}`);
+      throw new Error(
+        `List functions: HTTP ${res.status} — ${text.slice(0, 200)}`,
+      );
     }
     if (!res.ok) {
       throw new Error(
-        data?.message || `List functions failed: ${res.status} ${JSON.stringify(data)}`
+        data?.message ||
+          `List functions failed: ${res.status} ${JSON.stringify(data)}`,
       );
     }
     const batch = data.functions || data.documents || [];
@@ -117,7 +120,9 @@ function mergeDomainMapIntoEnvLocal(content, jsonLine) {
   return out.join("\n");
 }
 
-console.log("Scriptony — sync VITE_BACKEND_FUNCTION_DOMAIN_MAP from Appwrite\n");
+console.log(
+  "Scriptony — sync VITE_BACKEND_FUNCTION_DOMAIN_MAP from Appwrite\n",
+);
 
 if (!existsSync(serverEnvPath)) {
   console.error("Fehlt:", serverEnvPath);
@@ -149,12 +154,12 @@ if (!apiKey) missing.push("APPWRITE_API_KEY");
 if (missing.length > 0) {
   console.error(
     "Fehlende Werte (nach .env.server.local + optional process.env):",
-    missing.join(", ")
+    missing.join(", "),
   );
   console.error("Datei:", serverEnvPath);
   console.error(
     "Tipp: API-Key in .env.server.local speichern (Zeile APPWRITE_API_KEY=…) oder einmalig:\n" +
-      "  APPWRITE_API_KEY=\"dein_key\" npm run appwrite:sync:function-domains"
+      '  APPWRITE_API_KEY="dein_key" npm run appwrite:sync:function-domains',
   );
   process.exit(1);
 }
@@ -175,7 +180,9 @@ const relevant = functions.filter((f) => {
   );
 });
 
-console.log(`Gefunden: ${functions.length} Functions, ${relevant.length} Scriptony-relevant.\n`);
+console.log(
+  `Gefunden: ${functions.length} Functions, ${relevant.length} Scriptony-relevant.\n`,
+);
 
 const map = {};
 let withDomain = 0;
@@ -192,7 +199,7 @@ if (withDomain === 0) {
   console.log(
     "Die Appwrite-API liefert in der Function-Liste keine HTTP-Domain-Felder (self-hosted oft erst nach Domains/SSL in der Konsole).\n" +
       "Trage die URLs manuell ein (Console → Functions → Domains), z. B.:\n" +
-      `  VITE_BACKEND_FUNCTION_DOMAIN_MAP={"scriptony-projects":"https://…","scriptony-assistant":"https://…","scriptony-auth":"https://…"}\n`
+      `  VITE_BACKEND_FUNCTION_DOMAIN_MAP={"scriptony-projects":"https://…","scriptony-assistant":"https://…","scriptony-auth":"https://…"}\n`,
   );
   console.log("Function-IDs auf dem Server:");
   for (const fn of relevant) {

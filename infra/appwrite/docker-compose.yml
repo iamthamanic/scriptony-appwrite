@@ -1,9 +1,9 @@
 x-logging: &x-logging
   logging:
-    driver: 'json-file'
+    driver: "json-file"
     options:
-      max-file: '5'
-      max-size: '10m'
+      max-file: "5"
+      max-size: "10m"
 services:
   traefik:
     image: traefik:2.11
@@ -64,7 +64,7 @@ services:
     depends_on:
       - mariadb
       - redis
-#      - clamav
+    #      - clamav
     environment:
       - _APP_ENV
       - _APP_WORKER_PER_CORE
@@ -926,7 +926,7 @@ services:
       - MYSQL_USER=${_APP_DB_USER}
       - MYSQL_PASSWORD=${_APP_DB_PASS}
       - MARIADB_AUTO_UPGRADE=1
-    command: 'mysqld --innodb-flush-method=fsync'
+    command: "mysqld --innodb-flush-method=fsync"
 
   redis:
     image: redis:7.2.4-alpine

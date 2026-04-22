@@ -75,7 +75,8 @@ const SMOKE_FLOWS = [
   {
     id: "ai_integrations_read",
     label: "AI integrations read",
-    description: "Settings > Integrations can load provider and feature config.",
+    description:
+      "Settings > Integrations can load provider and feature config.",
     functionId: "scriptony-ai",
     route: "/settings",
     method: "GET",
@@ -145,14 +146,15 @@ function parseDomainMap(raw) {
   if (!raw || typeof raw !== "string" || !raw.trim()) return {};
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return {};
     return Object.fromEntries(
       Object.entries(parsed)
         .map(([key, value]) => [
           String(key).trim(),
           typeof value === "string" ? trimSlash(value.trim()) : "",
         ])
-        .filter(([key, value]) => key && value)
+        .filter(([key, value]) => key && value),
     );
   } catch {
     return {};
@@ -171,7 +173,9 @@ function describeValue(value) {
 
 function assertExpectation(flow, payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error(`${flow.id}: expected JSON object, got ${describeValue(payload)}`);
+    throw new Error(
+      `${flow.id}: expected JSON object, got ${describeValue(payload)}`,
+    );
   }
 
   for (const expect of flow.expect) {
@@ -179,7 +183,7 @@ function assertExpectation(flow, payload) {
     if (expect.type === "array") {
       if (!Array.isArray(value)) {
         throw new Error(
-          `${flow.id}: expected key "${expect.key}" to be array, got ${describeValue(value)}`
+          `${flow.id}: expected key "${expect.key}" to be array, got ${describeValue(value)}`,
         );
       }
       continue;
@@ -187,7 +191,7 @@ function assertExpectation(flow, payload) {
     if (expect.type === "object") {
       if (!value || typeof value !== "object" || Array.isArray(value)) {
         throw new Error(
-          `${flow.id}: expected key "${expect.key}" to be object, got ${describeValue(value)}`
+          `${flow.id}: expected key "${expect.key}" to be object, got ${describeValue(value)}`,
         );
       }
       continue;
@@ -240,7 +244,11 @@ function resolveFlowUrl(flow, options) {
     };
   }
 
-  const base = resolveDirectBase(flow.functionId, options.domainMap, options.functionsBaseUrl);
+  const base = resolveDirectBase(
+    flow.functionId,
+    options.domainMap,
+    options.functionsBaseUrl,
+  );
   return {
     url: base.url ? joinUrl(base.url, flow.route) : "",
     source: base.source,
@@ -261,7 +269,11 @@ function printList() {
 const localEnv = loadEnv(localEnvPath);
 const serverEnv = loadEnv(serverEnvPath);
 
-const mode = (getFlagValue("--mode") || process.env.SCRIPTONY_SMOKE_MODE || "direct").trim();
+const mode = (
+  getFlagValue("--mode") ||
+  process.env.SCRIPTONY_SMOKE_MODE ||
+  "direct"
+).trim();
 const frontendOrigin = (
   getFlagValue("--frontend-origin") ||
   process.env.SCRIPTONY_SMOKE_FRONTEND_ORIGIN ||
@@ -274,7 +286,9 @@ if (hasFlag("--list")) {
 }
 
 if (mode !== "direct" && mode !== "dev-proxy") {
-  console.error(`Unsupported mode "${mode}". Use --mode=direct or --mode=dev-proxy.`);
+  console.error(
+    `Unsupported mode "${mode}". Use --mode=direct or --mode=dev-proxy.`,
+  );
   process.exit(1);
 }
 
@@ -288,7 +302,7 @@ const smokeBearerToken = (
 
 if (!smokeBearerToken) {
   console.error(
-    "Missing SCRIPTONY_SMOKE_BEARER_TOKEN. Add it to .env.server.local or export it in the shell."
+    "Missing SCRIPTONY_SMOKE_BEARER_TOKEN. Add it to .env.server.local or export it in the shell.",
   );
   process.exit(1);
 }
@@ -297,7 +311,7 @@ const domainMap = parseDomainMap(localEnv.VITE_BACKEND_FUNCTION_DOMAIN_MAP);
 const functionsBaseUrl = trimSlash(
   localEnv.VITE_APPWRITE_FUNCTIONS_BASE_URL ||
     localEnv.VITE_BACKEND_API_BASE_URL ||
-    ""
+    "",
 );
 
 console.log("Scriptony - Smoke user flows\n");
@@ -307,8 +321,10 @@ if (mode === "dev-proxy") {
 } else {
   console.log(
     `Routing source: ${
-      Object.keys(domainMap).length > 0 ? "domain-map / .env.local" : "functions base / .env.local"
-    }`
+      Object.keys(domainMap).length > 0
+        ? "domain-map / .env.local"
+        : "functions base / .env.local"
+    }`,
   );
 }
 console.log("");
@@ -316,7 +332,12 @@ console.log("");
 let failures = 0;
 
 for (const flow of SMOKE_FLOWS) {
-  const target = resolveFlowUrl(flow, { mode, frontendOrigin, domainMap, functionsBaseUrl });
+  const target = resolveFlowUrl(flow, {
+    mode,
+    frontendOrigin,
+    domainMap,
+    functionsBaseUrl,
+  });
 
   console.log(`-> ${flow.id}`);
   console.log(`   ${flow.label}`);
@@ -347,9 +368,13 @@ for (const flow of SMOKE_FLOWS) {
     }
 
     assertExpectation(flow, result.json);
-    console.log(`   OK ${result.status} (${flow.expect.map(describeExpectation).join(", ")})`);
+    console.log(
+      `   OK ${result.status} (${flow.expect.map(describeExpectation).join(", ")})`,
+    );
   } catch (error) {
-    console.log(`   FAIL ${error instanceof Error ? error.message : String(error)}`);
+    console.log(
+      `   FAIL ${error instanceof Error ? error.message : String(error)}`,
+    );
     failures += 1;
   }
 
@@ -357,7 +382,9 @@ for (const flow of SMOKE_FLOWS) {
 }
 
 if (failures > 0) {
-  console.error(`Smoke matrix FAILED (${failures} flow${failures === 1 ? "" : "s"}).`);
+  console.error(
+    `Smoke matrix FAILED (${failures} flow${failures === 1 ? "" : "s"}).`,
+  );
   process.exit(1);
 }
 

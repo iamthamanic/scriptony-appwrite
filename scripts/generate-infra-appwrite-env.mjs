@@ -26,10 +26,7 @@ function arg(name) {
   return p ? p.slice(name.length + 1) : "";
 }
 
-const domain =
-  arg("--domain") ||
-  process.env.APPWRITE_DOMAIN ||
-  "";
+const domain = arg("--domain") || process.env.APPWRITE_DOMAIN || "";
 
 const doWrite = process.argv.includes("--write");
 
@@ -53,7 +50,7 @@ if (!fs.existsSync(examplePath)) {
 
 if (!domain) {
   console.error(
-    "Set your public Appwrite hostname, e.g.\n  node scripts/generate-infra-appwrite-env.mjs --domain=appwrite.deinedomain.de\n"
+    "Set your public Appwrite hostname, e.g.\n  node scripts/generate-infra-appwrite-env.mjs --domain=appwrite.deinedomain.de\n",
   );
   process.exit(1);
 }
@@ -65,15 +62,23 @@ function sitesFromDomain(d) {
   return `sites.${parts.slice(1).join(".")}`;
 }
 
-const sitesHost = domain.startsWith("sites.") ? domain : sitesFromDomain(domain);
+const sitesHost = domain.startsWith("sites.")
+  ? domain
+  : sitesFromDomain(domain);
 
 let text = fs.readFileSync(examplePath, "utf8");
 
 const subs = [
   ["_APP_OPENSSL_KEY_V1=learning-key", `_APP_OPENSSL_KEY_V1=${randomHex(32)}`],
-  ["_APP_EXECUTOR_SECRET=your-secret-key", `_APP_EXECUTOR_SECRET=${randomHex(32)}`],
+  [
+    "_APP_EXECUTOR_SECRET=your-secret-key",
+    `_APP_EXECUTOR_SECRET=${randomHex(32)}`,
+  ],
   ["_APP_DB_PASS=password", `_APP_DB_PASS=${randomPass(28)}`],
-  ["_APP_DB_ROOT_PASS=rootsecretpassword", `_APP_DB_ROOT_PASS=${randomPass(28)}`],
+  [
+    "_APP_DB_ROOT_PASS=rootsecretpassword",
+    `_APP_DB_ROOT_PASS=${randomPass(28)}`,
+  ],
   ["_APP_REDIS_PASS=", `_APP_REDIS_PASS=${randomPass(24)}`],
   ["_APP_DOMAIN=localhost", `_APP_DOMAIN=${domain}`],
   ["_APP_DOMAIN_FUNCTIONS=localhost", `_APP_DOMAIN_FUNCTIONS=${domain}`],
@@ -85,12 +90,18 @@ const subs = [
     "_APP_EXECUTOR_RUNTIME_NETWORK=integration-for-gitpod_runtimes",
     "_APP_EXECUTOR_RUNTIME_NETWORK=runtimes",
   ],
-  ["OPEN_RUNTIMES_NETWORK=integration-for-gitpod_runtimes", "OPEN_RUNTIMES_NETWORK=runtimes"],
+  [
+    "OPEN_RUNTIMES_NETWORK=integration-for-gitpod_runtimes",
+    "OPEN_RUNTIMES_NETWORK=runtimes",
+  ],
 ];
 
 for (const [from, to] of subs) {
   if (!text.includes(from)) {
-    console.warn("Warning: pattern not found (file may have changed):", from.slice(0, 50));
+    console.warn(
+      "Warning: pattern not found (file may have changed):",
+      from.slice(0, 50),
+    );
   }
   text = text.split(from).join(to);
 }
@@ -98,7 +109,9 @@ for (const [from, to] of subs) {
 if (doWrite) {
   if (fs.existsSync(outPath)) {
     console.error("Refusing --write: already exists:", outPath);
-    console.error("Remove it first or run without --write and redirect stdout.");
+    console.error(
+      "Remove it first or run without --write and redirect stdout.",
+    );
     process.exit(1);
   }
   fs.writeFileSync(outPath, text, { mode: 0o600 });

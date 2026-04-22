@@ -5,15 +5,10 @@ dist
 .env.*
 *.local
 .git
-.claude
 *.md
-blender-addon
+.blender-addon
 local-bridge/node_modules
 local-bridge/dist
 infra
 scripts
-tickets
-docs
-backend
-functions
-bugs*
+.claude

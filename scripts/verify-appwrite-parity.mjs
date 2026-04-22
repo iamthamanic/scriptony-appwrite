@@ -133,8 +133,11 @@ function parseDomainMap(raw) {
     }
     return Object.fromEntries(
       Object.entries(parsed)
-        .map(([key, value]) => [String(key).trim(), typeof value === "string" ? trimSlash(value.trim()) : ""])
-        .filter(([key, value]) => key && value)
+        .map(([key, value]) => [
+          String(key).trim(),
+          typeof value === "string" ? trimSlash(value.trim()) : "",
+        ])
+        .filter(([key, value]) => key && value),
     );
   } catch {
     return {};
@@ -188,11 +191,14 @@ async function listAllFunctions(endpoint, projectId, apiKey) {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error(`List functions: HTTP ${res.status} — ${text.slice(0, 200)}`);
+      throw new Error(
+        `List functions: HTTP ${res.status} — ${text.slice(0, 200)}`,
+      );
     }
     if (!res.ok) {
       throw new Error(
-        data?.message || `List functions failed: ${res.status} ${JSON.stringify(data)}`
+        data?.message ||
+          `List functions failed: ${res.status} ${JSON.stringify(data)}`,
       );
     }
 
@@ -259,7 +265,7 @@ const functionsBaseUrl = trimSlash(
     localEnv.VITE_APPWRITE_FUNCTIONS_BASE_URL ||
     localEnv.VITE_BACKEND_API_BASE_URL ||
     ""
-  ).trim()
+  ).trim(),
 );
 const domainMap = parseDomainMap(localEnv.VITE_BACKEND_FUNCTION_DOMAIN_MAP);
 
@@ -278,7 +284,9 @@ if (appwriteHealth.ok || appwriteHealth.status === 401) {
   const tag = appwriteHealth.ok ? "OK" : "OK (reachable, auth required)";
   console.log(`Appwrite API: ${tag} (${appwriteHealth.status})`);
 } else {
-  console.error(`Appwrite API: FEHLER (${appwriteHealth.status}) ${appwriteHealth.text.slice(0, 200)}`);
+  console.error(
+    `Appwrite API: FEHLER (${appwriteHealth.status}) ${appwriteHealth.text.slice(0, 200)}`,
+  );
   process.exit(1);
 }
 console.log("");
@@ -295,7 +303,9 @@ let failed = false;
 let authChecksSkipped = false;
 
 for (const spec of CRITICAL_FUNCTIONS) {
-  const liveFn = functions.find((entry) => entry.$id === spec.id || entry.name === spec.id);
+  const liveFn = functions.find(
+    (entry) => entry.$id === spec.id || entry.name === spec.id,
+  );
   const routeBase = getFunctionHttpBase(spec.id, domainMap, functionsBaseUrl);
 
   console.log(`→ ${spec.id}`);
@@ -307,13 +317,15 @@ for (const spec of CRITICAL_FUNCTIONS) {
     continue;
   }
 
-  const liveStatusOk = Boolean(liveFn.enabled && liveFn.live && liveFn.deploymentId);
+  const liveStatusOk = Boolean(
+    liveFn.enabled && liveFn.live && liveFn.deploymentId,
+  );
   const deploymentReady = liveFn.latestDeploymentStatus === "ready";
   const definedVars = new Set((liveFn.vars || []).map((entry) => entry.key));
   const missingVars = spec.expectedVars.filter((key) => !definedVars.has(key));
 
   console.log(
-    `  live=${Boolean(liveFn.live)} enabled=${Boolean(liveFn.enabled)} deployment=${liveFn.deploymentId || "(none)"} latest=${liveFn.latestDeploymentStatus || "(unknown)"}`
+    `  live=${Boolean(liveFn.live)} enabled=${Boolean(liveFn.enabled)} deployment=${liveFn.deploymentId || "(none)"} latest=${liveFn.latestDeploymentStatus || "(unknown)"}`,
   );
 
   if (!liveStatusOk || !deploymentReady) {
@@ -340,16 +352,20 @@ for (const spec of CRITICAL_FUNCTIONS) {
   const healthUrl = joinUrl(routeBase.url, "/health");
   const health = await fetchResult(healthUrl);
   if (health.ok && health.json) {
-    console.log(`  Health: OK (${health.status}) ${briefJsonShape(health.json)}`);
+    console.log(
+      `  Health: OK (${health.status}) ${briefJsonShape(health.json)}`,
+    );
   } else {
-    console.log(`  FEHLER Health (${health.status}) ${health.text.slice(0, 160)}`);
+    console.log(
+      `  FEHLER Health (${health.status}) ${health.text.slice(0, 160)}`,
+    );
     failed = true;
   }
 
   if (!smokeBearerToken) {
     authChecksSkipped = true;
     console.log(
-      `  Auth-Smoke: übersprungen (${spec.authSmoke.description}) — setze SCRIPTONY_SMOKE_BEARER_TOKEN in .env.server.local oder process.env`
+      `  Auth-Smoke: übersprungen (${spec.authSmoke.description}) — setze SCRIPTONY_SMOKE_BEARER_TOKEN in .env.server.local oder process.env`,
     );
     console.log("");
     continue;
@@ -364,7 +380,9 @@ for (const spec of CRITICAL_FUNCTIONS) {
   });
 
   if (!auth.ok || !auth.json) {
-    console.log(`  FEHLER Auth-Smoke (${auth.status}) ${auth.text.slice(0, 160)}`);
+    console.log(
+      `  FEHLER Auth-Smoke (${auth.status}) ${auth.text.slice(0, 160)}`,
+    );
     failed = true;
     console.log("");
     continue;
@@ -372,7 +390,7 @@ for (const spec of CRITICAL_FUNCTIONS) {
 
   if (!(spec.authSmoke.expectKey in auth.json)) {
     console.log(
-      `  FEHLER Auth-Smoke (${auth.status}) erwarteter Key fehlt: ${spec.authSmoke.expectKey}; erhalten: ${briefJsonShape(auth.json)}`
+      `  FEHLER Auth-Smoke (${auth.status}) erwarteter Key fehlt: ${spec.authSmoke.expectKey}; erhalten: ${briefJsonShape(auth.json)}`,
     );
     failed = true;
     console.log("");
@@ -380,13 +398,15 @@ for (const spec of CRITICAL_FUNCTIONS) {
   }
 
   console.log(
-    `  Auth-Smoke: OK (${auth.status}) ${spec.authSmoke.description} -> key "${spec.authSmoke.expectKey}"`
+    `  Auth-Smoke: OK (${auth.status}) ${spec.authSmoke.description} -> key "${spec.authSmoke.expectKey}"`,
   );
   console.log("");
 }
 
 if (authChecksSkipped && requireAuth) {
-  console.error("Auth-Smokes wurden übersprungen, aber --require-auth wurde gesetzt.");
+  console.error(
+    "Auth-Smokes wurden übersprungen, aber --require-auth wurde gesetzt.",
+  );
   process.exit(1);
 }
 
@@ -396,7 +416,9 @@ if (failed) {
 }
 
 if (authChecksSkipped) {
-  console.log("Parität teilweise OK: Deployment/Env/Health sind geprüft, Auth-Smokes wurden mangels Token übersprungen.\n");
+  console.log(
+    "Parität teilweise OK: Deployment/Env/Health sind geprüft, Auth-Smokes wurden mangels Token übersprungen.\n",
+  );
   process.exit(0);
 }
 

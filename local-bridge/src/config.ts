@@ -10,7 +10,7 @@ import { z } from "zod";
 const envSchema = z.object({
   BRIDGE_APPWRITE_ENDPOINT: z.string().url(),
   BRIDGE_APPWRITE_PROJECT_ID: z.string().min(1),
-  BRIDGE_APPWRITE_API_KEY: z.string().min(1),
+  BRIDGE_APPWRITE_API_KEY: z.string().default(""),
   BRIDGE_APPWRITE_DATABASE_ID: z.string().default("scriptony"),
 
   BRIDGE_COMFYUI_URL: z.string().url().default("http://127.0.0.1:8188"),
