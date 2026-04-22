@@ -11,16 +11,19 @@
 ### **What Changed:**
 
 #### **Database (NEW FIELDS)**
+
 - ✅ `episode_layout` TEXT - Episode narrative structure (series only)
 - ✅ `season_engine` TEXT - Season-level narrative engine (series only)
 - ✅ Indexed for fast filtering
 
 #### **Backend API**
+
 - ✅ POST /projects - Accepts `episode_layout` & `season_engine`
 - ✅ PUT /projects/:id - Updates episode/season fields
 - ✅ Conditional logic: Series uses episode/season, others use narrative_structure
 
 #### **Frontend UI**
+
 - ✅ Create Dialog: Conditional layout based on project type
   - **Series:** 2 dropdowns (Episode Layout + Season Engine)
   - **Film/Book/Audio:** 1 dropdown (Narrative Structure)
@@ -40,10 +43,11 @@
 ```
 
 **Verification:**
+
 ```sql
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'projects' 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'projects'
 AND column_name IN ('episode_layout', 'season_engine');
 ```
 
@@ -56,6 +60,7 @@ AND column_name IN ('episode_layout', 'season_engine');
 **Changes Required:**
 
 1. **Update Header Comment (Line 4):**
+
 ```typescript
  * 🕐 LAST UPDATED: 2025-11-08 (Added episode_layout & season_engine for Series)
 ```
@@ -63,31 +68,45 @@ AND column_name IN ('episode_layout', 'season_engine');
 2. **Update POST /projects (Lines 181-200):**
 
 Replace:
+
 ```typescript
 const body = await c.req.json();
-const { title, description, type, logline, genre, duration, world_id, cover_image_url, narrative_structure, beat_template } = body;
+const {
+  title,
+  description,
+  type,
+  logline,
+  genre,
+  duration,
+  world_id,
+  cover_image_url,
+  narrative_structure,
+  beat_template,
+} = body;
 ```
 
 With:
+
 ```typescript
 const body = await c.req.json();
-const { 
-  title, 
-  description, 
-  type, 
-  logline, 
-  genre, 
-  duration, 
-  world_id, 
-  cover_image_url, 
-  narrative_structure, 
+const {
+  title,
+  description,
+  type,
+  logline,
+  genre,
+  duration,
+  world_id,
+  cover_image_url,
+  narrative_structure,
   beat_template,
-  episode_layout,     // NEW
-  season_engine,      // NEW
+  episode_layout, // NEW
+  season_engine, // NEW
 } = body;
 ```
 
 And in the `.insert()` call:
+
 ```typescript
 narrative_structure: narrative_structure || null,
 beat_template: beat_template || null,
@@ -108,6 +127,7 @@ Already implemented in `/components/pages/ProjectsPage.tsx`
 ## 📊 **New Data Structure**
 
 ### **Series Project:**
+
 ```json
 {
   "id": "uuid",
@@ -116,19 +136,20 @@ Already implemented in `/components/pages/ProjectsPage.tsx`
   "episode_layout": "streaming-4-act",
   "season_engine": "serial",
   "beat_template": "season-lite-5",
-  "narrative_structure": null  // Not used for series
+  "narrative_structure": null // Not used for series
 }
 ```
 
 ### **Film Project:**
+
 ```json
 {
   "id": "uuid",
   "type": "film",
   "narrative_structure": "3-act",
   "beat_template": "save-the-cat",
-  "episode_layout": null,  // Not used
-  "season_engine": null    // Not used
+  "episode_layout": null, // Not used
+  "season_engine": null // Not used
 }
 ```
 
@@ -138,35 +159,36 @@ Already implemented in `/components/pages/ProjectsPage.tsx`
 
 ### **Episode Layout (Series Only)**
 
-| Value | Label | Description |
-|-------|-------|-------------|
-| `sitcom-2-act` | Sitcom 2-Akt | Teaser → A1 → A2 → Tag (22–24 min) |
-| `sitcom-4-act` | Sitcom 4-Akt | Mit Werbebreaks (22 min) |
-| `network-5-act` | Network 5-Akt | Teaser + 5 Akte + Tag (~45 min) |
-| `streaming-3-act` | Streaming 3-Akt | 45–60 min Content |
-| `streaming-4-act` | Streaming 4-Akt | Act II gesplittet (45–60 min) |
-| `anime-ab` | Anime A/B | Cold Open → OP → Part A → Eyecatch → Part B → ED → Preview (24 min) |
-| `sketch-segmented` | Sketch/Segmented | 3–5 Mini-Stories pro Episode |
-| `kids-11min` | Kids 11-Min | Zwei Kurzsegmente pro Slot |
+| Value              | Label            | Description                                                         |
+| ------------------ | ---------------- | ------------------------------------------------------------------- |
+| `sitcom-2-act`     | Sitcom 2-Akt     | Teaser → A1 → A2 → Tag (22–24 min)                                  |
+| `sitcom-4-act`     | Sitcom 4-Akt     | Mit Werbebreaks (22 min)                                            |
+| `network-5-act`    | Network 5-Akt    | Teaser + 5 Akte + Tag (~45 min)                                     |
+| `streaming-3-act`  | Streaming 3-Akt  | 45–60 min Content                                                   |
+| `streaming-4-act`  | Streaming 4-Akt  | Act II gesplittet (45–60 min)                                       |
+| `anime-ab`         | Anime A/B        | Cold Open → OP → Part A → Eyecatch → Part B → ED → Preview (24 min) |
+| `sketch-segmented` | Sketch/Segmented | 3–5 Mini-Stories pro Episode                                        |
+| `kids-11min`       | Kids 11-Min      | Zwei Kurzsegmente pro Slot                                          |
 
 ---
 
 ### **Season Engine (Series Only)**
 
-| Value | Label | Description |
-|-------|-------|-------------|
-| `serial` | Serial (Season-Arc) | Durchgehende Handlung |
-| `motw` | MOTW/COTW | Fall der Woche |
-| `hybrid` | Hybrid (Arc+MOTW) | Mischform |
-| `anthology` | Anthology (episodisch) | Jede Folge neu |
-| `seasonal-anthology` | Seasonal Anthology | Jede Staffel neu |
-| `limited-series` | Limited Series | 4–10 Teile, geschlossener Arc |
+| Value                | Label                  | Description                   |
+| -------------------- | ---------------------- | ----------------------------- |
+| `serial`             | Serial (Season-Arc)    | Durchgehende Handlung         |
+| `motw`               | MOTW/COTW              | Fall der Woche                |
+| `hybrid`             | Hybrid (Arc+MOTW)      | Mischform                     |
+| `anthology`          | Anthology (episodisch) | Jede Folge neu                |
+| `seasonal-anthology` | Seasonal Anthology     | Jede Staffel neu              |
+| `limited-series`     | Limited Series         | 4–10 Teile, geschlossener Arc |
 
 ---
 
 ### **Narrative Structure (Film/Book/Audio)**
 
 #### **Film:**
+
 - `3-act` - 3-Akt (klassisch)
 - `4-act` - 4-Akt (gesplittetes Act II)
 - `5-act` - 5-Akt (Freytag)
@@ -176,11 +198,13 @@ Already implemented in `/components/pages/ProjectsPage.tsx`
 - `custom` - Custom
 
 #### **Book:**
+
 - `3-part` - 3-Teiler (klassisch)
 - `hero-journey` - Heldenreise
 - `save-the-cat` - Save the Cat (adapted)
 
 #### **Audio (Hörspiel):**
+
 - `30min-3-act` - 30 min / 3-Akt
 - `60min-4-act` - 60 min / 4-Akt
 - `podcast-25-35min` - Podcast 25–35 min
@@ -189,16 +213,16 @@ Already implemented in `/components/pages/ProjectsPage.tsx`
 
 ### **Beat Template (All Types)**
 
-| Value | Label | Available For |
-|-------|-------|---------------|
-| `lite-7` | Lite-7 (minimal) | All |
-| `save-the-cat` | Save the Cat! (15) | All |
-| `syd-field` | Syd Field / Paradigm | All |
-| `heroes-journey` | Heldenreise (Vogler, 12) | All |
-| `seven-point` | Seven-Point Structure | All |
-| `8-sequences` | 8-Sequenzen | All |
-| `story-circle` | Story Circle 8 | All |
-| `season-lite-5` | Season-Lite-5 (Macro) | **Series only** |
+| Value            | Label                    | Available For   |
+| ---------------- | ------------------------ | --------------- |
+| `lite-7`         | Lite-7 (minimal)         | All             |
+| `save-the-cat`   | Save the Cat! (15)       | All             |
+| `syd-field`      | Syd Field / Paradigm     | All             |
+| `heroes-journey` | Heldenreise (Vogler, 12) | All             |
+| `seven-point`    | Seven-Point Structure    | All             |
+| `8-sequences`    | 8-Sequenzen              | All             |
+| `story-circle`   | Story Circle 8           | All             |
+| `season-lite-5`  | Season-Lite-5 (Macro)    | **Series only** |
 
 ---
 
@@ -250,12 +274,12 @@ Then revert Edge Function code to previous version.
 
 ## 📁 **Files Changed**
 
-| File | Status | Lines Changed |
-|------|--------|---------------|
-| `/supabase/migrations/030_add_series_episode_season_structures.sql` | ✅ Created | New file |
-| `/supabase/functions/scriptony-projects/index.ts` | ⏳ Pending | ~20 lines |
-| `/components/pages/ProjectsPage.tsx` | ✅ Complete | ~200 lines |
-| `/DEPLOY_SERIES_EPISODE_SEASON.md` | ✅ Created | Documentation |
+| File                                                                | Status      | Lines Changed |
+| ------------------------------------------------------------------- | ----------- | ------------- |
+| `/supabase/migrations/030_add_series_episode_season_structures.sql` | ✅ Created  | New file      |
+| `/supabase/functions/scriptony-projects/index.ts`                   | ⏳ Pending  | ~20 lines     |
+| `/components/pages/ProjectsPage.tsx`                                | ✅ Complete | ~200 lines    |
+| `/DEPLOY_SERIES_EPISODE_SEASON.md`                                  | ✅ Created  | Documentation |
 
 ---
 
@@ -269,6 +293,7 @@ Then revert Edge Function code to previous version.
 ---
 
 **🔗 Related Files:**
+
 - Migration: `/supabase/migrations/030_add_series_episode_season_structures.sql`
 - Deploy Guide: `/DEPLOY_SERIES_EPISODE_SEASON.md`
 - Frontend: `/components/pages/ProjectsPage.tsx`

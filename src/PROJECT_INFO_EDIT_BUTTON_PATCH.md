@@ -1,10 +1,12 @@
 # 🎯 PROJECT INFO EDIT MODE - SPEICHERN BUTTON PATCH
 
 ## Problem
+
 Im Edit-Modus der Projektinformationen kann man nur über das 3-Punkte-Menü speichern.
 Das ist nicht intuitiv - der User sollte einen sichtbaren "Speichern" Button sehen.
 
 ## Lösung
+
 Füge einen **sichtbaren "Speichern" Button** hinzu, der im Edit-Modus neben dem 3-Punkte-Menü erscheint.
 
 ---
@@ -27,6 +29,7 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
 ### Schritt 3: DropdownMenu anpassen
 
 **VORHER:**
+
 ```tsx
 <DropdownMenu>
   <DropdownMenuTrigger asChild>
@@ -49,6 +52,7 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
 ```
 
 **NACHHER:**
+
 ```tsx
 <div className="flex items-center gap-2">
   {/* SAVE BUTTON - nur im Edit-Modus sichtbar */}
@@ -74,16 +78,20 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
     <DropdownMenuContent align="end">
       {isEditingProjectInfo ? (
         <>
-          <DropdownMenuItem onClick={() => {
-            handleSaveProjectInfo();
-          }}>
+          <DropdownMenuItem
+            onClick={() => {
+              handleSaveProjectInfo();
+            }}
+          >
             <Save className="size-3.5 mr-2" />
             Speichern
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {
-            setIsEditingProjectInfo(false);
-            // Reset edited values to original
-          }}>
+          <DropdownMenuItem
+            onClick={() => {
+              setIsEditingProjectInfo(false);
+              // Reset edited values to original
+            }}
+          >
             <X className="size-3.5 mr-2" />
             Abbrechen
           </DropdownMenuItem>
@@ -105,15 +113,17 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
 ### Schritt 4: Input-Felder conditional machen
 
 ```tsx
-{isEditingProjectInfo ? (
-  <Input
-    value={editedProjectTitle}
-    onChange={(e) => setEditedProjectTitle(e.target.value)}
-    className="h-9"
-  />
-) : (
-  <h2 className="text-xl font-bold">{project.title}</h2>
-)}
+{
+  isEditingProjectInfo ? (
+    <Input
+      value={editedProjectTitle}
+      onChange={(e) => setEditedProjectTitle(e.target.value)}
+      className="h-9"
+    />
+  ) : (
+    <h2 className="text-xl font-bold">{project.title}</h2>
+  );
+}
 ```
 
 ---
@@ -121,7 +131,9 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
 ## BEISPIEL: Vollständiger Header Code
 
 ```tsx
-{/* PROJECT INFO HEADER */}
+{
+  /* PROJECT INFO HEADER */
+}
 <div className="flex items-center justify-between mb-4">
   <div className="flex items-center gap-3">
     <Button
@@ -132,7 +144,7 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
     >
       <ArrowLeft className="size-4" />
     </Button>
-    
+
     {isEditingProjectInfo ? (
       <Input
         value={editedProjectTitle}
@@ -174,14 +186,16 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
               <Save className="size-3.5 mr-2" />
               Speichern
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setIsEditingProjectInfo(false);
-              // Reset form
-              setEditedProjectTitle(project.title);
-              setEditedProjectGenre(project.genre);
-              setEditedProjectDuration(project.duration);
-              setEditedProjectLogline(project.logline);
-            }}>
+            <DropdownMenuItem
+              onClick={() => {
+                setIsEditingProjectInfo(false);
+                // Reset form
+                setEditedProjectTitle(project.title);
+                setEditedProjectGenre(project.genre);
+                setEditedProjectDuration(project.duration);
+                setEditedProjectLogline(project.logline);
+              }}
+            >
               <X className="size-3.5 mr-2" />
               Abbrechen
             </DropdownMenuItem>
@@ -196,7 +210,9 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
               <BarChart3 className="size-3.5 mr-2" />
               Project Stats & Logs
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDuplicateProject(project.id)}>
+            <DropdownMenuItem
+              onClick={() => handleDuplicateProject(project.id)}
+            >
               <Copy className="size-3.5 mr-2" />
               Projekt duplizieren
             </DropdownMenuItem>
@@ -212,7 +228,7 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
       </DropdownMenuContent>
     </DropdownMenu>
   </div>
-</div>
+</div>;
 ```
 
 ---
@@ -226,8 +242,12 @@ const [isEditingProjectInfo, setIsEditingProjectInfo] = useState(false);
 // Edited Values
 const [editedProjectTitle, setEditedProjectTitle] = useState(project.title);
 const [editedProjectGenre, setEditedProjectGenre] = useState(project.genre);
-const [editedProjectDuration, setEditedProjectDuration] = useState(project.duration);
-const [editedProjectLogline, setEditedProjectLogline] = useState(project.logline);
+const [editedProjectDuration, setEditedProjectDuration] = useState(
+  project.duration,
+);
+const [editedProjectLogline, setEditedProjectLogline] = useState(
+  project.logline,
+);
 ```
 
 ---
@@ -245,17 +265,17 @@ const handleSaveProjectInfo = async () => {
     };
 
     await projectsApi.update(project.id, updates);
-    
+
     // Update local state
-    setProjects(projects.map(p => 
-      p.id === project.id ? { ...p, ...updates } : p
-    ));
-    
+    setProjects(
+      projects.map((p) => (p.id === project.id ? { ...p, ...updates } : p)),
+    );
+
     setIsEditingProjectInfo(false);
-    toast.success('Projektinformationen gespeichert');
+    toast.success("Projektinformationen gespeichert");
   } catch (error) {
-    console.error('Error saving project:', error);
-    toast.error('Fehler beim Speichern');
+    console.error("Error saving project:", error);
+    toast.error("Fehler beim Speichern");
   }
 };
 ```
@@ -274,9 +294,11 @@ const handleSaveProjectInfo = async () => {
 ## RESULT
 
 **Vor dem Patch:**
+
 - [3-Punkte-Menü] → Bearbeiten → Änderungen machen → [3-Punkte-Menü] → Speichern
 
 **Nach dem Patch:**
+
 - [3-Punkte-Menü] → Bearbeiten → Änderungen machen → [Speichern Button] ← **DIREKT SICHTBAR!**
 
 ---

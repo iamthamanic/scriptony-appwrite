@@ -9,25 +9,31 @@
 ## 🎯 **Was wurde hinzugefügt:**
 
 ### **1. Episode Layout (Serie)**
+
 ```tsx
 <SelectItem value="custom">Custom</SelectItem>
 ```
+
 **Position:** Als letzte Option nach "Kids 11-Min"
 
 ---
 
 ### **2. Season Engine (Serie)**
+
 ```tsx
 <SelectItem value="custom">Custom</SelectItem>
 ```
+
 **Position:** Als letzte Option nach "Limited Series"
 
 ---
 
 ### **3. Beat Template (Alle Typen)**
+
 ```tsx
 <SelectItem value="custom">Custom</SelectItem>
 ```
+
 **Position:** Als letzte Option nach "Season-Lite-5" / "Story Circle 8"
 
 ---
@@ -35,11 +41,13 @@
 ## 📍 **Wo wurde es hinzugefügt:**
 
 ### **Create Dialog:**
+
 - ✅ Episode Layout Dropdown (Line ~1059)
 - ✅ Season Engine Dropdown (Line ~1077)
 - ✅ Beat Template Dropdown (Line ~1153)
 
 ### **Edit Mode:**
+
 - ✅ Episode Layout Dropdown (Line ~3165)
 - ✅ Season Engine Dropdown (Line ~3183)
 - ✅ Beat Template Dropdown (Line ~3251)
@@ -49,6 +57,7 @@
 ## 🧪 **Wie testen:**
 
 ### **Create Dialog:**
+
 1. Gehe zu **Projects** → **Create New Project**
 2. Wähle **Type: Serie**
 3. Öffne **Episode Layout** Dropdown
@@ -59,6 +68,7 @@
 8. ✅ "Custom" sollte als letzte Option verfügbar sein
 
 ### **Edit Mode:**
+
 1. Öffne ein **Serie-Projekt**
 2. Klicke auf **Edit** (Stift-Icon)
 3. Scrolle zu **Episode Layout**
@@ -100,6 +110,7 @@ Beat Template: custom
 ## 📋 **Vollständige Option-Listen:**
 
 ### **Episode Layout (9 Optionen):**
+
 1. Sitcom 2-Akt (22–24 min)
 2. Sitcom 4-Akt (22 min)
 3. Network 5-Akt (~45 min)
@@ -111,6 +122,7 @@ Beat Template: custom
 9. **Custom** ⭐
 
 ### **Season Engine (7 Optionen):**
+
 1. Serial (Season-Arc)
 2. MOTW/COTW (Fall d. Woche)
 3. Hybrid (Arc+MOTW)
@@ -120,6 +132,7 @@ Beat Template: custom
 7. **Custom** ⭐
 
 ### **Beat Template (9 Optionen):**
+
 1. Lite-7 (minimal)
 2. Save the Cat! (15)
 3. Syd Field / Paradigm

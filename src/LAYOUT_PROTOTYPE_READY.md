@@ -9,16 +9,19 @@ Ein **interaktiver Prototyp** zum Testen der neuen Cover + Info Layouts für Pro
 ## 🚀 WIE TESTE ICH DAS?
 
 ### 1. **Prototype öffnen:**
+
 - Klick auf den **"🎨 Proto"** Button oben rechts in der Navigation
 - ODER navigiere zur Page `layout-prototype`
 
 ### 2. **Features des Prototyps:**
 
 #### **View Mode Toggle:**
+
 - 🖥️ **Desktop** - Zeigt Desktop-Layout (max-width: 1024px)
 - 📱 **Mobile** - Zeigt Mobile-Layout (max-width: 390px = iPhone)
 
 #### **Layout Options:**
+
 - **Option 1 (NEU):**
   - Desktop: Info LINKS + Cover RECHTS (gleiche Höhe 360px)
   - Mobile: Cover OBEN zentriert + Collapsible Info (Standard: eingeklappt)
@@ -33,6 +36,7 @@ Ein **interaktiver Prototyp** zum Testen der neuen Cover + Info Layouts für Pro
 ### **Desktop View (1024px):**
 
 #### Option 1:
+
 - ✅ Info links (360px Höhe)
 - ✅ Cover rechts (240x360px Portrait - gleich hoch wie Info!)
 - ✅ Effizienter Platzverbrauch
@@ -41,6 +45,7 @@ Ein **interaktiver Prototyp** zum Testen der neuen Cover + Info Layouts für Pro
 - ❓ **Ist die Info-Card zu breit/zu schmal?**
 
 #### Option 2:
+
 - ✅ Cover oben zentriert
 - ✅ Info unten volle Breite
 - ❌ Verschenkt viel horizontalen Platz
@@ -51,6 +56,7 @@ Ein **interaktiver Prototyp** zum Testen der neuen Cover + Info Layouts für Pro
 ### **Mobile View (390px = iPhone):**
 
 #### Option 1:
+
 - ✅ Cover oben zentriert (prominent!)
 - ✅ Info **Collapsible** (Standard: GESCHLOSSEN)
   - **Vorteil:** Spart Platz! User scrollt weniger!
@@ -60,6 +66,7 @@ Ein **interaktiver Prototyp** zum Testen der neuen Cover + Info Layouts für Pro
 - ❓ **Sollte Info standardmäßig OFFEN sein?**
 
 #### Option 2:
+
 - ✅ Cover oben
 - ✅ Info immer sichtbar (volle Breite)
 - ❌ User muss mehr scrollen
@@ -70,16 +77,19 @@ Ein **interaktiver Prototyp** zum Testen der neuen Cover + Info Layouts für Pro
 ## 📝 Feedback-Fragen:
 
 ### Desktop:
+
 1. **Option 1:** Sieht Info LINKS + Cover RECHTS gut aus?
 2. Ist die Info-Card zu breit / zu eng / perfekt?
 3. Oder lieber doch Option 2 (Cover oben)?
 
 ### Mobile:
+
 1. **Option 1:** Ist Collapsible Info (Standard: zu) eine gute Idee?
 2. Oder sollte Info standardmäßig OFFEN sein?
 3. Oder lieber Option 2 (Info immer sichtbar)?
 
 ### Allgemein:
+
 1. **Gleicher Aufbau für Projects UND Worlds?** (Konsistenz!)
 2. Welche Option fühlst sich am besten an?
 

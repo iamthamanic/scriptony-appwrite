@@ -20,7 +20,7 @@
 
 ```typescript
 // ADD THIS IMPORT (at top of file)
-import { compress } from '../_shared/compression.ts';
+import { compress } from "../_shared/compression.ts";
 
 // EXISTING CODE
 const app = new Hono().basePath("/scriptony-timeline-v2");
@@ -28,15 +28,18 @@ const app = new Hono().basePath("/scriptony-timeline-v2");
 // ... existing supabase setup ...
 
 // Enable logger & CORS
-app.use('*', logger(console.log));
+app.use("*", logger(console.log));
 
 // ✨ ADD THIS LINE - Enable compression
-app.use('*', compress);
+app.use("*", compress);
 
 // EXISTING CORS setup
-app.use("/*", cors({
-  // ... existing cors config
-}));
+app.use(
+  "/*",
+  cors({
+    // ... existing cors config
+  }),
+);
 ```
 
 **Zeilen:** Einfügen nach Zeile 79 (nach logger, vor cors)
@@ -48,11 +51,13 @@ app.use("/*", cors({
 **Optional (aber empfohlen):**
 
 Gleiche Änderung in:
+
 - `/supabase/functions/scriptony-projects/index.ts`
 - `/supabase/functions/scriptony-shots/index.ts`
 - `/supabase/functions/scriptony-characters/index.ts`
 
 **Pattern:**
+
 ```typescript
 import { compress } from '../_shared/compression.ts';
 
@@ -68,12 +73,14 @@ app.use("/*", cors({ ... }));
 ## 📊 Erwartete Resultate
 
 ### Vorher (unkomprimiert)
+
 ```
 Timeline API Response: ~180 KB
 Transfer Time (3G): ~600ms
 ```
 
 ### Nachher (gzip komprimiert)
+
 ```
 Timeline API Response: ~50 KB
 Transfer Time (3G): ~180ms
@@ -88,15 +95,17 @@ Savings: 72% weniger Bytes, 70% schneller
 
 ```javascript
 // Check Response Headers
-fetch('https://YOUR_PROJECT.supabase.co/functions/v1/scriptony-timeline-v2/nodes?project_id=XXX', {
-  headers: {
-    'Authorization': 'Bearer YOUR_TOKEN',
-    'Accept-Encoding': 'gzip'
-  }
-})
-.then(res => {
-  console.log('Content-Encoding:', res.headers.get('Content-Encoding')); // Should be 'gzip'
-  console.log('Content-Length:', res.headers.get('Content-Length'));     // Should be much smaller
+fetch(
+  "https://YOUR_PROJECT.supabase.co/functions/v1/scriptony-timeline-v2/nodes?project_id=XXX",
+  {
+    headers: {
+      Authorization: "Bearer YOUR_TOKEN",
+      "Accept-Encoding": "gzip",
+    },
+  },
+).then((res) => {
+  console.log("Content-Encoding:", res.headers.get("Content-Encoding")); // Should be 'gzip'
+  console.log("Content-Length:", res.headers.get("Content-Length")); // Should be much smaller
 });
 ```
 
@@ -128,12 +137,12 @@ fetch('https://YOUR_PROJECT.supabase.co/functions/v1/scriptony-timeline-v2/nodes
 
 ## 🎯 Performance Impact
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Timeline API Size | 180 KB | 50 KB | **72% smaller** |
-| Transfer Time (3G) | 600ms | 180ms | **70% faster** |
-| Transfer Time (4G) | 200ms | 60ms | **70% faster** |
-| Server Bandwidth | 1x | 0.28x | **72% savings** |
+| Metric             | Before | After | Improvement     |
+| ------------------ | ------ | ----- | --------------- |
+| Timeline API Size  | 180 KB | 50 KB | **72% smaller** |
+| Transfer Time (3G) | 600ms  | 180ms | **70% faster**  |
+| Transfer Time (4G) | 200ms  | 60ms  | **70% faster**  |
+| Server Bandwidth   | 1x     | 0.28x | **72% savings** |
 
 ---
 

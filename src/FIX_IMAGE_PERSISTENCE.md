@@ -1,9 +1,11 @@
 # 🔧 IMAGE PERSISTENCE FIX
 
 ## 🚨 Problem
+
 Bilder wurden hochgeladen, verschwanden aber beim Screen-Wechsel!
 
 **Root Cause:**
+
 1. ✅ Backend uploaded Bilder zu Supabase Storage
 2. ✅ Backend speicherte `cover_image_url` in DB
 3. ❌ **Frontend lud URLs NICHT aus DB in den State!**
@@ -13,9 +15,11 @@ Bilder wurden hochgeladen, verschwanden aber beim Screen-Wechsel!
 ## ✅ Lösung
 
 ### 1️⃣ ProjectsPage.tsx
+
 **Problem:** `projectCoverImages` State wurde nie mit DB-Daten befüllt
 
 **Fix:**
+
 ```typescript
 // In loadData() nach setProjects():
 // 📸 Load cover images from DB into state
@@ -29,9 +33,11 @@ setProjectCoverImages(coverImages);
 ```
 
 ### 2️⃣ WorldbuildingPage.tsx
+
 **Problem 1:** `worldCoverImages` State wurde nie mit DB-Daten befüllt
 
 **Fix:**
+
 ```typescript
 // In useEffect() nach setWorlds():
 // 📸 Load cover images from DB into state
@@ -47,6 +53,7 @@ setWorldCoverImages(coverImages);
 **Problem 2:** Nach Upload wurde URL nicht in DB gespeichert
 
 **Fix:**
+
 ```typescript
 // In WorldDetail onCoverImageChange:
 onCoverImageChange={async (imageUrl) => {
@@ -55,11 +62,11 @@ onCoverImageChange={async (imageUrl) => {
     ...prev,
     [selectedWorldData.id]: imageUrl
   }));
-  
+
   // Update in database
   try {
-    await handleUpdateWorld(selectedWorldData.id, { 
-      cover_image_url: imageUrl 
+    await handleUpdateWorld(selectedWorldData.id, {
+      cover_image_url: imageUrl
     });
   } catch (error) {
     console.error('Error saving image URL to database:', error);
@@ -70,24 +77,25 @@ onCoverImageChange={async (imageUrl) => {
 **Problem 3:** `handleUpdateWorld` akzeptierte `cover_image_url` nicht
 
 **Fix:**
+
 ```typescript
 // Type signature geändert:
 const handleUpdateWorld = async (
-  worldId: string, 
-  updates: { 
-    name?: string; 
-    description?: string; 
-    linked_project_id?: string | null; 
-    cover_image_url?: string  // ✅ Added
-  }
+  worldId: string,
+  updates: {
+    name?: string;
+    description?: string;
+    linked_project_id?: string | null;
+    cover_image_url?: string; // ✅ Added
+  },
 ) => {
   // ... existing code
-  
+
   // Only show success toast if not just updating cover image
   if (!updates.cover_image_url || Object.keys(updates).length > 1) {
     toast.success("Welt erfolgreich aktualisiert!");
   }
-}
+};
 ```
 
 ---
@@ -95,12 +103,14 @@ const handleUpdateWorld = async (
 ## 🧪 Testing Flow
 
 ### World Images:
+
 1. ✅ Upload Image → Saved to Supabase Storage
 2. ✅ URL saved to `worlds.cover_image_url` in DB
 3. ✅ URL loaded into `worldCoverImages` State on page load
 4. ✅ **Screen wechseln** → Bild bleibt! 🎉
 
 ### Project Images:
+
 1. ✅ Create Project with Image
 2. ✅ Upload after Create → Saved to Supabase Storage
 3. ✅ URL saved to `projects.cover_image_url` in DB
@@ -151,22 +161,24 @@ const handleUpdateWorld = async (
 
 ## 🎯 Key Changes
 
-| File | Change | Reason |
-|------|--------|--------|
-| `ProjectsPage.tsx` | Load `cover_image_url` from DB into State | State was empty after page reload |
-| `WorldbuildingPage.tsx` | Load `cover_image_url` from DB into State | State was empty after page reload |
-| `WorldbuildingPage.tsx` | Save URL to DB after upload | URL was only in State, not persisted |
-| `WorldbuildingPage.tsx` | Update `handleUpdateWorld` signature | Function didn't accept `cover_image_url` |
+| File                    | Change                                    | Reason                                   |
+| ----------------------- | ----------------------------------------- | ---------------------------------------- |
+| `ProjectsPage.tsx`      | Load `cover_image_url` from DB into State | State was empty after page reload        |
+| `WorldbuildingPage.tsx` | Load `cover_image_url` from DB into State | State was empty after page reload        |
+| `WorldbuildingPage.tsx` | Save URL to DB after upload               | URL was only in State, not persisted     |
+| `WorldbuildingPage.tsx` | Update `handleUpdateWorld` signature      | Function didn't accept `cover_image_url` |
 
 ---
 
 ## ✅ Result
 
 **Before:**
+
 - Upload → Sichtbar ✅
 - Screen wechseln → Weg ❌
 
 **After:**
+
 - Upload → Sichtbar ✅
 - Screen wechseln → Bleibt! ✅
 - Page Reload → Bleibt! ✅

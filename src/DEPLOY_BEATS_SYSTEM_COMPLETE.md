@@ -3,18 +3,21 @@
 ## ✅ Was wurde erstellt:
 
 ### 1. **Migration** `/supabase/migrations/033_story_beats_system.sql`
+
 - Tabelle `story_beats` mit allen Feldern
 - RLS Policies (Users can view/create/update/delete their beats)
 - Activity Logs Trigger
 - Auto-update `updated_at` Trigger
 
 ### 2. **Edge Function** `/supabase/functions/scriptony-beats/index.ts`
+
 - `GET /beats?project_id=xxx` - Liste aller Beats
 - `POST /beats` - Neuen Beat erstellen
 - `PATCH /beats/:id` - Beat aktualisieren
 - `DELETE /beats/:id` - Beat löschen
 
 ### 3. **API Client** `/lib/api/beats-api.ts`
+
 - `getBeats(projectId)` - Lädt alle Beats
 - `createBeat(payload)` - Erstellt Beat
 - `updateBeat(beatId, payload)` - Update Beat
@@ -22,6 +25,7 @@
 - `reorderBeats(beats[])` - Bulk-Reorder
 
 ### 4. **Frontend Integration** `/components/pages/ProjectsPage.tsx`
+
 - Import für `StructureBeatsSection` hinzugefügt ✅
 - **NOCH NICHT**: Verwendung in der Project-Detail-View
 
@@ -52,6 +56,7 @@ SELECT * FROM story_beats LIMIT 1;
 5. **Verify**: Function sollte in der Liste erscheinen
 
 **Test mit curl:**
+
 ```bash
 curl -X GET "https://YOUR_PROJECT_ID.supabase.co/functions/v1/scriptony-beats/beats?project_id=XXX" \
   -H "Authorization: Bearer YOUR_TOKEN"
@@ -73,9 +78,9 @@ Die **StructureBeatsSection** wurde bereits importiert, aber **noch nicht verwen
   <div className="...">
     {/* Projekt-Header */}
     {/* Projekt-Info */}
-    
+
     {/* ⭐ HIER EINFÜGEN ⭐ */}
-    
+
     {/* Charaktere, Inspiration, etc. */}
   </div>
 )}
@@ -100,7 +105,7 @@ Füge **nach den Projekt-Infos** und **vor Charaktere/Inspiration** ein:
 ```typescript
 {selectedProject && (
   <div className="p-6 space-y-6">
-    
+
     {/* Projekt-Header (bestehend) */}
     <div className="flex items-center justify-between">
       <h1 className="text-3xl font-bold">{selectedProject.title}</h1>
@@ -142,6 +147,7 @@ Füge **nach den Projekt-Infos** und **vor Charaktere/Inspiration** ein:
 ## 🧪 TESTING:
 
 ### 1. Migration Test
+
 ```sql
 -- Sollte leere Tabelle zeigen:
 SELECT * FROM story_beats;
@@ -170,6 +176,7 @@ SELECT * FROM story_beats;
 ```
 
 ### 2. Edge Function Test
+
 ```bash
 # GET Beats
 curl "https://YOUR_PROJECT_ID.supabase.co/functions/v1/scriptony-beats/beats?project_id=XXX" \
@@ -191,6 +198,7 @@ curl -X POST "https://YOUR_PROJECT_ID.supabase.co/functions/v1/scriptony-beats/b
 ```
 
 ### 3. Frontend Test
+
 1. Öffne ein Projekt in der App
 2. Du solltest die **"Structure & Beats"** Section sehen
 3. Die **lila Beat-Rail** (80px) sollte links erscheinen
@@ -234,7 +242,7 @@ Rechts: Acts/Sequences/Scenes/Shots
 ✅ `/supabase/functions/scriptony-beats/index.ts`  
 ✅ `/lib/api/beats-api.ts`  
 ✅ `/components/pages/ProjectsPage.tsx` (Import added)  
-⚠️  `/components/pages/ProjectsPage.tsx` (Usage pending - see SCHRITT 3)
+⚠️ `/components/pages/ProjectsPage.tsx` (Usage pending - see SCHRITT 3)
 
 ---
 
@@ -261,15 +269,19 @@ Rechts: Acts/Sequences/Scenes/Shots
 ## 🔧 TROUBLESHOOTING:
 
 ### Problem: "story_beats does not exist"
+
 → Migration wurde nicht ausgeführt (siehe SCHRITT 1)
 
 ### Problem: "Failed to fetch beats"
+
 → Edge Function nicht deployed oder falsche URL (siehe SCHRITT 2)
 
 ### Problem: "StructureBeatsSection is not defined"
+
 → Import fehlt (sollte bereits da sein)
 
 ### Problem: Beat-Rail nicht sichtbar
+
 → StructureBeatsSection wurde noch nicht verwendet (siehe SCHRITT 3)
 
 ---

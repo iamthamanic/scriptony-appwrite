@@ -1,9 +1,11 @@
 # 🔧 PROJECT IMAGE UPLOAD FIX
 
 ## 🚨 Critical Issue
+
 **Project cover images were NOT uploaded to Supabase Storage!**
 
 ### Root Cause
+
 In `ProjectDetail` component (inside ProjectsPage.tsx), the `handleFileChange` function was using the **old Base64 system** instead of uploading to Supabase Storage:
 
 ```typescript
@@ -13,7 +15,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   if (file) {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const imageUrl = reader.result as string;  // ❌ Base64 only!
+      const imageUrl = reader.result as string; // ❌ Base64 only!
       onCoverImageChange(imageUrl);
     };
     reader.readAsDataURL(file);
@@ -22,6 +24,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 ```
 
 This is why:
+
 1. ✅ Images appeared immediately after upload (Base64 in State)
 2. ❌ Images disappeared after screen change (State reset, no DB data)
 
@@ -44,7 +47,7 @@ const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     validateImageFile(file, 5);
 
     // Show loading toast
-    toast.loading('Bild wird hochgeladen...');
+    toast.loading("Bild wird hochgeladen...");
 
     // Upload to Supabase Storage
     const imageUrl = await uploadProjectImage(project.id, file);
@@ -53,11 +56,13 @@ const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     onCoverImageChange(imageUrl);
 
     toast.dismiss();
-    toast.success('Bild erfolgreich hochgeladen!');
+    toast.success("Bild erfolgreich hochgeladen!");
   } catch (error) {
-    console.error('Error uploading image:', error);
+    console.error("Error uploading image:", error);
     toast.dismiss();
-    toast.error(error instanceof Error ? error.message : 'Fehler beim Hochladen');
+    toast.error(
+      error instanceof Error ? error.message : "Fehler beim Hochladen",
+    );
   }
 };
 ```
@@ -74,11 +79,11 @@ onCoverImageChange={async (imageUrl) => {
     ...prev,
     [currentProject.id]: imageUrl
   }));
-  
+
   // Update in database
   try {
-    await projectsApi.update(currentProject.id, { 
-      cover_image_url: imageUrl 
+    await projectsApi.update(currentProject.id, {
+      cover_image_url: imageUrl
     });
   } catch (error) {
     console.error('Error saving image URL to database:', error);
@@ -92,14 +97,16 @@ onCoverImageChange={async (imageUrl) => {
 ## 🔄 Complete Flow
 
 ### Before Fix:
+
 ```
 User clicks Cover → File Input → Base64 → State → ❌ Lost on reload
 ```
 
 ### After Fix:
+
 ```
-User clicks Cover 
-  → File Input 
+User clicks Cover
+  → File Input
   → Validate
   → Upload to Supabase Storage
   → Get signed URL (1 year validity)
@@ -112,17 +119,18 @@ User clicks Cover
 
 ## 🎯 What Changed
 
-| Component | Change | Result |
-|-----------|--------|--------|
-| `handleFileChange` | Upload to Supabase Storage instead of Base64 | Images stored permanently |
-| `onCoverImageChange` | Save URL to DB after upload | URLs persist across sessions |
-| `loadData` | Load `cover_image_url` from DB into State | Images appear after reload |
+| Component            | Change                                       | Result                       |
+| -------------------- | -------------------------------------------- | ---------------------------- |
+| `handleFileChange`   | Upload to Supabase Storage instead of Base64 | Images stored permanently    |
+| `onCoverImageChange` | Save URL to DB after upload                  | URLs persist across sessions |
+| `loadData`           | Load `cover_image_url` from DB into State    | Images appear after reload   |
 
 ---
 
 ## 🧪 Testing Flow
 
 ### Test 1: Upload Image to Existing Project
+
 1. Open any existing project
 2. Click on the cover image area
 3. Select an image file
@@ -136,6 +144,7 @@ User clicks Cover
    - ✅ **Image is still there!** 🎉
 
 ### Test 2: Create New Project with Image
+
 1. Click "Neues Projekt"
 2. Fill in project details
 3. Upload a cover image
@@ -149,6 +158,7 @@ User clicks Cover
    - ✅ **Image is still there!** 🎉
 
 ### Test 3: Error Handling
+
 1. Try to upload a file > 5MB
 2. **Expected:**
    - ✅ Toast error: "Image too large..."
@@ -219,11 +229,13 @@ User clicks Cover
 ## ✅ Result
 
 **Before:**
+
 - Upload → Visible ✅
 - Navigate away → Gone ❌
 - Reload → Gone ❌
 
 **After:**
+
 - Upload → Visible ✅
 - Navigate away → **Still there!** ✅
 - Reload → **Still there!** ✅

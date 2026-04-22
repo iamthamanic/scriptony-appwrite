@@ -52,15 +52,18 @@
 ## 🎯 **Was wurde geändert?**
 
 ### **Database:**
+
 - ✅ Neue Spalten: `episode_layout`, `season_engine`
 - ✅ Indizes für Performance
 
 ### **Backend API:**
+
 - ✅ POST /projects: Akzeptiert `episode_layout` & `season_engine`
 - ✅ PUT /projects/:id: Updated neue Felder
 - ✅ Version: 1.1.0
 
 ### **Frontend:**
+
 - ✅ Create Dialog: Conditional layout (Serie = 2 Felder, Film/Buch/Audio = 1 Feld)
 - ✅ Edit Mode: Vollständig implementiert
 - ✅ View Mode: Korrekte Anzeige
@@ -70,18 +73,23 @@
 ## 🐛 **Troubleshooting**
 
 ### **Problem: Migration schlägt fehl**
+
 ```
 Error: column "episode_layout" already exists
 ```
+
 **Lösung:** Felder existieren bereits, Step 1 überspringen ✅
 
 ---
 
 ### **Problem: Edge Function Deploy schlägt fehl**
+
 ```
 Error: Deployment failed
 ```
-**Lösung:** 
+
+**Lösung:**
+
 1. Prüfe ob kompletter Code kopiert wurde
 2. Prüfe auf Syntax-Fehler (sollte keine geben)
 3. Retry Deploy
@@ -89,7 +97,9 @@ Error: Deployment failed
 ---
 
 ### **Problem: Frontend zeigt keine neuen Felder**
+
 **Lösung:**
+
 1. Hard Refresh: Cmd+Shift+R / Ctrl+Shift+F5
 2. Clear Cache
 3. Prüfe ob Edge Function erfolgreich deployed wurde
@@ -99,6 +109,7 @@ Error: Deployment failed
 ## 📊 **Expected Data Structure**
 
 ### **Serie:**
+
 ```json
 {
   "type": "series",
@@ -110,6 +121,7 @@ Error: Deployment failed
 ```
 
 ### **Film:**
+
 ```json
 {
   "type": "film",
@@ -137,6 +149,7 @@ Error: Deployment failed
 ## 🔄 **Rollback (if needed)**
 
 ### **Database:**
+
 ```sql
 ALTER TABLE projects
 DROP COLUMN IF EXISTS episode_layout,
@@ -147,6 +160,7 @@ DROP INDEX IF EXISTS idx_projects_season_engine;
 ```
 
 ### **Edge Function:**
+
 Redeploy previous version from Git history.
 
 ---

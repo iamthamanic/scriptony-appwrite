@@ -1,11 +1,13 @@
 # 🔧 URGENT FIX: Add linked_project_id to worlds
 
 ## 🚨 Problem
+
 ```
 Error: API Error: 500 - Could not find the 'linked_project_id' column of 'worlds' in the schema cache
 ```
 
 ## ✅ Root Cause
+
 Die Spalte `linked_project_id` existiert nicht in der `worlds` Tabelle, aber das Frontend versucht sie zu setzen.
 
 ## 📝 Deploy Steps
@@ -24,7 +26,7 @@ Die Spalte `linked_project_id` existiert nicht in der `worlds` Tabelle, aber das
 -- =====================================================
 
 -- Add linked_project_id column to worlds table
-ALTER TABLE worlds 
+ALTER TABLE worlds
 ADD COLUMN IF NOT EXISTS linked_project_id UUID REFERENCES projects(id) ON DELETE SET NULL;
 
 -- Create index for faster lookups
@@ -43,11 +45,12 @@ Führe diese Query aus, um zu überprüfen, dass die Spalte existiert:
 ```sql
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
-WHERE table_name = 'worlds' 
+WHERE table_name = 'worlds'
   AND column_name = 'linked_project_id';
 ```
 
 **Expected Result:**
+
 ```
 column_name        | data_type | is_nullable
 linked_project_id  | uuid      | YES
@@ -64,11 +67,13 @@ linked_project_id  | uuid      | YES
 ## 🎯 Was wurde gefixt?
 
 ### Frontend (bereits deployed ✅):
+
 - `linkedProjectId` → `linked_project_id` (snake_case)
 - Type Interfaces angepasst
 - Save Button & Dropdown Menu aktualisiert
 
 ### Backend (SQL Migration erforderlich):
+
 - ✅ Spalte `linked_project_id` zur `worlds` Tabelle hinzugefügt
 - ✅ Foreign Key Constraint zu `projects` Tabelle
 - ✅ Index für Performance
@@ -79,6 +84,7 @@ linked_project_id  | uuid      | YES
 **File:** `/supabase/migrations/031_add_linked_project_id_to_worlds.sql`
 
 **Changes:**
+
 - Column: `linked_project_id UUID`
 - Nullable: YES (optional)
 - Foreign Key: `projects(id)`

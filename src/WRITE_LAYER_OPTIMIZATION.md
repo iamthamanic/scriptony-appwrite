@@ -5,12 +5,14 @@
 Die Write-Layer-Optimierung adressiert massive Performance-Lecks beim Editieren von Texten, speziell für lange Dokumente (600+ Seiten Bücher).
 
 **Vorher:**
+
 - ❌ API Call bei jedem Keystroke
 - ❌ Main Thread blockiert während Speichern
 - ❌ Gesamter Content wird initial geladen (150,000 Wörter = ~500KB JSON)
 - ❌ Kein Feedback während Speichern
 
 **Nachher:**
+
 - ✅ Debounced Save (1000ms)
 - ✅ Optimistic UI mit Status-Badge
 - ✅ Lazy Content Loading (on-demand)
@@ -39,6 +41,7 @@ const { save, saveImmediate, status, lastSaved, cancel } = useDebouncedSave({
 ```
 
 **Features:**
+
 - ✅ Debouncing (default 1000ms)
 - ✅ Status: `idle` | `saving` | `saved` | `error`
 - ✅ Queue System (verhindert Race Conditions)
@@ -46,6 +49,7 @@ const { save, saveImmediate, status, lastSaved, cancel } = useDebouncedSave({
 - ✅ Cleanup bei Unmount
 
 **Performance-Gewinn:**
+
 ```
 Vorher: 10 Keystrokes = 10 API Calls
 Nachher: 10 Keystrokes = 1 API Call (nach 1s Pause)
@@ -71,6 +75,7 @@ const { handleContentChange, saveStatus, lastSaved } = useEditorSave({
 ```
 
 **Features:**
+
 - ✅ Wrapper um `useDebouncedSave`
 - ✅ Optimistic UI Update (instant)
 - ✅ Debounced Backend Save (1000ms)
@@ -83,19 +88,18 @@ const { handleContentChange, saveStatus, lastSaved } = useEditorSave({
 **Visual Feedback für Save-Status.**
 
 ```tsx
-<SaveStatusBadge 
-  status={saveStatus} 
-  lastSaved={lastSaved}
-/>
+<SaveStatusBadge status={saveStatus} lastSaved={lastSaved} />
 ```
 
 **Stati:**
+
 - 🔄 **Saving**: Grau, Spinner-Icon, "Speichert..."
 - ✅ **Saved**: Grün, Check-Icon, "Gespeichert • vor 3s"
 - ❌ **Error**: Rot, Alert-Icon, "Fehler"
 - 👻 **Idle**: Versteckt
 
 **UX-Vorteile:**
+
 - ✅ User weiß IMMER ob gespeichert wurde
 - ✅ Kein Spinner während Tippen (non-blocking)
 - ✅ Automatisches Ausblenden nach 2s
@@ -114,15 +118,16 @@ const { handleContentChange, saveStatus, lastSaved } = useEditorSave({
   getAccessToken={getAccessToken}
   updateAPI={TimelineAPIV2.updateNode}
   onOptimisticUpdate={(id, content) => {
-    setScenes(scenes => scenes.map(sc => 
-      sc.id === id ? { ...sc, content } : sc
-    ));
+    setScenes((scenes) =>
+      scenes.map((sc) => (sc.id === id ? { ...sc, content } : sc)),
+    );
   }}
   onError={() => loadTimeline()}
 />
 ```
 
 **Features:**
+
 - ✅ Drop-in Replacement für RichTextEditorModal
 - ✅ Integriert `useEditorSave` Hook
 - ✅ Floating Save Status Badge (bottom-right)
@@ -145,6 +150,7 @@ const nodes = await getNodes({
 ```
 
 **Performance-Gewinn:**
+
 ```
 Buch mit 200 Sections:
 Vorher: 500KB JSON (alle Contents)
@@ -161,6 +167,7 @@ const { acts, sequences, scenes } = await loadTimelineStructure(projectId);
 ```
 
 **Features:**
+
 - ✅ Lädt ALLE Nodes (Acts, Chapters, Sections)
 - ✅ Ohne `content` Feld
 - ✅ Mit `title`, `wordCount`, `metadata` (aber ohne Text)
@@ -175,6 +182,7 @@ const { content, wordCount } = await fetchNodeContent(sectionId);
 ```
 
 **Features:**
+
 - ✅ Lazy-Load von einzelnem Content
 - ✅ On-Demand beim Expand
 - ✅ Cached (siehe Performance-System)
@@ -189,6 +197,7 @@ const { content, wordCount } = await fetchNodeContent(sectionId);
 ```
 
 **UX:**
+
 ```
 User klickt auf Section
   → Skeleton erscheint (instant)
@@ -206,7 +215,7 @@ User klickt auf Section
 const loadTimeline = async () => {
   // Option 1: Lazy Load (nur Struktur)
   const { acts, sequences, scenes } = await loadTimelineStructure(projectId);
-  
+
   // Option 2: Full Load (für kleine Projekte)
   const data = await batchLoadTimeline(projectId);
 };
@@ -216,15 +225,15 @@ const loadTimeline = async () => {
 
 ```typescript
 const loadSectionContent = async (sectionId: string) => {
-  setLoadingContent(prev => new Set(prev).add(sectionId));
-  
+  setLoadingContent((prev) => new Set(prev).add(sectionId));
+
   try {
     const { content } = await fetchNodeContent(sectionId);
-    setScenes(scenes => scenes.map(sc =>
-      sc.id === sectionId ? { ...sc, content } : sc
-    ));
+    setScenes((scenes) =>
+      scenes.map((sc) => (sc.id === sectionId ? { ...sc, content } : sc)),
+    );
   } finally {
-    setLoadingContent(prev => {
+    setLoadingContent((prev) => {
       const next = new Set(prev);
       next.delete(sectionId);
       return next;
@@ -236,13 +245,15 @@ const loadSectionContent = async (sectionId: string) => {
 #### c) Skeleton während Loading
 
 ```tsx
-{loadingContent.has(scene.id) ? (
-  <ContentSkeletonInline />
-) : scene.content ? (
-  <ReadonlyTiptapView content={scene.content} />
-) : (
-  <em>Klicken zum Schreiben...</em>
-)}
+{
+  loadingContent.has(scene.id) ? (
+    <ContentSkeletonInline />
+  ) : scene.content ? (
+    <ReadonlyTiptapView content={scene.content} />
+  ) : (
+    <em>Klicken zum Schreiben...</em>
+  );
+}
 ```
 
 ---
@@ -251,21 +262,21 @@ const loadSectionContent = async (sectionId: string) => {
 
 ### Debounced Save Impact
 
-| Metrik | Vorher | Nachher | Verbesserung |
-|--------|---------|---------|--------------|
-| API Calls/Minute | 60-120 | 1-5 | **95% weniger** |
-| Main Thread Block | 50-100ms | 0ms | **100% besser** |
-| Input Lag | 20-50ms | 0ms | **Instant** |
-| Network Traffic | ~500KB/min | ~10KB/min | **98% weniger** |
+| Metrik            | Vorher     | Nachher   | Verbesserung    |
+| ----------------- | ---------- | --------- | --------------- |
+| API Calls/Minute  | 60-120     | 1-5       | **95% weniger** |
+| Main Thread Block | 50-100ms   | 0ms       | **100% besser** |
+| Input Lag         | 20-50ms    | 0ms       | **Instant**     |
+| Network Traffic   | ~500KB/min | ~10KB/min | **98% weniger** |
 
 ### Lazy Loading Impact
 
-| Metrik | Vorher (600 Seiten) | Nachher | Verbesserung |
-|--------|---------------------|---------|--------------|
-| Initial Load | 5-10s | 0.5-1s | **10x schneller** |
-| Initial Payload | ~500KB | ~50KB | **10x kleiner** |
-| Memory Usage | 50-100MB | 5-10MB | **10x weniger** |
-| Time to Interactive | 8-12s | 1-2s | **6x schneller** |
+| Metrik              | Vorher (600 Seiten) | Nachher | Verbesserung      |
+| ------------------- | ------------------- | ------- | ----------------- |
+| Initial Load        | 5-10s               | 0.5-1s  | **10x schneller** |
+| Initial Payload     | ~500KB              | ~50KB   | **10x kleiner**   |
+| Memory Usage        | 50-100MB            | 5-10MB  | **10x weniger**   |
+| Time to Interactive | 8-12s               | 1-2s    | **6x schneller**  |
 
 ---
 
@@ -273,20 +284,20 @@ const loadSectionContent = async (sectionId: string) => {
 
 ### Read-Layer SLA
 
-| Operation | Target | Actual | Status |
-|-----------|--------|--------|--------|
-| Initial Load | < 2s | ~1s | ✅ PASS |
+| Operation      | Target  | Actual | Status  |
+| -------------- | ------- | ------ | ------- |
+| Initial Load   | < 2s    | ~1s    | ✅ PASS |
 | Section Expand | < 500ms | ~200ms | ✅ PASS |
-| Content Fetch | < 1s | ~300ms | ✅ PASS |
+| Content Fetch  | < 1s    | ~300ms | ✅ PASS |
 
 ### Write-Layer SLA
 
-| Operation | Target | Actual | Status |
-|-----------|--------|--------|--------|
-| Keystroke Response | < 16ms | ~5ms | ✅ PASS |
-| Optimistic Update | < 50ms | ~10ms | ✅ PASS |
-| Save Debounce | 1000ms | 1000ms | ✅ PASS |
-| Backend Save | < 2s | ~500ms | ✅ PASS |
+| Operation          | Target | Actual | Status  |
+| ------------------ | ------ | ------ | ------- |
+| Keystroke Response | < 16ms | ~5ms   | ✅ PASS |
+| Optimistic Update  | < 50ms | ~10ms  | ✅ PASS |
+| Save Debounce      | 1000ms | 1000ms | ✅ PASS |
+| Backend Save       | < 2s   | ~500ms | ✅ PASS |
 
 ---
 
@@ -343,6 +354,7 @@ import { FixedSizeList } from 'react-window';
 ```
 
 **Performance-Gewinn:**
+
 - Rendert nur sichtbare Items
 - 50+ Sections → Nur ~10 im DOM
 - 5x schneller Rendering
@@ -355,9 +367,7 @@ import { FixedSizeList } from 'react-window';
 // Load content in chunks während User scrollt
 const loadVisibleContent = async () => {
   const visibleSections = getVisibleSections();
-  await Promise.all(
-    visibleSections.map(id => fetchNodeContent(id))
-  );
+  await Promise.all(visibleSections.map((id) => fetchNodeContent(id)));
 };
 ```
 
@@ -384,6 +394,7 @@ syncToBackend(pendingChanges);
 ### Für bestehende Components
 
 **Alt:**
+
 ```tsx
 <RichTextEditorModal
   value={content}
@@ -394,6 +405,7 @@ syncToBackend(pendingChanges);
 ```
 
 **Neu:**
+
 ```tsx
 <DebouncedRichTextEditor
   value={content}
@@ -401,7 +413,7 @@ syncToBackend(pendingChanges);
   getAccessToken={getAccessToken}
   updateAPI={api.update}
   onOptimisticUpdate={(id, content) => {
-    setState(prev => updateContent(prev, id, content));
+    setState((prev) => updateContent(prev, id, content));
   }}
 />
 ```
@@ -418,6 +430,7 @@ Die Write-Layer-Optimierung bringt **massive Performance-Verbesserungen**:
 4. ✅ **Status Badge** → Klares User Feedback
 
 **Ergebnis:**
+
 - Tippen ist jetzt **genauso flüssig** wie die Navigation
 - 600-Seiten-Buch ist **benutzbar**
 - SLAs werden **eingehalten**

@@ -30,36 +30,44 @@ lib/
 **Purpose:** Centralized HTTP client for requests to Scriptony backend functions (via configured base URL).
 
 **Usage:**
+
 ```typescript
-import { apiGet, apiPost, apiPut, apiDelete, isApiError } from './lib/api-client';
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  isApiError,
+} from "./lib/api-client";
 
 // GET request
-const result = await apiGet('/projects');
+const result = await apiGet("/projects");
 
 if (isApiError(result)) {
-  console.error('Error:', result.error.message);
+  console.error("Error:", result.error.message);
 } else {
-  console.log('Projects:', result.data.projects);
+  console.log("Projects:", result.data.projects);
 }
 
 // POST request
-const createResult = await apiPost('/projects', {
-  title: 'My Script',
-  description: 'A great story',
+const createResult = await apiPost("/projects", {
+  title: "My Script",
+  description: "A great story",
 });
 
 // Using unwrapApiResult for try/catch style
-import { unwrapApiResult } from './lib/api-client';
+import { unwrapApiResult } from "./lib/api-client";
 
 try {
-  const data = unwrapApiResult(await apiGet('/projects'));
+  const data = unwrapApiResult(await apiGet("/projects"));
   console.log(data);
 } catch (error) {
-  console.error('API Error:', error.message);
+  console.error("API Error:", error.message);
 }
 ```
 
 **Key Features:**
+
 - ✅ Automatic authentication with the current session JWT (Appwrite)
 - ✅ Request/response logging
 - ✅ Timeout handling (configurable)
@@ -68,6 +76,7 @@ try {
 - ✅ Convenience methods (GET, POST, PUT, DELETE)
 
 **Rules:**
+
 - ❌ Don't use `fetch` directly in components
 - ✅ Use `apiGet`, `apiPost`, etc. from `api-client.ts`
 - ✅ Check `isApiError(result)` before accessing `result.data`
@@ -78,18 +87,20 @@ try {
 **Purpose:** Centralized, type-safe access to all environment variables with runtime validation.
 
 **Usage:**
+
 ```typescript
-import { backendConfig, appConfig, getAppwritePublicConfig } from './lib/env';
+import { backendConfig, appConfig, getAppwritePublicConfig } from "./lib/env";
 
 console.log(backendConfig.functionsBaseUrl);
 console.log(getAppwritePublicConfig()?.endpoint);
 
 if (appConfig.isDevelopment) {
-  console.log('Running in development mode');
+  console.log("Running in development mode");
 }
 ```
 
 **Key Features:**
+
 - ✅ Runtime validation with clear error messages
 - ✅ Type-safe access to environment variables
 - ✅ Singleton pattern for efficient caching
@@ -97,6 +108,7 @@ if (appConfig.isDevelopment) {
 - ✅ Development mode detection
 
 **Rules:**
+
 - ✅ Always use `getBackendConfig()` / `getAppwritePublicConfig()` from `lib/env`
 
 ### `config.ts` - Application Configuration
@@ -104,20 +116,21 @@ if (appConfig.isDevelopment) {
 **Purpose:** Centralized constants for app-wide configuration.
 
 **Usage:**
+
 ```typescript
-import { 
-  API_CONFIG, 
-  STORAGE_CONFIG, 
+import {
+  API_CONFIG,
+  STORAGE_CONFIG,
   STORAGE_KEYS,
   FEATURE_FLAGS,
-  USER_ROLES 
-} from './lib/config';
+  USER_ROLES,
+} from "./lib/config";
 
 // API configuration
 const endpoint = `${API_CONFIG.SERVER_BASE_PATH}/projects`;
 
 // Storage keys
-localStorage.setItem(STORAGE_KEYS.THEME, 'dark');
+localStorage.setItem(STORAGE_KEYS.THEME, "dark");
 
 // Feature flags
 if (FEATURE_FLAGS.AUTO_MIGRATION) {
@@ -131,6 +144,7 @@ if (user.role === USER_ROLES.SUPERADMIN) {
 ```
 
 **Categories:**
+
 - **API_CONFIG**: Server paths, timeouts, retry logic
 - **STORAGE_CONFIG**: File upload limits, bucket names, image settings
 - **STORAGE_KEYS**: LocalStorage key constants
@@ -141,6 +155,7 @@ if (user.role === USER_ROLES.SUPERADMIN) {
 - **TEST_USER**: Test credentials (dev only)
 
 **Rules:**
+
 - ❌ Never hardcode configuration values in components
 - ✅ Always reference constants from `config.ts`
 - ❌ Never commit sensitive data (use env.ts for secrets)
@@ -150,17 +165,19 @@ if (user.role === USER_ROLES.SUPERADMIN) {
 **Purpose:** Centralized type definitions for all domain models and API responses.
 
 **Usage:**
+
 ```typescript
-import type { User, Project, World, Character, ApiResult } from './lib/types';
+import type { User, Project, World, Character, ApiResult } from "./lib/types";
 
 // Use in components
 const [project, setProject] = useState<Project | null>(null);
 
 // Use in API responses
-const result: ApiResult<{ projects: Project[] }> = await apiGet('/projects');
+const result: ApiResult<{ projects: Project[] }> = await apiGet("/projects");
 ```
 
 **Available Types:**
+
 - **Auth**: `User`, `UserRole`, `AuthSession`
 - **Projects**: `Project`, `Episode`, `Character`, `Scene`
 - **Worldbuilding**: `World`, `WorldCategory`, `WorldItem`
@@ -169,6 +186,7 @@ const result: ApiResult<{ projects: Project[] }> = await apiGet('/projects');
 - **Stats**: `Stats`, `Analytics`
 
 **Rules:**
+
 - ✅ Always import types with `import type { ... }`
 - ✅ Use these types instead of inline types
 - ❌ Don't use `any` - find or create a proper type
@@ -178,32 +196,40 @@ const result: ApiResult<{ projects: Project[] }> = await apiGet('/projects');
 **Purpose:** Consistent formatting of dates, numbers, and text across the application.
 
 **Date Formatting (`formatters/date.ts`):**
-```typescript
-import { formatDate } from './lib';
 
-formatDate(new Date(), 'short');      // "11.10.2025"
-formatDate(new Date(), 'medium');     // "11. Okt 2025"
-formatDate(new Date(), 'relative');   // "vor 2 Stunden"
-formatDate(new Date(), 'datetime');   // "11.10.2025 14:30"
+```typescript
+import { formatDate } from "./lib";
+
+formatDate(new Date(), "short"); // "11.10.2025"
+formatDate(new Date(), "medium"); // "11. Okt 2025"
+formatDate(new Date(), "relative"); // "vor 2 Stunden"
+formatDate(new Date(), "datetime"); // "11.10.2025 14:30"
 ```
 
 **Number Formatting (`formatters/number.ts`):**
-```typescript
-import { formatNumber, formatFileSize, formatDuration, formatPercent } from './lib';
 
-formatNumber(1234567);           // "1.234.567" (DE) or "1,234,567" (EN)
-formatFileSize(1536000);         // "1.5 MB"
-formatDuration(150);             // "2 Std. 30 Min."
-formatPercent(75);               // "75%"
+```typescript
+import {
+  formatNumber,
+  formatFileSize,
+  formatDuration,
+  formatPercent,
+} from "./lib";
+
+formatNumber(1234567); // "1.234.567" (DE) or "1,234,567" (EN)
+formatFileSize(1536000); // "1.5 MB"
+formatDuration(150); // "2 Std. 30 Min."
+formatPercent(75); // "75%"
 ```
 
 **Text Formatting (`formatters/text.ts`):**
-```typescript
-import { truncate, slugify, getInitials, pluralize } from './lib';
 
-truncate("Long text...", 20);       // "Long text..."
-slugify("Hello World!");            // "hello-world"
-getInitials("Max Mustermann");      // "MM"
+```typescript
+import { truncate, slugify, getInitials, pluralize } from "./lib";
+
+truncate("Long text...", 20); // "Long text..."
+slugify("Hello World!"); // "hello-world"
+getInitials("Max Mustermann"); // "MM"
 pluralize(5, "Projekt", "Projekte"); // "5 Projekte"
 ```
 
@@ -212,8 +238,9 @@ pluralize(5, "Projekt", "Projekte"); // "5 Projekte"
 **Purpose:** Reusable validation functions for form inputs and user data.
 
 **Usage:**
+
 ```typescript
-import { validateEmail, validatePassword, validateRequired } from './lib';
+import { validateEmail, validatePassword, validateRequired } from "./lib";
 
 const emailResult = validateEmail("user@example.com");
 if (!emailResult.valid) {
@@ -221,13 +248,12 @@ if (!emailResult.valid) {
 }
 
 const passwordStrength = getPasswordStrength("MyPass123!");
-console.log(passwordStrength.score);    // 0-4
+console.log(passwordStrength.score); // 0-4
 console.log(passwordStrength.feedback); // ["Starkes Passwort"]
 
 // Combine validators
-const validator = combineValidators(
-  validateRequired,
-  (value) => validateLength(value, 3, 50, "Projektname")
+const validator = combineValidators(validateRequired, (value) =>
+  validateLength(value, 3, 50, "Projektname"),
 );
 ```
 
@@ -236,45 +262,49 @@ const validator = combineValidators(
 **Purpose:** Common helper functions for arrays, objects, functions, and more.
 
 **Array Utilities:**
-```typescript
-import { unique, groupBy, chunk, shuffle } from './lib';
 
-unique([1, 2, 2, 3]);              // [1, 2, 3]
-groupBy(users, u => u.role);       // { admin: [...], user: [...] }
-chunk([1,2,3,4,5], 2);             // [[1,2], [3,4], [5]]
-shuffle([1, 2, 3]);                // [2, 3, 1] (random)
+```typescript
+import { unique, groupBy, chunk, shuffle } from "./lib";
+
+unique([1, 2, 2, 3]); // [1, 2, 3]
+groupBy(users, (u) => u.role); // { admin: [...], user: [...] }
+chunk([1, 2, 3, 4, 5], 2); // [[1,2], [3,4], [5]]
+shuffle([1, 2, 3]); // [2, 3, 1] (random)
 ```
 
 **Function Utilities:**
+
 ```typescript
-import { debounce, throttle, retry, sleep } from './lib';
+import { debounce, throttle, retry, sleep } from "./lib";
 
 const debouncedSearch = debounce(search, 300);
 const throttledScroll = throttle(handleScroll, 100);
 
-await retry(fetchData, 3, 1000);   // Retry 3 times with 1s delay
-await sleep(2000);                 // Wait 2 seconds
+await retry(fetchData, 3, 1000); // Retry 3 times with 1s delay
+await sleep(2000); // Wait 2 seconds
 ```
 
 **Object Utilities:**
+
 ```typescript
-import { deepClone, pick, omit, deepMerge } from './lib';
+import { deepClone, pick, omit, deepMerge } from "./lib";
 
 const copy = deepClone(original);
-const subset = pick(user, 'id', 'name', 'email');
-const without = omit(user, 'password');
+const subset = pick(user, "id", "name", "email");
+const without = omit(user, "password");
 const merged = deepMerge(defaults, userConfig);
 ```
 
 **Browser Utilities:**
+
 ```typescript
-import { copyToClipboard, downloadFile, getLocalStorage } from './lib';
+import { copyToClipboard, downloadFile, getLocalStorage } from "./lib";
 
 await copyToClipboard("Text to copy");
 downloadFile("content", "file.txt", "text/plain");
 
-const theme = getLocalStorage('theme', 'light');
-setLocalStorage('theme', 'dark');
+const theme = getLocalStorage("theme", "light");
+setLocalStorage("theme", "dark");
 ```
 
 ## 🎯 Best Practices
@@ -283,11 +313,11 @@ setLocalStorage('theme', 'dark');
 
 ```typescript
 // ✅ Good - Import from central export
-import { formatDate, validateEmail, apiGet } from './lib';
+import { formatDate, validateEmail, apiGet } from "./lib";
 
 // ❌ Bad - Direct imports
-import { formatDate } from './lib/formatters/date';
-import { validateEmail } from './lib/validators/input';
+import { formatDate } from "./lib/formatters/date";
+import { validateEmail } from "./lib/validators/input";
 ```
 
 ### 2. Use typed validators
@@ -301,8 +331,8 @@ if (!result.valid) {
 }
 
 // ❌ Bad - No validation
-if (!email.includes('@')) {
-  setError('Invalid email');
+if (!email.includes("@")) {
+  setError("Invalid email");
 }
 ```
 
@@ -329,29 +359,34 @@ Planned additions:
 ## 📖 Best Practices
 
 1. **Import from lib, not ad-hoc env reads:**
+
    ```typescript
    // ✅ Good
-   import { backendConfig, getAppwritePublicConfig } from './lib/env';
+   import { backendConfig, getAppwritePublicConfig } from "./lib/env";
    ```
 
 2. **Use typed constants:**
+
    ```typescript
    // ❌ Bad
-   localStorage.getItem('theme');
-   
+   localStorage.getItem("theme");
+
    // ✅ Good
-   import { STORAGE_KEYS } from './lib/config';
+   import { STORAGE_KEYS } from "./lib/config";
    localStorage.getItem(STORAGE_KEYS.THEME);
    ```
 
 3. **Leverage type safety:**
+
    ```typescript
    // ❌ Bad
-   if (user.role === 'superadmin') { }
-   
+   if (user.role === "superadmin") {
+   }
+
    // ✅ Good
-   import { USER_ROLES } from './lib/config';
-   if (user.role === USER_ROLES.SUPERADMIN) { }
+   import { USER_ROLES } from "./lib/config";
+   if (user.role === USER_ROLES.SUPERADMIN) {
+   }
    ```
 
 ## 🔍 Debugging

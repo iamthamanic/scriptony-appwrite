@@ -1,16 +1,18 @@
 # ✅ Worldbuilding Features - ERFOLGREICH IMPLEMENTIERT
 
 **Status:** ✅ Implementiert am 09.11.2025  
-**Scope:** 3-Punkte-Menü + Rename Bug Fix  
+**Scope:** 3-Punkte-Menü + Rename Bug Fix
 
 ---
 
 ## 🎯 Implementierte Features
 
 ### 1. ✅ **3-Punkte-Menü für Welten**
+
 Identisches Feature-Set wie bei Projekten:
 
 #### Grid View
+
 ```tsx
 <DropdownMenu>
   <DropdownMenuTrigger>
@@ -19,22 +21,23 @@ Identisches Feature-Set wie bei Projekten:
     </Button>
   </DropdownMenuTrigger>
   <DropdownMenuContent>
-    - Welt bearbeiten (Edit2)
-    - Welt duplizieren (Copy)
-    - Welt löschen (Trash2)
+    - Welt bearbeiten (Edit2) - Welt duplizieren (Copy) - Welt löschen (Trash2)
   </DropdownMenuContent>
 </DropdownMenu>
 ```
 
 #### List View
+
 Gleiche Menüpunkte, kleinere Icons (size-3.5)
 
 ---
 
 ### 2. ✅ **Welt duplizieren**
+
 Neue Funktion: `handleDuplicateWorld(worldId)`
 
 **Features:**
+
 - Kopiert Name mit "(Kopie)" Suffix
 - Kopiert Beschreibung
 - Kopiert linkedProjectId
@@ -43,10 +46,11 @@ Neue Funktion: `handleDuplicateWorld(worldId)`
 - Toast Notification
 
 **Code:**
+
 ```typescript
 const handleDuplicateWorld = async (worldId: string) => {
   try {
-    const originalWorld = worlds.find(w => w.id === worldId);
+    const originalWorld = worlds.find((w) => w.id === worldId);
     if (!originalWorld) return;
 
     const duplicated = await worldsApi.create({
@@ -55,15 +59,18 @@ const handleDuplicateWorld = async (worldId: string) => {
       linkedProjectId: originalWorld.linkedProjectId,
     });
 
-    setWorlds([...worlds, {
-      ...duplicated,
-      lastEdited: new Date(duplicated.updated_at || new Date())
-    }]);
-    
+    setWorlds([
+      ...worlds,
+      {
+        ...duplicated,
+        lastEdited: new Date(duplicated.updated_at || new Date()),
+      },
+    ]);
+
     if (worldCoverImages[worldId]) {
-      setWorldCoverImages(prev => ({
+      setWorldCoverImages((prev) => ({
         ...prev,
-        [duplicated.id]: worldCoverImages[worldId]
+        [duplicated.id]: worldCoverImages[worldId],
       }));
     }
 
@@ -78,9 +85,11 @@ const handleDuplicateWorld = async (worldId: string) => {
 ---
 
 ### 3. ✅ **Rename Bug Fix**
+
 **Problem:** Welt umbenennen funktionierte nicht (Änderungen nicht gespeichert)
 
-**Root Cause:** 
+**Root Cause:**
+
 ```typescript
 // VORHER (BUG):
 onClick={() => {
@@ -93,6 +102,7 @@ onClick={() => {
 ```
 
 **Lösung:**
+
 ```typescript
 // NACHHER (FIXED):
 onClick={async () => {
@@ -110,20 +120,31 @@ onClick={async () => {
 ```
 
 **Neue Funktion:** `handleUpdateWorld()`
+
 ```typescript
 const handleUpdateWorld = async (
-  worldId: string, 
-  updates: { name: string; description: string; linkedProjectId?: string | null }
+  worldId: string,
+  updates: {
+    name: string;
+    description: string;
+    linkedProjectId?: string | null;
+  },
 ) => {
   try {
     const updated = await worldsApi.update(worldId, updates);
-    
-    setWorlds(worlds.map(w => w.id === worldId ? {
-      ...w,
-      ...updated,
-      lastEdited: new Date(updated.updated_at || new Date())
-    } : w));
-    
+
+    setWorlds(
+      worlds.map((w) =>
+        w.id === worldId
+          ? {
+              ...w,
+              ...updated,
+              lastEdited: new Date(updated.updated_at || new Date()),
+            }
+          : w,
+      ),
+    );
+
     toast.success("Welt erfolgreich aktualisiert!");
   } catch (error) {
     console.error("Error updating world:", error);
@@ -135,13 +156,16 @@ const handleUpdateWorld = async (
 ---
 
 ### 4. ✅ **Delete Dialog verschoben**
+
 **Warum?** Gleicher Grund wie bei Projects
 
 **Vorher:**
+
 - Delete Dialog nur in WorldDetail
 - Konnte nicht aus Weltliste gelöscht werden
 
 **Nachher:**
+
 - Delete Dialog in Hauptkomponente (WorldbuildingPage)
 - Funktioniert aus:
   - ✅ Weltliste (Grid View)
@@ -149,23 +173,28 @@ const handleUpdateWorld = async (
   - ✅ Welt-Detail
 
 **Code:**
+
 ```tsx
-{/* Delete World Dialog - Must be here for list delete! */}
-<AlertDialog open={showDeleteDialog && !selectedWorldId} onOpenChange={setShowDeleteDialog}>
-  <AlertDialogContent>
-    {/* ... */}
-  </AlertDialogContent>
-</AlertDialog>
+{
+  /* Delete World Dialog - Must be here for list delete! */
+}
+<AlertDialog
+  open={showDeleteDialog && !selectedWorldId}
+  onOpenChange={setShowDeleteDialog}
+>
+  <AlertDialogContent>{/* ... */}</AlertDialogContent>
+</AlertDialog>;
 ```
 
 **Verbesserung beim Delete Handler:**
+
 ```typescript
 const handleDeleteWorld = async () => {
   // Support both list delete AND detail delete
   const worldToDelete = selectedWorld || selectedWorldId;
-  
+
   // ... delete logic ...
-  
+
   // Navigate back only if we were in detail view
   if (selectedWorldId) {
     onNavigate("worldbuilding");
@@ -180,34 +209,45 @@ const handleDeleteWorld = async () => {
 ### `/components/pages/WorldbuildingPage.tsx`
 
 **Neue Imports:**
+
 ```typescript
 import { MoreVertical, Copy, BarChart3 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 ```
 
 **Neue State:**
+
 ```typescript
 const [selectedWorld, setSelectedWorld] = useState<string | null>(null);
 ```
 
 **Neue Funktionen:**
+
 ```typescript
 handleDuplicateWorld(worldId: string)
 handleUpdateWorld(worldId: string, updates: {...})
 ```
 
 **Geänderte Funktionen:**
+
 ```typescript
-handleDeleteWorld() // Jetzt unterstützt List + Detail Delete
+handleDeleteWorld(); // Jetzt unterstützt List + Detail Delete
 ```
 
 **UI Änderungen:**
+
 - Grid View: 3-Punkte-Menü hinzugefügt
 - List View: 3-Punkte-Menü hinzugefügt
 - Delete Dialog in Hauptkomponente verschoben
 - WorldDetail bekommt `onUpdate` Prop
 
 **WorldDetail Props:**
+
 ```typescript
 interface WorldDetailProps {
   // ... existing props
@@ -216,6 +256,7 @@ interface WorldDetailProps {
 ```
 
 **WorldDetail Changes:**
+
 - Edit Button ruft jetzt `onUpdate()` auf
 - Save funktioniert jetzt korrekt
 
@@ -226,6 +267,7 @@ interface WorldDetailProps {
 ### ✅ Zu testen:
 
 **Welt Duplizieren:**
+
 - [ ] Duplizieren aus Grid View funktioniert
 - [ ] Duplizieren aus List View funktioniert
 - [ ] Name hat "(Kopie)" Suffix
@@ -233,6 +275,7 @@ interface WorldDetailProps {
 - [ ] Toast erscheint
 
 **Welt Umbenennen:**
+
 - [ ] Welt öffnen
 - [ ] "Bearbeiten" klicken
 - [ ] Name ändern
@@ -241,6 +284,7 @@ interface WorldDetailProps {
 - [ ] Neuer Name ist persistent gespeichert ✅
 
 **Welt Löschen:**
+
 - [ ] Löschen aus Grid View (3-Punkte-Menü)
 - [ ] Löschen aus List View (3-Punkte-Menü)
 - [ ] Löschen aus Welt-Detail (Danger Zone)
@@ -248,6 +292,7 @@ interface WorldDetailProps {
 - [ ] Nach Delete: Zurück zur Liste (nur bei Detail)
 
 **3-Punkte-Menü:**
+
 - [ ] Menü erscheint in Grid View
 - [ ] Menü erscheint in List View
 - [ ] Klick auf Card öffnet Welt (nicht Menü)
@@ -259,6 +304,7 @@ interface WorldDetailProps {
 ## 🔍 Backend Compatibility
 
 ### worldsApi
+
 Alle benötigten Endpunkte existieren bereits:
 
 ```typescript
@@ -273,9 +319,11 @@ export const worldsApi = {
 ```
 
 ### Edge Function
+
 `/supabase/functions/scriptony-worldbuilding/index.ts`
 
 Alle Routes vorhanden:
+
 - ✅ GET /worlds
 - ✅ GET /worlds/:id
 - ✅ POST /worlds
@@ -288,16 +336,16 @@ Alle Routes vorhanden:
 
 ## 📊 Vergleich: Projects vs Worlds
 
-| Feature | Projects | Worlds | Status |
-|---------|----------|---------|--------|
-| 3-Punkte-Menü (Grid) | ✅ | ✅ | Identisch |
-| 3-Punkte-Menü (List) | ✅ | ✅ | Identisch |
-| Bearbeiten | ✅ | ✅ | Identisch |
-| Duplizieren | ✅ | ✅ | Identisch |
-| Statistiken & Logs | ✅ | ✅ | Implementiert! |
-| Löschen | ✅ | ✅ | Identisch |
-| Delete Dialog Position | Hauptkomp. | Hauptkomp. | Identisch |
-| Rename Bug | - | ✅ Fixed | - |
+| Feature                | Projects   | Worlds     | Status         |
+| ---------------------- | ---------- | ---------- | -------------- |
+| 3-Punkte-Menü (Grid)   | ✅         | ✅         | Identisch      |
+| 3-Punkte-Menü (List)   | ✅         | ✅         | Identisch      |
+| Bearbeiten             | ✅         | ✅         | Identisch      |
+| Duplizieren            | ✅         | ✅         | Identisch      |
+| Statistiken & Logs     | ✅         | ✅         | Implementiert! |
+| Löschen                | ✅         | ✅         | Identisch      |
+| Delete Dialog Position | Hauptkomp. | Hauptkomp. | Identisch      |
+| Rename Bug             | -          | ✅ Fixed   | -              |
 
 ---
 
@@ -308,6 +356,7 @@ Alle Routes vorhanden:
 **Komponente:** `/components/WorldStatsLogsDialog.tsx`
 
 **Features:**
+
 1. **Statistics Tab:**
    - Kategorien-Anzahl
    - Assets-Anzahl
@@ -324,12 +373,14 @@ Alle Routes vorhanden:
    - Zeitgruppierung (Heute, Gestern, etc.)
 
 **Integration:**
+
 - ✅ Menü-Item in Grid View
 - ✅ Menü-Item in List View
 - ✅ Dialog öffnet mit vollem Welt-Context
 - ✅ Stats werden live geladen via API
 
 **Backend API Calls:**
+
 ```typescript
 // Categories & Assets
 GET /scriptony-worldbuilding/worlds/${worldId}/categories
@@ -342,6 +393,7 @@ GET /scriptony-logs/worlds/${worldId}
 ```
 
 **Status:**
+
 - ✅ Dialog funktioniert
 - ✅ Stats werden korrekt geladen
 - ⏳ Activity Logs noch nicht im Backend implementiert (zeigt "Noch keine Aktivitäten")
@@ -383,7 +435,7 @@ GET /scriptony-logs/worlds/${worldId}
 **Files Changed:** 2 (`WorldbuildingPage.tsx`, `WorldStatsLogsDialog.tsx`)  
 **Files Created:** 1 (`WorldStatsLogsDialog.tsx`)  
 **Backend Changes:** 0 (alles war bereits vorhanden)  
-**Breaking Changes:** Keine  
+**Breaking Changes:** Keine
 
 ---
 

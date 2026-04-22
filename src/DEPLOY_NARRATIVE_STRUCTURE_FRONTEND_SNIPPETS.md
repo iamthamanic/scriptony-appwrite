@@ -11,11 +11,18 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
 **Location:** In der `ProjectDetail` Funktion, nach Zeile 2317 (nach `const [editedDuration, ...]`)
 
 **Code:**
+
 ```typescript
-  const [editedNarrativeStructure, setEditedNarrativeStructure] = useState(project.narrative_structure || "");
-  const [editedBeatTemplate, setEditedBeatTemplate] = useState(project.beat_template || "");
-  const [editedGenresMulti, setEditedGenresMulti] = useState<string[]>(project.genre ? project.genre.split(", ") : []);
-  const [showTypeChangeWarning, setShowTypeChangeWarning] = useState(false);
+const [editedNarrativeStructure, setEditedNarrativeStructure] = useState(
+  project.narrative_structure || "",
+);
+const [editedBeatTemplate, setEditedBeatTemplate] = useState(
+  project.beat_template || "",
+);
+const [editedGenresMulti, setEditedGenresMulti] = useState<string[]>(
+  project.genre ? project.genre.split(", ") : [],
+);
+const [showTypeChangeWarning, setShowTypeChangeWarning] = useState(false);
 ```
 
 ---
@@ -25,28 +32,46 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
 **Location:** In der `ProjectDetail` Funktion, im `useEffect` das bei Zeile 2334 beginnt
 
 **ERSETZE:**
+
 ```typescript
-  useEffect(() => {
-    setEditedTitle(project.title || "");
-    setEditedLogline(project.logline || "");
-    setEditedType(project.type || "");
-    setEditedGenre(project.genre || "");
-    setEditedDuration(project.duration || "");
-  }, [project.id, project.title, project.logline, project.type, project.genre, project.duration]);
+useEffect(() => {
+  setEditedTitle(project.title || "");
+  setEditedLogline(project.logline || "");
+  setEditedType(project.type || "");
+  setEditedGenre(project.genre || "");
+  setEditedDuration(project.duration || "");
+}, [
+  project.id,
+  project.title,
+  project.logline,
+  project.type,
+  project.genre,
+  project.duration,
+]);
 ```
 
 **MIT:**
+
 ```typescript
-  useEffect(() => {
-    setEditedTitle(project.title || "");
-    setEditedLogline(project.logline || "");
-    setEditedType(project.type || "");
-    setEditedGenre(project.genre || "");
-    setEditedDuration(project.duration || "");
-    setEditedNarrativeStructure(project.narrative_structure || "");
-    setEditedBeatTemplate(project.beat_template || "");
-    setEditedGenresMulti(project.genre ? project.genre.split(", ") : []);
-  }, [project.id, project.title, project.logline, project.type, project.genre, project.duration, project.narrative_structure, project.beat_template]);
+useEffect(() => {
+  setEditedTitle(project.title || "");
+  setEditedLogline(project.logline || "");
+  setEditedType(project.type || "");
+  setEditedGenre(project.genre || "");
+  setEditedDuration(project.duration || "");
+  setEditedNarrativeStructure(project.narrative_structure || "");
+  setEditedBeatTemplate(project.beat_template || "");
+  setEditedGenresMulti(project.genre ? project.genre.split(", ") : []);
+}, [
+  project.id,
+  project.title,
+  project.logline,
+  project.type,
+  project.genre,
+  project.duration,
+  project.narrative_structure,
+  project.beat_template,
+]);
 ```
 
 ---
@@ -54,6 +79,7 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
 ## 📦 SNIPPET 3: Create Dialog - Project Type erweitern (ca. Zeile 998)
 
 **ERSETZE:**
+
 ```tsx
 <SelectContent>
   <SelectItem value="film">Film</SelectItem>
@@ -63,6 +89,7 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
 ```
 
 **MIT:**
+
 ```tsx
 <SelectContent>
   <SelectItem value="film">Film</SelectItem>
@@ -79,8 +106,11 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
 **Location:** NACH dem Project Type Grid (ca. Zeile 1005) und VOR "Welt verknüpfen"
 
 **Code:**
+
 ```tsx
-{/* Narrative Structure & Story Beat Template */}
+{
+  /* Narrative Structure & Story Beat Template */
+}
 <div className="grid grid-cols-2 gap-3">
   {/* Narrative Structure */}
   <div className="space-y-2">
@@ -88,26 +118,33 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
       <Label htmlFor="narrative">Narrative Structure</Label>
       <Info className="size-3.5 text-muted-foreground" />
     </div>
-    <Select value={newProjectNarrativeStructure} onValueChange={setNewProjectNarrativeStructure}>
+    <Select
+      value={newProjectNarrativeStructure}
+      onValueChange={setNewProjectNarrativeStructure}
+    >
       <SelectTrigger className="h-11">
         <SelectValue placeholder="None" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="">None</SelectItem>
         {/* Film Structures */}
-        {newProjectType === 'film' && (
+        {newProjectType === "film" && (
           <>
             <SelectItem value="3-act">3-Akt (klassisch)</SelectItem>
             <SelectItem value="4-act">4-Akt (gesplittetes Act II)</SelectItem>
             <SelectItem value="5-act">5-Akt (Freytag)</SelectItem>
-            <SelectItem value="8-sequences">8-Sequenzen ("Mini-Movies")</SelectItem>
-            <SelectItem value="kishotenketsu">Kishōtenketsu (4-Teiler)</SelectItem>
+            <SelectItem value="8-sequences">
+              8-Sequenzen ("Mini-Movies")
+            </SelectItem>
+            <SelectItem value="kishotenketsu">
+              Kishōtenketsu (4-Teiler)
+            </SelectItem>
             <SelectItem value="non-linear">Nicht-linear / Rashomon</SelectItem>
             <SelectItem value="custom">Custom</SelectItem>
           </>
         )}
         {/* Serie Structures */}
-        {newProjectType === 'series' && (
+        {newProjectType === "series" && (
           <>
             <SelectItem value="traditional">Traditionelle TV-Serie</SelectItem>
             <SelectItem value="miniseries">Mini-Serie</SelectItem>
@@ -115,7 +152,7 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
           </>
         )}
         {/* Buch Structures */}
-        {newProjectType === 'book' && (
+        {newProjectType === "book" && (
           <>
             <SelectItem value="3-part">3-Teiler (klassisch)</SelectItem>
             <SelectItem value="hero-journey">Heldenreise</SelectItem>
@@ -123,7 +160,7 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
           </>
         )}
         {/* Hörspiel Structures */}
-        {newProjectType === 'audio' && (
+        {newProjectType === "audio" && (
           <>
             <SelectItem value="episodic">Episodisch</SelectItem>
             <SelectItem value="serial">Serial Story</SelectItem>
@@ -132,7 +169,7 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
         )}
       </SelectContent>
     </Select>
-    {newProjectNarrativeStructure === 'custom' && (
+    {newProjectNarrativeStructure === "custom" && (
       <Input
         placeholder="Custom Structure Name eingeben..."
         value={customNarrativeStructure}
@@ -141,14 +178,19 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
       />
     )}
     <p className="text-xs text-muted-foreground">
-      {newProjectNarrativeStructure === '' ? 'No specific narrative structure' : ''}
+      {newProjectNarrativeStructure === ""
+        ? "No specific narrative structure"
+        : ""}
     </p>
   </div>
 
   {/* Story Beat Template */}
   <div className="space-y-2">
     <Label htmlFor="beat-template">Story Beat Template</Label>
-    <Select value={newProjectBeatTemplate} onValueChange={setNewProjectBeatTemplate}>
+    <Select
+      value={newProjectBeatTemplate}
+      onValueChange={setNewProjectBeatTemplate}
+    >
       <SelectTrigger className="h-11">
         <SelectValue placeholder="None" />
       </SelectTrigger>
@@ -157,13 +199,19 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
         <SelectItem value="lite-7">A) Lite-7 (minimal)</SelectItem>
         <SelectItem value="save-the-cat">B) Save the Cat! (15)</SelectItem>
         <SelectItem value="syd-field">C) Syd Field / Paradigm</SelectItem>
-        <SelectItem value="heroes-journey">D) Heldenreise (Vogler, 12)</SelectItem>
-        <SelectItem value="seven-point">E) Seven-Point Structure (Dan Wells)</SelectItem>
-        <SelectItem value="8-sequences">F) 8-Sequenzen ("Mini-Movies" als Beats)</SelectItem>
+        <SelectItem value="heroes-journey">
+          D) Heldenreise (Vogler, 12)
+        </SelectItem>
+        <SelectItem value="seven-point">
+          E) Seven-Point Structure (Dan Wells)
+        </SelectItem>
+        <SelectItem value="8-sequences">
+          F) 8-Sequenzen ("Mini-Movies" als Beats)
+        </SelectItem>
       </SelectContent>
     </Select>
   </div>
-</div>
+</div>;
 ```
 
 ---
@@ -175,10 +223,11 @@ Diese Datei enthält alle Code-Snippets, die in `/components/pages/ProjectsPage.
 **Suche nach:** `const newProject = await projectsApi.create({`
 
 **ERSETZE den gesamten API Call:**
+
 ```typescript
 // Prepare narrative structure value (handle custom input)
 let narrativeStructureValue = newProjectNarrativeStructure;
-if (newProjectNarrativeStructure === 'custom' && customNarrativeStructure) {
+if (newProjectNarrativeStructure === "custom" && customNarrativeStructure) {
   narrativeStructureValue = `custom:${customNarrativeStructure}`;
 }
 
@@ -189,7 +238,7 @@ const newProject = await projectsApi.create({
   genre: selectedGenres.join(", "),
   duration: newProjectDuration,
   linkedWorldId: newProjectLinkedWorld,
-  inspirations: projectInspirationNotes.filter(note => note.trim()),
+  inspirations: projectInspirationNotes.filter((note) => note.trim()),
   coverImage: newProjectCoverImage,
   narrative_structure: narrativeStructureValue || undefined,
   beat_template: newProjectBeatTemplate || undefined,
@@ -197,6 +246,7 @@ const newProject = await projectsApi.create({
 ```
 
 **UND füge zum Reset hinzu (unten in der Funktion):**
+
 ```typescript
 setNewProjectNarrativeStructure("");
 setNewProjectBeatTemplate("");
@@ -208,6 +258,7 @@ setCustomNarrativeStructure("");
 ## 📦 SNIPPET 6: Edit Mode - Project Type erweitern (ca. Zeile 2945)
 
 **ERSETZE:**
+
 ```tsx
 <SelectContent>
   <SelectItem value="film">Film</SelectItem>
@@ -217,6 +268,7 @@ setCustomNarrativeStructure("");
 ```
 
 **MIT:**
+
 ```tsx
 <SelectContent>
   <SelectItem value="film">Film</SelectItem>
@@ -233,9 +285,12 @@ setCustomNarrativeStructure("");
 **Location:** Im Edit Mode (isEditingInfo === true), ca. Zeile 2946-2960
 
 **ERSETZE das Genre Dropdown:**
+
 ```tsx
 <div>
-  <Label htmlFor="project-genre" className="text-sm mb-2 block font-bold">Genre</Label>
+  <Label htmlFor="project-genre" className="text-sm mb-2 block font-bold">
+    Genre
+  </Label>
   <Select value={editedGenre} onValueChange={setEditedGenre}>
     <SelectTrigger id="project-genre" className="h-9">
       <SelectValue />
@@ -253,14 +308,24 @@ setCustomNarrativeStructure("");
 ```
 
 **MIT Multi-Select Pills (muss col-span-3 haben!):**
+
 ```tsx
 <div className="col-span-3">
   <Label className="text-sm mb-2 block font-bold">Genres</Label>
   <div className="flex flex-wrap gap-2">
     {[
-      "Action", "Abenteuer", "Komödie", "Drama", "Fantasy", 
-      "Horror", "Mystery", "Romantik", "Science Fiction", 
-      "Slice of Life", "Übernatürlich", "Thriller"
+      "Action",
+      "Abenteuer",
+      "Komödie",
+      "Drama",
+      "Fantasy",
+      "Horror",
+      "Mystery",
+      "Romantik",
+      "Science Fiction",
+      "Slice of Life",
+      "Übernatürlich",
+      "Thriller",
     ].map((genre) => (
       <button
         key={genre}
@@ -268,7 +333,7 @@ setCustomNarrativeStructure("");
           setEditedGenresMulti((prev) =>
             prev.includes(genre)
               ? prev.filter((g) => g !== genre)
-              : [...prev, genre]
+              : [...prev, genre],
           );
         }}
         className={`px-3 py-1.5 rounded-lg border transition-all text-sm ${
@@ -294,31 +359,46 @@ setCustomNarrativeStructure("");
 **Location:** NACH dem Genres Feld (im Edit Mode)
 
 **Code:**
+
 ```tsx
-{/* Narrative Structure & Beat Template - Grid 2 Spalten */}
+{
+  /* Narrative Structure & Beat Template - Grid 2 Spalten */
+}
 <div className="grid grid-cols-2 gap-3 col-span-3">
   {/* Narrative Structure */}
   <div>
-    <Label htmlFor="narrative-structure" className="text-sm mb-2 block font-bold">Narrative Structure</Label>
-    <Select value={editedNarrativeStructure} onValueChange={setEditedNarrativeStructure}>
+    <Label
+      htmlFor="narrative-structure"
+      className="text-sm mb-2 block font-bold"
+    >
+      Narrative Structure
+    </Label>
+    <Select
+      value={editedNarrativeStructure}
+      onValueChange={setEditedNarrativeStructure}
+    >
       <SelectTrigger id="narrative-structure" className="h-9">
         <SelectValue placeholder="Keine" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="">None</SelectItem>
         {/* Film Structures */}
-        {editedType === 'film' && (
+        {editedType === "film" && (
           <>
             <SelectItem value="3-act">3-Akt (klassisch)</SelectItem>
             <SelectItem value="4-act">4-Akt (gesplittetes Act II)</SelectItem>
             <SelectItem value="5-act">5-Akt (Freytag)</SelectItem>
-            <SelectItem value="8-sequences">8-Sequenzen ("Mini-Movies")</SelectItem>
-            <SelectItem value="kishotenketsu">Kishōtenketsu (4-Teiler)</SelectItem>
+            <SelectItem value="8-sequences">
+              8-Sequenzen ("Mini-Movies")
+            </SelectItem>
+            <SelectItem value="kishotenketsu">
+              Kishōtenketsu (4-Teiler)
+            </SelectItem>
             <SelectItem value="non-linear">Nicht-linear / Rashomon</SelectItem>
           </>
         )}
         {/* Serie Structures */}
-        {editedType === 'series' && (
+        {editedType === "series" && (
           <>
             <SelectItem value="traditional">Traditionelle TV-Serie</SelectItem>
             <SelectItem value="miniseries">Mini-Serie</SelectItem>
@@ -326,7 +406,7 @@ setCustomNarrativeStructure("");
           </>
         )}
         {/* Buch Structures */}
-        {editedType === 'book' && (
+        {editedType === "book" && (
           <>
             <SelectItem value="3-part">3-Teiler (klassisch)</SelectItem>
             <SelectItem value="hero-journey">Heldenreise</SelectItem>
@@ -334,7 +414,7 @@ setCustomNarrativeStructure("");
           </>
         )}
         {/* Hörspiel Structures */}
-        {editedType === 'audio' && (
+        {editedType === "audio" && (
           <>
             <SelectItem value="episodic">Episodisch</SelectItem>
             <SelectItem value="serial">Serial Story</SelectItem>
@@ -347,7 +427,9 @@ setCustomNarrativeStructure("");
 
   {/* Beat Template */}
   <div>
-    <Label htmlFor="beat-template" className="text-sm mb-2 block font-bold">Beat Template</Label>
+    <Label htmlFor="beat-template" className="text-sm mb-2 block font-bold">
+      Beat Template
+    </Label>
     <Select value={editedBeatTemplate} onValueChange={setEditedBeatTemplate}>
       <SelectTrigger id="beat-template" className="h-9">
         <SelectValue placeholder="Kein Template" />
@@ -357,13 +439,19 @@ setCustomNarrativeStructure("");
         <SelectItem value="lite-7">A) Lite-7 (minimal)</SelectItem>
         <SelectItem value="save-the-cat">B) Save the Cat! (15)</SelectItem>
         <SelectItem value="syd-field">C) Syd Field / Paradigm</SelectItem>
-        <SelectItem value="heroes-journey">D) Heldenreise (Vogler, 12)</SelectItem>
-        <SelectItem value="seven-point">E) Seven-Point Structure (Dan Wells)</SelectItem>
-        <SelectItem value="8-sequences">F) 8-Sequenzen ("Mini-Movies" als Beats)</SelectItem>
+        <SelectItem value="heroes-journey">
+          D) Heldenreise (Vogler, 12)
+        </SelectItem>
+        <SelectItem value="seven-point">
+          E) Seven-Point Structure (Dan Wells)
+        </SelectItem>
+        <SelectItem value="8-sequences">
+          F) 8-Sequenzen ("Mini-Movies" als Beats)
+        </SelectItem>
       </SelectContent>
     </Select>
   </div>
-</div>
+</div>;
 ```
 
 ---
@@ -373,6 +461,7 @@ setCustomNarrativeStructure("");
 **Location:** In der `handleSaveProjectInfo` Funktion
 
 **ERSETZE den kompletten Function Body:**
+
 ```typescript
 const handleSaveProjectInfo = async () => {
   try {
@@ -401,7 +490,7 @@ const handleSaveProjectInfo = async () => {
 
     toast.success("Projekt erfolgreich aktualisiert");
     setIsEditingInfo(false);
-    
+
     // Refresh data
     if (onUpdate) {
       onUpdate();
@@ -420,9 +509,15 @@ const handleSaveProjectInfo = async () => {
 **Location:** Ganz am ENDE der `ProjectDetail` Funktion, kurz vor dem schließenden `return` Statement
 
 **Code:**
+
 ```tsx
-{/* Project Type Change Warning Dialog */}
-<AlertDialog open={showTypeChangeWarning} onOpenChange={setShowTypeChangeWarning}>
+{
+  /* Project Type Change Warning Dialog */
+}
+<AlertDialog
+  open={showTypeChangeWarning}
+  onOpenChange={setShowTypeChangeWarning}
+>
   <AlertDialogContent>
     <AlertDialogHeader>
       <AlertDialogTitle className="flex items-center gap-2">
@@ -431,7 +526,8 @@ const handleSaveProjectInfo = async () => {
       </AlertDialogTitle>
       <AlertDialogDescription className="space-y-3 pt-2">
         <p>
-          Das Ändern des Projekttyps verändert die <strong>gesamte Projektstruktur</strong>.
+          Das Ändern des Projekttyps verändert die{" "}
+          <strong>gesamte Projektstruktur</strong>.
         </p>
         <div className="bg-muted p-3 rounded-lg text-sm space-y-2">
           <p className="font-bold">Was passiert:</p>
@@ -448,15 +544,12 @@ const handleSaveProjectInfo = async () => {
     </AlertDialogHeader>
     <AlertDialogFooter>
       <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-      <AlertDialogAction 
-        disabled 
-        className="opacity-50 cursor-not-allowed"
-      >
+      <AlertDialogAction disabled className="opacity-50 cursor-not-allowed">
         Transformieren (Coming Soon)
       </AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
-</AlertDialog>
+</AlertDialog>;
 ```
 
 ---
@@ -466,6 +559,7 @@ const handleSaveProjectInfo = async () => {
 **Location:** In der `handleCreateProject` Funktion, GANZ AM ANFANG (nach Validation für title)
 
 **Code:**
+
 ```typescript
 if (!selectedGenres || selectedGenres.length === 0) {
   toast.error("Bitte wähle mindestens ein Genre aus");

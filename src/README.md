@@ -7,10 +7,12 @@
 ## Quick Start
 
 ### Für neue Entwickler
+
 1. **Überblick:** [docs/README.md](../docs/README.md)
 2. **Architektur:** [docs/SOURCE_OF_TRUTH.md](../docs/SOURCE_OF_TRUTH.md)
 
 ### Backend & Deployment
+
 - **HTTP-API:** Ordner [`functions/`](../functions/) (deployte Services `scriptony-*`)
 - **Daten/Storage:** Appwrite (nur serverseitig aus Functions, siehe `functions/_shared/env.ts`)
 - **Env (Frontend):** `.env.local.example` und [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)

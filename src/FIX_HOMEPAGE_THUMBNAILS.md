@@ -1,6 +1,7 @@
 # 🔧 HOMEPAGE THUMBNAIL FIX
 
 ## 🚨 Issue
+
 Cover images appear on **ProjectsPage** ✅ but NOT on **HomePage** "Zuletzt bearbeitet" ❌
 
 ---
@@ -10,18 +11,20 @@ Cover images appear on **ProjectsPage** ✅ but NOT on **HomePage** "Zuletzt bea
 **Property Name Mismatch!**
 
 ### Database Schema:
+
 ```sql
 projects.cover_image_url  ← Stored here
 worlds.cover_image_url    ← Stored here
 ```
 
 ### HomePage Code (BEFORE):
+
 ```typescript
 // ❌ Line 50: Looking for wrong property
-thumbnailUrl: p.thumbnailUrl  // undefined!
+thumbnailUrl: p.thumbnailUrl; // undefined!
 
 // ❌ Line 65: Looking for wrong property
-thumbnailUrl: w.thumbnailUrl  // undefined!
+thumbnailUrl: w.thumbnailUrl; // undefined!
 ```
 
 Result: `thumbnailUrl` is always `undefined` → Icons shown instead of images
@@ -33,16 +36,17 @@ Result: `thumbnailUrl` is always `undefined` → Icons shown instead of images
 **File:** `/components/pages/HomePage.tsx` (Line 42-67)
 
 ### BEFORE (❌ Wrong):
+
 ```typescript
 if (projects && Array.isArray(projects)) {
   projects.forEach((p: any) => {
     items.push({
       id: p.id,
       title: p.title,
-      description: p.logline || '',
+      description: p.logline || "",
       lastEdited: new Date(p.last_edited || p.created_at),
-      type: 'project',
-      thumbnailUrl: p.thumbnailUrl,  // ❌ undefined
+      type: "project",
+      thumbnailUrl: p.thumbnailUrl, // ❌ undefined
       genre: p.genre,
       projectType: p.type,
     });
@@ -54,26 +58,27 @@ if (worlds && Array.isArray(worlds)) {
     items.push({
       id: w.id,
       title: w.name,
-      description: w.description || '',
+      description: w.description || "",
       lastEdited: new Date(w.updated_at || w.created_at),
-      type: 'world',
-      thumbnailUrl: w.thumbnailUrl,  // ❌ undefined
+      type: "world",
+      thumbnailUrl: w.thumbnailUrl, // ❌ undefined
     });
   });
 }
 ```
 
 ### AFTER (✅ Fixed):
+
 ```typescript
 if (projects && Array.isArray(projects)) {
   projects.forEach((p: any) => {
     items.push({
       id: p.id,
       title: p.title,
-      description: p.logline || '',
+      description: p.logline || "",
       lastEdited: new Date(p.last_edited || p.created_at),
-      type: 'project',
-      thumbnailUrl: p.cover_image_url,  // ✅ Correct DB column!
+      type: "project",
+      thumbnailUrl: p.cover_image_url, // ✅ Correct DB column!
       genre: p.genre,
       projectType: p.type,
     });
@@ -85,10 +90,10 @@ if (worlds && Array.isArray(worlds)) {
     items.push({
       id: w.id,
       title: w.name,
-      description: w.description || '',
+      description: w.description || "",
       lastEdited: new Date(w.updated_at || w.created_at),
-      type: 'world',
-      thumbnailUrl: w.cover_image_url,  // ✅ Correct DB column!
+      type: "world",
+      thumbnailUrl: w.cover_image_url, // ✅ Correct DB column!
     });
   });
 }
@@ -99,11 +104,13 @@ if (worlds && Array.isArray(worlds)) {
 ## 🎯 Complete Fix Chain
 
 ### Problem Summary:
+
 1. ✅ **Upload works** (ProjectDetail → Supabase Storage → DB)
 2. ✅ **ProjectsPage works** (Loads `cover_image_url` into State)
 3. ❌ **HomePage broken** (Looking for wrong property name)
 
 ### Solution:
+
 Just map the correct DB column name in HomePage!
 
 ---
@@ -185,10 +192,12 @@ Just map the correct DB column name in HomePage!
 ## ✅ Result
 
 **Before:**
+
 - HomePage: Icon only ❌
 - ProjectsPage: Image visible ✅
 
 **After:**
+
 - HomePage: **Image visible!** ✅
 - ProjectsPage: Image visible ✅
 

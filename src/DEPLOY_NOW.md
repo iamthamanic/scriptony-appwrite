@@ -9,24 +9,29 @@ Der Error `column shots.order_in_scene does not exist` kommt, weil die **alte Ve
 ## 📋 DEPLOYMENT ANLEITUNG
 
 ### Schritt 1: Supabase Dashboard öffnen
+
 ```
 https://supabase.com/dashboard/project/ctkouztastyirjywiduc
 ```
 
 ### Schritt 2: Edge Functions Navigation
+
 1. Linke Sidebar → **Edge Functions** klicken
 2. Liste der Functions → **scriptony-shots** finden
 
 ### Schritt 3: Function editieren
+
 1. Auf **scriptony-shots** klicken
 2. **Edit Function** oder **Code Editor** öffnen
 
 ### Schritt 4: Code Copy-Paste
+
 1. **Alten Code löschen**
 2. **Kompletten Code aus unten kopieren**
 3. **In Editor einfügen**
 
 ### Schritt 5: Deploy klicken
+
 1. **Deploy** Button klicken
 2. Warten bis Deployment abgeschlossen
 3. ✅ Fertig!
@@ -41,10 +46,10 @@ https://supabase.com/dashboard/project/ctkouztastyirjywiduc
 ```typescript
 /**
  * 🎬 SCRIPTONY SHOTS MICROSERVICE
- * 
+ *
  * 📅 CREATED: 2025-11-25
  * 🎯 PURPOSE: Shots Management (Film-specific)
- * 
+ *
  * ROUTES:
  * - GET    /shots?project_id=X          Bulk Load Shots
  * - GET    /shots/:sceneId               Shots for Scene
@@ -93,16 +98,14 @@ async function gzipCompress(text: string): Promise<Uint8Array> {
     start(controller) {
       controller.enqueue(encoder.encode(text));
       controller.close();
-    }
+    },
   });
 
-  const compressedStream = stream.pipeThrough(
-    new CompressionStream('gzip')
-  );
+  const compressedStream = stream.pipeThrough(new CompressionStream("gzip"));
 
   const reader = compressedStream.getReader();
   const chunks: Uint8Array[] = [];
-  
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -123,26 +126,29 @@ async function gzipCompress(text: string): Promise<Uint8Array> {
 function compress() {
   return async (c: any, next: any) => {
     await next();
-    
-    const acceptEncoding = c.req.header('Accept-Encoding') || '';
-    if (!acceptEncoding.includes('gzip')) {
+
+    const acceptEncoding = c.req.header("Accept-Encoding") || "";
+    if (!acceptEncoding.includes("gzip")) {
       return;
     }
 
-    const contentType = c.res.headers.get('Content-Type') || '';
-    if (!contentType.includes('application/json') && !contentType.includes('text/')) {
+    const contentType = c.res.headers.get("Content-Type") || "";
+    if (
+      !contentType.includes("application/json") &&
+      !contentType.includes("text/")
+    ) {
       return;
     }
 
     const body = await c.res.text();
     const compressed = await gzipCompress(body);
-    
+
     c.res = new Response(compressed, {
       status: c.res.status,
       headers: {
         ...Object.fromEntries(c.res.headers),
-        'Content-Encoding': 'gzip',
-        'Content-Length': compressed.length.toString(),
+        "Content-Encoding": "gzip",
+        "Content-Length": compressed.length.toString(),
       },
     });
   };
@@ -160,33 +166,41 @@ const supabase = createClient(
 );
 
 // CORS MUST BE FIRST!
-app.use("/*", cors({
-  origin: "*",
-  allowHeaders: ["Content-Type", "Authorization"],
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  exposeHeaders: ["Content-Length", "Content-Encoding"],
-  maxAge: 600,
-}));
+app.use(
+  "/*",
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders: ["Content-Length", "Content-Encoding"],
+    maxAge: 600,
+  }),
+);
 
-app.use('*', logger(console.log));
-app.use('*', compress());
+app.use("*", logger(console.log));
+app.use("*", compress());
 
 // =============================================================================
 // HELPER: GET USER FROM TOKEN
 // =============================================================================
 
-async function getUserIdFromToken(authHeader: string | undefined): Promise<string | null> {
+async function getUserIdFromToken(
+  authHeader: string | undefined,
+): Promise<string | null> {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
-  
+
   const token = authHeader.replace("Bearer ", "");
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
+
   if (error || !user) {
     return null;
   }
-  
+
   return user.id;
 }
 
@@ -195,19 +209,24 @@ async function getUserIdFromToken(authHeader: string | undefined): Promise<strin
 // =============================================================================
 
 app.get("/", (c) => {
-  return c.json({ 
-    status: "ok", 
+  return c.json({
+    status: "ok",
     function: "scriptony-shots",
     version: "1.0.0",
     message: "Scriptony Shots Microservice is running!",
-    features: ["shots-crud", "image-upload", "character-relations", "timestamp-tracking"],
+    features: [
+      "shots-crud",
+      "image-upload",
+      "character-relations",
+      "timestamp-tracking",
+    ],
     timestamp: new Date().toISOString(),
   });
 });
 
 app.get("/health", (c) => {
-  return c.json({ 
-    status: "ok", 
+  return c.json({
+    status: "ok",
     function: "scriptony-shots",
     version: "1.0.0",
     timestamp: new Date().toISOString(),
@@ -222,7 +241,7 @@ app.get("/health", (c) => {
 app.get("/shots", async (c) => {
   try {
     const projectId = c.req.query("project_id");
-    
+
     if (!projectId) {
       return c.json({ error: "project_id is required" }, 400);
     }
@@ -230,7 +249,8 @@ app.get("/shots", async (c) => {
     // Query shots with character relations
     const { data: shots, error } = await supabase
       .from("shots")
-      .select(`
+      .select(
+        `
         *,
         shot_characters (
           character_id,
@@ -240,7 +260,8 @@ app.get("/shots", async (c) => {
             color
           )
         )
-      `)
+      `,
+      )
       .eq("project_id", projectId)
       .order("scene_id", { ascending: true })
       .order("order_index", { ascending: true }); // FIXED: Changed from order_in_scene
@@ -251,13 +272,18 @@ app.get("/shots", async (c) => {
     }
 
     // Transform to include character_ids array
-    const transformedShots = shots?.map(shot => ({
-      ...shot,
-      character_ids: shot.shot_characters?.map((sc: any) => sc.character_id) || [],
-      characters: shot.shot_characters?.map((sc: any) => sc.characters).filter(Boolean) || [],
-    })) || [];
+    const transformedShots =
+      shots?.map((shot) => ({
+        ...shot,
+        character_ids:
+          shot.shot_characters?.map((sc: any) => sc.character_id) || [],
+        characters:
+          shot.shot_characters
+            ?.map((sc: any) => sc.characters)
+            .filter(Boolean) || [],
+      })) || [];
 
-    return c.json({ 
+    return c.json({
       shots: transformedShots,
       count: transformedShots.length,
     });
@@ -271,10 +297,11 @@ app.get("/shots", async (c) => {
 app.get("/shots/:sceneId", async (c) => {
   try {
     const sceneId = c.req.param("sceneId");
-    
+
     const { data: shots, error } = await supabase
       .from("shots")
-      .select(`
+      .select(
+        `
         *,
         shot_characters (
           character_id,
@@ -284,7 +311,8 @@ app.get("/shots/:sceneId", async (c) => {
             color
           )
         )
-      `)
+      `,
+      )
       .eq("scene_id", sceneId)
       .order("order_index", { ascending: true }); // FIXED: Changed from order_in_scene
 
@@ -293,13 +321,18 @@ app.get("/shots/:sceneId", async (c) => {
       return c.json({ error: error.message }, 500);
     }
 
-    const transformedShots = shots?.map(shot => ({
-      ...shot,
-      character_ids: shot.shot_characters?.map((sc: any) => sc.character_id) || [],
-      characters: shot.shot_characters?.map((sc: any) => sc.characters).filter(Boolean) || [],
-    })) || [];
+    const transformedShots =
+      shots?.map((shot) => ({
+        ...shot,
+        character_ids:
+          shot.shot_characters?.map((sc: any) => sc.character_id) || [],
+        characters:
+          shot.shot_characters
+            ?.map((sc: any) => sc.characters)
+            .filter(Boolean) || [],
+      })) || [];
 
-    return c.json({ 
+    return c.json({
       shots: transformedShots,
       count: transformedShots.length,
     });
@@ -328,10 +361,11 @@ app.post("/shots", async (c) => {
         .eq("scene_id", scene_id)
         .order("order_index", { ascending: false }) // FIXED: Changed from order_in_scene
         .limit(1);
-      
-      finalOrder = existingShots && existingShots.length > 0 
-        ? existingShots[0].order_index + 1  // FIXED: Changed from order_in_scene
-        : 0;
+
+      finalOrder =
+        existingShots && existingShots.length > 0
+          ? existingShots[0].order_index + 1 // FIXED: Changed from order_in_scene
+          : 0;
     }
 
     // Create shot
@@ -373,7 +407,7 @@ app.put("/shots/:id", async (c) => {
   try {
     const shotId = c.req.param("id");
     const body = await c.req.json();
-    
+
     // Extract character_ids for separate handling
     const { character_ids, ...updateData } = body;
 
@@ -399,10 +433,7 @@ app.put("/shots/:id", async (c) => {
     // Update character relations if provided
     if (character_ids !== undefined) {
       // Delete existing relations
-      await supabase
-        .from("shot_characters")
-        .delete()
-        .eq("shot_id", shotId);
+      await supabase.from("shot_characters").delete().eq("shot_id", shotId);
 
       // Insert new relations
       if (character_ids.length > 0) {
@@ -427,16 +458,10 @@ app.delete("/shots/:id", async (c) => {
     const shotId = c.req.param("id");
 
     // Delete character relations first (cascade should handle this, but being explicit)
-    await supabase
-      .from("shot_characters")
-      .delete()
-      .eq("shot_id", shotId);
+    await supabase.from("shot_characters").delete().eq("shot_id", shotId);
 
     // Delete shot
-    const { error } = await supabase
-      .from("shots")
-      .delete()
-      .eq("id", shotId);
+    const { error } = await supabase.from("shots").delete().eq("id", shotId);
 
     if (error) {
       console.error("Error deleting shot:", error);
@@ -454,7 +479,7 @@ app.delete("/shots/:id", async (c) => {
 app.post("/shots/reorder", async (c) => {
   try {
     const { scene_id, shot_orders } = await c.req.json();
-    
+
     if (!scene_id || !shot_orders || !Array.isArray(shot_orders)) {
       return c.json({ error: "scene_id and shot_orders array required" }, 400);
     }
@@ -463,11 +488,11 @@ app.post("/shots/reorder", async (c) => {
     const updates = shot_orders.map(({ shot_id, order }: any) =>
       supabase
         .from("shots")
-        .update({ 
+        .update({
           order_index: order, // FIXED: Changed from order_in_scene
           updated_at: new Date().toISOString(),
         })
-        .eq("id", shot_id)
+        .eq("id", shot_id),
     );
 
     await Promise.all(updates);
@@ -495,7 +520,7 @@ app.post("/shots/:id/upload-image", async (c) => {
 
     // Convert base64 to blob
     const base64Data = image_data.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const buffer = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
 
     // Upload to storage
     const filePath = `shots/${shotId}/${filename || Date.now()}.png`;
@@ -512,14 +537,14 @@ app.post("/shots/:id/upload-image", async (c) => {
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from("scriptony-images")
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("scriptony-images").getPublicUrl(filePath);
 
     // Update shot with image URL
     const { error: updateError } = await supabase
       .from("shots")
-      .update({ 
+      .update({
         image_url: publicUrl,
         updated_at: new Date().toISOString(),
       })
@@ -530,7 +555,7 @@ app.post("/shots/:id/upload-image", async (c) => {
       return c.json({ error: updateError.message }, 500);
     }
 
-    return c.json({ 
+    return c.json({
       image_url: publicUrl,
       success: true,
     });
@@ -554,12 +579,10 @@ app.post("/shots/:id/characters", async (c) => {
       return c.json({ error: "character_id is required" }, 400);
     }
 
-    const { error } = await supabase
-      .from("shot_characters")
-      .insert({
-        shot_id: shotId,
-        character_id,
-      });
+    const { error } = await supabase.from("shot_characters").insert({
+      shot_id: shotId,
+      character_id,
+    });
 
     if (error) {
       console.error("Error adding character to shot:", error);
@@ -639,6 +662,7 @@ https://ctkouztastyirjywiduc.supabase.co/functions/v1/scriptony-shots/health
 ## 📊 Was wird gefixt:
 
 ### Vorher:
+
 ```
 ❌ Error: column shots.order_in_scene does not exist
 ❌ Timeline Load: 4724ms (372% over SLA!)
@@ -646,6 +670,7 @@ https://ctkouztastyirjywiduc.supabase.co/functions/v1/scriptony-shots/health
 ```
 
 ### Nachher:
+
 ```
 ✅ Shots werden korrekt geladen
 ✅ Timeline Load: <1000ms
@@ -667,4 +692,4 @@ https://ctkouztastyirjywiduc.supabase.co/functions/v1/scriptony-shots/health
 
 ---
 
-*Siehe auch: `/EDGE_FUNCTION_BUGFIX.md` für technische Details*
+_Siehe auch: `/EDGE_FUNCTION_BUGFIX.md` für technische Details_

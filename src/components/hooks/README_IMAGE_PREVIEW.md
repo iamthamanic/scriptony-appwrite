@@ -17,17 +17,22 @@ Wiederverwendbarer Hook für Hover-Vorschau von Bildern in der gesamten Scripton
 import { useImagePreview } from "../hooks/useImagePreview";
 
 function MyComponent() {
-  const { handleMouseEnter, handleMouseLeave, ImagePreviewOverlay } = useImagePreview();
+  const { handleMouseEnter, handleMouseLeave, ImagePreviewOverlay } =
+    useImagePreview();
 
   return (
     <div>
       {/* Small thumbnail with hover preview */}
-      <div 
+      <div
         className="w-6 h-6 rounded overflow-hidden cursor-pointer"
         onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
         onMouseLeave={handleMouseLeave}
       >
-        <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+        <img
+          src={imageUrl}
+          alt="Preview"
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* Render overlay at end of component */}
@@ -49,6 +54,7 @@ function MyComponent() {
 ## Styling
 
 Das Popup hat:
+
 - Border mit `border-primary/20`
 - Shadow mit `shadow-2xl`
 - Smooth animations (`animate-in fade-in zoom-in-95`)

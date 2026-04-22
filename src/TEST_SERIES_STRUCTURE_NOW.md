@@ -117,51 +117,53 @@
 
 ## 📊 **Episode Layout Optionen (Serie)**
 
-| Wert | Label | Beschreibung |
-|------|-------|--------------|
-| `sitcom-2-act` | Sitcom 2-Akt | Teaser → A1 → A2 → Tag (22–24 min) |
-| `sitcom-4-act` | Sitcom 4-Akt | Mit Werbebreaks (22 min) |
-| `network-5-act` | Network 5-Akt | Teaser + 5 Akte + Tag (~45 min) |
-| `streaming-3-act` | Streaming 3-Akt | 45–60 min Content |
-| `streaming-4-act` | Streaming 4-Akt | Act II gesplittet (45–60 min) |
-| `anime-ab` | Anime A/B | Cold Open → OP → Part A → Eyecatch → Part B → ED → Preview (24 min) |
-| `sketch-segmented` | Sketch/Segmented | 3–5 Mini-Stories pro Episode |
-| `kids-11min` | Kids 11-Min | Zwei Kurzsegmente pro Slot |
+| Wert               | Label            | Beschreibung                                                        |
+| ------------------ | ---------------- | ------------------------------------------------------------------- |
+| `sitcom-2-act`     | Sitcom 2-Akt     | Teaser → A1 → A2 → Tag (22–24 min)                                  |
+| `sitcom-4-act`     | Sitcom 4-Akt     | Mit Werbebreaks (22 min)                                            |
+| `network-5-act`    | Network 5-Akt    | Teaser + 5 Akte + Tag (~45 min)                                     |
+| `streaming-3-act`  | Streaming 3-Akt  | 45–60 min Content                                                   |
+| `streaming-4-act`  | Streaming 4-Akt  | Act II gesplittet (45–60 min)                                       |
+| `anime-ab`         | Anime A/B        | Cold Open → OP → Part A → Eyecatch → Part B → ED → Preview (24 min) |
+| `sketch-segmented` | Sketch/Segmented | 3–5 Mini-Stories pro Episode                                        |
+| `kids-11min`       | Kids 11-Min      | Zwei Kurzsegmente pro Slot                                          |
 
 ---
 
 ## 📊 **Season Engine Optionen (Serie)**
 
-| Wert | Label | Beschreibung |
-|------|-------|--------------|
-| `serial` | Serial (Season-Arc) | Durchgehende Handlung |
-| `motw` | MOTW/COTW | Fall der Woche |
-| `hybrid` | Hybrid (Arc+MOTW) | Mischform |
-| `anthology` | Anthology (episodisch) | Jede Folge neu |
-| `seasonal-anthology` | Seasonal Anthology | Jede Staffel neu |
-| `limited-series` | Limited Series | 4–10 Teile, geschlossener Arc |
+| Wert                 | Label                  | Beschreibung                  |
+| -------------------- | ---------------------- | ----------------------------- |
+| `serial`             | Serial (Season-Arc)    | Durchgehende Handlung         |
+| `motw`               | MOTW/COTW              | Fall der Woche                |
+| `hybrid`             | Hybrid (Arc+MOTW)      | Mischform                     |
+| `anthology`          | Anthology (episodisch) | Jede Folge neu                |
+| `seasonal-anthology` | Seasonal Anthology     | Jede Staffel neu              |
+| `limited-series`     | Limited Series         | 4–10 Teile, geschlossener Arc |
 
 ---
 
 ## 📊 **Beat Template Optionen (Alle Typen)**
 
-| Wert | Label | Verfügbar für |
-|------|-------|---------------|
-| `lite-7` | Lite-7 (minimal) | Alle |
-| `save-the-cat` | Save the Cat! (15) | Alle |
-| `syd-field` | Syd Field / Paradigm | Alle |
-| `heroes-journey` | Heldenreise (Vogler, 12) | Alle |
-| `seven-point` | Seven-Point Structure | Alle |
-| `8-sequences` | 8-Sequenzen | Alle |
-| `story-circle` | Story Circle 8 | Alle |
-| `season-lite-5` | Season-Lite-5 (Macro) | **Nur Serie** ⭐ |
+| Wert             | Label                    | Verfügbar für    |
+| ---------------- | ------------------------ | ---------------- |
+| `lite-7`         | Lite-7 (minimal)         | Alle             |
+| `save-the-cat`   | Save the Cat! (15)       | Alle             |
+| `syd-field`      | Syd Field / Paradigm     | Alle             |
+| `heroes-journey` | Heldenreise (Vogler, 12) | Alle             |
+| `seven-point`    | Seven-Point Structure    | Alle             |
+| `8-sequences`    | 8-Sequenzen              | Alle             |
+| `story-circle`   | Story Circle 8           | Alle             |
+| `season-lite-5`  | Season-Lite-5 (Macro)    | **Nur Serie** ⭐ |
 
 ---
 
 ## 🐛 **Wenn etwas nicht funktioniert:**
 
 ### **Problem: Ich sehe keine neuen Felder**
+
 **Lösung:**
+
 1. Hard Refresh: `Cmd+Shift+R` (Mac) / `Ctrl+Shift+F5` (Windows)
 2. Clear Browser Cache
 3. Check Browser Console für Errors
@@ -169,14 +171,16 @@
 ---
 
 ### **Problem: Create Project schlägt fehl**
+
 **Lösung:**
+
 1. Öffne Browser Console (F12)
 2. Check Network Tab für API Errors
 3. Check ob Migration erfolgreich war:
    ```sql
    -- Im Supabase SQL Editor
-   SELECT column_name FROM information_schema.columns 
-   WHERE table_name = 'projects' 
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'projects'
    AND column_name IN ('episode_layout', 'season_engine');
    ```
 4. Sollte 2 Zeilen zurückgeben
@@ -184,7 +188,9 @@
 ---
 
 ### **Problem: Edge Function Error**
+
 **Check:**
+
 1. Gehe zu **Supabase Dashboard** → **Edge Functions** → **scriptony-projects**
 2. Check **Logs Tab** für Errors
 3. Check ob Version **1.1.0** deployed wurde
@@ -210,6 +216,7 @@
 **Feature ist LIVE und ready to use!** 🚀
 
 Du kannst jetzt:
+
 - ✅ Detaillierte Serien-Strukturen definieren
 - ✅ Episode-Layouts für verschiedene TV-Formate wählen
 - ✅ Season Engines (Serial, MOTW, Hybrid) auswählen

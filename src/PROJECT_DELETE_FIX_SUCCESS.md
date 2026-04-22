@@ -11,7 +11,7 @@
 Beim Löschen eines Projekts trat folgender Fehler auf:
 
 ```
-API Error: 500 - insert or update on table "activity_logs" 
+API Error: 500 - insert or update on table "activity_logs"
 violates foreign key constraint "activity_logs_project_id_fkey"
 ```
 
@@ -28,6 +28,7 @@ violates foreign key constraint "activity_logs_project_id_fkey"
 ### Warum trat das auf?
 
 Die Activity Logs Tabelle hat einen Foreign Key:
+
 ```sql
 activity_logs.project_id → projects.id (ON DELETE CASCADE)
 ```
@@ -39,11 +40,13 @@ Wenn das Projekt gelöscht wird, versuchen die Trigger der Child-Tabellen noch A
 ## ✅ Die Lösung
 
 ### Deployed SQL
+
 Siehe: `/DEPLOY_FIX_ALL_DELETE_TRIGGERS_FINAL.sql`
 
 Alle 4 DELETE-Trigger wurden angepasst:
 
 #### 1. Projects Trigger
+
 ```sql
 CREATE OR REPLACE FUNCTION log_project_changes()
 RETURNS TRIGGER AS $$
@@ -57,6 +60,7 @@ $$ LANGUAGE plpgsql;
 ```
 
 #### 2. Timeline Nodes Trigger
+
 ```sql
 CREATE OR REPLACE FUNCTION log_timeline_node_changes()
 RETURNS TRIGGER AS $$
@@ -70,6 +74,7 @@ $$ LANGUAGE plpgsql;
 ```
 
 #### 3. Shots Trigger
+
 ```sql
 CREATE OR REPLACE FUNCTION log_shot_changes()
 RETURNS TRIGGER AS $$
@@ -83,6 +88,7 @@ $$ LANGUAGE plpgsql;
 ```
 
 #### 4. Characters Trigger
+
 ```sql
 CREATE OR REPLACE FUNCTION log_character_changes()
 RETURNS TRIGGER AS $$
@@ -109,6 +115,7 @@ activity_logs.project_id → projects.id (ON DELETE CASCADE)
 ```
 
 **Flow:**
+
 1. Projekt wird gelöscht
 2. Trigger erstellen **KEINE** Activity Logs mehr für DELETE
 3. CASCADE löscht automatisch alle Activity Logs des Projekts
@@ -127,12 +134,15 @@ activity_logs.project_id → projects.id (ON DELETE CASCADE)
 ### ✅ Getestet am 09.11.2025
 
 **Testfall 1:** Projekt aus Projektliste löschen
+
 - Ergebnis: ✅ Erfolgreich
 
-**Testfall 2:** Projekt aus Projekt-Detail löschen  
+**Testfall 2:** Projekt aus Projekt-Detail löschen
+
 - Ergebnis: ✅ Erfolgreich
 
 **Testfall 3:** Projekt mit vielen Nodes/Shots/Characters löschen
+
 - Ergebnis: ✅ Erfolgreich
 
 ---
@@ -154,12 +164,14 @@ activity_logs.project_id → projects.id (ON DELETE CASCADE)
 ## 🔗 Verwandte Fixes
 
 ### Frontend Fixes
+
 - **AlertDialog Position:** Dialog wurde in Hauptkomponente verschoben
   - Vorher: Dialog erschien nur im Projekt-Detail
   - Nachher: Dialog erscheint auch in Projektliste
   - File: `/components/pages/ProjectsPage.tsx`
 
 ### Backend Fixes
+
 - **Alle DELETE-Trigger:** Überspringen DELETE-Operations
   - Deployed: `/DEPLOY_FIX_ALL_DELETE_TRIGGERS_FINAL.sql`
   - Status: ✅ Deployed
@@ -195,6 +207,7 @@ activity_logs.project_id → projects.id (ON DELETE CASCADE)
 **DEPLOYED & FUNKTIONIERT** ✅
 
 Projekt-Löschen funktioniert jetzt in beiden Szenarien:
+
 - ✅ Aus Projektliste (3-Punkte-Menü)
 - ✅ Aus Projekt-Detail (Header-Menü)
 

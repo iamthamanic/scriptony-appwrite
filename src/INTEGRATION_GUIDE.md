@@ -25,7 +25,7 @@ import { useOptimizedFilmDropdown } from '../hooks/useOptimizedFilmDropdown';
 
 export function FilmDropdown({ projectId, ... }) {
   // ... existing state ...
-  
+
   // 🚀 ADD THIS: Drop-in optimization hook
   const optimized = useOptimizedFilmDropdown({
     acts,
@@ -48,7 +48,7 @@ export function FilmDropdown({ projectId, ... }) {
 Ersetze Shot-Loading in der Scene-Component:
 
 ```typescript
-import { useLazyLoadShots } from '../hooks/useLazyLoadShots';
+import { useLazyLoadShots } from "../hooks/useLazyLoadShots";
 
 // In Scene Render:
 const { shots: sceneShots, loading } = useLazyLoadShots({
@@ -73,7 +73,7 @@ import { useOptimizedBookDropdown } from '../hooks/useOptimizedBookDropdown';
 
 export function BookDropdown({ projectId, ... }) {
   // ... existing state ...
-  
+
   // 🚀 ADD THIS: Drop-in optimization hook
   const optimized = useOptimizedBookDropdown({
     acts,
@@ -94,7 +94,7 @@ export function BookDropdown({ projectId, ... }) {
 Ersetze Content-Parsing in der Scene-Component:
 
 ```typescript
-import { useLazyLoadSceneContent } from '../hooks/useLazyLoadSceneContent';
+import { useLazyLoadSceneContent } from "../hooks/useLazyLoadSceneContent";
 
 // In Scene Render:
 const { content, wordCount, loading } = useLazyLoadSceneContent({
@@ -112,10 +112,10 @@ const { content, wordCount, loading } = useLazyLoadSceneContent({
 Ersetze deine Header-Components:
 
 ```typescript
-import { 
+import {
   MemoizedActHeader,
   MemoizedSequenceHeader,
-  MemoizedSceneHeader 
+  MemoizedSceneHeader
 } from './OptimizedDropdownComponents';
 
 // Statt:
@@ -144,6 +144,7 @@ import {
 ## ⚡ **Performance Impact**
 
 ### Ohne Optimierungen:
+
 ```
 Initial Load: 2-5 Sekunden
 Re-Render: ~500ms
@@ -151,6 +152,7 @@ Memory: ~50MB
 ```
 
 ### Mit Optimierungen:
+
 ```
 Initial Load: 200-500ms (10x schneller!)
 Re-Render: ~50ms (10x schneller!)
@@ -162,21 +164,25 @@ Memory: ~20MB (60% weniger!)
 ## 🔥 **Kritische Optimierungen die SOFORT wirken:**
 
 ### 1. **useOptimizedFilmDropdown / useOptimizedBookDropdown**
+
 - 1 Zeile hinzufügen
 - Filter-Operationen 10x schneller
 - **Impact: HIGH** ⚡⚡⚡
 
 ### 2. **useLazyLoadShots**
+
 - Shots erst laden wenn gebraucht
 - Initial Load 5x schneller
 - **Impact: CRITICAL** 🔥🔥🔥
 
 ### 3. **useLazyLoadSceneContent**
+
 - Content erst parsen wenn gebraucht
 - Initial Load 3x schneller (Books)
 - **Impact: HIGH** ⚡⚡⚡
 
 ### 4. **MemoizedComponents**
+
 - Verhindert unnötige Re-Renders
 - Smoother UI
 - **Impact: MEDIUM** ⚡⚡
@@ -196,12 +202,12 @@ Memory: ~20MB (60% weniger!)
 
 ```typescript
 // Vorher/Nachher Performance Logging:
-console.time('Dropdown Render');
+console.time("Dropdown Render");
 // ... render dropdown ...
-console.timeEnd('Dropdown Render');
+console.timeEnd("Dropdown Render");
 
 // Mit optimized Hook:
-console.log('Stats:', optimized.stats);
+console.log("Stats:", optimized.stats);
 // {
 //   totalScenes: 150,
 //   visibleScenes: 12,  // Nur 12 werden gerendert!
@@ -224,6 +230,7 @@ console.log('Stats:', optimized.stats);
 ## ❓ **Fragen?**
 
 Alle Dateien sind:
+
 - ✅ TypeScript ready
 - ✅ Rückwärtskompatibel
 - ✅ Keine Breaking Changes
