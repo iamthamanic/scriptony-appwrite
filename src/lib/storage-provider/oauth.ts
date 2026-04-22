@@ -8,7 +8,10 @@ import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../api-gateway";
 const SESSION_PREFIX = "scriptony_storage_oauth_";
 
 export function getStorageOAuthAuthorizeUrl(provider: string): string {
-  const base = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUTH, "/storage-providers/oauth/authorize");
+  const base = buildFunctionRouteUrl(
+    EDGE_FUNCTIONS.AUTH,
+    "/storage-providers/oauth/authorize",
+  );
   const redirectUri = getReturnUri();
   return `${base}?provider=${encodeURIComponent(provider)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
@@ -27,7 +30,9 @@ export interface StorageOAuthTokens {
   refresh_token?: string;
 }
 
-export function getStoredStorageOAuthTokens(provider: string): StorageOAuthTokens | null {
+export function getStoredStorageOAuthTokens(
+  provider: string,
+): StorageOAuthTokens | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(SESSION_PREFIX + provider);
@@ -58,7 +63,9 @@ export function parseStorageOAuthCallbackHash(): StorageOAuthTokens | null {
   const oauthPart = hash.includes("storage_oauth=")
     ? hash.split("#").find((s) => s.includes("storage_oauth=")) || ""
     : hash;
-  const params = new URLSearchParams(oauthPart.includes("?") ? oauthPart.split("?")[1] : oauthPart);
+  const params = new URLSearchParams(
+    oauthPart.includes("?") ? oauthPart.split("?")[1] : oauthPart,
+  );
   if (params.get("storage_oauth") !== "success") return null;
   const provider = params.get("provider");
   const access_token = params.get("access_token");

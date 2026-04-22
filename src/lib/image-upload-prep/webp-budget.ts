@@ -2,30 +2,34 @@
  * WebP encoding with size budget: lossless first, then lossy qualities, then modest downscale.
  */
 
-import { STORAGE_CONFIG } from '../config';
-import { fileToImageData } from './raster-decode';
+import { STORAGE_CONFIG } from "../config";
+import { fileToImageData } from "./raster-decode";
 
 function baseName(file: File): string {
-  const n = file.name.trim() || 'image';
-  return n.replace(/\.[^./\\]+$/, '') || 'image';
+  const n = file.name.trim() || "image";
+  return n.replace(/\.[^./\\]+$/, "") || "image";
 }
 
 function toWebpFile(buffer: ArrayBuffer, sourceFile: File): File {
-  const blob = new Blob([buffer], { type: 'image/webp' });
+  const blob = new Blob([buffer], { type: "image/webp" });
   return new File([blob], `${baseName(sourceFile)}.webp`, {
-    type: 'image/webp',
+    type: "image/webp",
     lastModified: Date.now(),
   });
 }
 
-async function scaleImageData(source: ImageData, targetW: number, targetH: number): Promise<ImageData> {
+async function scaleImageData(
+  source: ImageData,
+  targetW: number,
+  targetH: number,
+): Promise<ImageData> {
   const bmp = await createImageBitmap(source);
   try {
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = targetW;
     canvas.height = targetH;
-    const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) throw new Error('Canvas 2D nicht verfügbar');
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) throw new Error("Canvas 2D nicht verfügbar");
     ctx.drawImage(bmp, 0, 0, targetW, targetH);
     return ctx.getImageData(0, 0, targetW, targetH);
   } finally {
@@ -38,9 +42,9 @@ async function scaleImageData(source: ImageData, targetW: number, targetH: numbe
  */
 export async function rasterFileToWebpUnderMaxBytes(
   file: File,
-  maxBytes: number = STORAGE_CONFIG.MAX_FILE_SIZE
+  maxBytes: number = STORAGE_CONFIG.MAX_FILE_SIZE,
 ): Promise<File> {
-  const { encode } = await import('@jsquash/webp');
+  const { encode } = await import("@jsquash/webp");
   let imageData = await fileToImageData(file);
 
   const tryEncode = async (data: ImageData, opts: object) => {
@@ -91,6 +95,6 @@ export async function rasterFileToWebpUnderMaxBytes(
   }
 
   throw new Error(
-    `Bild konnte nicht unter ${(maxBytes / (1024 * 1024)).toFixed(0)} MB komprimiert werden.`
+    `Bild konnte nicht unter ${(maxBytes / (1024 * 1024)).toFixed(0)} MB komprimiert werden.`,
   );
 }

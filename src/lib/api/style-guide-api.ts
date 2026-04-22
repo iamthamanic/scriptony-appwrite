@@ -58,8 +58,12 @@ export interface StyleGuideResponse {
   styleGuide: StyleGuideData;
 }
 
-export async function getStyleGuide(projectId: string): Promise<StyleGuideData> {
-  const res = await apiClient.get<StyleGuideResponse>(`/style-guide/${projectId}`);
+export async function getStyleGuide(
+  projectId: string,
+): Promise<StyleGuideData> {
+  const res = await apiClient.get<StyleGuideResponse>(
+    `/style-guide/${projectId}`,
+  );
   return res.styleGuide;
 }
 
@@ -81,8 +85,14 @@ export type PatchStyleGuidePayload = Partial<{
   status: "draft" | "published";
 }>;
 
-export async function patchStyleGuide(projectId: string, body: PatchStyleGuidePayload): Promise<StyleGuideData> {
-  const res = await apiClient.patch<StyleGuideResponse>(`/style-guide/${projectId}`, body);
+export async function patchStyleGuide(
+  projectId: string,
+  body: PatchStyleGuidePayload,
+): Promise<StyleGuideData> {
+  const res = await apiClient.patch<StyleGuideResponse>(
+    `/style-guide/${projectId}`,
+    body,
+  );
   return res.styleGuide;
 }
 
@@ -104,43 +114,63 @@ export type CreateReferencePayload = {
   mimeType?: string;
 };
 
-export async function createReference(projectId: string, payload: CreateReferencePayload): Promise<StyleGuideData> {
-  const res = await apiClient.post<StyleGuideResponse & { item?: StyleGuideItem }>(
-    `/style-guide/${projectId}/references`,
-    payload
-  );
+export async function createReference(
+  projectId: string,
+  payload: CreateReferencePayload,
+): Promise<StyleGuideData> {
+  const res = await apiClient.post<
+    StyleGuideResponse & { item?: StyleGuideItem }
+  >(`/style-guide/${projectId}/references`, payload);
   return res.styleGuide;
 }
 
 export async function updateReference(
   referenceId: string,
-  body: Partial<CreateReferencePayload> & { order_index?: number }
+  body: Partial<CreateReferencePayload> & { order_index?: number },
 ): Promise<StyleGuideData> {
-  const res = await apiClient.patch<StyleGuideResponse>(`/style-guide/references/${referenceId}`, body);
-  return res.styleGuide;
-}
-
-export async function deleteReference(referenceId: string): Promise<StyleGuideData> {
-  const res = await apiClient.delete<StyleGuideResponse>(`/style-guide/references/${referenceId}`);
-  return res.styleGuide;
-}
-
-export async function reorderReferences(projectId: string, orderedIds: string[]): Promise<StyleGuideData> {
-  const res = await apiClient.post<StyleGuideResponse>(`/style-guide/${projectId}/references/reorder`, {
-    ordered_ids: orderedIds,
-  });
-  return res.styleGuide;
-}
-
-export async function extractPalette(referenceId: string, colors: string[]): Promise<StyleGuideData> {
-  const res = await apiClient.post<StyleGuideResponse>(
-    `/style-guide/references/${referenceId}/extract-palette`,
-    { colors }
+  const res = await apiClient.patch<StyleGuideResponse>(
+    `/style-guide/references/${referenceId}`,
+    body,
   );
   return res.styleGuide;
 }
 
-export async function buildPrompt(projectId: string): Promise<{ compactPrompt: string; styleGuide: StyleGuideData }> {
+export async function deleteReference(
+  referenceId: string,
+): Promise<StyleGuideData> {
+  const res = await apiClient.delete<StyleGuideResponse>(
+    `/style-guide/references/${referenceId}`,
+  );
+  return res.styleGuide;
+}
+
+export async function reorderReferences(
+  projectId: string,
+  orderedIds: string[],
+): Promise<StyleGuideData> {
+  const res = await apiClient.post<StyleGuideResponse>(
+    `/style-guide/${projectId}/references/reorder`,
+    {
+      ordered_ids: orderedIds,
+    },
+  );
+  return res.styleGuide;
+}
+
+export async function extractPalette(
+  referenceId: string,
+  colors: string[],
+): Promise<StyleGuideData> {
+  const res = await apiClient.post<StyleGuideResponse>(
+    `/style-guide/references/${referenceId}/extract-palette`,
+    { colors },
+  );
+  return res.styleGuide;
+}
+
+export async function buildPrompt(
+  projectId: string,
+): Promise<{ compactPrompt: string; styleGuide: StyleGuideData }> {
   return apiClient.post(`/style-guide/${projectId}/build-prompt`, {});
 }
 

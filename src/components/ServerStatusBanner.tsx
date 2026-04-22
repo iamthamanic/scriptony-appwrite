@@ -1,57 +1,68 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle, CheckCircle2, XCircle, ExternalLink, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 
 export function ServerStatusBanner() {
   // Disabled: the backend now exposes per-function health checks instead of one central endpoint.
-  const [status, setStatus] = useState<'checking' | 'online' | 'offline' | 'hidden'>('hidden');
+  const [status, setStatus] = useState<
+    "checking" | "online" | "offline" | "hidden"
+  >("hidden");
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     // Health check disabled for the provider-neutral multi-function backend.
     return;
-    
+
     // // Verzögerter Health Check (gibt dem Server Zeit zum Cold Start)
     // const timer = setTimeout(() => {
     //   checkServerStatus();
     // }, 2000); // 2s Verzögerung
-    // 
+    //
     // return () => clearTimeout(timer);
   }, []);
 
   const checkServerStatus = async () => {
-    const healthUrl = buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/health");
-    
+    const healthUrl = buildFunctionRouteUrl(
+      EDGE_FUNCTIONS.MAIN_SERVER,
+      "/health",
+    );
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout (für Cold Start)
-      
+
       const response = await fetch(healthUrl, {
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (response.ok) {
-        setStatus('online');
+        setStatus("online");
         // Auto-hide after 3 seconds if online
-        setTimeout(() => setStatus('hidden'), 3000);
+        setTimeout(() => setStatus("hidden"), 3000);
       } else {
-        setStatus('offline');
+        setStatus("offline");
       }
     } catch (error) {
-      console.error('[Server Status] Health check failed:', error);
-      setStatus('offline');
+      console.error("[Server Status] Health check failed:", error);
+      setStatus("offline");
     }
   };
 
-  if (status === 'hidden') {
+  if (status === "hidden") {
     return null;
   }
 
-  if (status === 'checking') {
+  if (status === "checking") {
     return (
       <Alert className="m-4 border-blue-500 bg-blue-50 dark:bg-blue-950">
         <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -62,7 +73,7 @@ export function ServerStatusBanner() {
     );
   }
 
-  if (status === 'online') {
+  if (status === "online") {
     return (
       <Alert className="m-4 border-green-500 bg-green-50 dark:bg-green-950">
         <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -111,21 +122,23 @@ export function ServerStatusBanner() {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => window.open('https://cloud.appwrite.io', '_blank')}
+                  onClick={() =>
+                    window.open("https://cloud.appwrite.io", "_blank")
+                  }
                   className="gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Backend Dashboard öffnen
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     // Open the quick solution guide
-                    const link = document.createElement('a');
-                    link.href = '/SERVER_OFFLINE_LÖSUNG.md';
-                    link.target = '_blank';
+                    const link = document.createElement("a");
+                    link.href = "/SERVER_OFFLINE_LÖSUNG.md";
+                    link.target = "_blank";
                     link.click();
                   }}
                   className="gap-2"
@@ -156,12 +169,16 @@ export function ServerStatusBanner() {
                     </div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Function Name:</span>
+                    <span className="text-muted-foreground">
+                      Function Name:
+                    </span>
                     <div>Multi-Function (scriptony-*)</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Status:</span>
-                    <div className="text-destructive">❌ Offline / Not Deployed</div>
+                    <div className="text-destructive">
+                      ❌ Offline / Not Deployed
+                    </div>
                   </div>
                 </div>
               </details>

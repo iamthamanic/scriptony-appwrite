@@ -66,14 +66,18 @@ function formatDurationDeFromStored(raw: unknown): string {
 
 /** PDF labels for concept blocks (editor uses German titles like „Kernhaken“ for hook). */
 function conceptBlockPdfTitle(row: Record<string, unknown>): string {
-  const typ = String(row.type || "").trim().toLowerCase();
+  const typ = String(row.type || "")
+    .trim()
+    .toLowerCase();
   const title = String(row.title || "").trim();
   if (typ === "hook" || title === "Kernhaken") return "Hook";
   if (title) return title;
   return typ || "Block";
 }
 
-function pickProjectFields(project: Record<string, unknown>): Record<string, unknown> {
+function pickProjectFields(
+  project: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of PDF_FIELD_KEYS) {
     if (project[k] !== undefined) out[k] = project[k];
@@ -83,7 +87,7 @@ function pickProjectFields(project: Record<string, unknown>): Record<string, unk
 
 export function buildProjectExportEnvelope(
   project: Record<string, unknown>,
-  meta?: { linkedWorldLabel?: string | null }
+  meta?: { linkedWorldLabel?: string | null },
 ): Record<string, unknown> {
   const p = pickProjectFields(project);
   if (meta?.linkedWorldLabel) {
@@ -121,7 +125,9 @@ export function exportFilenameBase(title: string, ext: "json" | "pdf"): string {
 }
 
 export function jsonBlobFromEnvelope(envelope: Record<string, unknown>): Blob {
-  return new Blob([JSON.stringify(envelope, null, 2)], { type: "application/json;charset=utf-8" });
+  return new Blob([JSON.stringify(envelope, null, 2)], {
+    type: "application/json;charset=utf-8",
+  });
 }
 
 async function rasterLogoForPdf(logoSrc: string): Promise<string> {
@@ -140,7 +146,8 @@ async function rasterLogoForPdf(logoSrc: string): Promise<string> {
   if (!ctx) throw new Error("project-export: no 2d context");
   ctx.clearRect(0, 0, size, size);
   ctx.globalAlpha = 1;
-  const scale = (Math.min(size / img.naturalWidth, size / img.naturalHeight) || 1) * 0.92;
+  const scale =
+    (Math.min(size / img.naturalWidth, size / img.naturalHeight) || 1) * 0.92;
   const w = img.naturalWidth * scale;
   const h = img.naturalHeight * scale;
   ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
@@ -148,7 +155,9 @@ async function rasterLogoForPdf(logoSrc: string): Promise<string> {
 }
 
 /** Loads project cover URL for embedding (CORS permitting). */
-async function loadCoverImageForPdf(url: string | undefined): Promise<{ dataUrl: string; iw: number; ih: number } | null> {
+async function loadCoverImageForPdf(
+  url: string | undefined,
+): Promise<{ dataUrl: string; iw: number; ih: number } | null> {
   if (!url || typeof url !== "string" || !url.trim()) return null;
   try {
     const img = new Image();
@@ -193,7 +202,7 @@ const PDF_THEME = {
  */
 export async function generateProjectInfoPdfBlob(
   project: Record<string, unknown>,
-  options: { logoSrc: string; linkedWorldLabel?: string | null }
+  options: { logoSrc: string; linkedWorldLabel?: string | null },
 ): Promise<Blob> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -209,7 +218,10 @@ export async function generateProjectInfoPdfBlob(
   const headerTitleGapMm = 3;
   const titleMaxW = pageW - 2 * margin - logoMm - headerTitleGapMm;
 
-  const coverUrl = typeof project.cover_image_url === "string" ? project.cover_image_url : undefined;
+  const coverUrl =
+    typeof project.cover_image_url === "string"
+      ? project.cover_image_url
+      : undefined;
   const [logoUrl, coverLoaded] = await Promise.all([
     rasterLogoForPdf(options.logoSrc),
     loadCoverImageForPdf(coverUrl),
@@ -267,7 +279,9 @@ export async function generateProjectInfoPdfBlob(
     doc.setFillColor(T.primary[0], T.primary[1], T.primary[2]);
     doc.roundedRect(headerBadgeX, 6, bw, badgeH, 1.4, 1.4, "F");
     doc.setTextColor(T.white[0], T.white[1], T.white[2]);
-    doc.text(brandLabel, headerBadgeX + bw / 2, 6 + badgeH - 1.5, { align: "center" });
+    doc.text(brandLabel, headerBadgeX + bw / 2, 6 + badgeH - 1.5, {
+      align: "center",
+    });
 
     doc.setTextColor(T.text[0], T.text[1], T.text[2]);
     doc.setFont("helvetica", "bold");
@@ -290,8 +304,23 @@ export async function generateProjectInfoPdfBlob(
       const cx = (pageW - coverDispW) / 2;
       doc.setDrawColor(T.border[0], T.border[1], T.border[2]);
       doc.setLineWidth(0.35);
-      doc.roundedRect(cx - 0.7, coverY0 - 0.7, coverDispW + 1.4, coverDispH + 1.4, 2, 2, "S");
-      doc.addImage(coverLoaded.dataUrl, "JPEG", cx, coverY0, coverDispW, coverDispH);
+      doc.roundedRect(
+        cx - 0.7,
+        coverY0 - 0.7,
+        coverDispW + 1.4,
+        coverDispH + 1.4,
+        2,
+        2,
+        "S",
+      );
+      doc.addImage(
+        coverLoaded.dataUrl,
+        "JPEG",
+        cx,
+        coverY0,
+        coverDispW,
+        coverDispH,
+      );
     }
   };
 
@@ -370,7 +399,9 @@ export async function generateProjectInfoPdfBlob(
     doc.setFillColor(T.primary[0], T.primary[1], T.primary[2]);
     doc.roundedRect(conceptBadgeX, y, bw, subBadgeH, 1.1, 1.1, "F");
     doc.setTextColor(T.white[0], T.white[1], T.white[2]);
-    doc.text(blockTitle, conceptBadgeX + bw / 2, y + subBadgeH - 1.25, { align: "center" });
+    doc.text(blockTitle, conceptBadgeX + bw / 2, y + subBadgeH - 1.25, {
+      align: "center",
+    });
     let yy = y + subBadgeH + gap;
 
     doc.setFillColor(T.primarySoft[0], T.primarySoft[1], T.primarySoft[2]);
@@ -413,7 +444,10 @@ export async function generateProjectInfoPdfBlob(
   ];
 
   if (options.linkedWorldLabel) {
-    sections.push({ heading: "Verknüpfte Welt", body: options.linkedWorldLabel });
+    sections.push({
+      heading: "Verknüpfte Welt",
+      body: options.linkedWorldLabel,
+    });
   }
 
   sections.push(
@@ -423,26 +457,39 @@ export async function generateProjectInfoPdfBlob(
       body:
         project.type === "series"
           ? [
-              project.episode_layout ? `Episoden-Layout: ${project.episode_layout}` : "",
-              project.season_engine ? `Season-Engine: ${project.season_engine}` : "",
+              project.episode_layout
+                ? `Episoden-Layout: ${project.episode_layout}`
+                : "",
+              project.season_engine
+                ? `Season-Engine: ${project.season_engine}`
+                : "",
             ]
               .filter(Boolean)
               .join("\n") || "—"
           : String(project.narrative_structure || "—"),
-    }
+    },
   );
 
   if (project.type === "book") {
     sections.push({
       heading: "Buch-Metriken",
-      body: [
-        project.target_pages != null ? `Ziel-Seiten: ${project.target_pages}` : "",
-        project.words_per_page != null ? `Wörter/Seite: ${project.words_per_page}` : "",
-        project.reading_speed_wpm != null ? `Lesegeschw. (WPM): ${project.reading_speed_wpm}` : "",
-        project.current_words != null ? `Aktuelle Wörter (Stand): ${project.current_words}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n") || "—",
+      body:
+        [
+          project.target_pages != null
+            ? `Ziel-Seiten: ${project.target_pages}`
+            : "",
+          project.words_per_page != null
+            ? `Wörter/Seite: ${project.words_per_page}`
+            : "",
+          project.reading_speed_wpm != null
+            ? `Lesegeschw. (WPM): ${project.reading_speed_wpm}`
+            : "",
+          project.current_words != null
+            ? `Aktuelle Wörter (Stand): ${project.current_words}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n") || "—",
     });
   }
 
@@ -461,7 +508,9 @@ export async function generateProjectInfoPdfBlob(
   if (Array.isArray(rawBlocks) && rawBlocks.length > 0) {
     const withContent = rawBlocks.filter((row) => {
       if (!row || typeof row !== "object") return false;
-      return String((row as Record<string, unknown>).content || "").trim().length > 0;
+      return (
+        String((row as Record<string, unknown>).content || "").trim().length > 0
+      );
     });
     if (withContent.length > 0) {
       addSectionDividerBadge("Konzeptblöcke");
@@ -483,14 +532,21 @@ export async function generateProjectInfoPdfBlob(
   const footerY = pageH - 9;
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    doc.text(`Seite ${i}/${totalPages}`, pageW - margin, footerY, { align: "right" });
+    doc.text(`Seite ${i}/${totalPages}`, pageW - margin, footerY, {
+      align: "right",
+    });
   }
 
   return doc.output("blob");
 }
 
 export async function shareFileIfPossible(file: File): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.share || !navigator.canShare) return false;
+  if (
+    typeof navigator === "undefined" ||
+    !navigator.share ||
+    !navigator.canShare
+  )
+    return false;
   try {
     if (!navigator.canShare({ files: [file] })) return false;
     await navigator.share({ files: [file], title: file.name });

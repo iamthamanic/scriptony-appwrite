@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
-import { CheckCircle2, AlertCircle, Loader2, Database, ArrowRight } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Database,
+  ArrowRight,
+} from "lucide-react";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../../lib/api-gateway";
 
@@ -27,9 +33,13 @@ export function MigrationPage() {
   const [migrating, setMigrating] = useState(false);
   const [result, setResult] = useState<MigrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [migratingSql, setMigratingSql] = useState(false);
-  const [sqlResult, setSqlResult] = useState<{ success: boolean; applied: string[]; errors: string[] } | null>(null);
+  const [sqlResult, setSqlResult] = useState<{
+    success: boolean;
+    applied: string[];
+    errors: string[];
+  } | null>(null);
   const [sqlError, setSqlError] = useState<string | null>(null);
 
   const runMigration = async () => {
@@ -56,7 +66,7 @@ export function MigrationPage() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -99,7 +109,7 @@ export function MigrationPage() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -128,8 +138,8 @@ export function MigrationPage() {
           </div>
           <h1 className="text-4xl font-bold">PostgreSQL Migration</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Migriere deine Daten vom KV-Store zu PostgreSQL für bessere Performance,
-            Multi-Tenancy und professionelle Datenbank-Features.
+            Migriere deine Daten vom KV-Store zu PostgreSQL für bessere
+            Performance, Multi-Tenancy und professionelle Datenbank-Features.
           </p>
         </div>
 
@@ -167,20 +177,23 @@ export function MigrationPage() {
         {/* Migration Process */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Migration durchführen</h2>
-          
+
           <div className="space-y-4">
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Wichtig:</strong> Stelle sicher, dass das SQL-Schema bereits in
-                Supabase ausgeführt wurde. Siehe <code>/START_HERE.md</code> für Details.
+                <strong>Wichtig:</strong> Stelle sicher, dass das SQL-Schema
+                bereits in Supabase ausgeführt wurde. Siehe{" "}
+                <code>/START_HERE.md</code> für Details.
               </AlertDescription>
             </Alert>
 
             <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
               <div className="flex-1">
                 <p className="font-medium">KV-Store</p>
-                <p className="text-sm text-muted-foreground">Alte Datenstruktur</p>
+                <p className="text-sm text-muted-foreground">
+                  Alte Datenstruktur
+                </p>
               </div>
               <ArrowRight className="w-6 h-6 text-primary" />
               <div className="flex-1">
@@ -235,7 +248,9 @@ export function MigrationPage() {
                 <div className="text-2xl font-bold text-primary">
                   {result.stats.organizations}
                 </div>
-                <div className="text-sm text-muted-foreground">Organizations</div>
+                <div className="text-sm text-muted-foreground">
+                  Organizations
+                </div>
               </div>
               <div className="text-center p-3 bg-background rounded-lg">
                 <div className="text-2xl font-bold text-primary">
@@ -299,8 +314,9 @@ export function MigrationPage() {
 
             <div className="mt-6 pt-6 border-t">
               <p className="text-sm text-muted-foreground text-center">
-                🎉 Reload jetzt die App mit <kbd className="px-2 py-1 bg-muted rounded">F5</kbd>,
-                um die neuen Daten zu sehen!
+                🎉 Reload jetzt die App mit{" "}
+                <kbd className="px-2 py-1 bg-muted rounded">F5</kbd>, um die
+                neuen Daten zu sehen!
               </p>
             </div>
           </Card>
@@ -393,7 +409,9 @@ export function MigrationPage() {
                     <strong>Errors:</strong>
                     <ul className="mt-1 space-y-1">
                       {sqlResult.errors.map((err, i) => (
-                        <li key={i} className="text-sm">• {err}</li>
+                        <li key={i} className="text-sm">
+                          • {err}
+                        </li>
                       ))}
                     </ul>
                   </AlertDescription>

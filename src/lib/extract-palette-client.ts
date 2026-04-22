@@ -7,7 +7,10 @@ function rgbToHex(r: number, g: number, b: number): string {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-export async function extractPaletteFromImageUrl(url: string, maxColors = 5): Promise<string[]> {
+export async function extractPaletteFromImageUrl(
+  url: string,
+  maxColors = 5,
+): Promise<string[]> {
   const res = await fetch(url, { mode: "cors", credentials: "omit" });
   if (!res.ok) throw new Error("Bild konnte nicht geladen werden");
   const blob = await res.blob();
@@ -22,7 +25,10 @@ export async function extractPaletteFromImageUrl(url: string, maxColors = 5): Pr
   ctx.drawImage(bmp, 0, 0, w, h);
   bmp.close();
   const data = ctx.getImageData(0, 0, w, h).data;
-  const buckets = new Map<string, { r: number; g: number; b: number; n: number }>();
+  const buckets = new Map<
+    string,
+    { r: number; g: number; b: number; n: number }
+  >();
   for (let i = 0; i < data.length; i += 4) {
     const a = data[i + 3];
     if (a < 16) continue;
@@ -44,6 +50,12 @@ export async function extractPaletteFromImageUrl(url: string, maxColors = 5): Pr
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n)
     .slice(0, maxColors)
-    .map((x) => rgbToHex(Math.round(x.r / x.n), Math.round(x.g / x.n), Math.round(x.b / x.n)));
+    .map((x) =>
+      rgbToHex(
+        Math.round(x.r / x.n),
+        Math.round(x.g / x.n),
+        Math.round(x.b / x.n),
+      ),
+    );
   return sorted;
 }

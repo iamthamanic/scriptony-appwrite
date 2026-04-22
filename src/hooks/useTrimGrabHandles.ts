@@ -5,16 +5,16 @@
  * In kleinen Leaf-Komponenten: `useTrimGrabHandles` (useMemo um die pure Funktion).
  */
 
-import { useMemo } from 'react';
-import type { CSSProperties } from 'react';
+import { useMemo } from "react";
+import type { CSSProperties } from "react";
 import {
   type TrimGrabPreset,
   clipBorderAndHandleColorFromBase,
   parseColorToHex,
   resolveTrimGrabBaseHex,
   trimEndCapBackgroundFromBase,
-} from '../lib/trim-handle-colors';
-import { getTrimHandleBgClass } from '../lib/timeline-track-tokens';
+} from "../lib/trim-handle-colors";
+import { getTrimHandleBgClass } from "../lib/timeline-track-tokens";
 
 export type TrimGrabHandleOptions = {
   /** z. B. beat.color — sonst Preset-Standard */
@@ -26,19 +26,17 @@ export type TrimGrabHandleOptions = {
  * Gleiche physische Breite wie die sichtbaren Endkappen — für Clip-`--trim-cap` + Content-Einrückung.
  * Vorher schmaler Streifen; jetzt ca. doppelte Griffbreite (min/mid/max jeweils ×2).
  */
-export const TRIM_END_CAP_WIDTH = 'clamp(0.15rem, 5.6%, 0.4rem)';
+export const TRIM_END_CAP_WIDTH = "clamp(0.15rem, 5.6%, 0.4rem)";
 
 /**
  * Timeline-Clips: `rounded` (= 0.25rem) + `border-2`. Griffe liegen in der Padding-Box; dort ist der
  * wirksame Eckenradius kleiner — sonst Lücken zwischen Rundung, Border und Griff (sichtbare „Schatten“).
  */
-const CLIP_INNER_CORNER_RADIUS = 'max(0px, calc(0.25rem - 2px))';
+const CLIP_INNER_CORNER_RADIUS = "max(0px, calc(0.25rem - 2px))";
 
 const LAYOUT_BASE = `absolute top-0 bottom-0 z-[45] cursor-ew-resize pointer-events-auto transition-[filter] duration-150 hover:brightness-[1.04]`;
 
-export function getTrimGrabHandleStyles(
-  options: TrimGrabHandleOptions
-): {
+export function getTrimGrabHandleStyles(options: TrimGrabHandleOptions): {
   leftStyle: CSSProperties;
   rightStyle: CSSProperties;
   handleLeftClassName: string;
@@ -48,9 +46,9 @@ export function getTrimGrabHandleStyles(
 } {
   const capSurfaceBase: CSSProperties = {
     width: TRIM_END_CAP_WIDTH,
-    minWidth: '3px',
+    minWidth: "3px",
     /** Dezente Trennung zur Clip-Mitte — Außenkante, keine „Nut“ durch Inset-Shadows. */
-    boxShadow: '1px 0 0 rgba(0,0,0,0.07)',
+    boxShadow: "1px 0 0 rgba(0,0,0,0.07)",
   };
 
   const fromCustom = parseColorToHex(options.baseColorHex);
@@ -73,7 +71,7 @@ export function getTrimGrabHandleStyles(
       },
       rightStyle: {
         ...capSurface,
-        boxShadow: '-1px 0 0 rgba(0,0,0,0.07)',
+        boxShadow: "-1px 0 0 rgba(0,0,0,0.07)",
         borderTopRightRadius: CLIP_INNER_CORNER_RADIUS,
         borderBottomRightRadius: CLIP_INNER_CORNER_RADIUS,
         borderTopLeftRadius: 0,
@@ -98,7 +96,7 @@ export function getTrimGrabHandleStyles(
       },
       rightStyle: {
         ...capSurfaceBase,
-        boxShadow: '-1px 0 0 rgba(0,0,0,0.07)',
+        boxShadow: "-1px 0 0 rgba(0,0,0,0.07)",
         borderTopRightRadius: CLIP_INNER_CORNER_RADIUS,
         borderBottomRightRadius: CLIP_INNER_CORNER_RADIUS,
         borderTopLeftRadius: 0,
@@ -127,7 +125,7 @@ export function getTrimGrabHandleStyles(
     },
     rightStyle: {
       ...capSurface,
-      boxShadow: '-1px 0 0 rgba(0,0,0,0.07)',
+      boxShadow: "-1px 0 0 rgba(0,0,0,0.07)",
       borderTopRightRadius: CLIP_INNER_CORNER_RADIUS,
       borderBottomRightRadius: CLIP_INNER_CORNER_RADIUS,
       borderTopLeftRadius: 0,
@@ -140,7 +138,7 @@ export function getTrimGrabHandleStyles(
 export function useTrimGrabHandles(options: TrimGrabHandleOptions) {
   return useMemo(
     () => getTrimGrabHandleStyles(options),
-    [options.baseColorHex, options.preset]
+    [options.baseColorHex, options.preset],
   );
 }
 

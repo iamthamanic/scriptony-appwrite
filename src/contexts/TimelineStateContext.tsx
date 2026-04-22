@@ -14,8 +14,16 @@
  *     └── NativeViews (reads from context)
  */
 
-import React, { createContext, useContext, useReducer, useCallback, useRef, useMemo, useEffect } from 'react';
-import type { Act, Sequence, Scene, Shot, Character, Clip } from '../lib/types';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useRef,
+  useMemo,
+  useEffect,
+} from "react";
+import type { Act, Sequence, Scene, Shot, Character, Clip } from "../lib/types";
 
 // ─── Data Types ──────────────────────────────────────────────────────
 
@@ -32,39 +40,47 @@ export interface TimelineStateData {
 // ─── Actions ─────────────────────────────────────────────────────────
 
 type TimelineAction =
-  | { type: 'SET_TIMELINE_DATA'; payload: Partial<TimelineStateData> }
+  | { type: "SET_TIMELINE_DATA"; payload: Partial<TimelineStateData> }
   // Acts
-  | { type: 'SET_ACTS'; payload: Act[] }
-  | { type: 'ADD_ACT'; payload: Act }
-  | { type: 'UPDATE_ACT'; id: string; payload: Partial<Act> }
-  | { type: 'DELETE_ACT'; id: string }
+  | { type: "SET_ACTS"; payload: Act[] }
+  | { type: "ADD_ACT"; payload: Act }
+  | { type: "UPDATE_ACT"; id: string; payload: Partial<Act> }
+  | { type: "DELETE_ACT"; id: string }
   // Sequences
-  | { type: 'SET_SEQUENCES'; payload: Sequence[] }
-  | { type: 'ADD_SEQUENCE'; payload: Sequence }
-  | { type: 'UPDATE_SEQUENCE'; id: string; payload: Partial<Sequence> }
-  | { type: 'DELETE_SEQUENCE'; id: string }
+  | { type: "SET_SEQUENCES"; payload: Sequence[] }
+  | { type: "ADD_SEQUENCE"; payload: Sequence }
+  | { type: "UPDATE_SEQUENCE"; id: string; payload: Partial<Sequence> }
+  | { type: "DELETE_SEQUENCE"; id: string }
   // Scenes
-  | { type: 'SET_SCENES'; payload: Scene[] }
-  | { type: 'ADD_SCENE'; payload: Scene }
-  | { type: 'UPDATE_SCENE'; id: string; payload: Partial<Scene> }
-  | { type: 'DELETE_SCENE'; id: string }
+  | { type: "SET_SCENES"; payload: Scene[] }
+  | { type: "ADD_SCENE"; payload: Scene }
+  | { type: "UPDATE_SCENE"; id: string; payload: Partial<Scene> }
+  | { type: "DELETE_SCENE"; id: string }
   // Shots
-  | { type: 'SET_SHOTS'; payload: Shot[] }
-  | { type: 'ADD_SHOT'; payload: Shot }
-  | { type: 'UPDATE_SHOT'; id: string; payload: Partial<Shot> }
-  | { type: 'DELETE_SHOT'; id: string }
+  | { type: "SET_SHOTS"; payload: Shot[] }
+  | { type: "ADD_SHOT"; payload: Shot }
+  | { type: "UPDATE_SHOT"; id: string; payload: Partial<Shot> }
+  | { type: "DELETE_SHOT"; id: string }
   // Clips (editorial)
-  | { type: 'SET_CLIPS'; payload: Clip[] }
-  | { type: 'ADD_CLIP'; payload: Clip }
-  | { type: 'UPDATE_CLIP'; id: string; payload: Partial<Clip> }
-  | { type: 'DELETE_CLIP'; id: string }
+  | { type: "SET_CLIPS"; payload: Clip[] }
+  | { type: "ADD_CLIP"; payload: Clip }
+  | { type: "UPDATE_CLIP"; id: string; payload: Partial<Clip> }
+  | { type: "DELETE_CLIP"; id: string }
   // Characters
-  | { type: 'SET_CHARACTERS'; payload: Character[] }
+  | { type: "SET_CHARACTERS"; payload: Character[] }
   // Batch (for trim operations — single dispatch, single re-render)
-  | { type: 'BATCH_UPDATE'; payload: { acts?: Array<{ id: string; updates: Partial<Act> }>; sequences?: Array<{ id: string; updates: Partial<Sequence> }>; scenes?: Array<{ id: string; updates: Partial<Scene> }>; shots?: Array<{ id: string; updates: Partial<Shot> }> } }
+  | {
+      type: "BATCH_UPDATE";
+      payload: {
+        acts?: Array<{ id: string; updates: Partial<Act> }>;
+        sequences?: Array<{ id: string; updates: Partial<Sequence> }>;
+        scenes?: Array<{ id: string; updates: Partial<Scene> }>;
+        shots?: Array<{ id: string; updates: Partial<Shot> }>;
+      };
+    }
   // Undo/Redo
-  | { type: 'UNDO' }
-  | { type: 'REDO' };
+  | { type: "UNDO" }
+  | { type: "REDO" };
 
 // ─── State ───────────────────────────────────────────────────────────
 
@@ -82,17 +98,24 @@ type ComparableTimelineData = {
   scenes: Array<{ id?: string; updatedAt?: string }>;
   /** imageUrl included so server-side preview updates (e.g. Stage upload) reflow into context */
   shots: Array<{ id?: string; updatedAt?: string; imageUrl?: string }>;
-  clips: Array<{ id?: string; updatedAt?: string; startSec?: number; endSec?: number }>;
+  clips: Array<{
+    id?: string;
+    updatedAt?: string;
+    startSec?: number;
+    endSec?: number;
+  }>;
 };
 
-function toComparableTimelineData(data?: Partial<TimelineStateData>): ComparableTimelineData {
+function toComparableTimelineData(
+  data?: Partial<TimelineStateData>,
+): ComparableTimelineData {
   const mapItems = (items: Array<any> | undefined) =>
     (items || [])
       .map((item) => ({
         id: item?.id,
         updatedAt: item?.updatedAt,
       }))
-      .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+      .sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
 
   const mapShots = (items: Array<any> | undefined) =>
     (items || [])
@@ -101,7 +124,7 @@ function toComparableTimelineData(data?: Partial<TimelineStateData>): Comparable
         updatedAt: item?.updatedAt,
         imageUrl: item?.imageUrl ?? item?.image_url ?? "",
       }))
-      .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+      .sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
 
   const mapClips = (items: Array<any> | undefined) =>
     (items || [])
@@ -111,7 +134,7 @@ function toComparableTimelineData(data?: Partial<TimelineStateData>): Comparable
         startSec: item?.startSec ?? item?.start_sec,
         endSec: item?.endSec ?? item?.end_sec,
       }))
-      .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+      .sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
 
   return {
     acts: mapItems(data?.acts),
@@ -126,7 +149,9 @@ function timelineSignature(data?: Partial<TimelineStateData>): string {
   return JSON.stringify(toComparableTimelineData(data));
 }
 
-function createInitialState(initialData?: Partial<TimelineStateData>): TimelineState {
+function createInitialState(
+  initialData?: Partial<TimelineStateData>,
+): TimelineState {
   const data: TimelineStateData = {
     acts: initialData?.acts || [],
     sequences: initialData?.sequences || [],
@@ -144,7 +169,10 @@ function createInitialState(initialData?: Partial<TimelineStateData>): TimelineS
 
 // ─── Reducer ─────────────────────────────────────────────────────────
 
-function pushHistory(state: TimelineState, newData: TimelineStateData): TimelineState {
+function pushHistory(
+  state: TimelineState,
+  newData: TimelineStateData,
+): TimelineState {
   // Trim future history (if we undid and now do a new action)
   const trimmedHistory = state.history.slice(0, state.historyIndex + 1);
   const newHistory = [...trimmedHistory, structuredClone(newData)];
@@ -159,10 +187,13 @@ function pushHistory(state: TimelineState, newData: TimelineStateData): Timeline
   };
 }
 
-function timelineReducer(state: TimelineState, action: TimelineAction): TimelineState {
+function timelineReducer(
+  state: TimelineState,
+  action: TimelineAction,
+): TimelineState {
   switch (action.type) {
     // ── Full data set (initial load, cache update) — no history push ──
-    case 'SET_TIMELINE_DATA': {
+    case "SET_TIMELINE_DATA": {
       const newData = {
         ...state.data,
         ...action.payload,
@@ -176,150 +207,189 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
     }
 
     // ── Acts ──
-    case 'SET_ACTS': {
+    case "SET_ACTS": {
       const newData = { ...state.data, acts: action.payload };
       return pushHistory(state, newData);
     }
-    case 'ADD_ACT': {
-      const newData = { ...state.data, acts: [...state.data.acts, action.payload] };
-      return pushHistory(state, newData);
-    }
-    case 'UPDATE_ACT': {
+    case "ADD_ACT": {
       const newData = {
         ...state.data,
-        acts: state.data.acts.map(a => a.id === action.id ? { ...a, ...action.payload } : a),
+        acts: [...state.data.acts, action.payload],
       };
       return pushHistory(state, newData);
     }
-    case 'DELETE_ACT': {
-      const keptSequences = state.data.sequences.filter(s => s.actId !== action.id);
-      const keptSequenceIds = new Set(keptSequences.map(s => s.id));
-      const keptScenes = state.data.scenes.filter(sc => sc.sequenceId && keptSequenceIds.has(sc.sequenceId));
-      const keptSceneIds = new Set(keptScenes.map(sc => sc.id));
-      const keptShots = state.data.shots.filter(sh => keptSceneIds.has(sh.sceneId));
-      const keptShotIds = new Set(keptShots.map(s => s.id));
+    case "UPDATE_ACT": {
       const newData = {
         ...state.data,
-        acts: state.data.acts.filter(a => a.id !== action.id),
+        acts: state.data.acts.map((a) =>
+          a.id === action.id ? { ...a, ...action.payload } : a,
+        ),
+      };
+      return pushHistory(state, newData);
+    }
+    case "DELETE_ACT": {
+      const keptSequences = state.data.sequences.filter(
+        (s) => s.actId !== action.id,
+      );
+      const keptSequenceIds = new Set(keptSequences.map((s) => s.id));
+      const keptScenes = state.data.scenes.filter(
+        (sc) => sc.sequenceId && keptSequenceIds.has(sc.sequenceId),
+      );
+      const keptSceneIds = new Set(keptScenes.map((sc) => sc.id));
+      const keptShots = state.data.shots.filter((sh) =>
+        keptSceneIds.has(sh.sceneId),
+      );
+      const keptShotIds = new Set(keptShots.map((s) => s.id));
+      const newData = {
+        ...state.data,
+        acts: state.data.acts.filter((a) => a.id !== action.id),
         sequences: keptSequences,
         scenes: keptScenes,
         shots: keptShots,
-        clips: state.data.clips.filter(c => keptShotIds.has(c.shotId)),
+        clips: state.data.clips.filter((c) => keptShotIds.has(c.shotId)),
       };
       return pushHistory(state, newData);
     }
 
     // ── Sequences ──
-    case 'SET_SEQUENCES': {
+    case "SET_SEQUENCES": {
       const newData = { ...state.data, sequences: action.payload };
       return pushHistory(state, newData);
     }
-    case 'ADD_SEQUENCE': {
-      const newData = { ...state.data, sequences: [...state.data.sequences, action.payload] };
-      return pushHistory(state, newData);
-    }
-    case 'UPDATE_SEQUENCE': {
+    case "ADD_SEQUENCE": {
       const newData = {
         ...state.data,
-        sequences: state.data.sequences.map(s => s.id === action.id ? { ...s, ...action.payload } : s),
+        sequences: [...state.data.sequences, action.payload],
       };
       return pushHistory(state, newData);
     }
-    case 'DELETE_SEQUENCE': {
-      const seqSceneIds = state.data.scenes.filter(sc => sc.sequenceId === action.id).map(sc => sc.id);
-      const keptScenes = state.data.scenes.filter(sc => sc.sequenceId !== action.id);
-      const keptSceneIds = new Set(keptScenes.map(sc => sc.id));
-      const keptShots = state.data.shots.filter(sh => keptSceneIds.has(sh.sceneId));
-      const keptShotIds = new Set(keptShots.map(s => s.id));
+    case "UPDATE_SEQUENCE": {
       const newData = {
         ...state.data,
-        sequences: state.data.sequences.filter(s => s.id !== action.id),
+        sequences: state.data.sequences.map((s) =>
+          s.id === action.id ? { ...s, ...action.payload } : s,
+        ),
+      };
+      return pushHistory(state, newData);
+    }
+    case "DELETE_SEQUENCE": {
+      const seqSceneIds = state.data.scenes
+        .filter((sc) => sc.sequenceId === action.id)
+        .map((sc) => sc.id);
+      const keptScenes = state.data.scenes.filter(
+        (sc) => sc.sequenceId !== action.id,
+      );
+      const keptSceneIds = new Set(keptScenes.map((sc) => sc.id));
+      const keptShots = state.data.shots.filter((sh) =>
+        keptSceneIds.has(sh.sceneId),
+      );
+      const keptShotIds = new Set(keptShots.map((s) => s.id));
+      const newData = {
+        ...state.data,
+        sequences: state.data.sequences.filter((s) => s.id !== action.id),
         scenes: keptScenes,
         shots: keptShots,
-        clips: state.data.clips.filter(c => keptShotIds.has(c.shotId)),
+        clips: state.data.clips.filter((c) => keptShotIds.has(c.shotId)),
       };
       return pushHistory(state, newData);
     }
 
     // ── Scenes ──
-    case 'SET_SCENES': {
+    case "SET_SCENES": {
       const newData = { ...state.data, scenes: action.payload };
       return pushHistory(state, newData);
     }
-    case 'ADD_SCENE': {
-      const newData = { ...state.data, scenes: [...state.data.scenes, action.payload] };
-      return pushHistory(state, newData);
-    }
-    case 'UPDATE_SCENE': {
+    case "ADD_SCENE": {
       const newData = {
         ...state.data,
-        scenes: state.data.scenes.map(sc => sc.id === action.id ? { ...sc, ...action.payload } : sc),
+        scenes: [...state.data.scenes, action.payload],
       };
       return pushHistory(state, newData);
     }
-    case 'DELETE_SCENE': {
-      const keptShots = state.data.shots.filter(sh => sh.sceneId !== action.id);
-      const keptShotIds = new Set(keptShots.map(s => s.id));
+    case "UPDATE_SCENE": {
       const newData = {
         ...state.data,
-        scenes: state.data.scenes.filter(sc => sc.id !== action.id),
+        scenes: state.data.scenes.map((sc) =>
+          sc.id === action.id ? { ...sc, ...action.payload } : sc,
+        ),
+      };
+      return pushHistory(state, newData);
+    }
+    case "DELETE_SCENE": {
+      const keptShots = state.data.shots.filter(
+        (sh) => sh.sceneId !== action.id,
+      );
+      const keptShotIds = new Set(keptShots.map((s) => s.id));
+      const newData = {
+        ...state.data,
+        scenes: state.data.scenes.filter((sc) => sc.id !== action.id),
         shots: keptShots,
-        clips: state.data.clips.filter(c => keptShotIds.has(c.shotId)),
+        clips: state.data.clips.filter((c) => keptShotIds.has(c.shotId)),
       };
       return pushHistory(state, newData);
     }
 
     // ── Shots ──
-    case 'SET_SHOTS': {
+    case "SET_SHOTS": {
       const newData = { ...state.data, shots: action.payload };
       return pushHistory(state, newData);
     }
-    case 'ADD_SHOT': {
-      const newData = { ...state.data, shots: [...state.data.shots, action.payload] };
-      return pushHistory(state, newData);
-    }
-    case 'UPDATE_SHOT': {
+    case "ADD_SHOT": {
       const newData = {
         ...state.data,
-        shots: state.data.shots.map(sh => sh.id === action.id ? { ...sh, ...action.payload } : sh),
+        shots: [...state.data.shots, action.payload],
       };
       return pushHistory(state, newData);
     }
-    case 'DELETE_SHOT': {
+    case "UPDATE_SHOT": {
       const newData = {
         ...state.data,
-        shots: state.data.shots.filter(sh => sh.id !== action.id),
-        clips: state.data.clips.filter(c => c.shotId !== action.id),
+        shots: state.data.shots.map((sh) =>
+          sh.id === action.id ? { ...sh, ...action.payload } : sh,
+        ),
+      };
+      return pushHistory(state, newData);
+    }
+    case "DELETE_SHOT": {
+      const newData = {
+        ...state.data,
+        shots: state.data.shots.filter((sh) => sh.id !== action.id),
+        clips: state.data.clips.filter((c) => c.shotId !== action.id),
       };
       return pushHistory(state, newData);
     }
 
     // ── Clips ──
-    case 'SET_CLIPS': {
+    case "SET_CLIPS": {
       const newData = { ...state.data, clips: action.payload };
       return pushHistory(state, newData);
     }
-    case 'ADD_CLIP': {
-      const newData = { ...state.data, clips: [...state.data.clips, action.payload] };
-      return pushHistory(state, newData);
-    }
-    case 'UPDATE_CLIP': {
+    case "ADD_CLIP": {
       const newData = {
         ...state.data,
-        clips: state.data.clips.map(c => c.id === action.id ? { ...c, ...action.payload } : c),
+        clips: [...state.data.clips, action.payload],
       };
       return pushHistory(state, newData);
     }
-    case 'DELETE_CLIP': {
+    case "UPDATE_CLIP": {
       const newData = {
         ...state.data,
-        clips: state.data.clips.filter(c => c.id !== action.id),
+        clips: state.data.clips.map((c) =>
+          c.id === action.id ? { ...c, ...action.payload } : c,
+        ),
+      };
+      return pushHistory(state, newData);
+    }
+    case "DELETE_CLIP": {
+      const newData = {
+        ...state.data,
+        clips: state.data.clips.filter((c) => c.id !== action.id),
       };
       return pushHistory(state, newData);
     }
 
     // ── Characters ──
-    case 'SET_CHARACTERS': {
+    case "SET_CHARACTERS": {
       // No history push for characters (not undoable)
       return {
         ...state,
@@ -328,29 +398,29 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
     }
 
     // ── Batch (trim operations) ──
-    case 'BATCH_UPDATE': {
+    case "BATCH_UPDATE": {
       let newData = { ...state.data };
       if (action.payload.acts) {
-        newData.acts = newData.acts.map(a => {
-          const upd = action.payload.acts!.find(u => u.id === a.id);
+        newData.acts = newData.acts.map((a) => {
+          const upd = action.payload.acts!.find((u) => u.id === a.id);
           return upd ? { ...a, ...upd.updates } : a;
         });
       }
       if (action.payload.sequences) {
-        newData.sequences = newData.sequences.map(s => {
-          const upd = action.payload.sequences!.find(u => u.id === s.id);
+        newData.sequences = newData.sequences.map((s) => {
+          const upd = action.payload.sequences!.find((u) => u.id === s.id);
           return upd ? { ...s, ...upd.updates } : s;
         });
       }
       if (action.payload.scenes) {
-        newData.scenes = newData.scenes.map(sc => {
-          const upd = action.payload.scenes!.find(u => u.id === sc.id);
+        newData.scenes = newData.scenes.map((sc) => {
+          const upd = action.payload.scenes!.find((u) => u.id === sc.id);
           return upd ? { ...sc, ...upd.updates } : sc;
         });
       }
       if (action.payload.shots) {
-        newData.shots = newData.shots.map(sh => {
-          const upd = action.payload.shots!.find(u => u.id === sh.id);
+        newData.shots = newData.shots.map((sh) => {
+          const upd = action.payload.shots!.find((u) => u.id === sh.id);
           return upd ? { ...sh, ...upd.updates } : sh;
         });
       }
@@ -358,7 +428,7 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
     }
 
     // ── Undo / Redo ──
-    case 'UNDO': {
+    case "UNDO": {
       if (state.historyIndex <= 0) return state;
       const newIndex = state.historyIndex - 1;
       return {
@@ -367,7 +437,7 @@ function timelineReducer(state: TimelineState, action: TimelineAction): Timeline
         historyIndex: newIndex,
       };
     }
-    case 'REDO': {
+    case "REDO": {
       if (state.historyIndex >= state.history.length - 1) return state;
       const newIndex = state.historyIndex + 1;
       return {
@@ -400,8 +470,18 @@ interface TimelineContextValue {
   undo: () => void;
   redo: () => void;
   // Convenience: get the full TimelineData shape for backwards compat
-  getTimelineData: () => { acts: Act[]; sequences: Sequence[]; scenes: Scene[]; shots: Shot[]; clips: Clip[] };
-  getBookTimelineData: () => { acts: Act[]; sequences: Sequence[]; scenes: Scene[] };
+  getTimelineData: () => {
+    acts: Act[];
+    sequences: Sequence[];
+    scenes: Scene[];
+    shots: Shot[];
+    clips: Clip[];
+  };
+  getBookTimelineData: () => {
+    acts: Act[];
+    sequences: Sequence[];
+    scenes: Scene[];
+  };
 }
 
 const TimelineStateContext = createContext<TimelineContextValue | null>(null);
@@ -421,8 +501,16 @@ interface TimelineStateProviderProps {
   children: React.ReactNode;
 }
 
-export function TimelineStateProvider({ initialData, onDataChange, children }: TimelineStateProviderProps) {
-  const [state, dispatch] = useReducer(timelineReducer, initialData, createInitialState);
+export function TimelineStateProvider({
+  initialData,
+  onDataChange,
+  children,
+}: TimelineStateProviderProps) {
+  const [state, dispatch] = useReducer(
+    timelineReducer,
+    initialData,
+    createInitialState,
+  );
 
   // Keep callback ref to avoid re-render cycles
   const onDataChangeRef = useRef(onDataChange);
@@ -454,7 +542,7 @@ export function TimelineStateProvider({ initialData, onDataChange, children }: T
       return;
     }
 
-    dispatch({ type: 'SET_TIMELINE_DATA', payload: initialData });
+    dispatch({ type: "SET_TIMELINE_DATA", payload: initialData });
   }, [initialData, state.data]);
 
   // Notify parent of data changes
@@ -473,38 +561,61 @@ export function TimelineStateProvider({ initialData, onDataChange, children }: T
     }
   }, [state.data]);
 
-  const undo = useCallback(() => dispatch({ type: 'UNDO' }), []);
-  const redo = useCallback(() => dispatch({ type: 'REDO' }), []);
+  const undo = useCallback(() => dispatch({ type: "UNDO" }), []);
+  const redo = useCallback(() => dispatch({ type: "REDO" }), []);
 
-  const getTimelineData = useCallback(() => ({
-    acts: state.data.acts,
-    sequences: state.data.sequences,
-    scenes: state.data.scenes,
-    shots: state.data.shots,
-    clips: state.data.clips,
-  }), [state.data.acts, state.data.sequences, state.data.scenes, state.data.shots, state.data.clips]);
+  const getTimelineData = useCallback(
+    () => ({
+      acts: state.data.acts,
+      sequences: state.data.sequences,
+      scenes: state.data.scenes,
+      shots: state.data.shots,
+      clips: state.data.clips,
+    }),
+    [
+      state.data.acts,
+      state.data.sequences,
+      state.data.scenes,
+      state.data.shots,
+      state.data.clips,
+    ],
+  );
 
-  const getBookTimelineData = useCallback(() => ({
-    acts: state.data.acts,
-    sequences: state.data.sequences,
-    scenes: state.data.scenes,
-  }), [state.data.acts, state.data.sequences, state.data.scenes]);
+  const getBookTimelineData = useCallback(
+    () => ({
+      acts: state.data.acts,
+      sequences: state.data.sequences,
+      scenes: state.data.scenes,
+    }),
+    [state.data.acts, state.data.sequences, state.data.scenes],
+  );
 
-  const value = useMemo<TimelineContextValue>(() => ({
-    acts: state.data.acts,
-    sequences: state.data.sequences,
-    scenes: state.data.scenes,
-    shots: state.data.shots,
-    clips: state.data.clips,
-    characters: state.data.characters,
-    dispatch,
-    canUndo: state.historyIndex > 0,
-    canRedo: state.historyIndex < state.history.length - 1,
-    undo,
-    redo,
-    getTimelineData,
-    getBookTimelineData,
-  }), [state.data, state.historyIndex, state.history.length, undo, redo, getTimelineData, getBookTimelineData]);
+  const value = useMemo<TimelineContextValue>(
+    () => ({
+      acts: state.data.acts,
+      sequences: state.data.sequences,
+      scenes: state.data.scenes,
+      shots: state.data.shots,
+      clips: state.data.clips,
+      characters: state.data.characters,
+      dispatch,
+      canUndo: state.historyIndex > 0,
+      canRedo: state.historyIndex < state.history.length - 1,
+      undo,
+      redo,
+      getTimelineData,
+      getBookTimelineData,
+    }),
+    [
+      state.data,
+      state.historyIndex,
+      state.history.length,
+      undo,
+      redo,
+      getTimelineData,
+      getBookTimelineData,
+    ],
+  );
 
   return (
     <TimelineStateContext.Provider value={value}>
@@ -519,7 +630,9 @@ export function TimelineStateProvider({ initialData, onDataChange, children }: T
 export function useTimelineState() {
   const ctx = useContext(TimelineStateContext);
   if (!ctx) {
-    throw new Error('useTimelineState must be used within a TimelineStateProvider');
+    throw new Error(
+      "useTimelineState must be used within a TimelineStateProvider",
+    );
   }
   return ctx;
 }
@@ -528,7 +641,9 @@ export function useTimelineState() {
 export function useTimelineUndo() {
   const ctx = useContext(TimelineStateContext);
   if (!ctx) {
-    throw new Error('useTimelineUndo must be used within a TimelineStateProvider');
+    throw new Error(
+      "useTimelineUndo must be used within a TimelineStateProvider",
+    );
   }
   return {
     undo: ctx.undo,
@@ -547,8 +662,8 @@ export function useOptionalTimelineState() {
 export function useActById(actId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(
-    () => ctx?.acts.find(a => a.id === actId),
-    [ctx?.acts, actId]
+    () => ctx?.acts.find((a) => a.id === actId),
+    [ctx?.acts, actId],
   );
 }
 
@@ -556,8 +671,8 @@ export function useActById(actId: string | undefined) {
 export function useActSequences(actId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(
-    () => ctx?.sequences.filter(s => s.actId === actId) || [],
-    [ctx?.sequences, actId]
+    () => ctx?.sequences.filter((s) => s.actId === actId) || [],
+    [ctx?.sequences, actId],
   );
 }
 
@@ -565,8 +680,8 @@ export function useActSequences(actId: string | undefined) {
 export function useSequenceScenes(sequenceId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(
-    () => ctx?.scenes.filter(sc => sc.sequenceId === sequenceId) || [],
-    [ctx?.scenes, sequenceId]
+    () => ctx?.scenes.filter((sc) => sc.sequenceId === sequenceId) || [],
+    [ctx?.scenes, sequenceId],
   );
 }
 
@@ -574,8 +689,8 @@ export function useSequenceScenes(sequenceId: string | undefined) {
 export function useSceneShots(sceneId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(
-    () => ctx?.shots.filter(sh => sh.sceneId === sceneId) || [],
-    [ctx?.shots, sceneId]
+    () => ctx?.shots.filter((sh) => sh.sceneId === sceneId) || [],
+    [ctx?.shots, sceneId],
   );
 }
 
@@ -583,8 +698,8 @@ export function useSceneShots(sceneId: string | undefined) {
 export function useShotById(shotId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(
-    () => ctx?.shots.find(sh => sh.id === shotId),
-    [ctx?.shots, shotId]
+    () => ctx?.shots.find((sh) => sh.id === shotId),
+    [ctx?.shots, shotId],
   );
 }
 
@@ -593,9 +708,9 @@ export function useSceneForShot(shotId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(() => {
     if (!ctx || !shotId) return undefined;
-    const shot = ctx.shots.find(sh => sh.id === shotId);
+    const shot = ctx.shots.find((sh) => sh.id === shotId);
     if (!shot) return undefined;
-    return ctx.scenes.find(sc => sc.id === shot.sceneId);
+    return ctx.scenes.find((sc) => sc.id === shot.sceneId);
   }, [ctx?.shots, ctx?.scenes, shotId]);
 }
 
@@ -604,12 +719,14 @@ export function useShotBreadcrumb(shotId: string | undefined) {
   const ctx = useContext(TimelineStateContext);
   return useMemo(() => {
     if (!ctx || !shotId) return null;
-    const shot = ctx.shots.find(sh => sh.id === shotId);
+    const shot = ctx.shots.find((sh) => sh.id === shotId);
     if (!shot) return null;
-    const scene = ctx.scenes.find(sc => sc.id === shot.sceneId);
+    const scene = ctx.scenes.find((sc) => sc.id === shot.sceneId);
     if (!scene) return null;
-    const sequence = ctx.sequences.find(s => s.id === scene.sequenceId);
-    const act = sequence ? ctx.acts.find(a => a.id === sequence.actId) : undefined;
+    const sequence = ctx.sequences.find((s) => s.id === scene.sequenceId);
+    const act = sequence
+      ? ctx.acts.find((a) => a.id === sequence.actId)
+      : undefined;
     return { act, sequence, scene, shot };
   }, [ctx?.acts, ctx?.sequences, ctx?.scenes, ctx?.shots, shotId]);
 }

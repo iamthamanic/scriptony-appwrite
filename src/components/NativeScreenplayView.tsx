@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
-import { getActs, getAllSequencesByProject, getAllScenesByProject } from '../lib/api/timeline-api';
-import { getAllShotsByProject } from '../lib/api/shots-api';
-import { useAuth } from '../hooks/useAuth';
-import type { TimelineData } from './FilmDropdown';
+import { useEffect, useState } from "react";
+import {
+  getActs,
+  getAllSequencesByProject,
+  getAllScenesByProject,
+} from "../lib/api/timeline-api";
+import { getAllShotsByProject } from "../lib/api/shots-api";
+import { useAuth } from "../hooks/useAuth";
+import type { TimelineData } from "./FilmDropdown";
 
 /**
  * 🎬 NATIVE SCREENPLAY VIEW
- * 
+ *
  * Zeigt Film/Serien-Projekte im professionellen Drehbuchformat nach Industrie-Standard:
  * - Courier 12pt (industry standard)
  * - Scene Headings (INT./EXT. LOCATION - DAY/NIGHT)
@@ -15,7 +19,7 @@ import type { TimelineData } from './FilmDropdown';
  * - Dialogue (centered, narrower)
  * - Parentheticals (centered, in parentheses)
  * - Page numbers top right
- * 
+ *
  * Standards basierend auf:
  * - Final Draft formatting
  * - Fountain markup spec
@@ -49,29 +53,33 @@ interface Shot {
 
 // Helper to extract text from TipTap JSON
 const extractTextFromTiptap = (node: any): string => {
-  let text = '';
-  
+  let text = "";
+
   if (node.text) {
     text += node.text;
   }
-  
+
   if (node.content && Array.isArray(node.content)) {
     for (const child of node.content) {
       text += extractTextFromTiptap(child);
-      if (child.type === 'paragraph') {
-        text += '\n';
+      if (child.type === "paragraph") {
+        text += "\n";
       }
     }
   }
-  
+
   return text;
 };
 
-export function NativeScreenplayView({ projectId, projectType, initialData }: NativeScreenplayViewProps) {
+export function NativeScreenplayView({
+  projectId,
+  projectType,
+  initialData,
+}: NativeScreenplayViewProps) {
   const { getAccessToken } = useAuth();
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [loading, setLoading] = useState(true);
-  const [projectTitle, setProjectTitle] = useState('');
+  const [projectTitle, setProjectTitle] = useState("");
   const [pageCount, setPageCount] = useState(0);
 
   useEffect(() => {
@@ -81,78 +89,92 @@ export function NativeScreenplayView({ projectId, projectType, initialData }: Na
   const loadScreenplayData = async () => {
     try {
       setLoading(true);
-      
+
       const token = await getAccessToken();
       if (!token) {
-        console.error('[NativeScreenplayView] No access token');
+        console.error("[NativeScreenplayView] No access token");
         return;
       }
 
       // Load Acts
       const loadedActs = await getActs(projectId, token);
-      
+
       // Load all sequences, scenes and shots in parallel
       const [allSequences, allScenes, allShots] = await Promise.all([
         getAllSequencesByProject(projectId, token).catch(() => []),
         getAllScenesByProject(projectId, token).catch(() => []),
         getAllShotsByProject(projectId, token).catch(() => []),
       ]);
-      
+
       // Build scenes structure
       const scenesData: Scene[] = [];
-      
-      allScenes?.forEach(scene => {
-        const sceneShots = allShots?.filter(shot => {
-          const shotSceneId = (shot as any).sceneId || (shot as any).scene_id;
-          return shotSceneId === scene.id;
-        }) || [];
-        
-        const shots: Shot[] = sceneShots.map(shot => {
-          let description = shot.description || '';
-          let dialogue = '';
-          let character = '';
-          
+
+      allScenes?.forEach((scene) => {
+        const sceneShots =
+          allShots?.filter((shot) => {
+            const shotSceneId = (shot as any).sceneId || (shot as any).scene_id;
+            return shotSceneId === scene.id;
+          }) || [];
+
+        const shots: Shot[] = sceneShots.map((shot) => {
+          let description = shot.description || "";
+          let dialogue = "";
+          let character = "";
+
           // 🎯 Parse dialogue from TipTap JSON if needed
           if (shot.metadata?.dialogue) {
             try {
-              const dialogueData = typeof shot.metadata.dialogue === 'string' 
-                ? JSON.parse(shot.metadata.dialogue) 
-                : shot.metadata.dialogue;
+              const dialogueData =
+                typeof shot.metadata.dialogue === "string"
+                  ? JSON.parse(shot.metadata.dialogue)
+                  : shot.metadata.dialogue;
               dialogue = extractTextFromTiptap(dialogueData).trim();
             } catch (e) {
-              dialogue = typeof shot.metadata.dialogue === 'string' ? shot.metadata.dialogue : '';
+              dialogue =
+                typeof shot.metadata.dialogue === "string"
+                  ? shot.metadata.dialogue
+                  : "";
             }
           }
-          
+
           // 🎯 Parse character name
           if (shot.metadata?.character) {
-            character = typeof shot.metadata.character === 'string' ? shot.metadata.character : '';
+            character =
+              typeof shot.metadata.character === "string"
+                ? shot.metadata.character
+                : "";
           }
-          
+
           // 🎯 Parse description from TipTap JSON if needed
           if (shot.description) {
             try {
-              const descData = typeof shot.description === 'string' 
-                ? JSON.parse(shot.description) 
-                : shot.description;
+              const descData =
+                typeof shot.description === "string"
+                  ? JSON.parse(shot.description)
+                  : shot.description;
               description = extractTextFromTiptap(descData).trim();
             } catch (e) {
-              description = typeof shot.description === 'string' ? shot.description : '';
+              description =
+                typeof shot.description === "string" ? shot.description : "";
             }
           }
-          
+
           // 🎯 Fallback: Try content field for dialogue
           if (!dialogue && shot.metadata?.content) {
             try {
-              const contentData = typeof shot.metadata.content === 'string' 
-                ? JSON.parse(shot.metadata.content) 
-                : shot.metadata.content;
+              const contentData =
+                typeof shot.metadata.content === "string"
+                  ? JSON.parse(shot.metadata.content)
+                  : shot.metadata.content;
               dialogue = extractTextFromTiptap(contentData).trim();
             } catch (e) {
-              dialogue = typeof shot.metadata.content === 'string' ? shot.metadata.content : '';
+              dialogue =
+                typeof shot.metadata.content === "string"
+                  ? shot.metadata.content
+                  : "";
             }
           }
-          
+
           return {
             id: shot.id,
             description,
@@ -161,28 +183,31 @@ export function NativeScreenplayView({ projectId, projectType, initialData }: Na
             character,
           };
         });
-        
+
         // Extract metadata
         const metadata = scene.metadata || {};
-        
+
         scenesData.push({
           id: scene.id,
           title: scene.title,
-          description: scene.description || '',
-          location: metadata.location || '',
-          timeOfDay: metadata.timeOfDay || 'DAY',
-          intExt: metadata.intExt || 'INT.',
+          description: scene.description || "",
+          location: metadata.location || "",
+          timeOfDay: metadata.timeOfDay || "DAY",
+          intExt: metadata.intExt || "INT.",
           shots,
         });
       });
-      
+
       setScenes(scenesData);
-      
+
       // Rough page count estimate (1 page ≈ 1 minute ≈ ~8 elements)
-      const totalElements = scenesData.reduce((sum, s) => sum + s.shots.length + 1, 0);
+      const totalElements = scenesData.reduce(
+        (sum, s) => sum + s.shots.length + 1,
+        0,
+      );
       setPageCount(Math.ceil(totalElements / 8));
     } catch (error) {
-      console.error('[NativeScreenplayView] Error:', error);
+      console.error("[NativeScreenplayView] Error:", error);
     } finally {
       setLoading(false);
     }
@@ -291,22 +316,26 @@ export function NativeScreenplayView({ projectId, projectType, initialData }: Na
           {scenes.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p className="mb-4">Noch keine Szenen vorhanden.</p>
-              <p className="text-sm">Erstelle Akte, Sequenzen, Szenen und Shots im Dropdown-View,</p>
-              <p className="text-sm">um sie hier im professionellen Drehbuchformat zu sehen.</p>
+              <p className="text-sm">
+                Erstelle Akte, Sequenzen, Szenen und Shots im Dropdown-View,
+              </p>
+              <p className="text-sm">
+                um sie hier im professionellen Drehbuchformat zu sehen.
+              </p>
             </div>
           ) : (
             scenes.map((scene, sceneIndex) => (
               <div key={scene.id} className="screenplay-scene">
                 {/* Scene Heading (Slug Line) */}
                 <div className="screenplay-scene-heading">
-                  {scene.intExt || 'INT.'} {scene.location || scene.title.toUpperCase()} - {scene.timeOfDay || 'DAY'}
+                  {scene.intExt || "INT."}{" "}
+                  {scene.location || scene.title.toUpperCase()} -{" "}
+                  {scene.timeOfDay || "DAY"}
                 </div>
 
                 {/* Scene Description (Action) */}
                 {scene.description && (
-                  <div className="screenplay-action">
-                    {scene.description}
-                  </div>
+                  <div className="screenplay-action">{scene.description}</div>
                 )}
 
                 {/* Shots (Action/Dialogue blocks) */}
@@ -337,7 +366,7 @@ export function NativeScreenplayView({ projectId, projectType, initialData }: Na
           )}
         </div>
       </div>
-      
+
       {/* Info Panel */}
       <div className="fixed bottom-4 right-4 bg-white border border-border rounded-lg p-3 shadow-lg text-xs max-w-xs">
         <div className="font-medium mb-1">🎬 Drehbuch-Standard</div>

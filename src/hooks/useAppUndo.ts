@@ -10,13 +10,13 @@
  * Diese können bei Bedarf zusätzlich einen Eintrag per `pushUndoable` spiegeln oder nur lokal bleiben.
  */
 
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from "react";
 import {
   undoManager,
   pushAppUndoAction,
   type UndoAction,
-} from '../lib/undo-manager';
-import { registerAppUndo } from '../lib/app-undo-operations';
+} from "../lib/undo-manager";
+import { registerAppUndo } from "../lib/app-undo-operations";
 
 export type { UndoAction };
 export { registerAppUndo };
@@ -60,7 +60,7 @@ export function useAppUndo() {
   const snapshot = useSyncExternalStore(
     (onStoreChange) => undoManager.subscribe(onStoreChange),
     getUndoSnapshot,
-    () => SERVER_UNDO_SNAPSHOT
+    () => SERVER_UNDO_SNAPSHOT,
   );
 
   const undo = useCallback(async () => undoManager.undo(), []);

@@ -1,6 +1,6 @@
 /**
  * Application Configuration Constants
- * 
+ *
  * Centralized location for all app-wide configuration values.
  * Separated from env.ts to keep environment validation pure.
  */
@@ -15,13 +15,13 @@ export const API_CONFIG = {
    * DEPRECATED: Now using API Gateway with multi-function routing
    * Keep empty for direct function calls via API Gateway
    */
-  SERVER_BASE_PATH: '',
-  
+  SERVER_BASE_PATH: "",
+
   /**
    * Request timeout in milliseconds
    */
   REQUEST_TIMEOUT: 30000, // 30 seconds
-  
+
   /**
    * Retry configuration for failed requests
    */
@@ -40,8 +40,8 @@ export const STORAGE_CONFIG = {
   /**
    * Legacy storage bucket prefix used by older paths
    */
-  BUCKET_PREFIX: 'make-3b52693b',
-  
+  BUCKET_PREFIX: "make-3b52693b",
+
   /**
    * Maximum file upload size in bytes (5MB) — applies to the file actually sent to the server.
    */
@@ -51,17 +51,17 @@ export const STORAGE_CONFIG = {
    * Larger originals allowed before client-side WebP prep (JPEG/PNG only); must still end ≤ MAX_FILE_SIZE after prep.
    */
   MAX_IMAGE_INPUT_BYTES_WITH_WEBP_PREP: 25 * 1024 * 1024,
-  
+
   /**
    * Allowed image MIME types
    */
   ALLOWED_IMAGE_TYPES: [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
   ] as const,
-  
+
   /**
    * Profile image dimensions
    */
@@ -77,13 +77,13 @@ export const STORAGE_CONFIG = {
 // =============================================================================
 
 export const STORAGE_KEYS = {
-  THEME: 'theme',
-  LANGUAGE: 'i18nextLng',
-  HAS_MIGRATED: 'scriptony_has_migrated_postgres',
-  HAS_SEEDED_USER: 'scriptony_has_seeded_user',
-  ONBOARDING_COMPLETE: 'scriptony_onboarding_complete',
+  THEME: "theme",
+  LANGUAGE: "i18nextLng",
+  HAS_MIGRATED: "scriptony_has_migrated_postgres",
+  HAS_SEEDED_USER: "scriptony_has_seeded_user",
+  ONBOARDING_COMPLETE: "scriptony_onboarding_complete",
   /** '1' = lossless WebP before upload (default). '0' = off. */
-  IMAGE_UPLOAD_LOSSLESS_WEBP: 'scriptony_image_upload_lossless_webp',
+  IMAGE_UPLOAD_LOSSLESS_WEBP: "scriptony_image_upload_lossless_webp",
 } as const;
 
 // =============================================================================
@@ -95,22 +95,22 @@ export const FEATURE_FLAGS = {
    * Enable auto-migration on app start
    */
   AUTO_MIGRATION: true,
-  
+
   /**
    * Enable ScriptonyAssistant @// functionality
    */
   ASSISTANT_REFERENCES: true,
-  
+
   /**
    * Enable image uploads
    */
   IMAGE_UPLOADS: true,
-  
+
   /**
    * Enable dark mode
    */
   DARK_MODE: true,
-  
+
   /**
    * Enable multilingual support
    */
@@ -122,12 +122,12 @@ export const FEATURE_FLAGS = {
 // =============================================================================
 
 export const USER_ROLES = {
-  USER: 'user',
-  ADMIN: 'admin',
-  SUPERADMIN: 'superadmin',
+  USER: "user",
+  ADMIN: "admin",
+  SUPERADMIN: "superadmin",
 } as const;
 
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 // =============================================================================
 // Pagination
@@ -143,9 +143,9 @@ export const PAGINATION = {
 // =============================================================================
 
 export const APP_METADATA = {
-  NAME: 'Scriptony',
-  VERSION: '1.0.0',
-  DESCRIPTION: 'Professional Scriptwriting Platform',
+  NAME: "Scriptony",
+  VERSION: "1.0.0",
+  DESCRIPTION: "Professional Scriptwriting Platform",
 } as const;
 
 // =============================================================================
@@ -153,6 +153,6 @@ export const APP_METADATA = {
 // =============================================================================
 
 export const TEST_USER = {
-  EMAIL: 'iamthamanic@gmail.com',
-  PASSWORD: '123456',
+  EMAIL: "iamthamanic@gmail.com",
+  PASSWORD: "123456",
 } as const;

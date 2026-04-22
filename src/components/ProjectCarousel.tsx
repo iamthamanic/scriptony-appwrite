@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
-import { 
-  Carousel, 
-  CarouselContent, 
+import {
+  Carousel,
+  CarouselContent,
   CarouselItem,
-  type CarouselApi 
+  type CarouselApi,
 } from "./ui/carousel";
 import { ProjectCardWithPrefetch } from "./ProjectCardWithPrefetch";
 
@@ -37,14 +37,14 @@ export function ProjectCarousel({
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const hasInitialized = useRef(false);
-  
+
   // 🚀 PERFORMANCE: Prefetch manager for each project
   const prefetchRefs = useRef<Map<string, () => void>>(new Map());
 
   // Cleanup prefetch listeners on unmount
   useEffect(() => {
     return () => {
-      prefetchRefs.current.forEach(cleanup => cleanup());
+      prefetchRefs.current.forEach((cleanup) => cleanup());
       prefetchRefs.current.clear();
     };
   }, []);
@@ -211,7 +211,9 @@ export function ProjectCarousel({
         }}
         className="w-full"
       >
-        <CarouselContent className={projects.length === 1 ? "" : "-ml-4 md:-ml-0"}>
+        <CarouselContent
+          className={projects.length === 1 ? "" : "-ml-4 md:-ml-0"}
+        >
           {projects.map((project, index) => (
             <CarouselItem
               key={project.id}

@@ -7,7 +7,11 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import type { StyleGuideData, StyleGuideItem, PatchStyleGuidePayload } from "../../lib/api/style-guide-api";
+import type {
+  StyleGuideData,
+  StyleGuideItem,
+  PatchStyleGuidePayload,
+} from "../../lib/api/style-guide-api";
 import { Loader2, Pin } from "lucide-react";
 
 interface Props {
@@ -37,7 +41,13 @@ function PaletteStrip({ label, colors }: { label: string; colors: string[] }) {
   );
 }
 
-export function StyleGuideOverviewTab({ data, saving, onSave, onAddReference, onExport }: Props) {
+export function StyleGuideOverviewTab({
+  data,
+  saving,
+  onSave,
+  onAddReference,
+  onExport,
+}: Props) {
   const pinned = data.items.filter((i) => i.pinned).slice(0, 3);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -75,7 +85,12 @@ export function StyleGuideOverviewTab({ data, saving, onSave, onAddReference, on
           </div>
           <div className="space-y-2">
             <Label htmlFor="sg-tone">Tonalität (optional)</Label>
-            <Textarea id="sg-tone" name="tone_summary" defaultValue={data.toneSummary} rows={4} />
+            <Textarea
+              id="sg-tone"
+              name="tone_summary"
+              defaultValue={data.toneSummary}
+              rows={4}
+            />
           </div>
         </div>
         <div className="space-y-2">
@@ -88,7 +103,9 @@ export function StyleGuideOverviewTab({ data, saving, onSave, onAddReference, on
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="sg-avoid-o">Nicht gewünscht / Avoid (eine Zeile pro Punkt)</Label>
+          <Label htmlFor="sg-avoid-o">
+            Nicht gewünscht / Avoid (eine Zeile pro Punkt)
+          </Label>
           <Textarea
             id="sg-avoid-o"
             name="avoid_lines"
@@ -131,19 +148,27 @@ export function StyleGuideOverviewTab({ data, saving, onSave, onAddReference, on
         </CardHeader>
         <CardContent>
           {pinned.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Noch keine angehefteten Referenzen — Tab „Referenzen“.</p>
+            <p className="text-sm text-muted-foreground">
+              Noch keine angehefteten Referenzen — Tab „Referenzen“.
+            </p>
           ) : (
             <ul className="space-y-2">
               {pinned.map((i: StyleGuideItem) => (
                 <li key={i.id} className="flex gap-3 text-sm">
                   {i.imageUrl ? (
-                    <img src={i.imageUrl} alt="" className="h-14 w-10 rounded object-cover border" />
+                    <img
+                      src={i.imageUrl}
+                      alt=""
+                      className="h-14 w-10 rounded object-cover border"
+                    />
                   ) : (
                     <div className="h-14 w-10 rounded bg-muted" />
                   )}
                   <div>
                     <div className="font-medium">{i.title || "Ohne Titel"}</div>
-                    <div className="text-muted-foreground line-clamp-2">{i.caption}</div>
+                    <div className="text-muted-foreground line-clamp-2">
+                      {i.caption}
+                    </div>
                   </div>
                 </li>
               ))}

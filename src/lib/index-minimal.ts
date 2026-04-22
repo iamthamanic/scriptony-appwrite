@@ -1,6 +1,6 @@
 /**
  * Scriptony Library - Minimal Export (Critical Only)
- * 
+ *
  * This is a minimal version that exports only critical functionality.
  * Use this if the full lib/index.ts has import errors.
  */
@@ -21,17 +21,13 @@ export {
   type ApiResponse,
   type ApiErrorResponse,
   type ApiResult,
-} from './api-client';
+} from "./api-client";
 
 // =============================================================================
 // Environment & Configuration (CRITICAL)
 // =============================================================================
 
-export {
-  appConfig,
-  getAppConfig,
-  type AppConfig,
-} from './env';
+export { appConfig, getAppConfig, type AppConfig } from "./env";
 
 export {
   API_CONFIG,
@@ -43,7 +39,7 @@ export {
   APP_METADATA,
   TEST_USER,
   type UserRole,
-} from './config';
+} from "./config";
 
 // =============================================================================
 // Type Definitions (CRITICAL)
@@ -77,4 +73,4 @@ export type {
   ErrorResponse,
   Stats,
   Analytics,
-} from './types';
+} from "./types";

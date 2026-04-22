@@ -20,17 +20,16 @@ export function getAppwriteClient(): Client {
   const cfg = getAppwritePublicConfig();
   if (!cfg) {
     throw new Error(
-      "Appwrite is not configured: set VITE_APPWRITE_ENDPOINT and VITE_APPWRITE_PROJECT_ID"
+      "Appwrite is not configured: set VITE_APPWRITE_ENDPOINT and VITE_APPWRITE_PROJECT_ID",
     );
   }
 
-  const endpoint =
-    typeof cfg.endpoint === "string" ? cfg.endpoint.trim() : "";
+  const endpoint = typeof cfg.endpoint === "string" ? cfg.endpoint.trim() : "";
   const projectId =
     typeof cfg.projectId === "string" ? cfg.projectId.trim() : "";
   if (!endpoint || !projectId) {
     throw new Error(
-      "Appwrite endpoint or project ID is empty after trim — check .env.local and restart Vite (rm -rf node_modules/.vite if needed)."
+      "Appwrite endpoint or project ID is empty after trim — check .env.local and restart Vite (rm -rf node_modules/.vite if needed).",
     );
   }
 

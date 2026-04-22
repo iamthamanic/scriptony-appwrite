@@ -1,27 +1,35 @@
 /**
  * 🚀 OPTIMIZED DROPDOWN COMPONENTS
- * 
+ *
  * Memoized subcomponents for FilmDropdown and BookDropdown
  * These prevent unnecessary re-renders and improve performance dramatically
  */
 
-import React, { memo } from 'react';
-import { ChevronDown, ChevronRight, Info, MoreVertical, Copy, Edit, Trash2 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { cn } from './ui/utils';
+import React, { memo } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Info,
+  MoreVertical,
+  Copy,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { cn } from "./ui/utils";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from './ui/collapsible';
+} from "./ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import type { Act, Sequence, Scene } from '../lib/types';
+} from "./ui/dropdown-menu";
+import type { Act, Sequence, Scene } from "../lib/types";
 
 // =====================================================
 // MEMOIZED ACT HEADER
@@ -82,8 +90,8 @@ export const MemoizedActHeader = memo(function ActHeader({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onSave}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') onSave();
-            if (e.key === 'Escape') onCancel();
+            if (e.key === "Enter") onSave();
+            if (e.key === "Escape") onCancel();
           }}
           autoFocus
           className="h-8 flex-1"
@@ -91,10 +99,7 @@ export const MemoizedActHeader = memo(function ActHeader({
         />
       ) : (
         <span
-          className={cn(
-            'flex-1 font-medium',
-            isPending && 'opacity-50 italic'
-          )}
+          className={cn("flex-1 font-medium", isPending && "opacity-50 italic")}
           onDoubleClick={onEdit}
         >
           {act.title}
@@ -173,7 +178,7 @@ export const MemoizedSequenceHeader = memo(function SequenceHeader({
   onDuplicate,
   onStats,
   onChange,
-  label = 'Sequence',
+  label = "Sequence",
 }: SequenceHeaderProps) {
   return (
     <div className="flex items-center gap-2 p-2 bg-background/50 rounded-md border hover:bg-background transition-colors">
@@ -197,8 +202,8 @@ export const MemoizedSequenceHeader = memo(function SequenceHeader({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onSave}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') onSave();
-            if (e.key === 'Escape') onCancel();
+            if (e.key === "Enter") onSave();
+            if (e.key === "Escape") onCancel();
           }}
           autoFocus
           className="h-7 flex-1 text-sm"
@@ -206,10 +211,7 @@ export const MemoizedSequenceHeader = memo(function SequenceHeader({
         />
       ) : (
         <span
-          className={cn(
-            'flex-1 text-sm',
-            isPending && 'opacity-50 italic'
-          )}
+          className={cn("flex-1 text-sm", isPending && "opacity-50 italic")}
           onDoubleClick={onEdit}
         >
           {sequence.title}
@@ -287,7 +289,7 @@ export const MemoizedSceneHeader = memo(function SceneHeader({
   onDuplicate,
   onStats,
   onChange,
-  label = 'Scene',
+  label = "Scene",
   showWordCount = false,
 }: SceneHeaderProps) {
   return (
@@ -312,8 +314,8 @@ export const MemoizedSceneHeader = memo(function SceneHeader({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onSave}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') onSave();
-            if (e.key === 'Escape') onCancel();
+            if (e.key === "Enter") onSave();
+            if (e.key === "Escape") onCancel();
           }}
           autoFocus
           className="h-6 flex-1 text-xs"
@@ -321,21 +323,20 @@ export const MemoizedSceneHeader = memo(function SceneHeader({
         />
       ) : (
         <span
-          className={cn(
-            'flex-1 text-xs',
-            isPending && 'opacity-50 italic'
-          )}
+          className={cn("flex-1 text-xs", isPending && "opacity-50 italic")}
           onDoubleClick={onEdit}
         >
           {scene.title}
         </span>
       )}
 
-      {showWordCount && scene.wordCount !== undefined && scene.wordCount > 0 && (
-        <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
-          {scene.wordCount.toLocaleString()}
-        </span>
-      )}
+      {showWordCount &&
+        scene.wordCount !== undefined &&
+        scene.wordCount > 0 && (
+          <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
+            {scene.wordCount.toLocaleString()}
+          </span>
+        )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -1,68 +1,104 @@
 import { useState } from "react";
-import { LineChart, Bug, Activity, Users, Calendar, Filter, Download, RefreshCw, Database } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  LineChart,
+  Bug,
+  Activity,
+  Users,
+  Calendar,
+  Filter,
+  Download,
+  RefreshCw,
+  Database,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { backendConfig } from "../../lib/env";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../../lib/api-gateway";
 
 export function AdminPage() {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [recalculateResult, setRecalculateResult] = useState<string | null>(null);
+  const [recalculateResult, setRecalculateResult] = useState<string | null>(
+    null,
+  );
 
   const handleRecalculateWordCounts = async () => {
     setIsRecalculating(true);
     setRecalculateResult(null);
-    
+
     try {
       // Get all book projects
       const response = await fetch(
         buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, "/projects"),
         {
           headers: backendConfig.publicAuthToken
-            ? { 'Authorization': `Bearer ${backendConfig.publicAuthToken}` }
+            ? { Authorization: `Bearer ${backendConfig.publicAuthToken}` }
             : undefined,
-        }
+        },
       );
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch projects');
+        throw new Error("Failed to fetch projects");
       }
-      
+
       const projects = await response.json();
-      const bookProjects = projects.filter((p: any) => p.type === 'book');
-      
+      const bookProjects = projects.filter((p: any) => p.type === "book");
+
       let totalUpdated = 0;
-      
+
       // Recalculate word counts for each book project
       for (const project of bookProjects) {
         const recalcResponse = await fetch(
-          buildFunctionRouteUrl(EDGE_FUNCTIONS.MAIN_SERVER, `/projects/${project.id}/recalculate-word-counts`),
+          buildFunctionRouteUrl(
+            EDGE_FUNCTIONS.MAIN_SERVER,
+            `/projects/${project.id}/recalculate-word-counts`,
+          ),
           {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               ...(backendConfig.publicAuthToken
-                ? { 'Authorization': `Bearer ${backendConfig.publicAuthToken}` }
+                ? { Authorization: `Bearer ${backendConfig.publicAuthToken}` }
                 : {}),
             },
-          }
+          },
         );
-        
+
         if (recalcResponse.ok) {
           const result = await recalcResponse.json();
           totalUpdated += result.updated || 0;
         }
       }
-      
-      setRecalculateResult(`✅ Erfolgreich! ${totalUpdated} Szenen in ${bookProjects.length} Buch-Projekt(en) aktualisiert.`);
+
+      setRecalculateResult(
+        `✅ Erfolgreich! ${totalUpdated} Szenen in ${bookProjects.length} Buch-Projekt(en) aktualisiert.`,
+      );
     } catch (error: any) {
-      console.error('❌ Word count recalculation error:', error);
+      console.error("❌ Word count recalculation error:", error);
       setRecalculateResult(`❌ Fehler: ${error.message}`);
     } finally {
       setIsRecalculating(false);
@@ -77,22 +113,32 @@ export function AdminPage() {
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="px-4">
         <TabsList className="w-full grid grid-cols-3 mb-6">
-          <TabsTrigger value="overview" className="text-xs">Übersicht</TabsTrigger>
-          <TabsTrigger value="analytics" className="text-xs">Analytics</TabsTrigger>
-          <TabsTrigger value="tests" className="text-xs">Tests</TabsTrigger>
+          <TabsTrigger value="overview" className="text-xs">
+            Übersicht
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="text-xs">
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="tests" className="text-xs">
+            Tests
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedTab("analytics")}>
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedTab("analytics")}
+            >
               <CardHeader>
                 <div className="rounded-lg bg-primary/10 p-3 w-fit mb-3">
                   <LineChart className="size-6 text-primary" />
                 </div>
                 <CardTitle>Usage Analytics</CardTitle>
                 <CardDescription className="mt-2">
-                  Überwache die Nutzung der Plattform und analysiere Nutzeraktionen.
+                  Überwache die Nutzung der Plattform und analysiere
+                  Nutzeraktionen.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -100,7 +146,10 @@ export function AdminPage() {
               </CardContent>
             </Card>
 
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedTab("tests")}>
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedTab("tests")}
+            >
               <CardHeader>
                 <div className="rounded-lg bg-accent/10 p-3 w-fit mb-3">
                   <Bug className="size-6 text-accent" />
@@ -179,7 +228,9 @@ export function AdminPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="font-bold">127</p>
-                  <p className="text-xs text-muted-foreground">+12% vs yesterday</p>
+                  <p className="text-xs text-muted-foreground">
+                    +12% vs yesterday
+                  </p>
                 </CardContent>
               </Card>
 
@@ -192,7 +243,9 @@ export function AdminPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="font-bold">892</p>
-                  <p className="text-xs text-muted-foreground">+8% vs last week</p>
+                  <p className="text-xs text-muted-foreground">
+                    +8% vs last week
+                  </p>
                 </CardContent>
               </Card>
 
@@ -242,21 +295,27 @@ export function AdminPage() {
                     <TableRow>
                       <TableCell>2025-05-18 14:32</TableCell>
                       <TableCell>user@example.com</TableCell>
-                      <TableCell><Badge>Create</Badge></TableCell>
+                      <TableCell>
+                        <Badge>Create</Badge>
+                      </TableCell>
                       <TableCell>Projects</TableCell>
                       <TableCell>New project: "My Script"</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>2025-05-18 14:28</TableCell>
                       <TableCell>user2@example.com</TableCell>
-                      <TableCell><Badge variant="secondary">Update</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">Update</Badge>
+                      </TableCell>
                       <TableCell>Worlds</TableCell>
                       <TableCell>Updated world: "Silkat"</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>2025-05-18 14:15</TableCell>
                       <TableCell>user@example.com</TableCell>
-                      <TableCell><Badge variant="destructive">Delete</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">Delete</Badge>
+                      </TableCell>
                       <TableCell>Projects</TableCell>
                       <TableCell>Deleted scene #5</TableCell>
                     </TableRow>
@@ -288,26 +347,38 @@ export function AdminPage() {
                   <TableBody>
                     <TableRow>
                       <TableCell>Auth-Flow Test</TableCell>
-                      <TableCell><Badge className="bg-green-500">Passed</Badge></TableCell>
+                      <TableCell>
+                        <Badge className="bg-green-500">Passed</Badge>
+                      </TableCell>
                       <TableCell>2025-05-18 10:00</TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm">Run Again</Button>
+                        <Button variant="outline" size="sm">
+                          Run Again
+                        </Button>
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>Project Creation Test</TableCell>
-                      <TableCell><Badge className="bg-green-500">Passed</Badge></TableCell>
+                      <TableCell>
+                        <Badge className="bg-green-500">Passed</Badge>
+                      </TableCell>
                       <TableCell>2025-05-18 10:00</TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm">Run Again</Button>
+                        <Button variant="outline" size="sm">
+                          Run Again
+                        </Button>
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>Upload Test</TableCell>
-                      <TableCell><Badge variant="destructive">Failed</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">Failed</Badge>
+                      </TableCell>
                       <TableCell>2025-05-18 10:00</TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm">Run Again</Button>
+                        <Button variant="outline" size="sm">
+                          Run Again
+                        </Button>
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -324,9 +395,14 @@ export function AdminPage() {
                 <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm h-[300px] overflow-auto">
                   <div>[INFO] 14:32:15 - Server started on port 3000</div>
                   <div>[INFO] 14:32:18 - Database connected</div>
-                  <div className="text-yellow-400">[WARN] 14:35:22 - Slow query detected (2.3s)</div>
+                  <div className="text-yellow-400">
+                    [WARN] 14:35:22 - Slow query detected (2.3s)
+                  </div>
                   <div>[INFO] 14:40:01 - User logged in: user@example.com</div>
-                  <div className="text-red-400">[ERROR] 14:42:33 - Failed to upload file: size limit exceeded</div>
+                  <div className="text-red-400">
+                    [ERROR] 14:42:33 - Failed to upload file: size limit
+                    exceeded
+                  </div>
                   <div>[INFO] 14:45:12 - Project created: "My Script"</div>
                 </div>
               </CardContent>
@@ -340,7 +416,8 @@ export function AdminPage() {
                   <CardTitle>Recalculate Word Counts</CardTitle>
                 </div>
                 <CardDescription className="mt-2">
-                  Berechnet die Wortzahl für alle existierenden Buch-Szenen neu und schreibt sie in die Datenbank.
+                  Berechnet die Wortzahl für alle existierenden Buch-Szenen neu
+                  und schreibt sie in die Datenbank.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -366,8 +443,8 @@ export function AdminPage() {
                   {recalculateResult && (
                     <div
                       className={`p-3 rounded-lg ${
-                        recalculateResult.startsWith("✅") 
-                          ? "bg-green-500/10 text-green-600 dark:text-green-400" 
+                        recalculateResult.startsWith("✅")
+                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
                           : "bg-red-500/10 text-red-600 dark:text-red-400"
                       }`}
                     >

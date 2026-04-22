@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Globe, Calendar as CalendarIcon } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  Calendar as CalendarIcon,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { 
-  Carousel, 
-  CarouselContent, 
+import {
+  Carousel,
+  CarouselContent,
   CarouselItem,
-  type CarouselApi 
+  type CarouselApi,
 } from "./ui/carousel";
 
 interface World {
@@ -197,7 +202,9 @@ export function WorldCarousel({
         }}
         className="w-full"
       >
-        <CarouselContent className={worlds.length === 1 ? "" : "-ml-4 md:-ml-0"}>
+        <CarouselContent
+          className={worlds.length === 1 ? "" : "-ml-4 md:-ml-0"}
+        >
           {worlds.map((world, index) => (
             <CarouselItem
               key={world.id}
@@ -208,7 +215,9 @@ export function WorldCarousel({
               <div className="transition-all duration-300 flex justify-center">
                 <Card
                   className={`relative transition-all duration-300 overflow-hidden hover:shadow-xl w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px] ${
-                    index === current ? "border-primary/50 shadow-lg" : "cursor-pointer"
+                    index === current
+                      ? "border-primary/50 shadow-lg"
+                      : "cursor-pointer"
                   }`}
                   onClick={
                     index === current
@@ -228,68 +237,73 @@ export function WorldCarousel({
                   ) : null}
                   <div
                     className={
-                      index === current ? "relative z-[2] pointer-events-none" : undefined
+                      index === current
+                        ? "relative z-[2] pointer-events-none"
+                        : undefined
                     }
                   >
-                  {/* Cover Image - Portrait 2:3 */}
-                  <div
-                    className="aspect-[2/3] bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden w-full"
-                    style={
-                      worldCoverImages[world.id]
-                        ? {
-                            backgroundImage: `url(${worldCoverImages[world.id]})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                            backgroundBlendMode: "overlay",
-                          }
-                        : {}
-                    }
-                  >
-                    {!worldCoverImages[world.id] && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Globe className="size-10 md:size-8 text-primary/40" />
-                      </div>
-                    )}
-
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  </div>
-
-                  {/* World Info */}
-                  <CardHeader className="p-2.5 md:p-3 space-y-1.5">
-                    <CardTitle className="text-xs md:text-sm leading-tight line-clamp-2">
-                      {world.name}
-                    </CardTitle>
-
-                    {world.description && (
-                      <p className="text-[10px] md:text-xs text-muted-foreground line-clamp-2">
-                        {world.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Badge variant="secondary" className="text-[9px] h-4 px-1 flex items-center gap-0.5">
-                        <Globe className="size-2" />
-                        Welt
-                      </Badge>
-                      {world.lastEdited && (
-                        <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] text-muted-foreground mt-0.5 w-full">
-                          <CalendarIcon className="size-2" />
-                          <span>
-                            {world.lastEdited.toLocaleDateString("de-DE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                            })}
-                            ,{" "}
-                            {world.lastEdited.toLocaleTimeString("de-DE", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                    {/* Cover Image - Portrait 2:3 */}
+                    <div
+                      className="aspect-[2/3] bg-gradient-to-br from-primary/20 to-accent/20 relative overflow-hidden w-full"
+                      style={
+                        worldCoverImages[world.id]
+                          ? {
+                              backgroundImage: `url(${worldCoverImages[world.id]})`,
+                              backgroundSize: "cover",
+                              backgroundPosition: "center",
+                              backgroundBlendMode: "overlay",
+                            }
+                          : {}
+                      }
+                    >
+                      {!worldCoverImages[world.id] && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Globe className="size-10 md:size-8 text-primary/40" />
                         </div>
                       )}
+
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     </div>
-                  </CardHeader>
+
+                    {/* World Info */}
+                    <CardHeader className="p-2.5 md:p-3 space-y-1.5">
+                      <CardTitle className="text-xs md:text-sm leading-tight line-clamp-2">
+                        {world.name}
+                      </CardTitle>
+
+                      {world.description && (
+                        <p className="text-[10px] md:text-xs text-muted-foreground line-clamp-2">
+                          {world.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] h-4 px-1 flex items-center gap-0.5"
+                        >
+                          <Globe className="size-2" />
+                          Welt
+                        </Badge>
+                        {world.lastEdited && (
+                          <div className="flex items-center gap-0.5 text-[8px] md:text-[9px] text-muted-foreground mt-0.5 w-full">
+                            <CalendarIcon className="size-2" />
+                            <span>
+                              {world.lastEdited.toLocaleDateString("de-DE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                              })}
+                              ,{" "}
+                              {world.lastEdited.toLocaleTimeString("de-DE", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
                   </div>
                 </Card>
               </div>

@@ -10,7 +10,10 @@ export function getStageDocumentsBucketId(): string {
   return typeof v === "string" && v.trim() ? v.trim() : DEFAULT_BUCKET;
 }
 
-export function buildStorageFileViewUrl(bucketId: string, fileId: string): string | null {
+export function buildStorageFileViewUrl(
+  bucketId: string,
+  fileId: string,
+): string | null {
   const cfg = getAppwritePublicConfig();
   if (!cfg?.endpoint || !fileId) return null;
   return `${cfg.endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${cfg.projectId}`;

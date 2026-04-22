@@ -1,13 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Film, Globe, Calendar as CalendarIcon, Layers, Tv, Book, Headphones } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Film,
+  Globe,
+  Calendar as CalendarIcon,
+  Layers,
+  Tv,
+  Book,
+  Headphones,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { 
-  Carousel, 
-  CarouselContent, 
+import {
+  Carousel,
+  CarouselContent,
   CarouselItem,
-  type CarouselApi 
+  type CarouselApi,
 } from "./ui/carousel";
 
 interface RecentItem {
@@ -15,7 +25,7 @@ interface RecentItem {
   title: string;
   description: string;
   lastEdited: Date;
-  type: 'project' | 'world';
+  type: "project" | "world";
   thumbnailUrl?: string;
   genre?: string;
   projectType?: string;
@@ -95,7 +105,12 @@ export function HomeCarousel({
       book: { label: "Buch", Icon: Book },
       audio: { label: "Hörspiel", Icon: Headphones },
     };
-    return typeMap[type] || { label: type.charAt(0).toUpperCase() + type.slice(1), Icon: Film };
+    return (
+      typeMap[type] || {
+        label: type.charAt(0).toUpperCase() + type.slice(1),
+        Icon: Film,
+      }
+    );
   };
 
   return (
@@ -197,7 +212,10 @@ export function HomeCarousel({
                   onClick={() => {
                     if (index === current) {
                       // Click on center item → Navigate
-                      onNavigate(item.type === 'project' ? 'projekte' : 'worldbuilding', item.id);
+                      onNavigate(
+                        item.type === "project" ? "projekte" : "worldbuilding",
+                        item.id,
+                      );
                     } else {
                       // Click on side item → Scroll to center
                       api?.scrollTo(index);
@@ -205,17 +223,21 @@ export function HomeCarousel({
                   }}
                 >
                   {/* Thumbnail - Portrait 2:3 Ratio */}
-                  <div 
+                  <div
                     className="w-full aspect-[2/3] bg-gradient-to-br from-primary/20 to-accent/20 relative"
-                    style={item.thumbnailUrl ? { 
-                      backgroundImage: `url(${item.thumbnailUrl})`, 
-                      backgroundSize: 'cover', 
-                      backgroundPosition: 'center' 
-                    } : {}}
+                    style={
+                      item.thumbnailUrl
+                        ? {
+                            backgroundImage: `url(${item.thumbnailUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : {}
+                    }
                   >
                     {!item.thumbnailUrl && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {item.type === 'project' ? (
+                        {item.type === "project" ? (
                           <Film className="size-16 text-primary/30" />
                         ) : (
                           <Globe className="size-16 text-primary/30" />
@@ -228,7 +250,7 @@ export function HomeCarousel({
                     <CardTitle className="text-base line-clamp-2 mb-2">
                       {item.title}
                     </CardTitle>
-                    
+
                     {item.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                         {item.description}
@@ -236,8 +258,13 @@ export function HomeCarousel({
                     )}
 
                     <div className="flex flex-wrap gap-1.5">
-                      <Badge variant={item.type === 'project' ? 'secondary' : 'outline'} className="text-[10px] h-5 px-1.5 flex items-center gap-1">
-                        {item.type === 'project' ? (
+                      <Badge
+                        variant={
+                          item.type === "project" ? "secondary" : "outline"
+                        }
+                        className="text-[10px] h-5 px-1.5 flex items-center gap-1"
+                      >
+                        {item.type === "project" ? (
                           <>
                             <Layers className="size-2.5" />
                             Projekt
@@ -249,18 +276,25 @@ export function HomeCarousel({
                           </>
                         )}
                       </Badge>
-                      {item.projectType && (() => {
-                        const typeInfo = getProjectTypeInfo(item.projectType);
-                        const Icon = typeInfo.Icon;
-                        return (
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5 flex items-center gap-1">
-                            <Icon className="size-2.5" />
-                            {typeInfo.label}
-                          </Badge>
-                        );
-                      })()}
+                      {item.projectType &&
+                        (() => {
+                          const typeInfo = getProjectTypeInfo(item.projectType);
+                          const Icon = typeInfo.Icon;
+                          return (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-5 px-1.5 flex items-center gap-1"
+                            >
+                              <Icon className="size-2.5" />
+                              {typeInfo.label}
+                            </Badge>
+                          );
+                        })()}
                       {item.genre && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-5 px-1.5"
+                        >
                           {item.genre}
                         </Badge>
                       )}
@@ -269,12 +303,14 @@ export function HomeCarousel({
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-2">
                       <CalendarIcon className="size-3" />
                       <span>
-                        {item.lastEdited.toLocaleDateString("de-DE", { 
-                          day: "2-digit", 
-                          month: "2-digit" 
-                        })}, {item.lastEdited.toLocaleTimeString("de-DE", { 
-                          hour: "2-digit", 
-                          minute: "2-digit" 
+                        {item.lastEdited.toLocaleDateString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
+                        ,{" "}
+                        {item.lastEdited.toLocaleTimeString("de-DE", {
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </span>
                     </div>

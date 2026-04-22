@@ -1,6 +1,13 @@
 import { useState, useCallback } from "react";
 import Cropper from "react-easy-crop@5.0.8";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
 import { ZoomIn, ZoomOut } from "lucide-react";
@@ -11,14 +18,21 @@ interface ImageCropDialogProps {
   onCancel: () => void;
 }
 
-export function ImageCropDialog({ image, onComplete, onCancel }: ImageCropDialogProps) {
+export function ImageCropDialog({
+  image,
+  onComplete,
+  onCancel,
+}: ImageCropDialogProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
-  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
+  const onCropComplete = useCallback(
+    (croppedArea: any, croppedAreaPixels: any) => {
+      setCroppedAreaPixels(croppedAreaPixels);
+    },
+    [],
+  );
 
   const createCroppedImage = async () => {
     try {
@@ -35,7 +49,8 @@ export function ImageCropDialog({ image, onComplete, onCancel }: ImageCropDialog
         <DialogHeader>
           <DialogTitle>Profilbild bearbeiten</DialogTitle>
           <DialogDescription>
-            Verschiebe und zoome das Bild, um den gewünschten Ausschnitt festzulegen.
+            Verschiebe und zoome das Bild, um den gewünschten Ausschnitt
+            festzulegen.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -87,7 +102,10 @@ export function ImageCropDialog({ image, onComplete, onCancel }: ImageCropDialog
 }
 
 // Helper function to create cropped image
-async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<string> {
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: any,
+): Promise<string> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -110,7 +128,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<string> 
     0,
     0,
     pixelCrop.width,
-    pixelCrop.height
+    pixelCrop.height,
   );
 
   // Return as base64

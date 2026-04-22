@@ -58,11 +58,11 @@ export class FadeAudioPlayer {
         this.audioContext = new AudioContext();
       }
 
-      console.log('[FadeAudioPlayer] Loading audio from:', url);
+      console.log("[FadeAudioPlayer] Loading audio from:", url);
 
       // Fetch audio file
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch audio');
+      if (!response.ok) throw new Error("Failed to fetch audio");
 
       const arrayBuffer = await response.arrayBuffer();
 
@@ -74,9 +74,12 @@ export class FadeAudioPlayer {
         this.options.endTime = this.audioBuffer.duration;
       }
 
-      console.log('[FadeAudioPlayer] Audio loaded, duration:', this.audioBuffer.duration);
+      console.log(
+        "[FadeAudioPlayer] Audio loaded, duration:",
+        this.audioBuffer.duration,
+      );
     } catch (error) {
-      console.error('[FadeAudioPlayer] Load error:', error);
+      console.error("[FadeAudioPlayer] Load error:", error);
       throw error;
     }
   }
@@ -86,12 +89,12 @@ export class FadeAudioPlayer {
    */
   play(): void {
     if (!this.audioContext || !this.audioBuffer) {
-      console.error('[FadeAudioPlayer] Cannot play: audio not loaded');
+      console.error("[FadeAudioPlayer] Cannot play: audio not loaded");
       return;
     }
 
     // Resume audio context if suspended (browser autoplay policy)
-    if (this.audioContext.state === 'suspended') {
+    if (this.audioContext.state === "suspended") {
       this.audioContext.resume();
     }
 
@@ -121,7 +124,7 @@ export class FadeAudioPlayer {
     if (fadeIn > 0) {
       const fadeInEnd = Math.min(fadeIn, playDuration);
       this.gainNode.gain.linearRampToValueAtTime(1, currentTime + fadeInEnd);
-      console.log('[FadeAudioPlayer] Fade-in scheduled:', fadeIn, 'seconds');
+      console.log("[FadeAudioPlayer] Fade-in scheduled:", fadeIn, "seconds");
     }
 
     // Schedule fade-out
@@ -129,7 +132,7 @@ export class FadeAudioPlayer {
       const fadeOutStart = Math.max(0, playDuration - fadeOut);
       this.gainNode.gain.setValueAtTime(1, currentTime + fadeOutStart);
       this.gainNode.gain.linearRampToValueAtTime(0, currentTime + playDuration);
-      console.log('[FadeAudioPlayer] Fade-out scheduled:', fadeOut, 'seconds');
+      console.log("[FadeAudioPlayer] Fade-out scheduled:", fadeOut, "seconds");
     }
 
     // Set up end callback
@@ -149,7 +152,7 @@ export class FadeAudioPlayer {
     // Start time updates
     this.startTimeUpdates();
 
-    console.log('[FadeAudioPlayer] Playing:', {
+    console.log("[FadeAudioPlayer] Playing:", {
       startTime,
       endTime,
       duration: playDuration,
@@ -168,7 +171,7 @@ export class FadeAudioPlayer {
     this.pausedAt = elapsed;
 
     this.stop();
-    console.log('[FadeAudioPlayer] Paused at:', this.pausedAt);
+    console.log("[FadeAudioPlayer] Paused at:", this.pausedAt);
   }
 
   /**

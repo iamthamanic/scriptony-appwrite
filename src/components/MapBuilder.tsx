@@ -1,23 +1,78 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { TreePine, Waves, Mountain, Home, Minus, Eraser, Trash2, ZoomIn, ZoomOut, Undo2, Redo2, Save, Download, RotateCcw, MapPin, Image as ImageIcon, Plus, X, Link2, Pipette, User, Play, Pause, RotateCw, Edit3, Presentation, MoveHorizontal, Maximize2 } from "lucide-react";
+import {
+  TreePine,
+  Waves,
+  Mountain,
+  Home,
+  Minus,
+  Eraser,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+  Undo2,
+  Redo2,
+  Save,
+  Download,
+  RotateCcw,
+  MapPin,
+  Image as ImageIcon,
+  Plus,
+  X,
+  Link2,
+  Pipette,
+  User,
+  Play,
+  Pause,
+  RotateCw,
+  Edit3,
+  Presentation,
+  MoveHorizontal,
+  Maximize2,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { motion } from "motion/react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Slider } from "./ui/slider";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { cn } from "./ui/utils";
 import { useImagePreview } from "./hooks/useImagePreview";
 import { RoadIcon } from "./RoadIcon";
 
-export type TileType = "grass" | "forest" | "water" | "mountain" | "road" | "city" | "custom";
-export type ToolType = "brush" | "eraser" | "select" | "pin" | "character" | "path";
+export type TileType =
+  | "grass"
+  | "forest"
+  | "water"
+  | "mountain"
+  | "road"
+  | "city"
+  | "custom";
+export type ToolType =
+  | "brush"
+  | "eraser"
+  | "select"
+  | "pin"
+  | "character"
+  | "path";
 export type MapMode = "edit" | "stage";
 
 interface Tile {
@@ -114,7 +169,13 @@ const TILE_ICONS: Record<TileType, typeof TreePine | typeof RoadIcon | null> = {
 const BASE_TILE_SIZE = 40; // Base tile size at 100% zoom
 const PIN_SIZE = 80; // Fixed pin size (does not scale with zoom)
 
-export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [], linkedProjectId }: MapBuilderProps) {
+export function MapBuilder({
+  worldId,
+  worldName,
+  onSave,
+  projectCharacters = [],
+  linkedProjectId,
+}: MapBuilderProps) {
   const [mapName, setMapName] = useState(`${worldName} - Karte`);
   const [mapSize, setMapSize] = useState(50);
   const [seed, setSeed] = useState("");
@@ -126,31 +187,51 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   const [brushColor, setBrushColor] = useState("#65B891");
   const [brushSize, setBrushSize] = useState(1);
   const [zoom, setZoom] = useState(0.85);
-  const [tiles, setTiles] = useState<Map<string, { type: TileType; color?: string; countryId?: string }>>(new Map());
+  const [tiles, setTiles] = useState<
+    Map<string, { type: TileType; color?: string; countryId?: string }>
+  >(new Map());
   const [countries, setCountries] = useState<Country[]>([]);
   const [pins, setPins] = useState<PicturePin[]>([]);
   const [characterPins, setCharacterPins] = useState<CharacterPin[]>([]);
-  const [history, setHistory] = useState<Map<string, { type: TileType; color?: string; countryId?: string }>[]>([new Map()]);
+  const [history, setHistory] = useState<
+    Map<string, { type: TileType; color?: string; countryId?: string }>[]
+  >([new Map()]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [isPainting, setIsPainting] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-  const [selectedCountryForPaint, setSelectedCountryForPaint] = useState<string | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [selectedCountryForPaint, setSelectedCountryForPaint] = useState<
+    string | null
+  >(null);
   const [showNewCountryDialog, setShowNewCountryDialog] = useState(false);
   const [newCountryName, setNewCountryName] = useState("");
   const [newCountryColor, setNewCountryColor] = useState("#FF6B6B");
   const [showPinDialog, setShowPinDialog] = useState(false);
-  const [pendingPinPos, setPendingPinPos] = useState<{ x: number; y: number } | null>(null);
+  const [pendingPinPos, setPendingPinPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [newPinTitle, setNewPinTitle] = useState("");
   const [newPinImage, setNewPinImage] = useState<string>("");
-  const [selectedCountryForAssets, setSelectedCountryForAssets] = useState<string | null>(null);
+  const [selectedCountryForAssets, setSelectedCountryForAssets] = useState<
+    string | null
+  >(null);
   const [showCharacterDialog, setShowCharacterDialog] = useState(false);
-  const [pendingCharacterPos, setPendingCharacterPos] = useState<{ x: number; y: number } | null>(null);
+  const [pendingCharacterPos, setPendingCharacterPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>("");
-  const [characterPaths, setCharacterPaths] = useState<Map<string, PathPoint[]>>(new Map());
+  const [characterPaths, setCharacterPaths] = useState<
+    Map<string, PathPoint[]>
+  >(new Map());
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(1);
-  const [selectedCharacterForPath, setSelectedCharacterForPath] = useState<string | null>(null);
+  const [selectedCharacterForPath, setSelectedCharacterForPath] = useState<
+    string | null
+  >(null);
   const [currentPathPoints, setCurrentPathPoints] = useState<PathPoint[]>([]);
   const [showEditPinDialog, setShowEditPinDialog] = useState(false);
   const [editingPin, setEditingPin] = useState<PicturePin | null>(null);
@@ -158,7 +239,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   const [editPinImage, setEditPinImage] = useState("");
   const [draggingPinId, setDraggingPinId] = useState<string | null>(null);
   const [draggingCharId, setDraggingCharId] = useState<string | null>(null);
-  
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -168,7 +249,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   // Calculate tile size based on zoom (Google Maps style)
   const tileSize = BASE_TILE_SIZE * zoom;
-  
+
   // Calculate effective pin size - compensate for zoom to keep pins visually constant
   const effectivePinSize = PIN_SIZE / zoom;
 
@@ -178,7 +259,17 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
       handleSave();
     }, 10000);
     return () => clearInterval(interval);
-  }, [tiles, countries, pins, characterPins, mapName, mapSize, seed, biome, climate]);
+  }, [
+    tiles,
+    countries,
+    pins,
+    characterPins,
+    mapName,
+    mapSize,
+    seed,
+    biome,
+    climate,
+  ]);
 
   // Reset tool when switching modes
   useEffect(() => {
@@ -191,46 +282,66 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   const getTileKey = (x: number, y: number) => `${x},${y}`;
 
-  const getTileData = useCallback((x: number, y: number) => {
-    return tiles.get(getTileKey(x, y)) || { type: "grass" as TileType };
-  }, [tiles]);
+  const getTileData = useCallback(
+    (x: number, y: number) => {
+      return tiles.get(getTileKey(x, y)) || { type: "grass" as TileType };
+    },
+    [tiles],
+  );
 
-  const setTileData = useCallback((x: number, y: number, data: { type: TileType; color?: string; countryId?: string }) => {
-    if (x < 0 || x >= mapSize || y < 0 || y >= mapSize) return;
-    
-    const key = getTileKey(x, y);
-    setTiles((prev) => {
-      const newTiles = new Map(prev);
-      if (data.type === "grass" && !data.color && !data.countryId) {
-        newTiles.delete(key);
-      } else {
-        newTiles.set(key, data);
-      }
-      return newTiles;
-    });
-  }, [mapSize]);
+  const setTileData = useCallback(
+    (
+      x: number,
+      y: number,
+      data: { type: TileType; color?: string; countryId?: string },
+    ) => {
+      if (x < 0 || x >= mapSize || y < 0 || y >= mapSize) return;
 
-  const paintTiles = useCallback((centerX: number, centerY: number) => {
-    const halfBrush = Math.floor(brushSize / 2);
-    for (let dy = -halfBrush; dy <= halfBrush; dy++) {
-      for (let dx = -halfBrush; dx <= halfBrush; dx++) {
-        const x = centerX + dx;
-        const y = centerY + dy;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance <= brushSize / 2) {
-          if (selectedTool === "brush") {
-            setTileData(x, y, {
-              type: selectedTileType,
-              color: selectedTileType === "custom" ? brushColor : undefined,
-              countryId: selectedCountryForPaint || undefined,
-            });
-          } else if (selectedTool === "eraser") {
-            setTileData(x, y, { type: "grass" });
+      const key = getTileKey(x, y);
+      setTiles((prev) => {
+        const newTiles = new Map(prev);
+        if (data.type === "grass" && !data.color && !data.countryId) {
+          newTiles.delete(key);
+        } else {
+          newTiles.set(key, data);
+        }
+        return newTiles;
+      });
+    },
+    [mapSize],
+  );
+
+  const paintTiles = useCallback(
+    (centerX: number, centerY: number) => {
+      const halfBrush = Math.floor(brushSize / 2);
+      for (let dy = -halfBrush; dy <= halfBrush; dy++) {
+        for (let dx = -halfBrush; dx <= halfBrush; dx++) {
+          const x = centerX + dx;
+          const y = centerY + dy;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance <= brushSize / 2) {
+            if (selectedTool === "brush") {
+              setTileData(x, y, {
+                type: selectedTileType,
+                color: selectedTileType === "custom" ? brushColor : undefined,
+                countryId: selectedCountryForPaint || undefined,
+              });
+            } else if (selectedTool === "eraser") {
+              setTileData(x, y, { type: "grass" });
+            }
           }
         }
       }
-    }
-  }, [brushSize, selectedTool, selectedTileType, brushColor, selectedCountryForPaint, setTileData]);
+    },
+    [
+      brushSize,
+      selectedTool,
+      selectedTileType,
+      brushColor,
+      selectedCountryForPaint,
+      setTileData,
+    ],
+  );
 
   const addToHistory = useCallback(() => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -250,7 +361,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
     }
     // Move dragged pins/characters to current tile
     if (draggingPinId) {
-      setPins(pins.map(p => p.id === draggingPinId ? { ...p, x, y } : p));
+      setPins(pins.map((p) => (p.id === draggingPinId ? { ...p, x, y } : p)));
     }
     if (draggingCharId) {
       handleMoveCharacter(draggingCharId, x, y);
@@ -262,7 +373,11 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   };
 
   const handleTileClick = (x: number, y: number) => {
-    if (mapMode === "stage" && selectedTool === "path" && selectedCharacterForPath) {
+    if (
+      mapMode === "stage" &&
+      selectedTool === "path" &&
+      selectedCharacterForPath
+    ) {
       // Add point to path
       setCurrentPathPoints([...currentPathPoints, { x, y }]);
     } else if (selectedTool === "brush" || selectedTool === "eraser") {
@@ -317,7 +432,10 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   const handleFillDefault = () => {
     // Fill entire map with default grass tiles
-    const newTiles = new Map<string, { type: TileType; color?: string; countryId?: string }>();
+    const newTiles = new Map<
+      string,
+      { type: TileType; color?: string; countryId?: string }
+    >();
     for (let y = 0; y < mapSize; y++) {
       for (let x = 0; x < mapSize; x++) {
         // We don't need to add grass tiles explicitly as they are the default
@@ -329,41 +447,57 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   const handleZoomIn = () => {
     if (!canvasRef.current) return;
-    
+
     const container = canvasRef.current;
     const oldZoom = zoom;
     const newZoom = Math.min(zoom + 0.25, 3);
-    
+
     // Calculate center of viewport
-    const centerX = (container.scrollLeft + container.clientWidth / 2) / (mapSize * BASE_TILE_SIZE * oldZoom);
-    const centerY = (container.scrollTop + container.clientHeight / 2) / (mapSize * BASE_TILE_SIZE * oldZoom);
-    
+    const centerX =
+      (container.scrollLeft + container.clientWidth / 2) /
+      (mapSize * BASE_TILE_SIZE * oldZoom);
+    const centerY =
+      (container.scrollTop + container.clientHeight / 2) /
+      (mapSize * BASE_TILE_SIZE * oldZoom);
+
     setZoom(newZoom);
-    
+
     // Adjust scroll to keep center point fixed
     setTimeout(() => {
-      container.scrollLeft = centerX * (mapSize * BASE_TILE_SIZE * newZoom) - container.clientWidth / 2;
-      container.scrollTop = centerY * (mapSize * BASE_TILE_SIZE * newZoom) - container.clientHeight / 2;
+      container.scrollLeft =
+        centerX * (mapSize * BASE_TILE_SIZE * newZoom) -
+        container.clientWidth / 2;
+      container.scrollTop =
+        centerY * (mapSize * BASE_TILE_SIZE * newZoom) -
+        container.clientHeight / 2;
     }, 0);
   };
 
   const handleZoomOut = () => {
     if (!canvasRef.current) return;
-    
+
     const container = canvasRef.current;
     const oldZoom = zoom;
     const newZoom = Math.max(zoom - 0.25, 0.1);
-    
+
     // Calculate center of viewport
-    const centerX = (container.scrollLeft + container.clientWidth / 2) / (mapSize * BASE_TILE_SIZE * oldZoom);
-    const centerY = (container.scrollTop + container.clientHeight / 2) / (mapSize * BASE_TILE_SIZE * oldZoom);
-    
+    const centerX =
+      (container.scrollLeft + container.clientWidth / 2) /
+      (mapSize * BASE_TILE_SIZE * oldZoom);
+    const centerY =
+      (container.scrollTop + container.clientHeight / 2) /
+      (mapSize * BASE_TILE_SIZE * oldZoom);
+
     setZoom(newZoom);
-    
+
     // Adjust scroll to keep center point fixed
     setTimeout(() => {
-      container.scrollLeft = centerX * (mapSize * BASE_TILE_SIZE * newZoom) - container.clientWidth / 2;
-      container.scrollTop = centerY * (mapSize * BASE_TILE_SIZE * newZoom) - container.clientHeight / 2;
+      container.scrollLeft =
+        centerX * (mapSize * BASE_TILE_SIZE * newZoom) -
+        container.clientWidth / 2;
+      container.scrollTop =
+        centerY * (mapSize * BASE_TILE_SIZE * newZoom) -
+        container.clientHeight / 2;
     }, 0);
   };
 
@@ -422,10 +556,12 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    
+
     if (canvasRef.current) {
-      const scrollX = x * (mapSize * tileSize) - canvasRef.current.clientWidth / 2;
-      const scrollY = y * (mapSize * tileSize) - canvasRef.current.clientHeight / 2;
+      const scrollX =
+        x * (mapSize * tileSize) - canvasRef.current.clientWidth / 2;
+      const scrollY =
+        y * (mapSize * tileSize) - canvasRef.current.clientHeight / 2;
       canvasRef.current.scrollLeft = scrollX;
       canvasRef.current.scrollTop = scrollY;
     }
@@ -445,7 +581,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   };
 
   const handleDeleteCountry = (countryId: string) => {
-    setCountries(countries.filter(c => c.id !== countryId));
+    setCountries(countries.filter((c) => c.id !== countryId));
     // Remove country from tiles
     setTiles((prev) => {
       const newTiles = new Map(prev);
@@ -460,12 +596,14 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   const handleCreatePin = () => {
     if (!pendingPinPos || !newPinTitle.trim()) return;
-    
+
     const newPin: PicturePin = {
       id: `pin-${Date.now()}`,
       x: pendingPinPos.x,
       y: pendingPinPos.y,
-      imageUrl: newPinImage || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
+      imageUrl:
+        newPinImage ||
+        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
       title: newPinTitle,
     };
     setPins([...pins, newPin]);
@@ -476,7 +614,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   };
 
   const handleDeletePin = (pinId: string) => {
-    setPins(pins.filter(p => p.id !== pinId));
+    setPins(pins.filter((p) => p.id !== pinId));
   };
 
   const handleEditPin = (pin: PicturePin) => {
@@ -488,12 +626,14 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   const handleUpdatePin = () => {
     if (!editingPin || !editPinTitle.trim()) return;
-    
-    setPins(pins.map(p => 
-      p.id === editingPin.id 
-        ? { ...p, title: editPinTitle, imageUrl: editPinImage || p.imageUrl }
-        : p
-    ));
+
+    setPins(
+      pins.map((p) =>
+        p.id === editingPin.id
+          ? { ...p, title: editPinTitle, imageUrl: editPinImage || p.imageUrl }
+          : p,
+      ),
+    );
     setShowEditPinDialog(false);
     setEditingPin(null);
     setEditPinTitle("");
@@ -510,10 +650,12 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
 
   const handleCreateCharacterPin = () => {
     if (!pendingCharacterPos || !selectedCharacterId) return;
-    
-    const character = projectCharacters.find(c => c.id === selectedCharacterId);
+
+    const character = projectCharacters.find(
+      (c) => c.id === selectedCharacterId,
+    );
     if (!character) return;
-    
+
     const newCharPin: CharacterPin = {
       id: `charpin-${Date.now()}`,
       x: pendingCharacterPos.x,
@@ -530,7 +672,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   };
 
   const handleDeleteCharacterPin = (charPinId: string) => {
-    setCharacterPins(characterPins.filter(c => c.id !== charPinId));
+    setCharacterPins(characterPins.filter((c) => c.id !== charPinId));
   };
 
   const handleCharacterDragStart = (charPinId: string) => {
@@ -542,15 +684,17 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
   };
 
   const handleMoveCharacter = (charPinId: string, x: number, y: number) => {
-    setCharacterPins(characterPins.map(c => 
-      c.id === charPinId ? { ...c, x, y } : c
-    ));
+    setCharacterPins(
+      characterPins.map((c) => (c.id === charPinId ? { ...c, x, y } : c)),
+    );
   };
 
   const handleSavePath = () => {
     if (!selectedCharacterForPath || currentPathPoints.length === 0) return;
-    
-    setCharacterPaths(new Map(characterPaths.set(selectedCharacterForPath, currentPathPoints)));
+
+    setCharacterPaths(
+      new Map(characterPaths.set(selectedCharacterForPath, currentPathPoints)),
+    );
     setCurrentPathPoints([]);
   };
 
@@ -576,7 +720,10 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
       border: `2px solid ${selectedTool === "eraser" ? "#EF4444" : brushColor}`,
       borderRadius: "50%",
       pointerEvents: "none" as const,
-      backgroundColor: selectedTool === "eraser" ? "rgba(239, 68, 68, 0.1)" : `${brushColor}33`,
+      backgroundColor:
+        selectedTool === "eraser"
+          ? "rgba(239, 68, 68, 0.1)"
+          : `${brushColor}33`,
       transform: "translate(-50%, -50%)",
       marginLeft: size / 2,
       marginTop: size / 2,
@@ -669,68 +816,93 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
               {/* Tile Types (only for brush in edit mode) */}
               {mapMode === "edit" && selectedTool === "brush" && (
                 <div className="flex items-center gap-1 border-r pr-2 flex-wrap">
-                  {Object.entries(PRESET_COLORS).filter(([key]) => key !== "custom").map(([type, color]) => {
-                    const Icon = TILE_ICONS[type as TileType];
-                    return (
-                      <Button
-                        key={type}
-                        variant={selectedTileType === type ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTileType(type as TileType);
-                          if (type !== "custom") {
-                            setBrushColor(color);
+                  {Object.entries(PRESET_COLORS)
+                    .filter(([key]) => key !== "custom")
+                    .map(([type, color]) => {
+                      const Icon = TILE_ICONS[type as TileType];
+                      return (
+                        <Button
+                          key={type}
+                          variant={
+                            selectedTileType === type ? "default" : "ghost"
                           }
-                        }}
-                        className="h-9 w-9 p-0"
-                        title={type}
-                        style={{
-                          backgroundColor: selectedTileType === type ? undefined : color,
-                        }}
-                      >
-                        {Icon && <Icon className="size-4" style={{ color: selectedTileType === type ? undefined : "white" }} />}
-                      </Button>
-                    );
-                  })}
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTileType(type as TileType);
+                            if (type !== "custom") {
+                              setBrushColor(color);
+                            }
+                          }}
+                          className="h-9 w-9 p-0"
+                          title={type}
+                          style={{
+                            backgroundColor:
+                              selectedTileType === type ? undefined : color,
+                          }}
+                        >
+                          {Icon && (
+                            <Icon
+                              className="size-4"
+                              style={{
+                                color:
+                                  selectedTileType === type
+                                    ? undefined
+                                    : "white",
+                              }}
+                            />
+                          )}
+                        </Button>
+                      );
+                    })}
                 </div>
               )}
 
               {/* Brush Color & Size (only for brush/eraser in edit mode) */}
-              {mapMode === "edit" && (selectedTool === "brush" || selectedTool === "eraser") && (
-                <>
-                  {selectedTool === "brush" && (
-                    <div className="flex items-center gap-2 border-r pr-2">
-                      <Label className="text-xs text-muted-foreground">Farbe:</Label>
-                      <input
-                        type="color"
-                        value={brushColor}
-                        onChange={(e) => {
-                          setBrushColor(e.target.value);
-                          setSelectedTileType("custom");
-                        }}
-                        className="w-9 h-9 rounded cursor-pointer border border-border"
+              {mapMode === "edit" &&
+                (selectedTool === "brush" || selectedTool === "eraser") && (
+                  <>
+                    {selectedTool === "brush" && (
+                      <div className="flex items-center gap-2 border-r pr-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Farbe:
+                        </Label>
+                        <input
+                          type="color"
+                          value={brushColor}
+                          onChange={(e) => {
+                            setBrushColor(e.target.value);
+                            setSelectedTileType("custom");
+                          }}
+                          className="w-9 h-9 rounded cursor-pointer border border-border"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 border-r pr-2 min-w-[160px]">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                        Größe: {brushSize}
+                      </Label>
+                      <Slider
+                        min={1}
+                        max={20}
+                        step={1}
+                        value={[brushSize]}
+                        onValueChange={(value) => setBrushSize(value[0])}
+                        className="w-20"
                       />
                     </div>
-                  )}
-                  <div className="flex items-center gap-2 border-r pr-2 min-w-[160px]">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Größe: {brushSize}</Label>
-                    <Slider
-                      min={1}
-                      max={20}
-                      step={1}
-                      value={[brushSize]}
-                      onValueChange={(value) => setBrushSize(value[0])}
-                      className="w-20"
-                    />
-                  </div>
-                </>
-              )}
+                  </>
+                )}
 
               {/* Stage Mode Controls */}
               {mapMode === "stage" && (
                 <div className="flex items-center gap-2 border-r pr-2 flex-wrap">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Charakter:</Label>
-                  <Select value={selectedCharacterForPath || ""} onValueChange={setSelectedCharacterForPath}>
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                    Charakter:
+                  </Label>
+                  <Select
+                    value={selectedCharacterForPath || ""}
+                    onValueChange={setSelectedCharacterForPath}
+                  >
                     <SelectTrigger className="h-9 w-32">
                       <SelectValue placeholder="Wählen..." />
                     </SelectTrigger>
@@ -769,14 +941,24 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   <Button
                     size="sm"
                     onClick={handlePlayAnimation}
-                    disabled={!selectedCharacterForPath || !characterPaths.get(selectedCharacterForPath || "") || isAnimating}
+                    disabled={
+                      !selectedCharacterForPath ||
+                      !characterPaths.get(selectedCharacterForPath || "") ||
+                      isAnimating
+                    }
                     className="h-9"
                   >
-                    {isAnimating ? <Pause className="size-4 mr-1.5" /> : <Play className="size-4 mr-1.5" />}
+                    {isAnimating ? (
+                      <Pause className="size-4 mr-1.5" />
+                    ) : (
+                      <Play className="size-4 mr-1.5" />
+                    )}
                     {isAnimating ? "Stop" : "Play"}
                   </Button>
                   <div className="flex items-center gap-2 min-w-[120px]">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Speed:</Label>
+                    <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                      Speed:
+                    </Label>
                     <Slider
                       min={0.5}
                       max={3}
@@ -785,53 +967,55 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                       onValueChange={(value) => setAnimationSpeed(value[0])}
                       className="w-16"
                     />
-                    <span className="text-xs text-muted-foreground">{animationSpeed}x</span>
+                    <span className="text-xs text-muted-foreground">
+                      {animationSpeed}x
+                    </span>
                   </div>
                 </div>
               )}
 
               {/* Actions (Edit Mode only) */}
               {mapMode === "edit" && (
-              <div className="flex items-center gap-1 border-r pr-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleUndo}
-                  disabled={historyIndex === 0}
-                  className="h-9 w-9 p-0"
-                  title="Rückgängig"
-                >
-                  <Undo2 className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRedo}
-                  disabled={historyIndex === history.length - 1}
-                  className="h-9 w-9 p-0"
-                  title="Wiederherstellen"
-                >
-                  <Redo2 className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearAll}
-                  className="h-9 w-9 p-0"
-                  title="Alles löschen"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleFillDefault}
-                  className="h-9 w-9 p-0"
-                  title="Mit Standard füllen"
-                >
-                  <Maximize2 className="size-4" />
-                </Button>
-              </div>
+                <div className="flex items-center gap-1 border-r pr-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleUndo}
+                    disabled={historyIndex === 0}
+                    className="h-9 w-9 p-0"
+                    title="Rückgängig"
+                  >
+                    <Undo2 className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRedo}
+                    disabled={historyIndex === history.length - 1}
+                    className="h-9 w-9 p-0"
+                    title="Wiederherstellen"
+                  >
+                    <Redo2 className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearAll}
+                    className="h-9 w-9 p-0"
+                    title="Alles löschen"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleFillDefault}
+                    className="h-9 w-9 p-0"
+                    title="Mit Standard füllen"
+                  >
+                    <Maximize2 className="size-4" />
+                  </Button>
+                </div>
               )}
 
               {/* Zoom */}
@@ -872,7 +1056,11 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
               <div className="flex items-center gap-2 ml-auto">
                 {lastSaved && (
                   <span className="text-xs text-muted-foreground">
-                    Gespeichert um {lastSaved.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                    Gespeichert um{" "}
+                    {lastSaved.toLocaleTimeString("de-DE", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 )}
                 <Button size="sm" onClick={handleSave} className="h-9">
@@ -908,7 +1096,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   const tileData = getTileData(x, y);
                   const Icon = TILE_ICONS[tileData.type];
                   const color = tileData.color || PRESET_COLORS[tileData.type];
-                  const country = countries.find(c => c.id === tileData.countryId);
+                  const country = countries.find(
+                    (c) => c.id === tileData.countryId,
+                  );
                   const borderColor = country ? country.color : "transparent";
 
                   const isHovered = cursorPos?.x === x && cursorPos?.y === y;
@@ -921,7 +1111,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                         width: `${tileSize}px`,
                         height: `${tileSize}px`,
                         backgroundColor: color,
-                        boxShadow: country ? `inset 0 0 0 2px ${borderColor}` : undefined,
+                        boxShadow: country
+                          ? `inset 0 0 0 2px ${borderColor}`
+                          : undefined,
                       }}
                       onClick={() => handleTileClick(x, y)}
                       onMouseEnter={() => handleTileMouseEnter(x, y)}
@@ -930,17 +1122,25 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                         <Icon
                           className={cn(
                             "opacity-60",
-                            tileSize < 20 ? "size-2" : tileSize < 30 ? "size-3" : "size-4"
+                            tileSize < 20
+                              ? "size-2"
+                              : tileSize < 30
+                                ? "size-3"
+                                : "size-4",
                           )}
                           style={{ color: "rgba(255,255,255,0.8)" }}
                         />
                       )}
                       {/* Hover Feedback */}
                       {isHovered && selectedTool !== "select" && (
-                        <X 
+                        <X
                           className={cn(
                             "absolute text-primary pointer-events-none",
-                            tileSize < 20 ? "size-3" : tileSize < 30 ? "size-4" : "size-6"
+                            tileSize < 20
+                              ? "size-3"
+                              : tileSize < 30
+                                ? "size-4"
+                                : "size-6",
                           )}
                           strokeWidth={3}
                         />
@@ -950,9 +1150,10 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                 })}
 
                 {/* Brush Cursor Preview */}
-                {cursorPos && (selectedTool === "brush" || selectedTool === "eraser") && (
-                  <div style={getBrushCursorStyle()} />
-                )}
+                {cursorPos &&
+                  (selectedTool === "brush" || selectedTool === "eraser") && (
+                    <div style={getBrushCursorStyle()} />
+                  )}
 
                 {/* Picture Pins */}
                 {pins.map((pin) => (
@@ -976,8 +1177,8 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   >
                     {/* Pin */}
                     <div className="relative">
-                      <MapPin 
-                        className="text-destructive fill-destructive drop-shadow-lg" 
+                      <MapPin
+                        className="text-destructive fill-destructive drop-shadow-lg"
                         style={{
                           width: `${effectivePinSize * 0.4}px`,
                           height: `${effectivePinSize * 0.4}px`,
@@ -1085,7 +1286,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                               }}
                               className="border-4 shadow-lg cursor-pointer hover:scale-105 transition-transform"
                             >
-                              <AvatarFallback style={{ backgroundColor: char.color }}>
+                              <AvatarFallback
+                                style={{ backgroundColor: char.color }}
+                              >
                                 {char.name.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
@@ -1123,7 +1326,10 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   >
                     <polyline
                       points={currentPathPoints
-                        .map((p) => `${p.x * tileSize + tileSize / 2},${p.y * tileSize + tileSize / 2}`)
+                        .map(
+                          (p) =>
+                            `${p.x * tileSize + tileSize / 2},${p.y * tileSize + tileSize / 2}`,
+                        )
                         .join(" ")}
                       fill="none"
                       stroke="#6E59A5"
@@ -1158,7 +1364,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
           </CardHeader>
           <CardContent className="p-4 pt-0 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="map-name" className="text-sm">Kartenname</Label>
+              <Label htmlFor="map-name" className="text-sm">
+                Kartenname
+              </Label>
               <Input
                 id="map-name"
                 value={mapName}
@@ -1183,7 +1391,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="seed" className="text-sm">Seed</Label>
+              <Label htmlFor="seed" className="text-sm">
+                Seed
+              </Label>
               <Input
                 id="seed"
                 value={seed}
@@ -1204,7 +1414,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="biome" className="text-sm">Biom</Label>
+              <Label htmlFor="biome" className="text-sm">
+                Biom
+              </Label>
               <Select value={biome} onValueChange={setBiome}>
                 <SelectTrigger id="biome" className="h-9">
                   <SelectValue />
@@ -1221,7 +1433,9 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="climate" className="text-sm">Klimazone</Label>
+              <Label htmlFor="climate" className="text-sm">
+                Klimazone
+              </Label>
               <Select value={climate} onValueChange={setClimate}>
                 <SelectTrigger id="climate" className="h-9">
                   <SelectValue />
@@ -1272,7 +1486,8 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                     onClick={() => setSelectedCountryForPaint(country.id)}
                     className={cn(
                       "h-7 px-2",
-                      selectedCountryForPaint === country.id && "bg-primary text-primary-foreground"
+                      selectedCountryForPaint === country.id &&
+                        "bg-primary text-primary-foreground",
                     )}
                   >
                     <TreePine className="size-3" />
@@ -1316,12 +1531,7 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   const y = Math.floor(idx / mapSize);
                   const tileData = getTileData(x, y);
                   const color = tileData.color || PRESET_COLORS[tileData.type];
-                  return (
-                    <div
-                      key={idx}
-                      style={{ backgroundColor: color }}
-                    />
-                  );
+                  return <div key={idx} style={{ backgroundColor: color }} />;
                 })}
               </div>
             </div>
@@ -1347,9 +1557,12 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
       </div>
 
       {/* Dialogs */}
-      
+
       {/* New Country Dialog */}
-      <Dialog open={showNewCountryDialog} onOpenChange={setShowNewCountryDialog}>
+      <Dialog
+        open={showNewCountryDialog}
+        onOpenChange={setShowNewCountryDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Neues Land / Region</DialogTitle>
@@ -1379,7 +1592,10 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewCountryDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewCountryDialog(false)}
+            >
               Abbrechen
             </Button>
             <Button onClick={handleCreateCountry}>Erstellen</Button>
@@ -1423,7 +1639,8 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   const file = e.target.files?.[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onload = (e) => setNewPinImage(e.target?.result as string);
+                    reader.onload = (e) =>
+                      setNewPinImage(e.target?.result as string);
                     reader.readAsDataURL(file);
                   }
                 }}
@@ -1482,7 +1699,8 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
                   const file = e.target.files?.[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onload = (e) => setEditPinImage(e.target?.result as string);
+                    reader.onload = (e) =>
+                      setEditPinImage(e.target?.result as string);
                     reader.readAsDataURL(file);
                   }
                 }}
@@ -1499,7 +1717,10 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditPinDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditPinDialog(false)}
+            >
               Abbrechen
             </Button>
             <Button onClick={handleUpdatePin}>Speichern</Button>
@@ -1519,12 +1740,16 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
           <div className="space-y-4">
             {projectCharacters.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Keine Charaktere verfügbar. Verknüpfe ein Projekt mit dieser Welt.
+                Keine Charaktere verfügbar. Verknüpfe ein Projekt mit dieser
+                Welt.
               </p>
             ) : (
               <div className="space-y-2">
                 <Label>Charakter wählen</Label>
-                <Select value={selectedCharacterId} onValueChange={setSelectedCharacterId}>
+                <Select
+                  value={selectedCharacterId}
+                  onValueChange={setSelectedCharacterId}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Wähle einen Charakter..." />
                   </SelectTrigger>
@@ -1546,10 +1771,16 @@ export function MapBuilder({ worldId, worldName, onSave, projectCharacters = [],
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCharacterDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowCharacterDialog(false)}
+            >
               Abbrechen
             </Button>
-            <Button onClick={handleCreateCharacterPin} disabled={!selectedCharacterId}>
+            <Button
+              onClick={handleCreateCharacterPin}
+              disabled={!selectedCharacterId}
+            >
               Hinzufügen
             </Button>
           </DialogFooter>

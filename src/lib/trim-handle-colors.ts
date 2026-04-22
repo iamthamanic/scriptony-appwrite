@@ -3,18 +3,18 @@
  * Nutzung in VideoEditorTimeline und überall, wo dieselbe UX gewünscht ist.
  */
 
-import type { TimelineTrackKind } from './timeline-track-tokens';
+import type { TimelineTrackKind } from "./timeline-track-tokens";
 
 /** Gleiche Union wie Timeline-Track-Arten — eine Quelle: [timeline-track-tokens.ts](timeline-track-tokens.ts) */
 export type TrimGrabPreset = TimelineTrackKind;
 
 /** Mittlere Sättigung pro Track, wenn kein individuelles `baseColorHex` gesetzt ist. */
 export const TRIM_GRAB_PRESET_BASE_HEX: Record<TrimGrabPreset, string> = {
-  beat: '#a78bfa',
-  act: '#60a5fa',
-  sequence: '#34d399',
-  scene: '#f472b6',
-  shot: '#facc15',
+  beat: "#a78bfa",
+  act: "#60a5fa",
+  sequence: "#34d399",
+  scene: "#f472b6",
+  shot: "#facc15",
 };
 
 function clamp(n: number, min: number, max: number): number {
@@ -23,9 +23,9 @@ function clamp(n: number, min: number, max: number): number {
 
 /** #rgb, #rrggbb, #rrggbbaa */
 export function normalizeHex(input: string | null | undefined): string | null {
-  if (!input || typeof input !== 'string') return null;
+  if (!input || typeof input !== "string") return null;
   let s = input.trim();
-  if (s.startsWith('#')) s = s.slice(1);
+  if (s.startsWith("#")) s = s.slice(1);
   if (s.length === 3) {
     s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
   }
@@ -38,10 +38,12 @@ export function normalizeHex(input: string | null | undefined): string | null {
 /**
  * Hex oder CSS `rgb()` / `rgba()` → `#rrggbb` (für Beat-Farben aus API/Inline-Styles).
  */
-export function parseColorToHex(input: string | null | undefined): string | null {
+export function parseColorToHex(
+  input: string | null | undefined,
+): string | null {
   const fromHex = normalizeHex(input);
   if (fromHex) return fromHex;
-  if (!input || typeof input !== 'string') return null;
+  if (!input || typeof input !== "string") return null;
   const m = input
     .trim()
     .match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+\s*)?\)/i);
@@ -61,12 +63,17 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
-  const to = (x: number) => clamp(Math.round(x), 0, 255).toString(16).padStart(2, '0');
+  const to = (x: number) =>
+    clamp(Math.round(x), 0, 255).toString(16).padStart(2, "0");
   return `#${to(r)}${to(g)}${to(b)}`;
 }
 
 /** sRGB 0–1 */
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+function rgbToHsl(
+  r: number,
+  g: number,
+  b: number,
+): { h: number; s: number; l: number } {
   r /= 255;
   g /= 255;
   b /= 255;
@@ -93,7 +100,11 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   return { h, s, l };
 }
 
-function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+function hslToRgb(
+  h: number,
+  s: number,
+  l: number,
+): { r: number; g: number; b: number } {
   let r: number;
   let g: number;
   let b: number;
@@ -124,7 +135,7 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
  */
 export function trimEndCapBackgroundFromBase(hexInput: string): string {
   const rgb = hexToRgb(hexInput);
-  if (!rgb) return '#7c3aed';
+  if (!rgb) return "#7c3aed";
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
   let nextL = l * 0.88;
   if (l < 0.22) nextL = Math.max(0.12, l * 0.78);
@@ -140,7 +151,7 @@ export function trimEndCapBackgroundFromBase(hexInput: string): string {
  */
 export function grabHandleBackgroundFromBase(hexInput: string): string {
   const rgb = hexToRgb(hexInput);
-  if (!rgb) return '#4c1d95';
+  if (!rgb) return "#4c1d95";
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
   let nextL = l * 0.52;
   if (l < 0.22) nextL = Math.max(0.06, l * 0.72);
@@ -156,7 +167,7 @@ export function grabHandleBackgroundFromBase(hexInput: string): string {
  */
 export function clipBorderAndHandleColorFromBase(hexInput: string): string {
   const rgb = hexToRgb(hexInput);
-  if (!rgb) return '#6d28d9';
+  if (!rgb) return "#6d28d9";
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
   let nextL = l * 0.72;
   if (l < 0.22) nextL = Math.max(0.08, l * 0.88);
@@ -169,7 +180,7 @@ export function clipBorderAndHandleColorFromBase(hexInput: string): string {
 
 export function resolveTrimGrabBaseHex(
   baseColorHex: string | null | undefined,
-  preset: TrimGrabPreset
+  preset: TrimGrabPreset,
 ): string {
   return parseColorToHex(baseColorHex) ?? TRIM_GRAB_PRESET_BASE_HEX[preset];
 }

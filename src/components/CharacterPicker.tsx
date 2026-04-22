@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState } from "react";
 import { User, Search, X } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { Input } from './ui/input';
-import type { Character } from '../lib/types';
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
+import { Input } from "./ui/input";
+import type { Character } from "../lib/types";
 
 interface CharacterPickerProps {
   characters: Character[];
@@ -21,24 +21,24 @@ interface CharacterPickerProps {
  * - @-mention autocomplete (fixed position, filter by search)
  * - Add character to shot (relative position, filter by already added)
  */
-export function CharacterPicker({ 
-  characters, 
-  search = '',
+export function CharacterPicker({
+  characters,
+  search = "",
   position,
   onSelect,
   onClose,
   filterIds = [],
   useFixedPosition = false,
-  className = ''
+  className = "",
 }: CharacterPickerProps) {
   // Local search state for the inline search bar
-  const [localSearch, setLocalSearch] = useState('');
-  
+  const [localSearch, setLocalSearch] = useState("");
+
   // Combine external search (from @-mention) and local search (from search bar)
   const combinedSearch = search || localSearch;
-  
+
   // Filter by search (name AND role match) and exclude filterIds
-  const filtered = characters.filter(char => {
+  const filtered = characters.filter((char) => {
     const searchLower = combinedSearch.toLowerCase();
     const matchesName = char.name.toLowerCase().includes(searchLower);
     const matchesRole = char.role?.toLowerCase().includes(searchLower) || false;
@@ -49,13 +49,13 @@ export function CharacterPicker({
 
   // Debug: Log character images in detail
   if (filtered.length > 0) {
-    console.log('[CharacterPicker] 🔍 Character Details:');
-    filtered.forEach(c => {
+    console.log("[CharacterPicker] 🔍 Character Details:");
+    filtered.forEach((c) => {
       console.log(`  - ${c.name}:`, {
         id: c.id,
         imageUrl: c.imageUrl,
         hasImage: !!c.imageUrl,
-        role: c.role
+        role: c.role,
       });
     });
   }
@@ -63,17 +63,21 @@ export function CharacterPicker({
   const hasNoResults = filtered.length === 0;
 
   return (
-    <div 
+    <div
       className={`bg-popover border border-border rounded-lg shadow-lg overflow-hidden character-picker ${className}`}
       role="listbox"
-      style={useFixedPosition && position ? {
-        position: 'fixed',
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-        minWidth: '280px',
-        maxWidth: '350px',
-        zIndex: 50
-      } : undefined}
+      style={
+        useFixedPosition && position
+          ? {
+              position: "fixed",
+              top: `${position.top}px`,
+              left: `${position.left}px`,
+              minWidth: "280px",
+              maxWidth: "350px",
+              zIndex: 50,
+            }
+          : undefined
+      }
     >
       {/* Header with Title and Close Button */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-purple-50/50 dark:bg-purple-900/10">
@@ -98,7 +102,11 @@ export function CharacterPicker({
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             type="text"
-            placeholder={search ? `Filtern (aktuell: @${search})...` : "Suche nach Name oder Rolle..."}
+            placeholder={
+              search
+                ? `Filtern (aktuell: @${search})...`
+                : "Suche nach Name oder Rolle..."
+            }
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
@@ -111,10 +119,12 @@ export function CharacterPicker({
       <div className="max-h-[280px] overflow-y-auto p-1">
         {hasNoResults ? (
           <div className="text-xs text-muted-foreground text-center py-6">
-            {combinedSearch ? 'Kein Charakter gefunden' : 'Keine Charaktere verfügbar'}
+            {combinedSearch
+              ? "Kein Charakter gefunden"
+              : "Keine Charaktere verfügbar"}
           </div>
         ) : (
-          filtered.slice(0, 12).map(char => (
+          filtered.slice(0, 12).map((char) => (
             <button
               key={char.id}
               onMouseDown={(e) => {
@@ -131,7 +141,8 @@ export function CharacterPicker({
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold truncate text-[#1D4ED8]">
-                  {search ? '@' : ''}{char.name}
+                  {search ? "@" : ""}
+                  {char.name}
                 </p>
                 {char.role && (
                   <p className="text-xs text-muted-foreground truncate">

@@ -7,7 +7,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
   useEffect(() => {
     // Watch for theme changes
     const updateTheme = () => {
-      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+      setTheme(
+        document.documentElement.classList.contains("dark") ? "dark" : "light",
+      );
     };
 
     updateTheme();

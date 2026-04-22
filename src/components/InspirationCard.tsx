@@ -25,7 +25,11 @@ interface InspirationCardProps {
   onDelete?: (id: string) => void;
 }
 
-export function InspirationCard({ inspiration, onEdit, onDelete }: InspirationCardProps) {
+export function InspirationCard({
+  inspiration,
+  onEdit,
+  onDelete,
+}: InspirationCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -40,8 +44,8 @@ export function InspirationCard({ inspiration, onEdit, onDelete }: InspirationCa
         {/* Image */}
         <div className="relative w-full h-full bg-slate-100">
           {!imageError ? (
-            <img 
-              src={inspiration.imageUrl} 
+            <img
+              src={inspiration.imageUrl}
               alt={inspiration.title || "Inspiration"}
               className={`w-full h-full object-cover transition-opacity duration-300 ${
                 imageLoaded ? "opacity-100" : "opacity-0"
@@ -72,11 +76,9 @@ export function InspirationCard({ inspiration, onEdit, onDelete }: InspirationCa
           {/* Content */}
           <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
             {inspiration.title && (
-              <p className="text-sm mb-1 line-clamp-1">
-                {inspiration.title}
-              </p>
+              <p className="text-sm mb-1 line-clamp-1">{inspiration.title}</p>
             )}
-            
+
             {inspiration.source && (
               <p className="text-xs text-white/80 mb-2 line-clamp-1">
                 {inspiration.source}
@@ -87,7 +89,7 @@ export function InspirationCard({ inspiration, onEdit, onDelete }: InspirationCa
             {inspiration.tags && inspiration.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
                 {inspiration.tags.slice(0, 3).map((tag, index) => (
-                  <Badge 
+                  <Badge
                     key={`${tag}-${index}`}
                     variant="secondary"
                     className="text-xs px-1.5 py-0 h-5 bg-white/20 text-white border-white/30"
@@ -96,7 +98,7 @@ export function InspirationCard({ inspiration, onEdit, onDelete }: InspirationCa
                   </Badge>
                 ))}
                 {inspiration.tags.length > 3 && (
-                  <Badge 
+                  <Badge
                     variant="secondary"
                     className="text-xs px-1.5 py-0 h-5 bg-white/20 text-white border-white/30"
                   >
@@ -129,7 +131,7 @@ export function InspirationCard({ inspiration, onEdit, onDelete }: InspirationCa
                 <Edit2 className="w-3.5 h-3.5" />
               </Button>
             )}
-            
+
             {onDelete && (
               <Button
                 size="sm"

@@ -1,19 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, Save, Edit2, Camera, User } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
-import { ImageCropDialog } from './ImageCropDialog';
-import { ScrollArea } from './ui/scroll-area';
-import type { Character } from '../lib/types';
+import { useState, useRef, useEffect } from "react";
+import { X, Save, Edit2, Camera, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Badge } from "./ui/badge";
+import { ImageCropDialog } from "./ImageCropDialog";
+import { ScrollArea } from "./ui/scroll-area";
+import type { Character } from "../lib/types";
 
 interface CharacterDetailModalProps {
   character: Character | null;
@@ -32,35 +27,37 @@ export function CharacterDetailModal({
 }: CharacterDetailModalProps) {
   const characterImageInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(undefined);
+  const [tempImageForCrop, setTempImageForCrop] = useState<string | undefined>(
+    undefined,
+  );
   const [showImageCropDialog, setShowImageCropDialog] = useState(false);
 
   // Edit state
-  const [editedName, setEditedName] = useState('');
-  const [editedRole, setEditedRole] = useState('');
-  const [editedDescription, setEditedDescription] = useState('');
-  const [editedAge, setEditedAge] = useState('');
-  const [editedGender, setEditedGender] = useState('');
-  const [editedSpecies, setEditedSpecies] = useState('');
-  const [editedBackgroundStory, setEditedBackgroundStory] = useState('');
-  const [editedSkills, setEditedSkills] = useState('');
-  const [editedStrengths, setEditedStrengths] = useState('');
-  const [editedWeaknesses, setEditedWeaknesses] = useState('');
-  const [editedCharacterTraits, setEditedCharacterTraits] = useState('');
+  const [editedName, setEditedName] = useState("");
+  const [editedRole, setEditedRole] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
+  const [editedAge, setEditedAge] = useState("");
+  const [editedGender, setEditedGender] = useState("");
+  const [editedSpecies, setEditedSpecies] = useState("");
+  const [editedBackgroundStory, setEditedBackgroundStory] = useState("");
+  const [editedSkills, setEditedSkills] = useState("");
+  const [editedStrengths, setEditedStrengths] = useState("");
+  const [editedWeaknesses, setEditedWeaknesses] = useState("");
+  const [editedCharacterTraits, setEditedCharacterTraits] = useState("");
 
   // Reset state when character changes or modal opens
   useEffect(() => {
     if (character && open) {
-      setEditedName(character.name || '');
-      setEditedRole((character.role as string) || '');
-      setEditedDescription(character.description || '');
-      setEditedAge(character.age?.toString() || '');
-      setEditedGender(''); // TODO: Add to Character type
-      setEditedSpecies(''); // TODO: Add to Character type
-      setEditedBackgroundStory(character.backstory || '');
-      setEditedSkills(''); // TODO: Add to Character type
-      setEditedStrengths(''); // TODO: Add to Character type
-      setEditedWeaknesses(''); // TODO: Add to Character type
+      setEditedName(character.name || "");
+      setEditedRole((character.role as string) || "");
+      setEditedDescription(character.description || "");
+      setEditedAge(character.age?.toString() || "");
+      setEditedGender(""); // TODO: Add to Character type
+      setEditedSpecies(""); // TODO: Add to Character type
+      setEditedBackgroundStory(character.backstory || "");
+      setEditedSkills(""); // TODO: Add to Character type
+      setEditedStrengths(""); // TODO: Add to Character type
+      setEditedWeaknesses(""); // TODO: Add to Character type
       setIsEditing(false);
     }
   }, [character, open]);
@@ -171,33 +168,39 @@ export function CharacterDetailModal({
                 <div className="shrink-0">
                   {character.imageUrl ? (
                     isEditing ? (
-                      <button 
+                      <button
                         onClick={handleImageClick}
                         className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-character-blue-light hover:border-character-blue transition-colors cursor-pointer group"
                       >
-                        <img src={character.imageUrl} alt={character.name} className="w-full h-full object-cover" />
+                        <img
+                          src={character.imageUrl}
+                          alt={character.name}
+                          className="w-full h-full object-cover"
+                        />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Camera className="size-6 text-white" />
                         </div>
                       </button>
                     ) : (
                       <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-character-blue-light">
-                        <img src={character.imageUrl} alt={character.name} className="w-full h-full object-cover" />
+                        <img
+                          src={character.imageUrl}
+                          alt={character.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     )
+                  ) : isEditing ? (
+                    <button
+                      onClick={handleImageClick}
+                      className="w-20 h-20 rounded-full border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center bg-muted/10"
+                    >
+                      <Camera className="size-8 text-muted-foreground" />
+                    </button>
                   ) : (
-                    isEditing ? (
-                      <button 
-                        onClick={handleImageClick}
-                        className="w-20 h-20 rounded-full border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center bg-muted/10"
-                      >
-                        <Camera className="size-8 text-muted-foreground" />
-                      </button>
-                    ) : (
-                      <div className="w-20 h-20 rounded-full border-2 border-character-blue-light flex items-center justify-center bg-muted/10">
-                        <User className="size-10 text-muted-foreground" />
-                      </div>
-                    )
+                    <div className="w-20 h-20 rounded-full border-2 border-character-blue-light flex items-center justify-center bg-muted/10">
+                      <User className="size-10 text-muted-foreground" />
+                    </div>
                   )}
                   {isEditing && (
                     <input
@@ -209,7 +212,7 @@ export function CharacterDetailModal({
                     />
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   {isEditing ? (
                     <div className="flex items-center gap-2">
@@ -235,7 +238,9 @@ export function CharacterDetailModal({
                       </div>
                       {/* Name Display Box */}
                       <div className="flex-1 rounded-lg border border-border bg-character-blue-light flex items-center px-3 h-10">
-                        <p className="text-base text-character-blue">{character.name}</p>
+                        <p className="text-base text-character-blue">
+                          {character.name}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -246,7 +251,9 @@ export function CharacterDetailModal({
               <div className="space-y-4">
                 {/* Rolle */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Rolle</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Rolle
+                  </Label>
                   {isEditing ? (
                     <Input
                       value={editedRole}
@@ -256,14 +263,16 @@ export function CharacterDetailModal({
                     />
                   ) : (
                     <div className="h-9 rounded-lg border border-border bg-muted/10 flex items-center px-3">
-                      <p className="text-sm">{character.role || '—'}</p>
+                      <p className="text-sm">{character.role || "—"}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Beschreibung */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Beschreibung</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Beschreibung
+                  </Label>
                   {isEditing ? (
                     <Textarea
                       value={editedDescription}
@@ -274,7 +283,9 @@ export function CharacterDetailModal({
                     />
                   ) : (
                     <div className="min-h-[60px] rounded-lg border border-border bg-muted/10 p-3">
-                      <p className="text-sm whitespace-pre-wrap">{character.description || '—'}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {character.description || "—"}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -282,7 +293,9 @@ export function CharacterDetailModal({
                 {/* Alter, Geschlecht, Spezies (Grid) */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Alter</Label>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Alter
+                    </Label>
                     {isEditing ? (
                       <Input
                         value={editedAge}
@@ -293,13 +306,15 @@ export function CharacterDetailModal({
                       />
                     ) : (
                       <div className="h-9 rounded-lg border border-border bg-muted/10 flex items-center px-3">
-                        <p className="text-sm">{character.age || '—'}</p>
+                        <p className="text-sm">{character.age || "—"}</p>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Geschlecht</Label>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Geschlecht
+                    </Label>
                     {isEditing ? (
                       <Input
                         value={editedGender}
@@ -315,7 +330,9 @@ export function CharacterDetailModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Spezies</Label>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Spezies
+                    </Label>
                     {isEditing ? (
                       <Input
                         value={editedSpecies}
@@ -333,7 +350,9 @@ export function CharacterDetailModal({
 
                 {/* Background Story */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Background Story</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Background Story
+                  </Label>
                   {isEditing ? (
                     <Textarea
                       value={editedBackgroundStory}
@@ -344,14 +363,18 @@ export function CharacterDetailModal({
                     />
                   ) : (
                     <div className="min-h-[80px] rounded-lg border border-border bg-muted/10 p-3">
-                      <p className="text-sm whitespace-pre-wrap">{character.backstory || '—'}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {character.backstory || "—"}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 {/* Skills */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Skills</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Skills
+                  </Label>
                   {isEditing ? (
                     <Textarea
                       value={editedSkills}
@@ -369,7 +392,9 @@ export function CharacterDetailModal({
 
                 {/* Stärken */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Stärken</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Stärken
+                  </Label>
                   {isEditing ? (
                     <Textarea
                       value={editedStrengths}
@@ -387,7 +412,9 @@ export function CharacterDetailModal({
 
                 {/* Schwächen */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Schwächen</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Schwächen
+                  </Label>
                   {isEditing ? (
                     <Textarea
                       value={editedWeaknesses}
@@ -405,7 +432,9 @@ export function CharacterDetailModal({
 
                 {/* Charakter Traits */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Charakter Traits</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Charakter Traits
+                  </Label>
                   {isEditing ? (
                     <Textarea
                       value={editedCharacterTraits}
@@ -427,11 +456,14 @@ export function CharacterDetailModal({
                     {new Date(character.updatedAt).toLocaleDateString("de-DE", {
                       day: "2-digit",
                       month: "2-digit",
-                      year: "numeric"
-                    })}, {new Date(character.updatedAt).toLocaleTimeString("de-DE", {
+                      year: "numeric",
+                    })}
+                    ,{" "}
+                    {new Date(character.updatedAt).toLocaleTimeString("de-DE", {
                       hour: "2-digit",
-                      minute: "2-digit"
-                    })} Uhr
+                      minute: "2-digit",
+                    })}{" "}
+                    Uhr
                   </Badge>
                 )}
               </div>

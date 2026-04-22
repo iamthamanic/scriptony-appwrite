@@ -12,12 +12,12 @@ export async function fileToImageData(file: File): Promise<ImageData> {
     if (w < 1 || h < 1 || w > MAX_DIMENSION || h > MAX_DIMENSION) {
       throw new Error(`Bildabmessungen nicht unterstützt (${w}×${h})`);
     }
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
-    const ctx = canvas.getContext('2d', { alpha: true });
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) {
-      throw new Error('Canvas 2D nicht verfügbar');
+      throw new Error("Canvas 2D nicht verfügbar");
     }
     ctx.drawImage(bitmap, 0, 0);
     return ctx.getImageData(0, 0, w, h);

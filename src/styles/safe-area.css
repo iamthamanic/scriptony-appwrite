@@ -36,7 +36,11 @@
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent)
+    scrollbar-color: color-mix(
+        in oklab,
+        var(--muted-foreground) 55%,
+        transparent
+      )
       color-mix(in oklab, var(--muted) 45%, transparent);
   }
 

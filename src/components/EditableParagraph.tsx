@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import { cn } from './ui/utils';
+import { useEffect, useRef, useState } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { cn } from "./ui/utils";
 
 interface EditableParagraphProps {
   content: string;
@@ -12,17 +12,17 @@ interface EditableParagraphProps {
 
 /**
  * 📝 EDITABLE PARAGRAPH
- * 
+ *
  * Inline TipTap editor for book paragraphs
  * - Click to edit
  * - Auto-save on blur
  * - Preserves book formatting
  */
-export function EditableParagraph({ 
-  content, 
-  onSave, 
+export function EditableParagraph({
+  content,
+  onSave,
   className,
-  isFirstParagraph = false 
+  isFirstParagraph = false,
 }: EditableParagraphProps) {
   const [isEditing, setIsEditing] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -40,13 +40,13 @@ export function EditableParagraph({
         // Keep only basic paragraph editing
       }),
     ],
-    content: content || '<p></p>',
+    content: content || "<p></p>",
     editable: isEditing,
     editorProps: {
       attributes: {
         class: cn(
-          'native-book-paragraph focus:outline-none',
-          isFirstParagraph && 'first-paragraph'
+          "native-book-paragraph focus:outline-none",
+          isFirstParagraph && "first-paragraph",
         ),
       },
     },
@@ -75,7 +75,7 @@ export function EditableParagraph({
       editor.setEditable(isEditing);
       if (isEditing) {
         // Focus at the end of content
-        editor.commands.focus('end');
+        editor.commands.focus("end");
       }
     }
   }, [isEditing, editor]);
@@ -85,26 +85,30 @@ export function EditableParagraph({
     if (!isEditing) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (editorRef.current && !editorRef.current.contains(event.target as Node)) {
+      if (
+        editorRef.current &&
+        !editorRef.current.contains(event.target as Node)
+      ) {
         setIsEditing(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isEditing]);
 
   if (!editor) {
-    return <p className={cn('native-book-paragraph', className)}>{content || '\u00A0'}</p>;
+    return (
+      <p className={cn("native-book-paragraph", className)}>
+        {content || "\u00A0"}
+      </p>
+    );
   }
 
   return (
-    <div 
+    <div
       ref={editorRef}
-      className={cn(
-        'relative group',
-        isEditing && 'editing'
-      )}
+      className={cn("relative group", isEditing && "editing")}
       onClick={() => {
         if (!isEditing) {
           setIsEditing(true);
@@ -115,8 +119,18 @@ export function EditableParagraph({
       {/* Edit indicator on hover */}
       {!isEditing && (
         <div className="absolute -left-6 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-4 h-4 text-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <svg
+            className="w-4 h-4 text-primary/40"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
           </svg>
         </div>
       )}
@@ -129,7 +143,7 @@ export function EditableParagraph({
           <div className="w-1 h-full bg-primary/60 rounded-full animate-pulse" />
         </div>
       )}
-      
+
       {/* Empty state hint */}
       {!isEditing && !content && (
         <div className="absolute inset-0 flex items-center text-muted-foreground/40 text-xs pointer-events-none">

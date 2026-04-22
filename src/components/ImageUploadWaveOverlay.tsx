@@ -29,7 +29,7 @@ export function ImageUploadWaveOverlay({
       className={cn(
         "absolute inset-0 z-[25] flex flex-col items-center justify-center gap-2 rounded-[inherit] overflow-hidden",
         "bg-background/75 backdrop-blur-[2px] pointer-events-auto cursor-wait",
-        className
+        className,
       )}
       role="status"
       aria-live="polite"
@@ -53,7 +53,7 @@ export function ImageUploadWaveOverlay({
       <Loader2
         className={cn(
           "text-primary animate-spin relative z-10 drop-shadow-sm",
-          compact ? "size-5" : "size-9"
+          compact ? "size-5" : "size-9",
         )}
       />
       {!compact && (

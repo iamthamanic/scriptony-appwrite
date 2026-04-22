@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 type Language = "de" | "en";
 
@@ -8,7 +14,9 @@ interface TranslationContextType {
   t: (key: string) => string;
 }
 
-const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
+const TranslationContext = createContext<TranslationContextType | undefined>(
+  undefined,
+);
 
 // Translation dictionary
 const translations: Record<Language, Record<string, string>> = {
@@ -22,7 +30,7 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.admin": "Admin",
     "nav.settings": "Einstellungen",
     "nav.superadmin": "Superadmin",
-    
+
     // Common
     "common.save": "Speichern",
     "common.cancel": "Abbrechen",
@@ -40,7 +48,7 @@ const translations: Record<Language, Record<string, string>> = {
     "common.yes": "Ja",
     "common.no": "Nein",
     "common.confirm": "Bestätigen",
-    
+
     // Auth
     "auth.login": "Anmelden",
     "auth.logout": "Abmelden",
@@ -58,12 +66,13 @@ const translations: Record<Language, Record<string, string>> = {
     "auth.welcome": "Willkommen bei Scriptony",
     "auth.loginSubtitle": "Melde dich an, um fortzufahren",
     "auth.signupSubtitle": "Erstelle ein Konto, um loszulegen",
-    
+
     // Projects
     "projects.title": "Projekte",
     "projects.new": "Neues Projekt",
     "projects.empty": "Keine Projekte vorhanden",
-    "projects.emptyDescription": "Erstelle dein erstes Projekt und beginne mit dem Schreiben.",
+    "projects.emptyDescription":
+      "Erstelle dein erstes Projekt und beginne mit dem Schreiben.",
     "projects.type.film": "Film",
     "projects.type.series": "Serie",
     "projects.type.theatre": "Theater",
@@ -72,29 +81,30 @@ const translations: Record<Language, Record<string, string>> = {
     "projects.characters": "Charaktere",
     "projects.logline": "Logline",
     "projects.synopsis": "Synopsis",
-    
+
     // Worldbuilding
     "worldbuilding.title": "Worldbuilding",
     "worldbuilding.new": "Neue Welt",
     "worldbuilding.empty": "Keine Welten vorhanden",
-    "worldbuilding.emptyDescription": "Erstelle deine erste Welt und füge Kategorien und Assets hinzu.",
+    "worldbuilding.emptyDescription":
+      "Erstelle deine erste Welt und füge Kategorien und Assets hinzu.",
     "worldbuilding.name": "Name der Welt",
     "worldbuilding.description": "Beschreibung",
     "worldbuilding.linkedProject": "Verknüpftes Projekt",
     "worldbuilding.categories": "Kategorien",
-    
+
     // Creative Gym
     "gym.title": "Creative Gym",
     "gym.challenges": "Challenges",
     "gym.artForms": "Art Forms",
     "gym.trainingPlans": "Trainingspläne",
     "gym.achievements": "Erfolge",
-    
+
     // Upload
     "upload.title": "Upload & Analyse",
     "upload.dropZone": "Skript hierher ziehen oder klicken",
     "upload.analyzing": "Analysiere Skript...",
-    
+
     // Settings
     "settings.title": "Einstellungen",
     "settings.profile": "Profil",
@@ -105,13 +115,13 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.notifications": "Benachrichtigungen",
     "settings.storage": "Speicher",
     "settings.storageUsed": "Speicher verwendet",
-    
+
     // Admin
     "admin.title": "Admin",
     "admin.users": "Benutzer",
     "admin.analytics": "Analysen",
     "admin.settings": "Einstellungen",
-    
+
     // Assistant
     "assistant.title": "Scriptony Assistent",
     "assistant.placeholder": "Schreibe eine Nachricht...",
@@ -123,7 +133,7 @@ const translations: Record<Language, Record<string, string>> = {
     "assistant.characters": "Charaktere",
     "assistant.scenes": "Szenen",
     "assistant.files": "Dateien",
-    
+
     // Errors
     "error.generic": "Ein Fehler ist aufgetreten",
     "error.network": "Netzwerkfehler",
@@ -141,7 +151,7 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.admin": "Admin",
     "nav.settings": "Settings",
     "nav.superadmin": "Superadmin",
-    
+
     // Common
     "common.save": "Save",
     "common.cancel": "Cancel",
@@ -159,7 +169,7 @@ const translations: Record<Language, Record<string, string>> = {
     "common.yes": "Yes",
     "common.no": "No",
     "common.confirm": "Confirm",
-    
+
     // Auth
     "auth.login": "Login",
     "auth.logout": "Logout",
@@ -177,7 +187,7 @@ const translations: Record<Language, Record<string, string>> = {
     "auth.welcome": "Welcome to Scriptony",
     "auth.loginSubtitle": "Sign in to continue",
     "auth.signupSubtitle": "Create an account to get started",
-    
+
     // Projects
     "projects.title": "Projects",
     "projects.new": "New Project",
@@ -191,29 +201,30 @@ const translations: Record<Language, Record<string, string>> = {
     "projects.characters": "Characters",
     "projects.logline": "Logline",
     "projects.synopsis": "Synopsis",
-    
+
     // Worldbuilding
     "worldbuilding.title": "Worldbuilding",
     "worldbuilding.new": "New World",
     "worldbuilding.empty": "No worlds available",
-    "worldbuilding.emptyDescription": "Create your first world and add categories and assets.",
+    "worldbuilding.emptyDescription":
+      "Create your first world and add categories and assets.",
     "worldbuilding.name": "World Name",
     "worldbuilding.description": "Description",
     "worldbuilding.linkedProject": "Linked Project",
     "worldbuilding.categories": "Categories",
-    
+
     // Creative Gym
     "gym.title": "Creative Gym",
     "gym.challenges": "Challenges",
     "gym.artForms": "Art Forms",
     "gym.trainingPlans": "Training Plans",
     "gym.achievements": "Achievements",
-    
+
     // Upload
     "upload.title": "Upload & Analysis",
     "upload.dropZone": "Drag script here or click",
     "upload.analyzing": "Analyzing script...",
-    
+
     // Settings
     "settings.title": "Settings",
     "settings.profile": "Profile",
@@ -224,13 +235,13 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.notifications": "Notifications",
     "settings.storage": "Storage",
     "settings.storageUsed": "Storage used",
-    
+
     // Admin
     "admin.title": "Admin",
     "admin.users": "Users",
     "admin.analytics": "Analytics",
     "admin.settings": "Settings",
-    
+
     // Assistant
     "assistant.title": "Scriptony Assistant",
     "assistant.placeholder": "Write a message...",
@@ -242,7 +253,7 @@ const translations: Record<Language, Record<string, string>> = {
     "assistant.characters": "Characters",
     "assistant.scenes": "Scenes",
     "assistant.files": "Files",
-    
+
     // Errors
     "error.generic": "An error occurred",
     "error.network": "Network error",

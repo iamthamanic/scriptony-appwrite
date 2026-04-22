@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { Plus, X, Tag as TagIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -68,7 +75,7 @@ export function AddInspirationDialog({
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+    setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -101,7 +108,7 @@ export function AddInspirationDialog({
       setTags([]);
       setTagInput("");
       setImagePreviewError(false);
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving inspiration:", error);
@@ -118,7 +125,8 @@ export function AddInspirationDialog({
             {editInspiration ? "Edit Inspiration" : "Add Inspiration"}
           </DialogTitle>
           <DialogDescription>
-            Add visual references for your project - screenshots, concept art, color palettes, etc.
+            Add visual references for your project - screenshots, concept art,
+            color palettes, etc.
           </DialogDescription>
         </DialogHeader>
 
@@ -143,7 +151,9 @@ export function AddInspirationDialog({
           {/* Image Preview */}
           {imageUrl && (
             <div className="border-2 border-dashed border-slate-200 rounded-lg p-4">
-              <Label className="text-xs text-slate-600 mb-2 block">Preview</Label>
+              <Label className="text-xs text-slate-600 mb-2 block">
+                Preview
+              </Label>
               {!imagePreviewError ? (
                 <img
                   src={imageUrl}
@@ -210,7 +220,7 @@ export function AddInspirationDialog({
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            
+
             {/* Tag List */}
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -231,7 +241,7 @@ export function AddInspirationDialog({
                 ))}
               </div>
             )}
-            
+
             <p className="text-xs text-slate-500 mt-1">
               Press Enter or click + to add tags
             </p>
@@ -258,11 +268,12 @@ export function AddInspirationDialog({
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!imageUrl.trim() || saving}
-          >
-            {saving ? "Saving..." : editInspiration ? "Update" : "Add Inspiration"}
+          <Button onClick={handleSave} disabled={!imageUrl.trim() || saving}>
+            {saving
+              ? "Saving..."
+              : editInspiration
+                ? "Update"
+                : "Add Inspiration"}
           </Button>
         </DialogFooter>
       </DialogContent>

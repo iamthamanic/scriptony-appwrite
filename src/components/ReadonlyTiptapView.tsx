@@ -1,29 +1,29 @@
-import { useEffect, useMemo } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Mention from '@tiptap/extension-mention';
-import { mergeAttributes } from '@tiptap/core';
+import { useEffect, useMemo } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Mention from "@tiptap/extension-mention";
+import { mergeAttributes } from "@tiptap/core";
 
 // Character Mention Extension (same as RichTextEditorModal)
 const CharacterMention = Mention.extend({
-  name: 'characterMention',
-  
+  name: "characterMention",
+
   addAttributes() {
     return {
       id: {
         default: null,
-        parseHTML: element => element.getAttribute('data-id'),
-        renderHTML: attributes => {
+        parseHTML: (element) => element.getAttribute("data-id"),
+        renderHTML: (attributes) => {
           if (!attributes.id) return {};
-          return { 'data-id': attributes.id };
+          return { "data-id": attributes.id };
         },
       },
       label: {
         default: null,
-        parseHTML: element => element.getAttribute('data-label'),
-        renderHTML: attributes => {
+        parseHTML: (element) => element.getAttribute("data-label"),
+        renderHTML: (attributes) => {
           if (!attributes.label) return {};
-          return { 'data-label': attributes.label };
+          return { "data-label": attributes.label };
         },
       },
     };
@@ -35,15 +35,15 @@ const CharacterMention = Mention.extend({
 
   renderHTML({ node, HTMLAttributes }) {
     return [
-      'span',
+      "span",
       mergeAttributes(
-        { 
-          'data-type': 'character-mention', 
-          'class': 'mention'
+        {
+          "data-type": "character-mention",
+          class: "mention",
         },
-        HTMLAttributes
+        HTMLAttributes,
       ),
-      `@${node.attrs.label || ''}`,
+      `@${node.attrs.label || ""}`,
     ];
   },
 });
@@ -61,25 +61,27 @@ interface ReadonlyTiptapViewProps {
  */
 export function ReadonlyTiptapView({
   content,
-  className = '',
+  className = "",
   maxHeight,
 }: ReadonlyTiptapViewProps) {
   // Parse content if it's a string
   const doc = useMemo(() => {
-    if (!content) return { type: 'doc', content: [{ type: 'paragraph' }] };
-    
-    if (typeof content === 'string') {
+    if (!content) return { type: "doc", content: [{ type: "paragraph" }] };
+
+    if (typeof content === "string") {
       try {
         return JSON.parse(content);
       } catch {
         // Fallback for plain text
-        return { 
-          type: 'doc', 
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] 
+        return {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: content }] },
+          ],
         };
       }
     }
-    
+
     return content;
   }, [content]);
 
@@ -88,7 +90,7 @@ export function ReadonlyTiptapView({
     extensions: [
       StarterKit,
       CharacterMention.configure({
-        HTMLAttributes: { class: 'mention' },
+        HTMLAttributes: { class: "mention" },
         renderText: ({ node }) => `@${node.attrs.label ?? node.attrs.id}`,
       }),
     ],
@@ -116,7 +118,11 @@ export function ReadonlyTiptapView({
   }, [editor]);
 
   if (!editor) {
-    return <div className={`text-xs text-muted-foreground ${className}`}>Loading...</div>;
+    return (
+      <div className={`text-xs text-muted-foreground ${className}`}>
+        Loading...
+      </div>
+    );
   }
 
   const inner = <EditorContent editor={editor} className={className} />;

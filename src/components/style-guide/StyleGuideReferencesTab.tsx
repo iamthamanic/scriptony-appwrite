@@ -24,7 +24,10 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Badge } from "../ui/badge";
-import type { StyleGuideData, StyleGuideItemKind } from "../../lib/api/style-guide-api";
+import type {
+  StyleGuideData,
+  StyleGuideItemKind,
+} from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { extractPaletteFromImageUrl } from "../../lib/extract-palette-client";
 import { toast } from "sonner@2.0.3";
@@ -144,7 +147,9 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
   async function togglePin(it: StyleGuideData["items"][0]) {
     setBusy(true);
     try {
-      const sg = await StyleGuideApi.updateReference(it.id, { pinned: !it.pinned });
+      const sg = await StyleGuideApi.updateReference(it.id, {
+        pinned: !it.pinned,
+      });
       onChange(sg);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Fehler");
@@ -209,14 +214,24 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
       <Card key={it.id} className="overflow-hidden">
         <CardContent className="p-3 space-y-2">
           {it.imageUrl ? (
-            <img src={it.imageUrl} alt="" className="w-full h-36 object-cover rounded-md border" />
+            <img
+              src={it.imageUrl}
+              alt=""
+              className="w-full h-36 object-cover rounded-md border"
+            />
           ) : (
             <div className="h-36 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground px-2 text-center">
-              {it.kind === "text" ? it.caption.slice(0, 200) : it.sourceUrl || "—"}
+              {it.kind === "text"
+                ? it.caption.slice(0, 200)
+                : it.sourceUrl || "—"}
             </div>
           )}
-          <div className="font-medium text-sm line-clamp-1">{it.title || "Ohne Titel"}</div>
-          <div className="text-xs text-muted-foreground line-clamp-2">{it.caption}</div>
+          <div className="font-medium text-sm line-clamp-1">
+            {it.title || "Ohne Titel"}
+          </div>
+          <div className="text-xs text-muted-foreground line-clamp-2">
+            {it.caption}
+          </div>
           <div className="flex flex-wrap gap-1">
             {it.tags.map((t) => (
               <Badge key={t} variant="secondary" className="text-[10px]">
@@ -259,7 +274,14 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
               <ChevronDown className="size-3.5" />
             </Button>
             {it.kind === "image" && it.imageUrl ? (
-              <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={() => void runExtractPalette(it)} disabled={busy}>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="h-8 text-xs"
+                onClick={() => void runExtractPalette(it)}
+                disabled={busy}
+              >
                 Farben ableiten
               </Button>
             ) : null}
@@ -303,97 +325,145 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
           </datalist>
         </div>
         <div className="flex w-full shrink-0 justify-end sm:w-auto sm:self-end">
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger asChild>
-            <Button type="button">Referenz hinzufügen</Button>
-          </SheetTrigger>
-          <SheetContent
-            side="bottom"
-            className="h-fit max-h-[min(20rem,50vh)] w-full max-w-[16rem] overflow-y-auto rounded-t-xl border-x text-sm sm:mx-auto sm:max-w-[18rem]"
-          >
-            <SheetHeader className="text-left pb-0">
-              <SheetTitle className="text-base">Referenz hinzufügen</SheetTitle>
-            </SheetHeader>
-            <div className="grid gap-2 py-3">
-              <div className="space-y-2">
-                <Label>Art</Label>
-                <Select value={kind} onValueChange={(v) => setKind(v as StyleGuideItemKind)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="image">Bild</SelectItem>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="link">Link</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sg-ref-title">Titel</Label>
-                <Input id="sg-ref-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-              </div>
-              {kind === "image" ? (
-                <>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetTrigger asChild>
+              <Button type="button">Referenz hinzufügen</Button>
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              className="h-fit max-h-[min(20rem,50vh)] w-full max-w-[16rem] overflow-y-auto rounded-t-xl border-x text-sm sm:mx-auto sm:max-w-[18rem]"
+            >
+              <SheetHeader className="text-left pb-0">
+                <SheetTitle className="text-base">
+                  Referenz hinzufügen
+                </SheetTitle>
+              </SheetHeader>
+              <div className="grid gap-2 py-3">
+                <div className="space-y-2">
+                  <Label>Art</Label>
+                  <Select
+                    value={kind}
+                    onValueChange={(v) => setKind(v as StyleGuideItemKind)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="image">Bild</SelectItem>
+                      <SelectItem value="text">Text</SelectItem>
+                      <SelectItem value="link">Link</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sg-ref-title">Titel</Label>
+                  <Input
+                    id="sg-ref-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+                {kind === "image" ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="sg-ref-file">
+                        Datei (oder URL unten)
+                      </Label>
+                      <Input
+                        id="sg-ref-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sg-ref-url">Bild-URL (optional)</Label>
+                      <Input
+                        id="sg-ref-url"
+                        value={sourceUrl}
+                        onChange={(e) => setSourceUrl(e.target.value)}
+                        placeholder="https://…"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sg-ref-cap">Caption</Label>
+                      <Textarea
+                        id="sg-ref-cap"
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </>
+                ) : null}
+                {kind === "text" ? (
                   <div className="space-y-2">
-                    <Label htmlFor="sg-ref-file">Datei (oder URL unten)</Label>
-                    <Input
-                      id="sg-ref-file"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    <Label htmlFor="sg-ref-text">Text</Label>
+                    <Textarea
+                      id="sg-ref-text"
+                      value={caption}
+                      onChange={(e) => setCaption(e.target.value)}
+                      rows={6}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sg-ref-url">Bild-URL (optional)</Label>
-                    <Input id="sg-ref-url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sg-ref-cap">Caption</Label>
-                    <Textarea id="sg-ref-cap" value={caption} onChange={(e) => setCaption(e.target.value)} rows={2} />
-                  </div>
-                </>
-              ) : null}
-              {kind === "text" ? (
+                ) : null}
+                {kind === "link" ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="sg-ref-link">URL</Label>
+                      <Input
+                        id="sg-ref-link"
+                        value={sourceUrl}
+                        onChange={(e) => setSourceUrl(e.target.value)}
+                        placeholder="https://…"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sg-ref-cap2">Notiz</Label>
+                      <Textarea
+                        id="sg-ref-cap2"
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </>
+                ) : null}
                 <div className="space-y-2">
-                  <Label htmlFor="sg-ref-text">Text</Label>
-                  <Textarea id="sg-ref-text" value={caption} onChange={(e) => setCaption(e.target.value)} rows={6} />
+                  <Label htmlFor="sg-ref-tags">Tags (Komma)</Label>
+                  <Input
+                    id="sg-ref-tags"
+                    value={tagsStr}
+                    onChange={(e) => setTagsStr(e.target.value)}
+                  />
                 </div>
-              ) : null}
-              {kind === "link" ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="sg-ref-link">URL</Label>
-                    <Input id="sg-ref-link" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sg-ref-cap2">Notiz</Label>
-                    <Textarea id="sg-ref-cap2" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} />
-                  </div>
-                </>
-              ) : null}
-              <div className="space-y-2">
-                <Label htmlFor="sg-ref-tags">Tags (Komma)</Label>
-                <Input id="sg-ref-tags" value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} />
+                <Button
+                  type="button"
+                  onClick={() => void submitAdd()}
+                  disabled={busy}
+                >
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                  Speichern
+                </Button>
               </div>
-              <Button type="button" onClick={() => void submitAdd()} disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                Speichern
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
       {pinned.length > 0 ? (
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Angeheftet</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{pinned.map(renderCard)}</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pinned.map(renderCard)}
+          </div>
         </div>
       ) : null}
       <div className="space-y-2">
         <h3 className="text-sm font-medium">Alle Referenzen</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rest.map(renderCard)}</div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {rest.map(renderCard)}
+        </div>
       </div>
     </div>
   );

@@ -10,10 +10,10 @@
  * @see `pushAppUndoAction` in `./undo-manager`
  */
 
-import { pushAppUndoAction } from './undo-manager';
+import { pushAppUndoAction } from "./undo-manager";
 
 /** `data-app-undo-priority`-Wert für Structure & Beats (Timeline-Stack hat Vorrang per Capture-Handler). */
-export const APP_UNDO_PRIORITY_TIMELINE = 'timeline' as const;
+export const APP_UNDO_PRIORITY_TIMELINE = "timeline" as const;
 
 export type RegisterAppUndoOptions = Parameters<typeof pushAppUndoAction>[0];
 

@@ -7,14 +7,31 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { Cloud, HardDrive, Check, Search, ChevronDown, Link2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import {
+  Cloud,
+  HardDrive,
+  Check,
+  Search,
+  ChevronDown,
+  Link2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./ui/collapsible";
 import {
   listStorageProviders,
   getSelectedStorageProviderId,
@@ -31,7 +48,11 @@ import {
 } from "../lib/storage-provider";
 import { toast } from "sonner@2.0.3";
 import { useAuth } from "../hooks/useAuth";
-import { getStorageUsage, formatBytes, STORAGE_LIMIT_BYTES } from "../utils/storage";
+import {
+  getStorageUsage,
+  formatBytes,
+  STORAGE_LIMIT_BYTES,
+} from "../utils/storage";
 
 const providerIcons: Record<string, React.ReactNode> = {
   scriptony_cloud: <Cloud className="size-4" />,
@@ -43,31 +64,38 @@ const providerIcons: Record<string, React.ReactNode> = {
   local: <HardDrive className="size-4" />,
 };
 
-function filterProvidersBySearch(providers: StorageProviderMeta[], query: string): StorageProviderMeta[] {
+function filterProvidersBySearch(
+  providers: StorageProviderMeta[],
+  query: string,
+): StorageProviderMeta[] {
   const q = query.trim().toLowerCase();
   if (!q) return providers;
   return providers.filter(
     (p) =>
       p.name.toLowerCase().includes(q) ||
       p.description.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q)
+      p.id.toLowerCase().includes(q),
   );
 }
 
 export function StorageSettingsSection() {
   const { user } = useAuth();
-  const [selectedId, setSelectedId] = useState<string>(() => getSelectedStorageProviderId());
+  const [selectedId, setSelectedId] = useState<string>(() =>
+    getSelectedStorageProviderId(),
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [storageUsage, setStorageUsage] = useState<{
     totalSize: number;
     fileCount: number;
     files: Array<{ name: string; size: number; createdAt: string }>;
   } | null>(null);
-  const isDemoMode = typeof window !== "undefined" && localStorage.getItem("scriptony_demo_mode") === "true";
+  const isDemoMode =
+    typeof window !== "undefined" &&
+    localStorage.getItem("scriptony_demo_mode") === "true";
   const allProviders = listStorageProviders();
   const providers = useMemo(
     () => filterProvidersBySearch(allProviders, searchQuery),
-    [allProviders, searchQuery]
+    [allProviders, searchQuery],
   );
 
   useEffect(() => {
@@ -79,9 +107,11 @@ export function StorageSettingsSection() {
     if (tokens) {
       setStoredStorageOAuthTokens(tokens);
       clearStorageOAuthFromHash();
-      const name = getStorageProviderMeta(tokens.provider)?.name ?? tokens.provider;
+      const name =
+        getStorageProviderMeta(tokens.provider)?.name ?? tokens.provider;
       toast.success(`${name} verbunden`, {
-        description: "Speicheranbieter wurde erfolgreich verknüpft. Tokens sind nur lokal gespeichert.",
+        description:
+          "Speicheranbieter wurde erfolgreich verknüpft. Tokens sind nur lokal gespeichert.",
       });
     }
   }, []);
@@ -90,14 +120,22 @@ export function StorageSettingsSection() {
 
   useEffect(() => {
     if (!user || isDemoMode) {
-      if (isDemoMode) setStorageUsage({ totalSize: 0, fileCount: 0, files: [] });
+      if (isDemoMode)
+        setStorageUsage({ totalSize: 0, fileCount: 0, files: [] });
       return;
     }
     let cancelled = false;
     getStorageUsage(user.id)
-      .then((usage) => { if (!cancelled) setStorageUsage(usage); })
-      .catch(() => { if (!cancelled) setStorageUsage({ totalSize: 0, fileCount: 0, files: [] }); });
-    return () => { cancelled = true; };
+      .then((usage) => {
+        if (!cancelled) setStorageUsage(usage);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setStorageUsage({ totalSize: 0, fileCount: 0, files: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, isDemoMode]);
 
   const storagePercentage = storageUsage
@@ -127,13 +165,18 @@ export function StorageSettingsSection() {
           </div>
           <CardDescription className="text-xs">
             Wähle, wo deine Projekte und Dateien gespeichert werden. Aktuell:{" "}
-            <strong>{getStorageProviderMeta(selectedId)?.name ?? "Scriptony Cloud"}</strong>.
-            Weitere Anbieter kommen in Kürze – deine Datenhoheit bleibt gewährleistet.
+            <strong>
+              {getStorageProviderMeta(selectedId)?.name ?? "Scriptony Cloud"}
+            </strong>
+            . Weitere Anbieter kommen in Kürze – deine Datenhoheit bleibt
+            gewährleistet.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0 space-y-2">
           {providers.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Keine Anbieter passen zu „{searchQuery.trim() || "…"}“.</p>
+            <p className="text-sm text-muted-foreground py-4">
+              Keine Anbieter passen zu „{searchQuery.trim() || "…"}“.
+            </p>
           ) : (
             providers.map((provider) => (
               <ProviderRowExpandable
@@ -141,14 +184,20 @@ export function StorageSettingsSection() {
                 provider={provider}
                 isSelected={selectedId === provider.id}
                 isExpanded={expandedId === provider.id}
-                onOpenChange={(open) => setExpandedId(open ? provider.id : null)}
+                onOpenChange={(open) =>
+                  setExpandedId(open ? provider.id : null)
+                }
                 onSelect={(e) => {
                   e.stopPropagation();
                   if (provider.comingSoon) return;
                   setSelectedId(provider.id);
                 }}
-                storageUsage={provider.id === "scriptony_cloud" ? storageUsage : null}
-                storagePercentage={provider.id === "scriptony_cloud" ? storagePercentage : 0}
+                storageUsage={
+                  provider.id === "scriptony_cloud" ? storageUsage : null
+                }
+                storagePercentage={
+                  provider.id === "scriptony_cloud" ? storagePercentage : 0
+                }
               />
             ))
           )}
@@ -182,7 +231,11 @@ function ProviderRowExpandable({
     <Collapsible open={isExpanded} onOpenChange={onOpenChange}>
       <div
         className={`rounded-lg border transition-colors ${
-          disabled ? "border-muted bg-muted/30 opacity-80" : isSelected ? "border-primary bg-primary/5" : "border-border"
+          disabled
+            ? "border-muted bg-muted/30 opacity-80"
+            : isSelected
+              ? "border-primary bg-primary/5"
+              : "border-border"
         }`}
       >
         <CollapsibleTrigger asChild>
@@ -208,11 +261,18 @@ function ProviderRowExpandable({
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">{provider.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {provider.description}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {!disabled && (
-                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onSelect}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={onSelect}
+                >
                   Auswählen
                 </Button>
               )}
@@ -277,7 +337,11 @@ function ProviderUsageBlock({
   );
 }
 
-function ProviderConnectionBlock({ provider }: { provider: StorageProviderMeta }) {
+function ProviderConnectionBlock({
+  provider,
+}: {
+  provider: StorageProviderMeta;
+}) {
   const isScriptonyCloud = provider.id === "scriptony_cloud";
   const isHetzner = provider.id === "hetzner";
   const [hetznerEndpoint, setHetznerEndpoint] = useState("");
@@ -293,13 +357,16 @@ function ProviderConnectionBlock({ provider }: { provider: StorageProviderMeta }
           Verbindung
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          Immer verbunden über dein Scriptony-Konto. Keine weitere Anmeldung nötig.
+          Immer verbunden über dein Scriptony-Konto. Keine weitere Anmeldung
+          nötig.
         </p>
       </div>
     );
   }
 
-  const isOAuthProvider = (OAUTH_PROVIDERS as readonly string[]).includes(provider.id);
+  const isOAuthProvider = (OAUTH_PROVIDERS as readonly string[]).includes(
+    provider.id,
+  );
   const storedTokens = getStoredStorageOAuthTokens(provider.id);
 
   if (isOAuthProvider) {
@@ -312,7 +379,8 @@ function ProviderConnectionBlock({ provider }: { provider: StorageProviderMeta }
         {storedTokens ? (
           <>
             <p className="text-xs text-muted-foreground">
-              Mit {provider.name} verbunden. Tokens werden nur lokal in dieser Sitzung gespeichert.
+              Mit {provider.name} verbunden. Tokens werden nur lokal in dieser
+              Sitzung gespeichert.
             </p>
             <Button
               size="sm"
@@ -328,7 +396,8 @@ function ProviderConnectionBlock({ provider }: { provider: StorageProviderMeta }
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
-              Über OAuth mit {provider.name} verbinden. Du wirst zur Anmeldung weitergeleitet.
+              Über OAuth mit {provider.name} verbinden. Du wirst zur Anmeldung
+              weitergeleitet.
             </p>
             <Button
               size="sm"
@@ -366,7 +435,8 @@ function ProviderConnectionBlock({ provider }: { provider: StorageProviderMeta }
           Mit Hetzner verbinden
         </p>
         <p className="text-xs text-muted-foreground">
-          Zugangsdaten aus dem Hetzner Robot bzw. Object-Storage-Dashboard. Werden nur lokal gespeichert.
+          Zugangsdaten aus dem Hetzner Robot bzw. Object-Storage-Dashboard.
+          Werden nur lokal gespeichert.
         </p>
         <div className="grid gap-2">
           <div className="space-y-1">

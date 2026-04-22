@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,17 +6,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
-import { Scissors } from 'lucide-react';
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { Scissors } from "lucide-react";
 
 interface AudioLabelDialogProps {
   isOpen: boolean;
   fileName: string;
-  type: 'music' | 'sfx';
+  type: "music" | "sfx";
   audioUrl?: string; // Audio URL for trimming preview
-  onConfirm: (label: string, trimming?: { startTime?: number; endTime?: number }) => void;
+  onConfirm: (
+    label: string,
+    trimming?: { startTime?: number; endTime?: number },
+  ) => void;
   onCancel: () => void;
   onEdit?: () => void; // Open trimming editor
 }
@@ -30,14 +33,14 @@ export function AudioLabelDialog({
   onCancel,
   onEdit,
 }: AudioLabelDialogProps) {
-  const [label, setLabel] = useState('');
+  const [label, setLabel] = useState("");
   const [wantsTrimming, setWantsTrimming] = useState(false);
 
   // Reset label when dialog opens with new file
   useEffect(() => {
     if (isOpen) {
       // Default: use filename without extension
-      const defaultLabel = fileName.replace(/\.[^/.]+$/, '');
+      const defaultLabel = fileName.replace(/\.[^/.]+$/, "");
       setLabel(defaultLabel);
     }
   }, [isOpen, fileName]);
@@ -58,7 +61,7 @@ export function AudioLabelDialog({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleConfirm();
     }
   };
@@ -68,7 +71,7 @@ export function AudioLabelDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {type === 'music' ? '🎵 Music' : '🔊 SFX'} Label
+            {type === "music" ? "🎵 Music" : "🔊 SFX"} Label
           </DialogTitle>
           <DialogDescription>
             Give this audio file a name that will be displayed in the timeline.
@@ -108,10 +111,7 @@ export function AudioLabelDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={onCancel}
-          >
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button

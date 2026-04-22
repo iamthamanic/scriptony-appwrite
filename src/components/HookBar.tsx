@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { GripVertical } from 'lucide-react';
+import { useState } from "react";
+import { GripVertical } from "lucide-react";
 
 /**
  * 🎯 HOOK BAR - Scrollbar-style Beat Marker
- * 
+ *
  * Schmaler horizontaler Balken der wie eine Scrollbar aussieht:
  * - Kompakt und schmal (wie ein Slider)
  * - Zeigt Prozent-Position an
@@ -25,12 +25,12 @@ interface HookBarProps {
   className?: string;
 }
 
-export function HookBar({ hook, onUpdate, className = '' }: HookBarProps) {
+export function HookBar({ hook, onUpdate, className = "" }: HookBarProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const bgColor = hook.color || '#FFD700'; // Gold color for Hook
+  const bgColor = hook.color || "#FFD700"; // Gold color for Hook
   const midPct = (hook.pctFrom + hook.pctTo) / 2;
 
-  const handlePctChange = (field: 'pctFrom' | 'pctTo', value: string) => {
+  const handlePctChange = (field: "pctFrom" | "pctTo", value: string) => {
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && onUpdate) {
       onUpdate(hook.id, { [field]: Math.max(0, Math.min(100, numValue)) });
@@ -38,7 +38,7 @@ export function HookBar({ hook, onUpdate, className = '' }: HookBarProps) {
   };
 
   return (
-    <div 
+    <div
       className={`relative flex items-center gap-1 h-full ${className}`}
       onDoubleClick={() => setIsEditing(true)}
     >
@@ -46,7 +46,7 @@ export function HookBar({ hook, onUpdate, className = '' }: HookBarProps) {
       <input
         type="number"
         value={hook.pctFrom.toFixed(0)}
-        onChange={(e) => handlePctChange('pctFrom', e.target.value)}
+        onChange={(e) => handlePctChange("pctFrom", e.target.value)}
         className="w-8 h-6 text-[9px] text-center bg-white/90 border border-gray-300 rounded px-0.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
         step="0.1"
         min="0"
@@ -54,12 +54,12 @@ export function HookBar({ hook, onUpdate, className = '' }: HookBarProps) {
       />
 
       {/* Hook Bar - Scrollbar Style */}
-      <div 
+      <div
         className="flex-1 relative rounded-full overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-        style={{ 
+        style={{
           backgroundColor: bgColor,
-          height: '20px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          height: "20px",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
         }}
       >
         {/* Grip Icon */}
@@ -75,9 +75,9 @@ export function HookBar({ hook, onUpdate, className = '' }: HookBarProps) {
         </div>
 
         {/* Shine effect */}
-        <div 
+        <div
           className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent"
-          style={{ pointerEvents: 'none' }}
+          style={{ pointerEvents: "none" }}
         />
       </div>
 
@@ -85,7 +85,7 @@ export function HookBar({ hook, onUpdate, className = '' }: HookBarProps) {
       <input
         type="number"
         value={hook.pctTo.toFixed(0)}
-        onChange={(e) => handlePctChange('pctTo', e.target.value)}
+        onChange={(e) => handlePctChange("pctTo", e.target.value)}
         className="w-8 h-6 text-[9px] text-center bg-white/90 border border-gray-300 rounded px-0.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
         step="0.1"
         min="0"

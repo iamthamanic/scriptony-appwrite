@@ -1,5 +1,5 @@
-import type { Character } from '../lib/types';
-import { CharacterPicker } from './CharacterPicker';
+import type { Character } from "../lib/types";
+import { CharacterPicker } from "./CharacterPicker";
 
 interface CharacterAutocompleteProps {
   characters: Character[];
@@ -12,11 +12,11 @@ interface CharacterAutocompleteProps {
  * Character Autocomplete for @-mentions
  * This is a thin wrapper around CharacterPicker for backwards compatibility
  */
-export function CharacterAutocomplete({ 
-  characters, 
-  search, 
-  position, 
-  onSelect 
+export function CharacterAutocomplete({
+  characters,
+  search,
+  position,
+  onSelect,
 }: CharacterAutocompleteProps) {
   return (
     <CharacterPicker

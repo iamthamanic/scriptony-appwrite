@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import {
   getAuthRedirectUrl,
   getCapacitorCallbackUrl,
@@ -22,7 +28,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
+  signInWithOAuth: (provider: "google" | "github") => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -65,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkSession = async () => {
     try {
       const session = await getAuthClient().getSession();
-      
+
       if (!session) {
         setUser(null);
         return;
@@ -121,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithOAuth = async (provider: 'google' | 'github') => {
+  const signInWithOAuth = async (provider: "google" | "github") => {
     try {
       setLoading(true);
 
@@ -174,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await getAuthClient().resetPasswordForEmail(
         email,
-        getResetPasswordRedirectTarget()
+        getResetPasswordRedirectTarget(),
       );
     } catch (error) {
       console.error("Password reset error:", error);

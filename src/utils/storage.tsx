@@ -23,7 +23,7 @@ export async function uploadImage(
   file: File,
   userId: string,
   folder: string = "general",
-  prepOptions?: PrepareImageFileOptions
+  prepOptions?: PrepareImageFileOptions,
 ): Promise<UploadResult> {
   try {
     // Get auth token
@@ -51,7 +51,7 @@ export async function uploadImage(
           userId,
           folder,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -123,6 +123,9 @@ export const STORAGE_LIMIT_MB = 1024; // 1 GB in MB
 /**
  * Check if upload would exceed storage limit
  */
-export function wouldExceedLimit(currentBytes: number, fileSize: number): boolean {
-  return (currentBytes + fileSize) > STORAGE_LIMIT_BYTES;
+export function wouldExceedLimit(
+  currentBytes: number,
+  fileSize: number,
+): boolean {
+  return currentBytes + fileSize > STORAGE_LIMIT_BYTES;
 }

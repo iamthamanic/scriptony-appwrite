@@ -25,11 +25,36 @@ function makeProviderById(providers: AIProvider[]): Record<string, AIProvider> {
 }
 
 const defaultProviders: AIProvider[] = [
-  { id: "openai", name: "OpenAI", requiresApiKey: true, capabilities: { text: true } },
-  { id: "anthropic", name: "Anthropic", requiresApiKey: true, capabilities: { text: true } },
-  { id: "ollama", name: "Ollama", requiresApiKey: false, capabilities: { text: true } },
-  { id: "ollama_local", name: "Ollama (lokal)", requiresApiKey: false, capabilities: { text: true } },
-  { id: "ollama_cloud", name: "Ollama (Cloud)", requiresApiKey: true, capabilities: { text: true } },
+  {
+    id: "openai",
+    name: "OpenAI",
+    requiresApiKey: true,
+    capabilities: { text: true },
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    requiresApiKey: true,
+    capabilities: { text: true },
+  },
+  {
+    id: "ollama",
+    name: "Ollama",
+    requiresApiKey: false,
+    capabilities: { text: true },
+  },
+  {
+    id: "ollama_local",
+    name: "Ollama (lokal)",
+    requiresApiKey: false,
+    capabilities: { text: true },
+  },
+  {
+    id: "ollama_cloud",
+    name: "Ollama (Cloud)",
+    requiresApiKey: true,
+    capabilities: { text: true },
+  },
 ];
 
 const defaultProviderById = makeProviderById(defaultProviders);
@@ -84,10 +109,22 @@ describe("useProviderSelection (Ollama normalization logic)", () => {
   });
 
   it("collapsing ollama variants yields canonical 'ollama'", () => {
-    const ids = ["openai", "ollama", "ollama_local", "ollama_cloud", "anthropic"];
-    const collapsed = [...new Set(ids.map((id) =>
-      id === "ollama" || id === "ollama_local" || id === "ollama_cloud" ? "ollama" : id
-    ))];
+    const ids = [
+      "openai",
+      "ollama",
+      "ollama_local",
+      "ollama_cloud",
+      "anthropic",
+    ];
+    const collapsed = [
+      ...new Set(
+        ids.map((id) =>
+          id === "ollama" || id === "ollama_local" || id === "ollama_cloud"
+            ? "ollama"
+            : id,
+        ),
+      ),
+    ];
     expect(collapsed).toContain("ollama");
     expect(collapsed).toHaveLength(3); // openai, ollama, anthropic
   });

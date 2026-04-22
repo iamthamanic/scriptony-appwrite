@@ -11,9 +11,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Button } from './ui/button';
-import { STORAGE_CONFIG } from '../lib/config';
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { STORAGE_CONFIG } from "../lib/config";
 
 type GifAnimationUploadDialogProps = {
   open: boolean;
@@ -43,8 +43,11 @@ export function GifAnimationUploadDialog({
           <DialogDescription asChild>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                Eine Konvertierung nach WebP verwendet nur das erste Bild —{' '}
-                <strong className="text-foreground">Animationen gehen dabei verloren</strong>.
+                Eine Konvertierung nach WebP verwendet nur das erste Bild —{" "}
+                <strong className="text-foreground">
+                  Animationen gehen dabei verloren
+                </strong>
+                .
               </p>
               {fileName ? (
                 <p className="text-xs opacity-80 truncate" title={fileName}>
@@ -53,8 +56,8 @@ export function GifAnimationUploadDialog({
               ) : null}
               {!allowKeepGif ? (
                 <p className="text-amber-600 dark:text-amber-500 text-xs">
-                  Dieses GIF ist größer als {maxMb} MB. Nur Konvertierung (oder ein kleineres GIF) ist
-                  möglich.
+                  Dieses GIF ist größer als {maxMb} MB. Nur Konvertierung (oder
+                  ein kleineres GIF) ist möglich.
                 </p>
               ) : null}
             </div>
@@ -73,7 +76,12 @@ export function GifAnimationUploadDialog({
           >
             Ohne Konvertierung — GIF behalten
           </Button>
-          <Button type="button" variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => onOpenChange(false)}
+          >
             Abbrechen
           </Button>
         </DialogFooter>

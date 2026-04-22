@@ -1,9 +1,24 @@
 import { useState, useEffect, useCallback } from "react";
 
 const VALID_PAGES = [
-  "home", "projekte", "welten", "worldbuilding", "gym", "upload",
-  "admin", "superadmin", "einstellungen", "settings", "stage", "create", "present", "auth",
-  "migration", "reset-password", "api-test", "project-recovery"
+  "home",
+  "projekte",
+  "welten",
+  "worldbuilding",
+  "gym",
+  "upload",
+  "admin",
+  "superadmin",
+  "einstellungen",
+  "settings",
+  "stage",
+  "create",
+  "present",
+  "auth",
+  "migration",
+  "reset-password",
+  "api-test",
+  "project-recovery",
 ] as const;
 
 export type ValidPage = (typeof VALID_PAGES)[number];
@@ -27,7 +42,9 @@ export function normalizePage(page: string | undefined): ValidPage {
   return VALID_PAGES.includes(page as ValidPage) ? (page as ValidPage) : "home";
 }
 
-function safeDecodeHashSegment(segment: string | undefined): string | undefined {
+function safeDecodeHashSegment(
+  segment: string | undefined,
+): string | undefined {
   if (segment == null || segment === "") return undefined;
   try {
     return decodeURIComponent(segment).trim();
@@ -65,12 +82,15 @@ export function useRouter(): {
 } {
   const [state, setState] = useState<RouterState>(readRouterStateFromWindow);
 
-  const navigate = useCallback((page: ValidPage, id?: string, categoryId?: string) => {
-    if (typeof window === "undefined") return;
-    window.location.hash = [page, id, categoryId].filter(Boolean).join("/");
-    // Sync immediately: some environments defer or skip hashchange when updating the hash.
-    setState(readRouterStateFromWindow());
-  }, []);
+  const navigate = useCallback(
+    (page: ValidPage, id?: string, categoryId?: string) => {
+      if (typeof window === "undefined") return;
+      window.location.hash = [page, id, categoryId].filter(Boolean).join("/");
+      // Sync immediately: some environments defer or skip hashchange when updating the hash.
+      setState(readRouterStateFromWindow());
+    },
+    [],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -1,10 +1,10 @@
 /**
  * Number Formatting Utilities
- * 
+ *
  * Functions for formatting numbers, currencies, percentages, file sizes, etc.
  */
 
-export type Locale = 'de' | 'en';
+export type Locale = "de" | "en";
 
 // =============================================================================
 // Number Formatting
@@ -12,18 +12,18 @@ export type Locale = 'de' | 'en';
 
 /**
  * Formats a number with thousands separators
- * 
+ *
  * @param value - Number to format
  * @param locale - Locale for formatting
  * @returns Formatted number string
  */
 export function formatNumber(
   value: number | null | undefined,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
-  if (value === null || value === undefined) return '—';
-  
-  const localeCode = locale === 'de' ? 'de-DE' : 'en-US';
+  if (value === null || value === undefined) return "—";
+
+  const localeCode = locale === "de" ? "de-DE" : "en-US";
   return new Intl.NumberFormat(localeCode).format(value);
 }
 
@@ -33,11 +33,11 @@ export function formatNumber(
 export function formatDecimal(
   value: number | null | undefined,
   decimals: number = 2,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
-  if (value === null || value === undefined) return '—';
-  
-  const localeCode = locale === 'de' ? 'de-DE' : 'en-US';
+  if (value === null || value === undefined) return "—";
+
+  const localeCode = locale === "de" ? "de-DE" : "en-US";
   return new Intl.NumberFormat(localeCode, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -50,13 +50,13 @@ export function formatDecimal(
 export function formatPercent(
   value: number | null | undefined,
   decimals: number = 0,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
-  if (value === null || value === undefined) return '—';
-  
-  const localeCode = locale === 'de' ? 'de-DE' : 'en-US';
+  if (value === null || value === undefined) return "—";
+
+  const localeCode = locale === "de" ? "de-DE" : "en-US";
   return new Intl.NumberFormat(localeCode, {
-    style: 'percent',
+    style: "percent",
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value / 100);
@@ -71,14 +71,14 @@ export function formatPercent(
  */
 export function formatCurrency(
   value: number | null | undefined,
-  currency: string = 'EUR',
-  locale: Locale = 'de'
+  currency: string = "EUR",
+  locale: Locale = "de",
 ): string {
-  if (value === null || value === undefined) return '—';
-  
-  const localeCode = locale === 'de' ? 'de-DE' : 'en-US';
+  if (value === null || value === undefined) return "—";
+
+  const localeCode = locale === "de" ? "de-DE" : "en-US";
   return new Intl.NumberFormat(localeCode, {
-    style: 'currency',
+    style: "currency",
     currency,
   }).format(value);
 }
@@ -89,7 +89,7 @@ export function formatCurrency(
 
 /**
  * Formats bytes into human-readable file size
- * 
+ *
  * @param bytes - Number of bytes
  * @param decimals - Decimal places to show
  * @param locale - Locale for number formatting
@@ -98,18 +98,18 @@ export function formatCurrency(
 export function formatFileSize(
   bytes: number | null | undefined,
   decimals: number = 1,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
-  if (bytes === null || bytes === undefined || bytes === 0) return '0 Bytes';
-  
+  if (bytes === null || bytes === undefined || bytes === 0) return "0 Bytes";
+
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const value = bytes / Math.pow(k, i);
-  
+
   const formattedValue = formatDecimal(value, decimals, locale);
-  
+
   return `${formattedValue} ${sizes[i]}`;
 }
 
@@ -122,17 +122,17 @@ export function formatFileSize(
  */
 export function formatCompact(
   value: number | null | undefined,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
-  if (value === null || value === undefined) return '—';
-  
-  const localeCode = locale === 'de' ? 'de-DE' : 'en-US';
-  
+  if (value === null || value === undefined) return "—";
+
+  const localeCode = locale === "de" ? "de-DE" : "en-US";
+
   // Try to use Intl.NumberFormat with compact notation
   try {
     return new Intl.NumberFormat(localeCode, {
-      notation: 'compact',
-      compactDisplay: 'short',
+      notation: "compact",
+      compactDisplay: "short",
     } as any).format(value);
   } catch {
     // Fallback for older browsers
@@ -144,18 +144,19 @@ export function formatCompact(
  * Fallback for compact number formatting
  */
 function formatCompactFallback(value: number, locale: Locale): string {
-  const suffixes = locale === 'de' 
-    ? ['', 'Tsd.', 'Mio.', 'Mrd.', 'Bio.']
-    : ['', 'K', 'M', 'B', 'T'];
-  
+  const suffixes =
+    locale === "de"
+      ? ["", "Tsd.", "Mio.", "Mrd.", "Bio."]
+      : ["", "K", "M", "B", "T"];
+
   const tier = Math.floor(Math.log10(Math.abs(value)) / 3);
-  
+
   if (tier === 0) return formatNumber(value, locale);
-  
+
   const suffix = suffixes[tier];
   const scale = Math.pow(10, tier * 3);
   const scaled = value / scale;
-  
+
   return `${formatDecimal(scaled, 1, locale)}${suffix}`;
 }
 
@@ -165,21 +166,21 @@ function formatCompactFallback(value: number, locale: Locale): string {
 
 /**
  * Formats duration in minutes to human-readable format
- * 
+ *
  * @param minutes - Duration in minutes
  * @param locale - Locale for formatting
  * @returns Formatted duration (e.g., "2h 30min" or "45min")
  */
 export function formatDuration(
   minutes: number | null | undefined,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
-  if (minutes === null || minutes === undefined || minutes === 0) return '—';
-  
+  if (minutes === null || minutes === undefined || minutes === 0) return "—";
+
   const hours = Math.floor(minutes / 60);
   const mins = Math.floor(minutes % 60);
-  
-  if (locale === 'de') {
+
+  if (locale === "de") {
     if (hours === 0) {
       return `${mins} Min.`;
     } else if (mins === 0) {
@@ -202,14 +203,14 @@ export function formatDuration(
  * Formats seconds to MM:SS or HH:MM:SS
  */
 export function formatTimecode(seconds: number | null | undefined): string {
-  if (seconds === null || seconds === undefined) return '00:00';
-  
+  if (seconds === null || seconds === undefined) return "00:00";
+
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  
-  const pad = (num: number) => num.toString().padStart(2, '0');
-  
+
+  const pad = (num: number) => num.toString().padStart(2, "0");
+
   if (h > 0) {
     return `${pad(h)}:${pad(m)}:${pad(s)}`;
   } else {
@@ -227,13 +228,13 @@ export function formatTimecode(seconds: number | null | undefined): string {
 export function formatRange(
   min: number | null | undefined,
   max: number | null | undefined,
-  locale: Locale = 'de'
+  locale: Locale = "de",
 ): string {
   if (min === null || min === undefined || max === null || max === undefined) {
-    return '—';
+    return "—";
   }
-  
-  const separator = locale === 'de' ? ' bis ' : ' to ';
+
+  const separator = locale === "de" ? " bis " : " to ";
   return `${formatNumber(min, locale)}${separator}${formatNumber(max, locale)}`;
 }
 

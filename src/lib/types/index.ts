@@ -1,6 +1,6 @@
 /**
  * Shared TypeScript Type Definitions
- * 
+ *
  * Centralized type definitions used across the application.
  * Organized by domain.
  */
@@ -9,7 +9,7 @@
 // User & Auth
 // =============================================================================
 
-export type UserRole = 'user' | 'admin' | 'superadmin';
+export type UserRole = "user" | "admin" | "superadmin";
 
 export interface User {
   id: string;
@@ -50,8 +50,8 @@ export interface Project {
   title: string;
   description: string;
   genre?: string;
-  format?: 'film' | 'series' | 'short' | 'webseries' | 'other';
-  status?: 'draft' | 'in-progress' | 'completed';
+  format?: "film" | "series" | "short" | "webseries" | "other";
+  status?: "draft" | "in-progress" | "completed";
   coverImage?: string;
   createdAt: string;
   updatedAt: string;
@@ -76,7 +76,7 @@ export interface Episode {
   title: string;
   description?: string;
   duration?: number;
-  status?: 'outline' | 'draft' | 'revision' | 'final';
+  status?: "outline" | "draft" | "revision" | "final";
   createdAt: string;
   updatedAt: string;
   // Relations
@@ -87,7 +87,7 @@ export interface Character {
   id: string;
   projectId: string;
   name: string;
-  role?: 'protagonist' | 'antagonist' | 'supporting' | 'minor';
+  role?: "protagonist" | "antagonist" | "supporting" | "minor";
   description?: string;
   age?: number;
   imageUrl?: string;
@@ -124,13 +124,13 @@ export interface Scene {
   location?: string;
   /** Scene heading / slug line (INT/EXT, location) from screenplay views. */
   setting?: string;
-  timeOfDay?: 'day' | 'night' | 'dawn' | 'dusk';
+  timeOfDay?: "day" | "night" | "dawn" | "dusk";
   /** Plain string or TipTap JSON (stringified or parsed in the client). */
   content?: unknown;
   /** Optional beat / structure summary (structure beats UI). */
   summary?: string;
   notes?: string;
-  status?: 'outline' | 'draft' | 'revision' | 'final';
+  status?: "outline" | "draft" | "revision" | "final";
   duration?: number; // in minutes
   orderIndex?: number; // Sortierung innerhalb Sequence
   color?: string; // NEW: Farbe für Scene
@@ -189,7 +189,7 @@ export interface Sequence {
 export interface ShotAudio {
   id: string;
   shotId: string;
-  type: 'music' | 'sfx';
+  type: "music" | "sfx";
   fileUrl: string;
   fileName: string;
   label?: string;
@@ -278,7 +278,51 @@ export interface Shot {
   audioFiles?: ShotAudio[];
   /** TipTap JSON or extra shot payload from API / screenplay views. */
   metadata?: Record<string, unknown>;
+  // Puppet-Layer revision counters (set by Bridge / Blender Addon)
+  blenderSyncRevision?: number;
+  guideBundleRevision?: number;
+  styleProfileRevision?: number;
+  renderRevision?: number;
+  lastBlenderSyncAt?: string | null;
+  lastPreviewAt?: string | null;
+  /** ID of the accepted render job (set by accept) */
+  acceptedRenderJobId?: string | null;
+  /** ID of the most recent render job (set by create/reject) */
+  latestRenderJobId?: string | null;
 }
+
+// =============================================================================
+// Puppet-Layer: Render Jobs & Freshness
+// =============================================================================
+
+export type RenderJobStatus = "queued" | "executing" | "completed" | "failed";
+export type ReviewStatus = "pending" | "accepted" | "rejected";
+
+export interface RenderJob {
+  id: string;
+  userId: string;
+  projectId: string;
+  shotId: string;
+  type: string;
+  jobClass: string;
+  status: RenderJobStatus;
+  reviewStatus: ReviewStatus;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+  guideBundleId: string;
+  styleProfileId: string;
+  repairConfig: string | null;
+  outputImageIds: string[];
+  createdAt: string;
+  completedAt: string | null;
+}
+
+// Re-export freshness types from the shared module (single source of truth).
+// Avoids duplicate definitions that could drift out of sync.
+export type {
+  FreshnessStatus,
+  ShotFreshnessResult,
+} from "../../../functions/_shared/freshness";
 
 // =============================================================================
 // Worldbuilding
@@ -298,16 +342,16 @@ export interface World {
   itemCount?: number;
 }
 
-export type WorldCategoryType = 
-  | 'geography' 
-  | 'politics' 
-  | 'culture' 
-  | 'history' 
-  | 'technology' 
-  | 'magic' 
-  | 'religion' 
-  | 'economy'
-  | 'custom';
+export type WorldCategoryType =
+  | "geography"
+  | "politics"
+  | "culture"
+  | "history"
+  | "technology"
+  | "magic"
+  | "religion"
+  | "economy"
+  | "custom";
 
 export interface WorldCategory {
   id: string;
@@ -344,7 +388,7 @@ export interface Challenge {
   id: string;
   title: string;
   description: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
+  difficulty?: "easy" | "medium" | "hard";
   type?: string;
   timeLimit?: number; // in minutes
   points?: number;
@@ -364,7 +408,7 @@ export interface Exercise {
   artFormId: string;
   title: string;
   description: string;
-  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  difficulty?: "beginner" | "intermediate" | "advanced";
   duration?: number;
 }
 
@@ -397,7 +441,7 @@ export interface ScriptUpload {
   userId: string;
   fileName: string;
   fileSize: number;
-  status: 'uploading' | 'processing' | 'completed' | 'failed';
+  status: "uploading" | "processing" | "completed" | "failed";
   uploadedAt: string;
   processedAt?: string;
   analysis?: ScriptAnalysis;

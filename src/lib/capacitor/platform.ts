@@ -26,16 +26,23 @@ export async function hydrateNativeSessionStorage(): Promise<void> {
   }
 
   try {
-    const { value } = await Preferences.get({ key: SCRIPTONY_NATIVE_SESSION_KEY });
+    const { value } = await Preferences.get({
+      key: SCRIPTONY_NATIVE_SESSION_KEY,
+    });
     if (value && !window.localStorage.getItem(SCRIPTONY_NATIVE_SESSION_KEY)) {
       window.localStorage.setItem(SCRIPTONY_NATIVE_SESSION_KEY, value);
     }
   } catch (error) {
-    console.warn("[Capacitor] Failed to hydrate native session storage:", error);
+    console.warn(
+      "[Capacitor] Failed to hydrate native session storage:",
+      error,
+    );
   }
 }
 
-export async function persistNativeSessionStorage(value: string | null): Promise<void> {
+export async function persistNativeSessionStorage(
+  value: string | null,
+): Promise<void> {
   if (!isNativePlatform()) {
     return;
   }
@@ -47,7 +54,10 @@ export async function persistNativeSessionStorage(value: string | null): Promise
       await Preferences.remove({ key: SCRIPTONY_NATIVE_SESSION_KEY });
     }
   } catch (error) {
-    console.warn("[Capacitor] Failed to persist native session storage:", error);
+    console.warn(
+      "[Capacitor] Failed to persist native session storage:",
+      error,
+    );
   }
 }
 

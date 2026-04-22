@@ -108,7 +108,8 @@ function SelectItem({
   textValue,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Item>) {
-  const hasCustomTextValue = typeof textValue === "string" && textValue.trim().length > 0;
+  const hasCustomTextValue =
+    typeof textValue === "string" && textValue.trim().length > 0;
 
   return (
     <SelectPrimitive.Item

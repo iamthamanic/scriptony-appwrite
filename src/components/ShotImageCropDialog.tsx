@@ -1,6 +1,13 @@
 import { useState, useCallback, useMemo } from "react";
 import Cropper from "react-easy-crop@5.0.8";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
 import { ZoomIn, ZoomOut, Grid3x3, Info } from "lucide-react";
@@ -13,10 +20,38 @@ import { Checkbox } from "./ui/checkbox";
 // =============================================================================
 
 const ASPECT_RATIOS = [
-  { id: '16:9', label: '16:9 Standard', description: 'TV/Streaming (HD)', value: 16 / 9, width: 1920, height: 1080 },
-  { id: '2.39:1', label: '2.39:1 Cinemascope', description: 'Hollywood Widescreen', value: 2.39, width: 2048, height: 858 },
-  { id: '1.85:1', label: '1.85:1 Theatrical', description: 'Kino Standard', value: 1.85, width: 1920, height: 1038 },
-  { id: 'custom', label: 'Custom', description: 'Freie Wahl', value: 16 / 9, width: 1920, height: 1080 },
+  {
+    id: "16:9",
+    label: "16:9 Standard",
+    description: "TV/Streaming (HD)",
+    value: 16 / 9,
+    width: 1920,
+    height: 1080,
+  },
+  {
+    id: "2.39:1",
+    label: "2.39:1 Cinemascope",
+    description: "Hollywood Widescreen",
+    value: 2.39,
+    width: 2048,
+    height: 858,
+  },
+  {
+    id: "1.85:1",
+    label: "1.85:1 Theatrical",
+    description: "Kino Standard",
+    value: 1.85,
+    width: 1920,
+    height: 1038,
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    description: "Freie Wahl",
+    value: 16 / 9,
+    width: 1920,
+    height: 1080,
+  },
 ] as const;
 
 // =============================================================================
@@ -29,24 +64,30 @@ interface ShotImageCropDialogProps {
   onCancel: () => void;
 }
 
-export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCropDialogProps) {
+export function ShotImageCropDialog({
+  image,
+  onComplete,
+  onCancel,
+}: ShotImageCropDialogProps) {
   // Crop state
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  
+
   // Aspect ratio state (default: 16:9)
-  const [selectedRatio, setSelectedRatio] = useState<string>('16:9');
-  
+  const [selectedRatio, setSelectedRatio] = useState<string>("16:9");
+
   // Visual aids
   const [showGrid, setShowGrid] = useState(true);
-  
+
   // JPEG quality (85-95%)
   const [quality, setQuality] = useState(90);
 
   // Get current aspect ratio config
   const currentRatio = useMemo(() => {
-    return ASPECT_RATIOS.find(r => r.id === selectedRatio) || ASPECT_RATIOS[0];
+    return (
+      ASPECT_RATIOS.find((r) => r.id === selectedRatio) || ASPECT_RATIOS[0]
+    );
   }, [selectedRatio]);
 
   // Estimate file size (rough approximation)
@@ -59,32 +100,38 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
     return Math.round(baseSizeKB * qualityFactor);
   }, [croppedAreaPixels, quality]);
 
-  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
+  const onCropComplete = useCallback(
+    (croppedArea: any, croppedAreaPixels: any) => {
+      setCroppedAreaPixels(croppedAreaPixels);
+    },
+    [],
+  );
 
   const createCroppedImage = async () => {
     try {
-      console.log('[ShotImageCropDialog] 🎬 Starting crop...', {
+      console.log("[ShotImageCropDialog] 🎬 Starting crop...", {
         hasImage: !!image,
         hasCroppedArea: !!croppedAreaPixels,
         ratio: currentRatio.label,
-        quality
+        quality,
       });
-      
+
       const croppedImage = await getCroppedImg(
-        image, 
-        croppedAreaPixels, 
-        currentRatio.width, 
+        image,
+        croppedAreaPixels,
+        currentRatio.width,
         currentRatio.height,
-        quality / 100
+        quality / 100,
       );
-      
-      console.log('[ShotImageCropDialog] ✅ Crop successful, size:', croppedImage.length);
+
+      console.log(
+        "[ShotImageCropDialog] ✅ Crop successful, size:",
+        croppedImage.length,
+      );
       onComplete(croppedImage);
     } catch (e) {
-      console.error('[ShotImageCropDialog] ❌ Crop failed:', e);
-      alert('Fehler beim Zuschneiden des Bildes. Bitte versuche es erneut.');
+      console.error("[ShotImageCropDialog] ❌ Crop failed:", e);
+      alert("Fehler beim Zuschneiden des Bildes. Bitte versuche es erneut.");
     }
   };
 
@@ -94,7 +141,8 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
         <DialogHeader>
           <DialogTitle>🎬 Shot Image bearbeiten</DialogTitle>
           <DialogDescription>
-            Wähle ein Aspect Ratio und positioniere den Bildausschnitt für deinen Shot.
+            Wähle ein Aspect Ratio und positioniere den Bildausschnitt für
+            deinen Shot.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,17 +150,25 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
           {/* Aspect Ratio Selection */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">📐 Aspect Ratio</Label>
-            <RadioGroup value={selectedRatio} onValueChange={setSelectedRatio} className="grid grid-cols-2 gap-2">
+            <RadioGroup
+              value={selectedRatio}
+              onValueChange={setSelectedRatio}
+              className="grid grid-cols-2 gap-2"
+            >
               {ASPECT_RATIOS.map((ratio) => (
                 <label
                   key={ratio.id}
                   className="flex items-start gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all hover:border-[#6E59A5]/50 data-[state=checked]:border-[#6E59A5] data-[state=checked]:bg-[#6E59A5]/5"
-                  data-state={selectedRatio === ratio.id ? 'checked' : 'unchecked'}
+                  data-state={
+                    selectedRatio === ratio.id ? "checked" : "unchecked"
+                  }
                 >
                   <RadioGroupItem value={ratio.id} className="mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm">{ratio.label}</div>
-                    <div className="text-xs text-muted-foreground">{ratio.description}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {ratio.description}
+                    </div>
                   </div>
                 </label>
               ))}
@@ -120,7 +176,7 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
           </div>
 
           {/* Crop Area */}
-          <div 
+          <div
             className="relative w-full bg-black/5 dark:bg-white/5 rounded-lg overflow-hidden"
             style={{ aspectRatio: currentRatio.value }}
           >
@@ -136,7 +192,7 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
               onCropComplete={onCropComplete}
               style={{
                 containerStyle: {
-                  borderRadius: '0.5rem',
+                  borderRadius: "0.5rem",
                 },
               }}
             />
@@ -182,12 +238,15 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
           {/* Visual Aids */}
           <div className="flex items-center gap-4 pt-2 border-t">
             <div className="flex items-center gap-2">
-              <Checkbox 
-                id="show-grid" 
-                checked={showGrid} 
+              <Checkbox
+                id="show-grid"
+                checked={showGrid}
                 onCheckedChange={(checked) => setShowGrid(checked === true)}
               />
-              <Label htmlFor="show-grid" className="text-sm cursor-pointer flex items-center gap-1.5">
+              <Label
+                htmlFor="show-grid"
+                className="text-sm cursor-pointer flex items-center gap-1.5"
+              >
                 <Grid3x3 className="size-4" />
                 Rule of Thirds Grid
               </Label>
@@ -212,7 +271,10 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
           <Button variant="outline" onClick={onCancel} className="h-11">
             Abbrechen
           </Button>
-          <Button onClick={createCroppedImage} className="h-11 bg-[#6E59A5] hover:bg-[#5a4888]">
+          <Button
+            onClick={createCroppedImage}
+            className="h-11 bg-[#6E59A5] hover:bg-[#5a4888]"
+          >
             Übernehmen
           </Button>
         </DialogFooter>
@@ -226,17 +288,17 @@ export function ShotImageCropDialog({ image, onComplete, onCancel }: ShotImageCr
 // =============================================================================
 
 async function getCroppedImg(
-  imageSrc: string, 
-  pixelCrop: any, 
-  targetWidth: number, 
+  imageSrc: string,
+  pixelCrop: any,
+  targetWidth: number,
   targetHeight: number,
-  quality: number = 0.9
+  quality: number = 0.9,
 ): Promise<string> {
-  console.log('[getCroppedImg] 🎬 Starting crop:', {
+  console.log("[getCroppedImg] 🎬 Starting crop:", {
     targetWidth,
     targetHeight,
     quality,
-    cropArea: pixelCrop
+    cropArea: pixelCrop,
   });
 
   const image = await createImage(imageSrc);
@@ -250,8 +312,13 @@ async function getCroppedImg(
   // Set canvas size to target dimensions
   canvas.width = targetWidth;
   canvas.height = targetHeight;
-  
-  console.log('[getCroppedImg] 📐 Canvas created:', canvas.width, 'x', canvas.height);
+
+  console.log(
+    "[getCroppedImg] 📐 Canvas created:",
+    canvas.width,
+    "x",
+    canvas.height,
+  );
 
   // Draw the cropped image, scaled to target size
   ctx.drawImage(
@@ -263,15 +330,15 @@ async function getCroppedImg(
     0,
     0,
     targetWidth,
-    targetHeight
+    targetHeight,
   );
-  
-  console.log('[getCroppedImg] 🎨 Image drawn to canvas');
+
+  console.log("[getCroppedImg] 🎨 Image drawn to canvas");
 
   // Return as JPEG with quality control
   const dataUrl = canvas.toDataURL("image/jpeg", quality);
-  console.log('[getCroppedImg] ✅ Data URL created, length:', dataUrl.length);
-  
+  console.log("[getCroppedImg] ✅ Data URL created, length:", dataUrl.length);
+
   return dataUrl;
 }
 
@@ -279,15 +346,20 @@ function createImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.addEventListener("load", () => {
-      console.log('[ShotImageCropDialog] 📸 Image loaded:', image.width, 'x', image.height);
+      console.log(
+        "[ShotImageCropDialog] 📸 Image loaded:",
+        image.width,
+        "x",
+        image.height,
+      );
       resolve(image);
     });
     image.addEventListener("error", (error) => {
-      console.error('[ShotImageCropDialog] ❌ Image load failed:', error);
+      console.error("[ShotImageCropDialog] ❌ Image load failed:", error);
       reject(error);
     });
     // Allow cross-origin images
-    image.crossOrigin = 'anonymous';
+    image.crossOrigin = "anonymous";
     image.src = url;
   });
 }

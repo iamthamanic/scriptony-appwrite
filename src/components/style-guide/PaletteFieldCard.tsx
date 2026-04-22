@@ -17,7 +17,13 @@ interface PaletteFieldCardProps {
   defaultValue: string;
 }
 
-export function PaletteFieldCard({ id, name, title, hint, defaultValue }: PaletteFieldCardProps) {
+export function PaletteFieldCard({
+  id,
+  name,
+  title,
+  hint,
+  defaultValue,
+}: PaletteFieldCardProps) {
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
@@ -26,7 +32,10 @@ export function PaletteFieldCard({ id, name, title, hint, defaultValue }: Palett
 
   const colors = useMemo(() => parseHexList(value), [value]);
   const first = colors[0] ?? "";
-  const shades = useMemo(() => (first ? shadeStripFromHex(first, 11) : []), [first]);
+  const shades = useMemo(
+    () => (first ? shadeStripFromHex(first, 11) : []),
+    [first],
+  );
 
   return (
     <Card className="overflow-hidden">
@@ -34,10 +43,14 @@ export function PaletteFieldCard({ id, name, title, hint, defaultValue }: Palett
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-sm font-semibold leading-tight">{title}</p>
-            {hint ? <p className="text-xs text-muted-foreground mt-0.5">{hint}</p> : null}
+            {hint ? (
+              <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
+            ) : null}
           </div>
           {first ? (
-            <code className="text-xs text-muted-foreground shrink-0 font-mono tabular-nums">{first}</code>
+            <code className="text-xs text-muted-foreground shrink-0 font-mono tabular-nums">
+              {first}
+            </code>
           ) : (
             <span className="text-xs text-muted-foreground shrink-0">—</span>
           )}
@@ -55,7 +68,11 @@ export function PaletteFieldCard({ id, name, title, hint, defaultValue }: Palett
         )}
 
         {colors.length > 0 ? (
-          <div className="flex flex-wrap gap-1" role="list" aria-label={`${title} Farben`}>
+          <div
+            className="flex flex-wrap gap-1"
+            role="list"
+            aria-label={`${title} Farben`}
+          >
             {colors.map((c) => (
               <span
                 key={c}
@@ -70,7 +87,9 @@ export function PaletteFieldCard({ id, name, title, hint, defaultValue }: Palett
 
         {shades.length > 0 ? (
           <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Abstufungen (Vorschau)</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Abstufungen (Vorschau)
+            </p>
             <div className="flex h-6 w-full overflow-hidden rounded-md border border-border">
               {shades.map((c, i) => (
                 <span

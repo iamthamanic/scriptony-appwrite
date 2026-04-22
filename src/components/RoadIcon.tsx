@@ -7,18 +7,18 @@ interface RoadIconProps {
 
 export function RoadIcon({ className, style }: RoadIconProps) {
   return (
-    <svg 
+    <svg
       className={className}
       style={style}
-      fill="none" 
+      fill="none"
       viewBox="0 0 14 15"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path 
-        clipRule="evenodd" 
-        d={svgPaths.p3391bc00} 
-        fill="currentColor" 
-        fillRule="evenodd" 
+      <path
+        clipRule="evenodd"
+        d={svgPaths.p3391bc00}
+        fill="currentColor"
+        fillRule="evenodd"
       />
     </svg>
   );

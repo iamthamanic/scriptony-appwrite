@@ -165,7 +165,9 @@ describe("Integration smoke tests: all 5+ feature areas", () => {
 
   describe("cross-feature: Ollama is in all features", () => {
     it("ollama appears in every feature allowlist", () => {
-      for (const [feature, allowlist] of Object.entries(AI_FEATURE_PROVIDER_ALLOWLIST)) {
+      for (const [feature, allowlist] of Object.entries(
+        AI_FEATURE_PROVIDER_ALLOWLIST,
+      )) {
         expect(allowlist).toContain("ollama");
         expect(allowlist).toContain("ollama_local");
         expect(allowlist).toContain("ollama_cloud");
@@ -175,10 +177,13 @@ describe("Integration smoke tests: all 5+ feature areas", () => {
 
   describe("cross-feature: collapse always produces exactly one Ollama entry", () => {
     it("for every feature, filtering all providers yields at most one Ollama", () => {
-      for (const feature of Object.keys(AI_FEATURE_PROVIDER_ALLOWLIST) as AiFeatureKey[]) {
+      for (const feature of Object.keys(
+        AI_FEATURE_PROVIDER_ALLOWLIST,
+      ) as AiFeatureKey[]) {
         const result = filterProvidersForFeature(feature, ALL_PROVIDERS);
         const ollamaEntries = result.filter(
-          (p) => normalizeProviderIdForUi(p.id) === CANONICAL_OLLAMA_PROVIDER_ID
+          (p) =>
+            normalizeProviderIdForUi(p.id) === CANONICAL_OLLAMA_PROVIDER_ID,
         );
         expect(ollamaEntries.length).toBeLessThanOrEqual(1);
       }
@@ -187,7 +192,9 @@ describe("Integration smoke tests: all 5+ feature areas", () => {
 
   describe("cross-feature: unknown providers are filtered out", () => {
     it("tiktok never appears in any feature", () => {
-      for (const feature of Object.keys(AI_FEATURE_PROVIDER_ALLOWLIST) as AiFeatureKey[]) {
+      for (const feature of Object.keys(
+        AI_FEATURE_PROVIDER_ALLOWLIST,
+      ) as AiFeatureKey[]) {
         const result = filterProvidersForFeature(feature, ALL_PROVIDERS);
         const ids = result.map((p) => p.id);
         expect(ids).not.toContain("tiktok");

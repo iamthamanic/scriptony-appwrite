@@ -1,16 +1,16 @@
 /**
  * 🚀 DebouncedRichTextEditor - Wrapper für RichTextEditorModal mit Debounced Save
- * 
+ *
  * Features:
  * - Debounced Saving (1000ms)
  * - Save Status Badge
  * - Optimistic UI
  */
 
-import React, { useCallback } from 'react';
-import { RichTextEditorModal } from './RichTextEditorModal';
-import { SaveStatusBadge } from './SaveStatusBadge';
-import { useEditorSave } from '../hooks/useEditorSave';
+import React, { useCallback } from "react";
+import { RichTextEditorModal } from "./RichTextEditorModal";
+import { SaveStatusBadge } from "./SaveStatusBadge";
+import { useEditorSave } from "../hooks/useEditorSave";
 
 export interface DebouncedRichTextEditorProps {
   isOpen: boolean;
@@ -69,14 +69,11 @@ export function DebouncedRichTextEditor(props: DebouncedRichTextEditorProps) {
         characters={characters}
         lastModified={lastModified}
       />
-      
+
       {/* Floating Save Status Badge (only visible when editor is open) */}
       {isOpen && (
         <div className="fixed bottom-4 right-4 z-[60]">
-          <SaveStatusBadge 
-            status={saveStatus} 
-            lastSaved={lastSaved}
-          />
+          <SaveStatusBadge status={saveStatus} lastSaved={lastSaved} />
         </div>
       )}
     </>

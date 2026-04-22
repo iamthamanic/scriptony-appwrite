@@ -5,12 +5,14 @@ import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 export async function seedTestUser() {
   try {
     if (!isBackendConfigured()) {
-      console.log("ℹ️ Skipping demo user seed because backend functions base URL is not configured.");
+      console.log(
+        "ℹ️ Skipping demo user seed because backend functions base URL is not configured.",
+      );
       return null;
     }
 
     console.log("🔗 Calling create-demo-user endpoint...");
-    
+
     // Use the existing /create-demo-user endpoint
     const response = await fetch(
       buildFunctionRouteUrl(EDGE_FUNCTIONS.AUTH, "/create-demo-user"),
@@ -22,10 +24,14 @@ export async function seedTestUser() {
             ? { Authorization: `Bearer ${backendConfig.publicAuthToken}` }
             : {}),
         },
-      }
+      },
     );
 
-    console.log("📡 Seed response status:", response.status, response.statusText);
+    console.log(
+      "📡 Seed response status:",
+      response.status,
+      response.statusText,
+    );
 
     if (response.ok) {
       const result = await response.json();
@@ -33,13 +39,16 @@ export async function seedTestUser() {
       return result;
     } else {
       const errorText = await response.text();
-      
+
       // Check if user already exists - this is OK, not an error
-      if (errorText.includes("already been registered") || response.status === 409) {
+      if (
+        errorText.includes("already been registered") ||
+        response.status === 409
+      ) {
         console.log("ℹ️  Demo user already exists - skipping creation");
         return { email: "demo@scriptony.app", message: "User already exists" };
       }
-      
+
       console.error("❌ Failed to seed demo user:", errorText);
       throw new Error(`Seed failed: ${errorText}`);
     }
@@ -51,7 +60,9 @@ export async function seedTestUser() {
 
 export async function seedInitialData() {
   try {
-    console.log("⚠️ seedInitialData() is deprecated - no mock data will be created");
+    console.log(
+      "⚠️ seedInitialData() is deprecated - no mock data will be created",
+    );
     console.log("ℹ️  Create your first project and world manually in the UI");
     return;
   } catch (error) {

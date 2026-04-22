@@ -3,7 +3,12 @@
  * Location: src/lib/cover-prompt.ts
  */
 
-type WorldItem = { id: string; name: string; category: string; categoryType: string };
+type WorldItem = {
+  id: string;
+  name: string;
+  category: string;
+  categoryType: string;
+};
 type Character = { name?: string; role?: string; description?: string };
 
 export type CoverConceptExcerpt = {
@@ -91,23 +96,15 @@ function posterStyleBrief(projectType: string): string {
     );
   }
   if (t === "theater" || t === "theatre") {
-    return (
-      "Art direction: stage play poster — expressive staging; **play title centered**."
-    );
+    return "Art direction: stage play poster — expressive staging; **play title centered**.";
   }
   if (t === "game") {
-    return (
-      "Art direction: game key art — heroic readable silhouette; **title centered**."
-    );
+    return "Art direction: game key art — heroic readable silhouette; **title centered**.";
   }
   if (t === "comic") {
-    return (
-      "Art direction: comic book cover — dynamic illustration; **title centered**, cover-style logo ok for the title only."
-    );
+    return "Art direction: comic book cover — dynamic illustration; **title centered**, cover-style logo ok for the title only.";
   }
-  return (
-    "Art direction: vertical entertainment cover — strong focal art; **title centered**."
-  );
+  return "Art direction: vertical entertainment cover — strong focal art; **title centered**.";
 }
 
 /** Explicit deliverable so the image model cannot drift to the wrong medium. */
@@ -169,13 +166,20 @@ export function buildProjectCoverPrompt(args: {
 
   const wb = worldbuildingItems
     .slice(0, 8)
-    .map((i) => `${clean(i.name)} (${clean(i.category) || clean(i.categoryType) || "world element"})`)
+    .map(
+      (i) =>
+        `${clean(i.name)} (${clean(i.category) || clean(i.categoryType) || "world element"})`,
+    )
     .filter(Boolean)
     .join(", ");
 
   const charLine = characters
     .slice(0, 6)
-    .map((c) => [clean(c.name), clean(c.role), clean(c.description)].filter(Boolean).join(" - "))
+    .map((c) =>
+      [clean(c.name), clean(c.role), clean(c.description)]
+        .filter(Boolean)
+        .join(" - "),
+    )
     .filter(Boolean)
     .join("; ");
 

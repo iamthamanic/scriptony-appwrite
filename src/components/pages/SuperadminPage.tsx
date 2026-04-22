@@ -1,9 +1,31 @@
 import { useState, useEffect } from "react";
-import { Users, Building2, Film, Globe as GlobeIcon, Activity, Search, Database, Loader2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import {
+  Users,
+  Building2,
+  Film,
+  Globe as GlobeIcon,
+  Activity,
+  Search,
+  Database,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
 import { toast } from "sonner@2.0.3";
@@ -70,7 +92,7 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
     try {
       setLoading(true);
       const token = await getAccessToken();
-      
+
       if (!token) {
         throw new Error("Nicht authentifiziert");
       }
@@ -94,7 +116,7 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
     try {
       setUsersLoading(true);
       const token = await getAccessToken();
-      
+
       if (!token) {
         throw new Error("Nicht authentifiziert");
       }
@@ -118,7 +140,7 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
     try {
       setOrgsLoading(true);
       const token = await getAccessToken();
-      
+
       if (!token) {
         throw new Error("Nicht authentifiziert");
       }
@@ -142,7 +164,7 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
     try {
       setAnalyticsLoading(true);
       const token = await getAccessToken();
-      
+
       if (!token) {
         throw new Error("Nicht authentifiziert");
       }
@@ -167,25 +189,36 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
     (user) =>
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchQuery.toLowerCase())
+      user.id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-8 pb-24 md:pb-8">
       <div className="mb-8">
-        <p className="text-muted-foreground">Plattformweite Übersicht und Steuerung</p>
+        <p className="text-muted-foreground">
+          Plattformweite Übersicht und Steuerung
+        </p>
       </div>
 
       <Tabs defaultValue="dashboard">
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="users" onClick={() => users.length === 0 && loadUsers()}>
+          <TabsTrigger
+            value="users"
+            onClick={() => users.length === 0 && loadUsers()}
+          >
             Nutzer
           </TabsTrigger>
-          <TabsTrigger value="orgs" onClick={() => organizations.length === 0 && loadOrganizations()}>
+          <TabsTrigger
+            value="orgs"
+            onClick={() => organizations.length === 0 && loadOrganizations()}
+          >
             Organisationen
           </TabsTrigger>
-          <TabsTrigger value="analytics" onClick={() => !analytics && loadAnalytics()}>
+          <TabsTrigger
+            value="analytics"
+            onClick={() => !analytics && loadAnalytics()}
+          >
             Analytics
           </TabsTrigger>
         </TabsList>
@@ -208,8 +241,12 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{stats.totalUsers.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Alle registrierten Nutzer</p>
+                    <p className="font-bold">
+                      {stats.totalUsers.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Alle registrierten Nutzer
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -221,8 +258,12 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{stats.totalOrganizations.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Aktive Workspaces</p>
+                    <p className="font-bold">
+                      {stats.totalOrganizations.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Aktive Workspaces
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -234,8 +275,12 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{stats.totalProjects.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Über alle Nutzer</p>
+                    <p className="font-bold">
+                      {stats.totalProjects.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Über alle Nutzer
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -247,8 +292,12 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{stats.totalWorlds.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Über alle Nutzer</p>
+                    <p className="font-bold">
+                      {stats.totalWorlds.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Über alle Nutzer
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -262,7 +311,10 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                   <Button variant="secondary" onClick={() => loadUsers()}>
                     Nutzer laden
                   </Button>
-                  <Button variant="secondary" onClick={() => loadOrganizations()}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => loadOrganizations()}
+                  >
                     Organisationen laden
                   </Button>
                   <Button variant="secondary" onClick={() => loadAnalytics()}>
@@ -319,7 +371,8 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
             <CardHeader>
               <CardTitle>Nutzerverwaltung</CardTitle>
               <CardDescription>
-                {filteredUsers.length} {filteredUsers.length === 1 ? "Nutzer" : "Nutzer"}
+                {filteredUsers.length}{" "}
+                {filteredUsers.length === 1 ? "Nutzer" : "Nutzer"}
                 {searchQuery && ` (gefiltert)`}
               </CardDescription>
             </CardHeader>
@@ -330,7 +383,9 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                 </div>
               ) : filteredUsers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? "Keine Nutzer gefunden" : "Keine Nutzer vorhanden"}
+                  {searchQuery
+                    ? "Keine Nutzer gefunden"
+                    : "Keine Nutzer vorhanden"}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -348,27 +403,44 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     <TableBody>
                       {filteredUsers.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell className="font-mono text-sm">{user.id.substring(0, 8)}...</TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {user.id.substring(0, 8)}...
+                          </TableCell>
                           <TableCell>{user.name}</TableCell>
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
-                            <Badge variant={user.role === "superadmin" ? "default" : "secondary"}>
+                            <Badge
+                              variant={
+                                user.role === "superadmin"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
                               {user.role}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {user.lastSignIn
-                              ? new Date(user.lastSignIn).toLocaleDateString("de-DE", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
+                              ? new Date(user.lastSignIn).toLocaleDateString(
+                                  "de-DE",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )
                               : "Nie"}
                           </TableCell>
                           <TableCell>
-                            <Badge className={user.emailConfirmed ? "bg-green-500" : "bg-yellow-500"}>
+                            <Badge
+                              className={
+                                user.emailConfirmed
+                                  ? "bg-green-500"
+                                  : "bg-yellow-500"
+                              }
+                            >
                               {user.emailConfirmed ? "Aktiv" : "Pending"}
                             </Badge>
                           </TableCell>
@@ -386,7 +458,8 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
         <TabsContent value="orgs" className="mt-6 space-y-6">
           <div className="flex items-center justify-between">
             <CardDescription>
-              {organizations.length} {organizations.length === 1 ? "Organisation" : "Organisationen"}
+              {organizations.length}{" "}
+              {organizations.length === 1 ? "Organisation" : "Organisationen"}
             </CardDescription>
             <Button onClick={loadOrganizations} disabled={orgsLoading}>
               {orgsLoading ? (
@@ -430,18 +503,23 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     <TableBody>
                       {organizations.map((org) => (
                         <TableRow key={org.id}>
-                          <TableCell className="font-mono text-sm">{org.id.substring(0, 8)}...</TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {org.id.substring(0, 8)}...
+                          </TableCell>
                           <TableCell>{org.name}</TableCell>
                           <TableCell>{org.ownerEmail}</TableCell>
                           <TableCell>{org.memberCount}</TableCell>
                           <TableCell>{org.projectCount}</TableCell>
                           <TableCell>{org.worldCount}</TableCell>
                           <TableCell>
-                            {new Date(org.createdAt).toLocaleDateString("de-DE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}
+                            {new Date(org.createdAt).toLocaleDateString(
+                              "de-DE",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              },
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -467,38 +545,60 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
                     <CardTitle className="text-sm">Total Events</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{analytics.totalEvents.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Event-Tracking nicht implementiert</p>
+                    <p className="font-bold">
+                      {analytics.totalEvents.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Event-Tracking nicht implementiert
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Nutzer aktiv (24h)</CardTitle>
+                    <CardTitle className="text-sm">
+                      Nutzer aktiv (24h)
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{analytics.activeUsers24h.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Letztes Sign-In</p>
+                    <p className="font-bold">
+                      {analytics.activeUsers24h.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Letztes Sign-In
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Nutzer aktiv (7 Tage)</CardTitle>
+                    <CardTitle className="text-sm">
+                      Nutzer aktiv (7 Tage)
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{analytics.activeUsers7d.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Letztes Sign-In</p>
+                    <p className="font-bold">
+                      {analytics.activeUsers7d.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Letztes Sign-In
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Organisationen aktiv</CardTitle>
+                    <CardTitle className="text-sm">
+                      Organisationen aktiv
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-bold">{analytics.activeOrganizations.toLocaleString("de-DE")}</p>
-                    <p className="text-xs text-muted-foreground">Letzte 7 Tage</p>
+                    <p className="font-bold">
+                      {analytics.activeOrganizations.toLocaleString("de-DE")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Letzte 7 Tage
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -513,7 +613,9 @@ export function SuperadminPage({ onNavigate }: SuperadminPageProps) {
           ) : (
             <Card>
               <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">Analytics-Daten nicht verfügbar</p>
+                <p className="text-muted-foreground">
+                  Analytics-Daten nicht verfügbar
+                </p>
                 <Button onClick={loadAnalytics} className="mt-4">
                   Laden
                 </Button>

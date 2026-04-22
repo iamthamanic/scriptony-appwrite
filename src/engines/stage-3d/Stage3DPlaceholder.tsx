@@ -11,7 +11,9 @@ export type Stage3DPlaceholderProps = {
   document?: StageDocumentStage3D | null;
 };
 
-export function Stage3DPlaceholder({ document = null }: Stage3DPlaceholderProps) {
+export function Stage3DPlaceholder({
+  document = null,
+}: Stage3DPlaceholderProps) {
   const payload = document?.payload;
   const nodes = payload?.nodes ?? [];
 
@@ -35,8 +37,9 @@ export function Stage3DPlaceholder({ document = null }: Stage3DPlaceholderProps)
             ) : null}
           </p>
           <p className="text-xs text-[#8c85a8]">
-            Die eigentliche 3D-Bearbeitung folgt mit der Engine. Der Stand liegt als JSON vor und kann
-            exportiert oder erneut zugewiesen werden, sobald die Pipeline steht.
+            Die eigentliche 3D-Bearbeitung folgt mit der Engine. Der Stand liegt
+            als JSON vor und kann exportiert oder erneut zugewiesen werden,
+            sobald die Pipeline steht.
           </p>
           <pre className="max-h-[min(40vh,320px)] overflow-auto rounded-lg border border-[#3b355a] bg-[#181629] p-3 text-left text-[11px] leading-relaxed text-[#d4cee8]">
             {JSON.stringify(payload, null, 2)}
@@ -56,12 +59,17 @@ export function Stage3DPlaceholder({ document = null }: Stage3DPlaceholderProps)
       </CardHeader>
       <CardContent className="text-sm text-[#b6aecf]">
         <p className="mb-3">
-          Importiere eine <code className="rounded bg-[#181629] px-1 text-[#c7c0de]">stage3d</code>
-          -JSON über den Tab <span className="text-[#f4f1ff]">2D → „Stage-JSON“</span> (wird erkannt und
-          hier angezeigt) oder nutze später die direkte 3D-Engine.
+          Importiere eine{" "}
+          <code className="rounded bg-[#181629] px-1 text-[#c7c0de]">
+            stage3d
+          </code>
+          -JSON über den Tab{" "}
+          <span className="text-[#f4f1ff]">2D → „Stage-JSON“</span> (wird
+          erkannt und hier angezeigt) oder nutze später die direkte 3D-Engine.
         </p>
         <p>
-          Der 3D-Bereich folgt als Nächstes mit Modellen, Räumen oder Sketch-to-3D-Previews.
+          Der 3D-Bereich folgt als Nächstes mit Modellen, Räumen oder
+          Sketch-to-3D-Previews.
         </p>
       </CardContent>
     </Card>

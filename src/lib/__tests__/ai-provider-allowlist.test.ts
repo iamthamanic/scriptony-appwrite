@@ -75,37 +75,51 @@ describe("ai-provider-allowlist", () => {
 
   describe("inferOllamaModeForFeature", () => {
     it("returns 'cloud' for explicit 'ollama_cloud'", () => {
-      expect(inferOllamaModeForFeature("ollama_cloud", "assistant_chat", {})).toBe("cloud");
+      expect(
+        inferOllamaModeForFeature("ollama_cloud", "assistant_chat", {}),
+      ).toBe("cloud");
     });
 
     it("returns 'local' for explicit 'ollama_local'", () => {
-      expect(inferOllamaModeForFeature("ollama_local", "assistant_chat", {})).toBe("local");
+      expect(
+        inferOllamaModeForFeature("ollama_local", "assistant_chat", {}),
+      ).toBe("local");
     });
 
     it("returns 'cloud' for plain 'ollama' when cloud key exists", () => {
       const keyIndex = { "assistant_chat:ollama_cloud": true };
-      expect(inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex)).toBe("cloud");
+      expect(
+        inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex),
+      ).toBe("cloud");
     });
 
     it("returns 'cloud' for plain 'ollama' when canonical key exists", () => {
       const keyIndex = { "assistant_chat:ollama": true };
-      expect(inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex)).toBe("cloud");
+      expect(
+        inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex),
+      ).toBe("cloud");
     });
 
     it("returns 'local' for plain 'ollama' when no key exists", () => {
-      expect(inferOllamaModeForFeature("ollama", "assistant_chat", {})).toBe("local");
+      expect(inferOllamaModeForFeature("ollama", "assistant_chat", {})).toBe(
+        "local",
+      );
     });
 
     it("returns 'local' for plain 'ollama' when only local key exists", () => {
       const keyIndex = { "assistant_chat:ollama_local": true };
       // ollama_local key doesn't trigger cloud mode — it's the local provider key
-      expect(inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex)).toBe("local");
+      expect(
+        inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex),
+      ).toBe("local");
     });
 
     it("returns 'cloud' for plain 'ollama' when key exists for different feature", () => {
       // Key for a different feature should NOT affect this feature
       const keyIndex = { "creative_gym:ollama_cloud": true };
-      expect(inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex)).toBe("local");
+      expect(
+        inferOllamaModeForFeature("ollama", "assistant_chat", keyIndex),
+      ).toBe("local");
     });
   });
 
@@ -129,7 +143,9 @@ describe("ai-provider-allowlist", () => {
         { id: "anthropic", name: "Anthropic" },
       ];
       const collapsed = collapseProvidersForFeature(providers);
-      const ollamaEntries = collapsed.filter((p) => normalizeProviderIdForUi(p.id) === CANONICAL_OLLAMA_PROVIDER_ID);
+      const ollamaEntries = collapsed.filter(
+        (p) => normalizeProviderIdForUi(p.id) === CANONICAL_OLLAMA_PROVIDER_ID,
+      );
       expect(ollamaEntries).toHaveLength(1);
       expect(ollamaEntries[0].id).toBe("ollama");
       expect(ollamaEntries[0].name).toBe("Ollama");
@@ -174,13 +190,18 @@ describe("ai-provider-allowlist", () => {
       // Should not contain tiktok
       expect(ids).not.toContain("tiktok");
       // Should contain only one Ollama entry
-      const ollamaIds = ids.filter((id) => normalizeProviderIdForUi(id) === CANONICAL_OLLAMA_PROVIDER_ID);
+      const ollamaIds = ids.filter(
+        (id) => normalizeProviderIdForUi(id) === CANONICAL_OLLAMA_PROVIDER_ID,
+      );
       expect(ollamaIds).toHaveLength(1);
     });
 
     it("returns empty array for unknown feature", () => {
       const providers = [{ id: "openai", name: "OpenAI" }];
-      const filtered = filterProvidersForFeature("unknown_feature" as any, providers);
+      const filtered = filterProvidersForFeature(
+        "unknown_feature" as any,
+        providers,
+      );
       // Unknown feature has no allowlist, so all providers pass through
       expect(filtered).toEqual(providers);
     });

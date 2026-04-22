@@ -19,7 +19,8 @@ const PROVIDERS: StorageProviderMeta[] = [
   {
     id: "google_drive",
     name: "Google Drive",
-    description: "Projekte in deinem Google Drive speichern – volle Datenhoheit.",
+    description:
+      "Projekte in deinem Google Drive speichern – volle Datenhoheit.",
     backendSupported: false,
     comingSoon: true,
   },
@@ -48,14 +49,16 @@ const PROVIDERS: StorageProviderMeta[] = [
   {
     id: "hetzner",
     name: "Hetzner Cloud Storage",
-    description: "S3-kompatibler Object Storage von Hetzner – Verbindung per Access Key.",
+    description:
+      "S3-kompatibler Object Storage von Hetzner – Verbindung per Access Key.",
     backendSupported: false,
     comingSoon: true,
   },
   {
     id: "local",
     name: "Lokal (Dieser Rechner)",
-    description: "Projekte nur auf diesem Gerät speichern – z. B. in einem Ordner deiner Wahl.",
+    description:
+      "Projekte nur auf diesem Gerät speichern – z. B. in einem Ordner deiner Wahl.",
     backendSupported: false,
     comingSoon: true,
   },
@@ -69,7 +72,9 @@ export function listStorageProviders(): StorageProviderMeta[] {
   return [...PROVIDERS];
 }
 
-export function getStorageProviderMeta(id: string): StorageProviderMeta | undefined {
+export function getStorageProviderMeta(
+  id: string,
+): StorageProviderMeta | undefined {
   return PROVIDERS.find((p) => p.id === id);
 }
 
@@ -81,9 +86,9 @@ export function getDefaultStorageProviderId(): string {
 export function getSelectedStorageProviderId(): string {
   if (typeof window === "undefined") return DEFAULT_PROVIDER_ID;
   const saved = localStorage.getItem(STORAGE_PREF_KEY);
-  const normalized =
-    saved === "nhost" ? DEFAULT_PROVIDER_ID : saved;
-  if (normalized && PROVIDERS.some((p) => p.id === normalized)) return normalized;
+  const normalized = saved === "nhost" ? DEFAULT_PROVIDER_ID : saved;
+  if (normalized && PROVIDERS.some((p) => p.id === normalized))
+    return normalized;
   return DEFAULT_PROVIDER_ID;
 }
 

@@ -8,7 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { StyleGuideOverviewTab } from "./StyleGuideOverviewTab";
 import { StyleGuideReferencesTab } from "./StyleGuideReferencesTab";
 import { StyleGuideRulesExportTab } from "./StyleGuideRulesExportTab";
-import type { StyleGuideData, PatchStyleGuidePayload } from "../../lib/api/style-guide-api";
+import type {
+  StyleGuideData,
+  PatchStyleGuidePayload,
+} from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { toast } from "sonner@2.0.3";
 import { Loader2 } from "lucide-react";
@@ -54,7 +57,9 @@ export function StyleGuideSection({
     try {
       const res = await StyleGuideApi.exportStyleGuide(projectId);
       onDataChange(res.styleGuide);
-      await navigator.clipboard.writeText(JSON.stringify(res.exportPayload, null, 2));
+      await navigator.clipboard.writeText(
+        JSON.stringify(res.exportPayload, null, 2),
+      );
       toast.success("Export in Zwischenablage kopiert");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Export fehlgeschlagen");
@@ -74,15 +79,21 @@ export function StyleGuideSection({
   if (!data) {
     return (
       <div className="space-y-2 py-6">
-        <p className="text-sm text-muted-foreground">Style Guide konnte nicht geladen werden.</p>
+        <p className="text-sm text-muted-foreground">
+          Style Guide konnte nicht geladen werden.
+        </p>
         {loadError ? (
           <p className="text-sm text-destructive/90 break-words rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-xs">
             {loadError}
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Prüfe Konsole / Netzwerk (GET <span className="font-mono">/style-guide/…</span>), Anmeldung und ob{" "}
-            <code className="rounded bg-muted px-1">npm run appwrite:provision:schema</code> für die Collections gelaufen ist.
+            Prüfe Konsole / Netzwerk (GET{" "}
+            <span className="font-mono">/style-guide/…</span>), Anmeldung und ob{" "}
+            <code className="rounded bg-muted px-1">
+              npm run appwrite:provision:schema
+            </code>{" "}
+            für die Collections gelaufen ist.
           </p>
         )}
       </div>
@@ -111,8 +122,15 @@ export function StyleGuideSection({
           onExport={() => void doExport()}
         />
       </TabsContent>
-      <TabsContent value="references" className="mt-4 focus-visible:outline-none">
-        <StyleGuideReferencesTab projectId={projectId} data={data} onChange={onDataChange} />
+      <TabsContent
+        value="references"
+        className="mt-4 focus-visible:outline-none"
+      >
+        <StyleGuideReferencesTab
+          projectId={projectId}
+          data={data}
+          onChange={onDataChange}
+        />
       </TabsContent>
       <TabsContent value="rules" className="mt-4 focus-visible:outline-none">
         <StyleGuideRulesExportTab

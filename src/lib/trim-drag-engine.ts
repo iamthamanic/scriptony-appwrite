@@ -14,14 +14,20 @@
  *   onPointerUp   → engine.commitBeatTrim() → returns final state for dispatch
  */
 
-import { useRef, useCallback } from 'react';
-import { trimBeatLeft, trimBeatRight, type Beat, type TrimLeftResult, type TrimRightResult } from '../components/timeline-helpers';
+import { useRef, useCallback } from "react";
+import {
+  trimBeatLeft,
+  trimBeatRight,
+  type Beat,
+  type TrimLeftResult,
+  type TrimRightResult,
+} from "../components/timeline-helpers";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
 export interface BeatTrimDragState {
   beatId: string;
-  handle: 'left' | 'right';
+  handle: "left" | "right";
   startX: number;
   startSec: number;
   snapshot: Beat[]; // Snapshot of all beats at drag start (for rollback)
@@ -33,9 +39,9 @@ export interface BeatTrimDragState {
 }
 
 export interface ClipTrimDragState {
-  kind: 'act' | 'sequence' | 'scene' | 'shot';
+  kind: "act" | "sequence" | "scene" | "shot";
   clipId: string;
-  handle: 'left' | 'right';
+  handle: "left" | "right";
   startX: number;
   boundaryStartSec: number;
   // Snapshot of manual timings at drag start
@@ -80,7 +86,9 @@ export function applyBeatPreviewToDOM(
 
   // Apply to DOM
   for (const [beatId, pos] of positions) {
-    const el = containerEl.querySelector(`[data-beat-id="${beatId}"]`) as HTMLElement | null;
+    const el = containerEl.querySelector(
+      `[data-beat-id="${beatId}"]`,
+    ) as HTMLElement | null;
     if (!el) continue;
 
     const startSec = (pos.pct_from / 100) * duration;
@@ -91,7 +99,7 @@ export function applyBeatPreviewToDOM(
     el.style.transform = `translateX(${x}px)`;
     el.style.width = `${Math.max(2, width)}px`;
     // Remove any left positioning (we're using transform now)
-    el.style.left = '0';
+    el.style.left = "0";
   }
 }
 
@@ -104,65 +112,98 @@ export function useTrimDragEngine() {
 
   // ── Beat Trim ──
 
-  const startBeatTrim = useCallback((
-    beatId: string,
-    handle: 'left' | 'right',
-    clientX: number,
-    startSec: number,
-    beats: Beat[],
-  ) => {
-    beatDragRef.current = {
-      beatId,
-      handle,
-      startX: clientX,
-      startSec,
-      snapshot: beats.map(b => ({ ...b })),
-      preview: null,
-    };
-  }, []);
-
-  const updateBeatTrim = useCallback((
-    clientX: number,
-    beats: Beat[],
-    duration: number,
-    pxPerSec: number,
-    beatMagnetEnabled: boolean,
-    snapTimeFn: (time: number, beats: Beat[], duration: number, pxPerSec: number, options?: { excludeBeatId?: string; snapToPlayheadSec?: number }) => number,
-    currentTimeSec: number,
-  ) => {
-    const drag = beatDragRef.current;
-    if (!drag) return null;
-
-    const deltaX = clientX - drag.startX;
-    const deltaSec = deltaX / pxPerSec;
-    const newSec = drag.startSec + deltaSec;
-
-    const beat = beats.find(b => b.id === drag.beatId);
-    if (!beat) return null;
-
-    let result: { trimmedBeat: { pct_from: number; pct_to: number }; rippleBeats: Beat[] };
-
-    if (drag.handle === 'left') {
-      const trimResult = trimBeatLeft(beat, beats, newSec, duration, beatMagnetEnabled, snapTimeFn, pxPerSec, currentTimeSec);
-      result = {
-        trimmedBeat: { pct_from: trimResult.newPctFrom, pct_to: beat.pct_to },
-        rippleBeats: trimResult.rippleBeats,
+  const startBeatTrim = useCallback(
+    (
+      beatId: string,
+      handle: "left" | "right",
+      clientX: number,
+      startSec: number,
+      beats: Beat[],
+    ) => {
+      beatDragRef.current = {
+        beatId,
+        handle,
+        startX: clientX,
+        startSec,
+        snapshot: beats.map((b) => ({ ...b })),
+        preview: null,
       };
-    } else {
-      const trimResult = trimBeatRight(beat, beats, newSec, duration, beatMagnetEnabled, snapTimeFn, pxPerSec, currentTimeSec);
-      result = {
-        trimmedBeat: { pct_from: beat.pct_from, pct_to: trimResult.newPctTo },
-        rippleBeats: trimResult.rippleBeats,
-      };
-    }
+    },
+    [],
+  );
 
-    drag.preview = result;
-    return result;
-  }, []);
+  const updateBeatTrim = useCallback(
+    (
+      clientX: number,
+      beats: Beat[],
+      duration: number,
+      pxPerSec: number,
+      beatMagnetEnabled: boolean,
+      snapTimeFn: (
+        time: number,
+        beats: Beat[],
+        duration: number,
+        pxPerSec: number,
+        options?: { excludeBeatId?: string; snapToPlayheadSec?: number },
+      ) => number,
+      currentTimeSec: number,
+    ) => {
+      const drag = beatDragRef.current;
+      if (!drag) return null;
+
+      const deltaX = clientX - drag.startX;
+      const deltaSec = deltaX / pxPerSec;
+      const newSec = drag.startSec + deltaSec;
+
+      const beat = beats.find((b) => b.id === drag.beatId);
+      if (!beat) return null;
+
+      let result: {
+        trimmedBeat: { pct_from: number; pct_to: number };
+        rippleBeats: Beat[];
+      };
+
+      if (drag.handle === "left") {
+        const trimResult = trimBeatLeft(
+          beat,
+          beats,
+          newSec,
+          duration,
+          beatMagnetEnabled,
+          snapTimeFn,
+          pxPerSec,
+          currentTimeSec,
+        );
+        result = {
+          trimmedBeat: { pct_from: trimResult.newPctFrom, pct_to: beat.pct_to },
+          rippleBeats: trimResult.rippleBeats,
+        };
+      } else {
+        const trimResult = trimBeatRight(
+          beat,
+          beats,
+          newSec,
+          duration,
+          beatMagnetEnabled,
+          snapTimeFn,
+          pxPerSec,
+          currentTimeSec,
+        );
+        result = {
+          trimmedBeat: { pct_from: beat.pct_from, pct_to: trimResult.newPctTo },
+          rippleBeats: trimResult.rippleBeats,
+        };
+      }
+
+      drag.preview = result;
+      return result;
+    },
+    [],
+  );
 
   const commitBeatTrim = useCallback((): {
     beatId: string;
-    handle: 'left' | 'right';
+    handle: "left" | "right";
     trimmedBeat: { pct_from: number; pct_to: number };
     rippleBeats: Beat[];
     snapshot: Beat[];
@@ -209,34 +250,38 @@ export function useTrimDragEngine() {
 
   // ── Clip Trim ──
 
-  const startClipTrim = useCallback((
-    kind: 'act' | 'sequence' | 'scene' | 'shot',
-    clipId: string,
-    handle: 'left' | 'right',
-    clientX: number,
-    boundarySec: number,
-    snapshot: Record<string, { pct_from: number; pct_to: number }>,
-  ) => {
-    clipDragRef.current = {
-      kind,
-      clipId,
-      handle,
-      startX: clientX,
-      boundaryStartSec: boundarySec,
-      snapshot,
-      preview: null,
-    };
-  }, []);
+  const startClipTrim = useCallback(
+    (
+      kind: "act" | "sequence" | "scene" | "shot",
+      clipId: string,
+      handle: "left" | "right",
+      clientX: number,
+      boundarySec: number,
+      snapshot: Record<string, { pct_from: number; pct_to: number }>,
+    ) => {
+      clipDragRef.current = {
+        kind,
+        clipId,
+        handle,
+        startX: clientX,
+        boundaryStartSec: boundarySec,
+        snapshot,
+        preview: null,
+      };
+    },
+    [],
+  );
 
-  const updateClipTrimPreview = useCallback((
-    preview: Record<string, { pct_from: number; pct_to: number }>,
-  ) => {
-    if (!clipDragRef.current) return;
-    clipDragRef.current.preview = preview;
-  }, []);
+  const updateClipTrimPreview = useCallback(
+    (preview: Record<string, { pct_from: number; pct_to: number }>) => {
+      if (!clipDragRef.current) return;
+      clipDragRef.current.preview = preview;
+    },
+    [],
+  );
 
   const commitClipTrim = useCallback((): {
-    kind: 'act' | 'sequence' | 'scene' | 'shot';
+    kind: "act" | "sequence" | "scene" | "shot";
     preview: Record<string, { pct_from: number; pct_to: number }>;
     snapshot: Record<string, { pct_from: number; pct_to: number }>;
   } | null => {

@@ -8,7 +8,10 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import type { StyleGuideData, PatchStyleGuidePayload } from "../../lib/api/style-guide-api";
+import type {
+  StyleGuideData,
+  PatchStyleGuidePayload,
+} from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { toast } from "sonner@2.0.3";
 import { Check, Copy, Loader2 } from "lucide-react";
@@ -72,7 +75,9 @@ export function StyleGuideRulesExportTab({
     try {
       const res = await StyleGuideApi.exportStyleGuide(projectId);
       onChange(res.styleGuide);
-      await navigator.clipboard.writeText(JSON.stringify(res.exportPayload, null, 2));
+      await navigator.clipboard.writeText(
+        JSON.stringify(res.exportPayload, null, 2),
+      );
       toast.success("Export in Zwischenablage kopiert");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Fehler");
@@ -98,26 +103,43 @@ export function StyleGuideRulesExportTab({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Must-have</CardTitle>
-              <p className="text-xs text-muted-foreground font-normal">Eine Zeile pro Regel</p>
+              <p className="text-xs text-muted-foreground font-normal">
+                Eine Zeile pro Regel
+              </p>
             </CardHeader>
             <CardContent>
-              <Textarea id="sg-must" name="must_have" defaultValue={data.mustHave.join("\n")} rows={5} />
+              <Textarea
+                id="sg-must"
+                name="must_have"
+                defaultValue={data.mustHave.join("\n")}
+                rows={5}
+              />
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Avoid</CardTitle>
-              <p className="text-xs text-muted-foreground font-normal">Eine Zeile pro Punkt</p>
+              <p className="text-xs text-muted-foreground font-normal">
+                Eine Zeile pro Punkt
+              </p>
             </CardHeader>
             <CardContent>
-              <Textarea id="sg-avoid-r" name="avoid_rules" defaultValue={data.avoid.join("\n")} rows={5} />
+              <Textarea
+                id="sg-avoid-r"
+                name="avoid_rules"
+                defaultValue={data.avoid.join("\n")}
+                rows={5}
+              />
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-2">
           <Label className="text-sm font-semibold">Farbpalette</Label>
-          <p className="text-xs text-muted-foreground">Hex-Werte mit Komma; Vorschau und Abstufungen beziehen sich auf die erste gültige Farbe pro Gruppe.</p>
+          <p className="text-xs text-muted-foreground">
+            Hex-Werte mit Komma; Vorschau und Abstufungen beziehen sich auf die
+            erste gültige Farbe pro Gruppe.
+          </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <PaletteFieldCard
               id="pal_pri"
@@ -153,10 +175,17 @@ export function StyleGuideRulesExportTab({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Typografie / Notizen</CardTitle>
-            <p className="text-xs text-muted-foreground font-normal">Optional — Schriften, Größen, Stimmung</p>
+            <p className="text-xs text-muted-foreground font-normal">
+              Optional — Schriften, Größen, Stimmung
+            </p>
           </CardHeader>
           <CardContent>
-            <Textarea id="typo" name="typo" defaultValue={data.typographyNotes} rows={3} />
+            <Textarea
+              id="typo"
+              name="typo"
+              defaultValue={data.typographyNotes}
+              rows={3}
+            />
           </CardContent>
         </Card>
         <Button type="submit" disabled={saving}>
@@ -169,20 +198,41 @@ export function StyleGuideRulesExportTab({
         <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-sm">Kompakter Stilkontext</CardTitle>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => void handleBuild()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => void handleBuild()}
+            >
               Neu erzeugen
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => void copyPrompt()} disabled={copying}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void copyPrompt()}
+              disabled={copying}
+            >
               <Copy className="size-3.5 mr-1" />
               Kopieren
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => void handleExport()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void handleExport()}
+            >
               Export JSON
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <Textarea readOnly value={data.compactPrompt || ""} rows={12} className="font-mono text-xs" />
+          <Textarea
+            readOnly
+            value={data.compactPrompt || ""}
+            rows={12}
+            className="font-mono text-xs"
+          />
         </CardContent>
       </Card>
 
@@ -192,7 +242,8 @@ export function StyleGuideRulesExportTab({
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground max-w-prose">
-            Wenn aktiviert, wird der kompakte Stilkontext beim nächsten KI-Cover mit an den Prompt angehängt.
+            Wenn aktiviert, wird der kompakte Stilkontext beim nächsten KI-Cover
+            mit an den Prompt angehängt.
           </p>
           <Button
             type="button"

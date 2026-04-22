@@ -23,10 +23,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export async function applyScriptonyWatermarkToImageBase64(
   base64: string,
   mimeType: string,
-  logoSrc: string
+  logoSrc: string,
 ): Promise<Blob> {
   const dataUrl = `data:${mimeType};base64,${base64}`;
-  const [coverImg, logoImg] = await Promise.all([loadImage(dataUrl), loadImage(logoSrc)]);
+  const [coverImg, logoImg] = await Promise.all([
+    loadImage(dataUrl),
+    loadImage(logoSrc),
+  ]);
 
   const w = coverImg.naturalWidth;
   const h = coverImg.naturalHeight;
@@ -64,7 +67,7 @@ export async function applyScriptonyWatermarkToImageBase64(
         else reject(new Error("cover-watermark: toBlob failed"));
       },
       "image/png",
-      0.95
+      0.95,
     );
   });
 }
