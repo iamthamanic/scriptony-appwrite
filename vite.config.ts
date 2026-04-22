@@ -120,8 +120,8 @@ export default defineConfig(({ mode }) => {
    * intermediate values can yield 408/HTML before Appwrite returns — use 0 to disable these timeouts in dev.
    */
   const longRunningProxyOpts = {
-    timeout: 0,
-    proxyTimeout: 0,
+    timeout: 300000,  // 5 Minuten
+    proxyTimeout: 300000,  // 5 Minuten
   } as const;
 
   // Parse VITE_BACKEND_FUNCTION_DOMAIN_MAP and create a proxy entry for every function.
