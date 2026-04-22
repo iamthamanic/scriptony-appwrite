@@ -76,6 +76,8 @@ export const BACKEND_FUNCTIONS = {
   /** Style Guide (project_visual_style + items). Deploy `scriptony-style-guide`. */
   STYLE_GUIDE: "scriptony-style-guide",
   AUDIO: "scriptony-audio", // selected in getBackendFunctionForRoute for paths under /shots/... (audio)
+  /** Hörbuch/Hörspiel Audio Production: sessions, tracks, voices, mixing. */
+  AUDIO_STORY: "scriptony-audio-story",
   BEATS: "scriptony-beats",
   WORLDBUILDING: "scriptony-worldbuilding",
   /** Unified AI service: `/ai/*`, feature config, provider keys (replaces assistant for gateway `/ai`). */

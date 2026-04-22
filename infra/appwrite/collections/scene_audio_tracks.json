@@ -1,0 +1,142 @@
+{
+  "$id": "scene_audio_tracks",
+  "name": "scene_audio_tracks",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    {
+      "key": "scene_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "project_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "type",
+      "type": "string",
+      "required": true,
+      "size": 20
+    },
+    {
+      "key": "content",
+      "type": "string",
+      "required": false,
+      "size": 10000
+    },
+    {
+      "key": "character_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "audio_file_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "waveform_data",
+      "type": "string",
+      "required": false,
+      "size": 100000
+    },
+    {
+      "key": "audio_duration",
+      "type": "double",
+      "required": false
+    },
+    {
+      "key": "start_time",
+      "type": "double",
+      "required": true,
+      "default": 0
+    },
+    {
+      "key": "duration",
+      "type": "double",
+      "required": true,
+      "default": 0
+    },
+    {
+      "key": "fade_in",
+      "type": "double",
+      "required": false,
+      "default": 0
+    },
+    {
+      "key": "fade_out",
+      "type": "double",
+      "required": false,
+      "default": 0
+    },
+    {
+      "key": "tts_voice_id",
+      "type": "string",
+      "required": false,
+      "size": 100
+    },
+    {
+      "key": "tts_settings",
+      "type": "string",
+      "required": false,
+      "size": 2000
+    },
+    {
+      "key": "tts_audio_generated",
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    {
+      "key": "created_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "updated_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "created_at",
+      "type": "datetime",
+      "required": true
+    },
+    {
+      "key": "updated_at",
+      "type": "datetime",
+      "required": true
+    }
+  ],
+  "indexes": [
+    {
+      "key": "scene_id_idx",
+      "type": "key",
+      "attributes": ["scene_id"]
+    },
+    {
+      "key": "project_id_idx",
+      "type": "key",
+      "attributes": ["project_id"]
+    },
+    {
+      "key": "character_id_idx",
+      "type": "key",
+      "attributes": ["character_id"]
+    },
+    {
+      "key": "type_idx",
+      "type": "key",
+      "attributes": ["type"]
+    }
+  ]
+}

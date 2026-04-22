@@ -1,0 +1,100 @@
+{
+  "$id": "audio_sessions",
+  "name": "audio_sessions",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    {
+      "key": "project_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "scene_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "title",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "description",
+      "type": "string",
+      "required": false,
+      "size": 5000
+    },
+    {
+      "key": "status",
+      "type": "string",
+      "required": true,
+      "size": 20,
+      "default": "preparing"
+    },
+    {
+      "key": "started_at",
+      "type": "datetime",
+      "required": false
+    },
+    {
+      "key": "ended_at",
+      "type": "datetime",
+      "required": false
+    },
+    {
+      "key": "recording_file_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "recording_duration",
+      "type": "double",
+      "required": false
+    },
+    {
+      "key": "created_by",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "updated_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "created_at",
+      "type": "datetime",
+      "required": true
+    },
+    {
+      "key": "updated_at",
+      "type": "datetime",
+      "required": true
+    }
+  ],
+  "indexes": [
+    {
+      "key": "scene_id_idx",
+      "type": "key",
+      "attributes": ["scene_id"]
+    },
+    {
+      "key": "project_id_idx",
+      "type": "key",
+      "attributes": ["project_id"]
+    },
+    {
+      "key": "status_idx",
+      "type": "key",
+      "attributes": ["status"]
+    }
+  ]
+}

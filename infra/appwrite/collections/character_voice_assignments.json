@@ -1,0 +1,109 @@
+{
+  "$id": "character_voice_assignments",
+  "name": "character_voice_assignments",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    {
+      "key": "project_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "character_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "voice_actor_type",
+      "type": "string",
+      "required": true,
+      "size": 20
+    },
+    {
+      "key": "voice_actor_name",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "voice_actor_contact",
+      "type": "string",
+      "required": false,
+      "size": 1000
+    },
+    {
+      "key": "voice_actor_notes",
+      "type": "string",
+      "required": false,
+      "size": 5000
+    },
+    {
+      "key": "tts_provider",
+      "type": "string",
+      "required": false,
+      "size": 50
+    },
+    {
+      "key": "tts_voice_id",
+      "type": "string",
+      "required": false,
+      "size": 100
+    },
+    {
+      "key": "tts_voice_preset",
+      "type": "string",
+      "required": false,
+      "size": 2000
+    },
+    {
+      "key": "sample_audio_file_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "sample_text",
+      "type": "string",
+      "required": false,
+      "size": 2000
+    },
+    {
+      "key": "created_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "updated_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "created_at",
+      "type": "datetime",
+      "required": true
+    },
+    {
+      "key": "updated_at",
+      "type": "datetime",
+      "required": true
+    }
+  ],
+  "indexes": [
+    {
+      "key": "project_id_idx",
+      "type": "key",
+      "attributes": ["project_id"]
+    },
+    {
+      "key": "character_id_idx",
+      "type": "unique",
+      "attributes": ["project_id", "character_id"]
+    }
+  ]
+}

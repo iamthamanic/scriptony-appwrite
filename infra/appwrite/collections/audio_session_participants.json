@@ -1,0 +1,84 @@
+{
+  "$id": "audio_session_participants",
+  "name": "audio_session_participants",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    {
+      "key": "session_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "character_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "user_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "external_speaker_name",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "external_speaker_email",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "role",
+      "type": "string",
+      "required": true,
+      "size": 20,
+      "default": "speaker"
+    },
+    {
+      "key": "connection_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "joined_at",
+      "type": "datetime",
+      "required": false
+    },
+    {
+      "key": "left_at",
+      "type": "datetime",
+      "required": false
+    },
+    {
+      "key": "created_at",
+      "type": "datetime",
+      "required": true
+    }
+  ],
+  "indexes": [
+    {
+      "key": "session_id_idx",
+      "type": "key",
+      "attributes": ["session_id"]
+    },
+    {
+      "key": "character_id_idx",
+      "type": "key",
+      "attributes": ["character_id"]
+    },
+    {
+      "key": "user_id_idx",
+      "type": "key",
+      "attributes": ["user_id"]
+    }
+  ]
+}
