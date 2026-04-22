@@ -5058,6 +5058,7 @@ function ProjectDetail({
               ? parseInt(editedReadingSpeed)
               : 230
             : undefined,
+        inspirations: editedInspirations,
       });
 
       let narrativeStructureMaterialized = false;
