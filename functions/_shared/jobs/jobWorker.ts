@@ -3,10 +3,9 @@
  * Functions call these to report progress/completion when running as jobs
  */
 
-import { getDatabaseClient } from "../appwrite-db";
-import { getDatabaseId } from "../env";
+import { getDatabases, dbId } from "../appwrite-db";
 
-const DATABASE_ID = getDatabaseId();
+const DATABASE_ID = dbId();
 const JOBS_COLLECTION = "jobs";
 
 interface JobContext {
@@ -51,7 +50,7 @@ export async function reportJobProgress(
   progress: number
 ): Promise<void> {
   try {
-    const db = getDatabaseClient();
+    const db = getDatabases();
     await db.updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
       progress: Math.min(100, Math.max(0, progress)),
       updated_at: new Date().toISOString(),
@@ -69,7 +68,7 @@ export async function completeJob<T>(
   result: T
 ): Promise<void> {
   try {
-    const db = getDatabaseClient();
+    const db = getDatabases();
     await db.updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
       status: "completed",
       result_json: JSON.stringify(result),
@@ -90,7 +89,7 @@ export async function failJob(
   error: string
 ): Promise<void> {
   try {
-    const db = getDatabaseClient();
+    const db = getDatabases();
     await db.updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
       status: "failed",
       error: error.slice(0, 2000),

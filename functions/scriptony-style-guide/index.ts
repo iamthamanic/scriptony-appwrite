@@ -47,6 +47,13 @@ import {
   persistCompiledOutputs,
   styleRowToApi,
 } from "./style-guide-service";
+import {
+  extractJobContext,
+  stripJobFields,
+  reportJobProgress,
+  completeJob,
+  failJob,
+} from "../_shared/jobs/jobWorker";
 
 function getPathname(req: RequestLike): string {
   const direct = (typeof req?.path === "string" && req.path) ||
@@ -516,6 +523,141 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     return;
   }
 
+  // Check for job context (from jobs-handler)
+  const body = req.body || {};
+  const jobContext = extractJobContext(body);
+  
+  // If running as a job, strip job fields and process async
+  if (jobContext?.isJob) {
+    // Immediately acknowledge job start
+    await reportJobProgress(jobContext.jobId, 10);
+    
+    // Process the actual request (remove job wrapper)
+    const actualBody = stripJobFields(body);
+    req.body = actualBody;
+    
+    try {
+      await reportJobProgress(jobContext.jobId, 20);
+      
+      // Route to appropriate handler based on action
+      const action = actualBody.action as string;
+      
+      switch (action) {
+        case "get": {
+          const projectId = actualBody.projectId as string;
+          const access = await requireProjectAccess(req, res, projectId);
+          if (!access) {
+            await failJob(jobContext.jobId, "Project access denied");
+            return;
+          }
+          await reportJobProgress(jobContext.jobId, 50);
+          const { root, items } = await loadStyleBundle(projectId, access.userId);
+          await completeJob(jobContext.jobId, {
+            styleGuide: {
+              ...styleRowToApi(root),
+              items: items.map((r) => itemRowToApi(r)),
+            },
+          });
+          return;
+        }
+        
+        case "createReference": {
+          const { projectId, payload } = actualBody as { projectId: string; payload: unknown };
+          // Reconstruct request with actual payload
+          req.body = payload;
+          
+          await reportJobProgress(jobContext.jobId, 30);
+          
+          // Create a mock response to capture result
+          let capturedResult: unknown;
+          const mockRes = {
+            status: (code: number) => ({
+              json: (data: unknown) => {
+                capturedResult = data;
+              },
+            }),
+            json: (data: unknown) => {
+              capturedResult = data;
+            },
+          } as ResponseLike;
+          
+          await handlePostReference(req, mockRes, projectId);
+          
+          await completeJob(jobContext.jobId, capturedResult);
+          return;
+        }
+        
+        case "extractPalette": {
+          const { referenceId, colors } = actualBody as { referenceId: string; colors: string[] };
+          req.body = { colors };
+          
+          await reportJobProgress(jobContext.jobId, 30);
+          
+          let capturedResult: unknown;
+          const mockRes = {
+            json: (data: unknown) => {
+              capturedResult = data;
+            },
+          } as ResponseLike;
+          
+          await handleExtractPalette(req, mockRes, referenceId);
+          
+          await completeJob(jobContext.jobId, capturedResult);
+          return;
+        }
+        
+        case "deleteReference": {
+          const { referenceId } = actualBody as { referenceId: string };
+          
+          let capturedResult: unknown;
+          const mockRes = {
+            json: (data: unknown) => {
+              capturedResult = data;
+            },
+          } as ResponseLike;
+          
+          await handleDeleteReference(req, mockRes, referenceId);
+          
+          await completeJob(jobContext.jobId, capturedResult);
+          return;
+        }
+        
+        case "reorderReferences": {
+          const { projectId, orderedIds } = actualBody as { projectId: string; orderedIds: string[] };
+          req.body = { ordered_ids: orderedIds };
+          
+          let capturedResult: unknown;
+          const mockRes = {
+            json: (data: unknown) => {
+              capturedResult = data;
+            },
+          } as ResponseLike;
+          
+          await handleReorder(req, mockRes, projectId);
+          
+          await completeJob(jobContext.jobId, capturedResult);
+          return;
+        }
+        
+        default: {
+          await failJob(jobContext.jobId, `Unknown action: ${action}`);
+          return;
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await failJob(jobContext.jobId, errorMessage);
+      // Send immediate response to prevent timeout
+      sendJson(res, 202, { 
+        jobId: jobContext.jobId, 
+        status: "processing",
+        message: "Job processing in background" 
+      });
+      return;
+    }
+  }
+
+  // Regular (non-job) request handling
   try {
     const reorderMatch = pathname.match(
       /^\/style-guide\/([^/]+)\/references\/reorder$/,
