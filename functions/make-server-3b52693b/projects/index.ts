@@ -5,15 +5,18 @@
 import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;
@@ -60,7 +63,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       {
         organizationId: bootstrap.organizationId,
         userId: bootstrap.user.id,
-      }
+      },
     );
 
     sendJson(res, 200, data.projects);

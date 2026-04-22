@@ -5,7 +5,7 @@
  */
 
 import { requestGraphql } from "./graphql-compat";
-import { sendNotFound, type ResponseLike } from "./http";
+import { type ResponseLike, sendNotFound } from "./http";
 
 function hasOwn(body: Record<string, any>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(body, key);
@@ -273,7 +273,11 @@ export async function requireProjectAccess(
   res: ResponseLike,
 ): Promise<Record<string, any> | null> {
   const organizationIds = await getUserOrganizationIds(userId);
-  const project = await getAccessibleProject(projectId, userId, organizationIds);
+  const project = await getAccessibleProject(
+    projectId,
+    userId,
+    organizationIds,
+  );
   if (!project) {
     sendNotFound(res, "Project not found or access denied");
     return null;

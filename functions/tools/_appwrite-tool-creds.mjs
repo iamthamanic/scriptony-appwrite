@@ -5,9 +5,10 @@
  * Location: functions/tools/_appwrite-tool-creds.mjs
  */
 
-import { readFileSync, existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { repoRoot } from "./appwrite-env-load.mjs";
+import process from "node:process";
 
 function envFirst(...names) {
   for (const n of names) {
@@ -31,7 +32,10 @@ function apiKeyLineIsEmptyInFile(absPath) {
     if (!t || t.startsWith("#")) continue;
     if (/^APPWRITE_API_KEY\s*=/.test(t)) {
       const eq = t.indexOf("=");
-      const rest = t.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+      const rest = t
+        .slice(eq + 1)
+        .trim()
+        .replace(/^["']|["']$/g, "");
       return rest.length === 0;
     }
   }
@@ -48,12 +52,12 @@ export function getAppwriteToolCredentials(emptyKeyExtra = "") {
   const endpoint = getRequiredAny(
     "Set APPWRITE_ENDPOINT or VITE_APPWRITE_ENDPOINT (e.g. in .env.local).",
     "APPWRITE_ENDPOINT",
-    "VITE_APPWRITE_ENDPOINT"
+    "VITE_APPWRITE_ENDPOINT",
   );
   const projectId = getRequiredAny(
     "Set APPWRITE_PROJECT_ID or VITE_APPWRITE_PROJECT_ID.",
     "APPWRITE_PROJECT_ID",
-    "VITE_APPWRITE_PROJECT_ID"
+    "VITE_APPWRITE_PROJECT_ID",
   );
   const apiKeyPaths = [
     join(repoRoot, ".env.server.local"),
@@ -62,8 +66,10 @@ export function getAppwriteToolCredentials(emptyKeyExtra = "") {
   ];
   const apiKeyEmptyInFile = apiKeyPaths.some(apiKeyLineIsEmptyInFile);
   const apiKey = getRequiredAny(
-    apiKeyEmptyInFile && emptyKeyExtra ? `${API_KEY_HINT_BASE}${emptyKeyExtra}` : API_KEY_HINT_BASE,
-    "APPWRITE_API_KEY"
+    apiKeyEmptyInFile && emptyKeyExtra
+      ? `${API_KEY_HINT_BASE}${emptyKeyExtra}`
+      : API_KEY_HINT_BASE,
+    "APPWRITE_API_KEY",
   );
   const databaseId = process.env.APPWRITE_DATABASE_ID?.trim() || "scriptony";
   return { endpoint, projectId, apiKey, databaseId, repoRoot };

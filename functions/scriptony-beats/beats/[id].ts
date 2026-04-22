@@ -16,7 +16,10 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../_shared/http";
-import { normalizeBeatInput, requireProjectAccess } from "../../_shared/scriptony";
+import {
+  normalizeBeatInput,
+  requireProjectAccess,
+} from "../../_shared/scriptony";
 
 function mapBeatForClient(
   row: Record<string, any> | null,

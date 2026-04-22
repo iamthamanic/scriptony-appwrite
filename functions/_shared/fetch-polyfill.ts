@@ -5,7 +5,11 @@
  * Location: functions/_shared/fetch-polyfill.ts
  */
 
-import { ReadableStream, WritableStream, TransformStream } from "node:stream/web";
+import {
+  ReadableStream,
+  TransformStream,
+  WritableStream,
+} from "node:stream/web";
 
 type StreamGlobals = {
   ReadableStream?: typeof ReadableStream;

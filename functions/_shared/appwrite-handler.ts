@@ -7,9 +7,9 @@
 
 import {
   corsHeadersForIncomingRequest,
-  sendNotFound,
   type RequestLike,
   type ResponseLike,
+  sendNotFound,
 } from "./http";
 
 type AppwriteContext = {
@@ -22,8 +22,16 @@ type AppwriteContext = {
     query?: Record<string, string>;
   };
   res: {
-    json: (body: unknown, status?: number, headers?: Record<string, string>) => unknown;
-    text: (text: string, status?: number, headers?: Record<string, string>) => unknown;
+    json: (
+      body: unknown,
+      status?: number,
+      headers?: Record<string, string>,
+    ) => unknown;
+    text: (
+      text: string,
+      status?: number,
+      headers?: Record<string, string>,
+    ) => unknown;
     empty: () => unknown;
   };
 };
@@ -31,8 +39,7 @@ type AppwriteContext = {
 type Dispatch = (req: RequestLike, res: ResponseLike) => Promise<void>;
 
 export function getPathname(req: RequestLike): string {
-  const raw =
-    (typeof req?.path === "string" && req.path) ||
+  const raw = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -48,7 +55,7 @@ export function getPathname(req: RequestLike): string {
 
 export function withParams(
   req: RequestLike,
-  params: Record<string, string>
+  params: Record<string, string>,
 ): RequestLike {
   return {
     ...req,
@@ -62,9 +69,16 @@ export function withParams(
 export function sendRouteNotFound(
   service: string,
   req: RequestLike,
-  res: ResponseLike
+  res: ResponseLike,
 ): void {
-  sendNotFound(res, `Route not found for ${service}: ${req?.method || "GET"} ${getPathname(req)}`);
+  sendNotFound(
+    res,
+    `Route not found for ${service}: ${req?.method || "GET"} ${
+      getPathname(
+        req,
+      )
+    }`,
+  );
 }
 
 export function createAppwriteHandler(dispatch: Dispatch) {
@@ -120,7 +134,7 @@ export function createAppwriteHandler(dispatch: Dispatch) {
         return ctx.res.json(
           { error: "Handler did not produce a response" },
           500,
-          cors
+          cors,
         );
       }
       if (isJson) {
@@ -129,7 +143,7 @@ export function createAppwriteHandler(dispatch: Dispatch) {
       return ctx.res.text(
         typeof payload === "string" ? payload : String(payload ?? ""),
         statusCode,
-        headers
+        headers,
       );
     } catch (err) {
       console.error("[createAppwriteHandler] Uncaught error:", err);

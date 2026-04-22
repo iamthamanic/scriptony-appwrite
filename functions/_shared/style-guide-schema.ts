@@ -32,7 +32,9 @@ export const patchStyleGuideBodySchema = z
 export const referenceKindSchema = z.enum(["image", "text", "link"]);
 export type ReferenceKind = z.infer<typeof referenceKindSchema>;
 
-const optionalUrl = z.union([z.string().url().max(2048), z.literal("")]).optional();
+const optionalUrl = z
+  .union([z.string().url().max(2048), z.literal("")])
+  .optional();
 
 export const createReferenceBodySchema = z
   .object({
@@ -50,9 +52,11 @@ export const createReferenceBodySchema = z
   })
   .strict();
 
-export const updateReferenceBodySchema = createReferenceBodySchema.partial().extend({
-  order_index: z.number().int().min(0).optional(),
-});
+export const updateReferenceBodySchema = createReferenceBodySchema
+  .partial()
+  .extend({
+    order_index: z.number().int().min(0).optional(),
+  });
 
 export const reorderReferencesBodySchema = z
   .object({
@@ -70,21 +74,41 @@ export const extractPaletteBodySchema = z
   .strict();
 
 /** Map API camelCase patch to Appwrite snake_case + *_json string fields. */
-export function patchBodyToAppwriteRow(body: z.infer<typeof patchStyleGuideBodySchema>): Record<string, unknown> {
+export function patchBodyToAppwriteRow(
+  body: z.infer<typeof patchStyleGuideBodySchema>,
+): Record<string, unknown> {
   const row: Record<string, unknown> = {};
   if (body.title !== undefined) row.title = body.title;
   if (body.style_summary !== undefined) row.style_summary = body.style_summary;
   if (body.tone_summary !== undefined) row.tone_summary = body.tone_summary;
-  if (body.keywords !== undefined) row.keywords_json = JSON.stringify(body.keywords);
-  if (body.negative_keywords !== undefined) row.negative_keywords_json = JSON.stringify(body.negative_keywords);
-  if (body.must_have !== undefined) row.must_have_json = JSON.stringify(body.must_have);
+  if (body.keywords !== undefined) {
+    row.keywords_json = JSON.stringify(body.keywords);
+  }
+  if (body.negative_keywords !== undefined) {
+    row.negative_keywords_json = JSON.stringify(body.negative_keywords);
+  }
+  if (body.must_have !== undefined) {
+    row.must_have_json = JSON.stringify(body.must_have);
+  }
   if (body.avoid !== undefined) row.avoid_json = JSON.stringify(body.avoid);
-  if (body.palette_primary !== undefined) row.palette_primary_json = JSON.stringify(body.palette_primary);
-  if (body.palette_secondary !== undefined) row.palette_secondary_json = JSON.stringify(body.palette_secondary);
-  if (body.palette_accent !== undefined) row.palette_accent_json = JSON.stringify(body.palette_accent);
-  if (body.palette_background !== undefined) row.palette_background_json = JSON.stringify(body.palette_background);
-  if (body.typography_notes !== undefined) row.typography_notes = body.typography_notes;
-  if (body.compact_prompt !== undefined) row.compact_prompt = body.compact_prompt;
+  if (body.palette_primary !== undefined) {
+    row.palette_primary_json = JSON.stringify(body.palette_primary);
+  }
+  if (body.palette_secondary !== undefined) {
+    row.palette_secondary_json = JSON.stringify(body.palette_secondary);
+  }
+  if (body.palette_accent !== undefined) {
+    row.palette_accent_json = JSON.stringify(body.palette_accent);
+  }
+  if (body.palette_background !== undefined) {
+    row.palette_background_json = JSON.stringify(body.palette_background);
+  }
+  if (body.typography_notes !== undefined) {
+    row.typography_notes = body.typography_notes;
+  }
+  if (body.compact_prompt !== undefined) {
+    row.compact_prompt = body.compact_prompt;
+  }
   if (body.status !== undefined) row.status = body.status;
   return row;
 }

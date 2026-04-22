@@ -16,9 +16,9 @@ import {
   sendUnauthorized,
 } from "../../../_shared/http";
 import {
+  getNodeById,
   getRecursiveChildren,
   getTimelineChildren,
-  getNodeById,
   mapNode,
 } from "../../../_shared/timeline";
 import { requireProjectAccess } from "../../../_shared/scriptony";

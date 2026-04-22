@@ -9,6 +9,7 @@
  * Location: functions/_shared/env.ts
  */
 
+import process from "node:process";
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
@@ -28,7 +29,9 @@ export function getRequiredEnv(name: string): string {
 
 /** Server-to-server Appwrite endpoint. Prefer a repo-controlled internal endpoint over injected/public hosts. */
 export function getAppwriteEndpoint(): string {
-  const customInternalEndpoint = getOptionalEnv("SCRIPTONY_APPWRITE_API_ENDPOINT");
+  const customInternalEndpoint = getOptionalEnv(
+    "SCRIPTONY_APPWRITE_API_ENDPOINT",
+  );
   if (customInternalEndpoint) {
     return trimTrailingSlash(customInternalEndpoint);
   }
@@ -50,7 +53,8 @@ export function getAppwriteEndpoint(): string {
 /** Public endpoint for URLs returned to the browser (never the in-cluster hostname). */
 export function getPublicAppwriteEndpoint(): string {
   // Prefer explicit public URL, fall back to APPWRITE_ENDPOINT
-  const pub = getOptionalEnv("APPWRITE_PUBLIC_ENDPOINT") || getOptionalEnv("APPWRITE_ENDPOINT");
+  const pub = getOptionalEnv("APPWRITE_PUBLIC_ENDPOINT") ||
+    getOptionalEnv("APPWRITE_ENDPOINT");
   if (pub) {
     return trimTrailingSlash(pub);
   }
@@ -62,11 +66,17 @@ export function getAppwriteProjectId(): string {
   if (fn) {
     return fn;
   }
-  return getOptionalEnv("APPWRITE_PROJECT_ID") || getRequiredEnv("APPWRITE_FUNCTION_PROJECT_ID");
+  return (
+    getOptionalEnv("APPWRITE_PROJECT_ID") ||
+    getRequiredEnv("APPWRITE_FUNCTION_PROJECT_ID")
+  );
 }
 
 export function getAppwriteApiKey(): string {
-  return getOptionalEnv("APPWRITE_API_KEY") || getRequiredEnv("APPWRITE_FUNCTION_API_KEY");
+  return (
+    getOptionalEnv("APPWRITE_API_KEY") ||
+    getRequiredEnv("APPWRITE_FUNCTION_API_KEY")
+  );
 }
 
 export function getAppwriteDatabaseId(): string {

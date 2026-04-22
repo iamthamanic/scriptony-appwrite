@@ -10,6 +10,7 @@
 import { getMissingAppwriteServerEnvKeys } from "./load-appwrite-cli-env.mjs";
 
 import { Client, Databases } from "node-appwrite";
+import process from "node:process";
 
 const missingEnv = getMissingAppwriteServerEnvKeys();
 if (missingEnv.length > 0) {
@@ -17,7 +18,9 @@ if (missingEnv.length > 0) {
   for (const line of missingEnv) {
     console.error(`  • ${line}`);
   }
-  console.error("\nRepo-Root `.env.local` anlegen (siehe `.env.local.example`).");
+  console.error(
+    "\nRepo-Root `.env.local` anlegen (siehe `.env.local.example`).",
+  );
   process.exit(1);
 }
 
@@ -25,7 +28,10 @@ const endpoint = process.env.APPWRITE_ENDPOINT?.trim();
 const project = process.env.APPWRITE_PROJECT_ID?.trim();
 const key = process.env.APPWRITE_API_KEY?.trim();
 
-const client = new Client().setEndpoint(endpoint).setProject(project).setKey(key);
+const client = new Client()
+  .setEndpoint(endpoint)
+  .setProject(project)
+  .setKey(key);
 const databases = new Databases(client);
 
 let dbList;
@@ -48,11 +54,19 @@ if (!dbList.databases?.length) {
   }
 }
 
-const expected = (process.env.AI_DATABASE_ID?.trim() || "scriptony_ai").toLowerCase();
-const hasExpected = dbList.databases?.some((d) => d.$id.toLowerCase() === expected);
+const expected = (
+  process.env.AI_DATABASE_ID?.trim() || "scriptony_ai"
+).toLowerCase();
+const hasExpected = dbList.databases?.some(
+  (d) => d.$id.toLowerCase() === expected,
+);
 console.log("");
 console.log(`Erwartet für scriptony-ai (Default): AI_DATABASE_ID=${expected}`);
-console.log(hasExpected ? `  → vorhanden.` : `  → fehlt auf diesem Server — anlegen oder AI_DATABASE_ID setzen.`);
+console.log(
+  hasExpected
+    ? `  → vorhanden.`
+    : `  → fehlt auf diesem Server — anlegen oder AI_DATABASE_ID setzen.`,
+);
 
 console.log("");
 console.log('Suche Collection "api_keys":');
@@ -65,7 +79,9 @@ for (const db of dbList.databases || []) {
   } catch {
     continue;
   }
-  const apiKeys = cols.collections?.filter((c) => c.$id === "api_keys" || c.name === "api_keys");
+  const apiKeys = cols.collections?.filter(
+    (c) => c.$id === "api_keys" || c.name === "api_keys",
+  );
   if (apiKeys?.length) {
     found = true;
     console.log(`  → gefunden in Datenbank $id=${db.$id} (${db.name ?? ""})`);

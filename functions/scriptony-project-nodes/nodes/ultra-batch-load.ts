@@ -48,7 +48,11 @@ export default async function handler(
       return;
     }
 
-    const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+    const _project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
     if (!_project) return;
 
     const includeShots = (getQuery(req, "include_shots") || "true") !== "false";

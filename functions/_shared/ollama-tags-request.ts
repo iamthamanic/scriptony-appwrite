@@ -6,6 +6,7 @@
 
 import * as http from "node:http";
 import * as https from "node:https";
+import { Buffer } from "node:buffer";
 
 const UA = "ScriptonyAppwrite/1.0";
 
@@ -15,13 +16,20 @@ export type OllamaTagsResult =
   | { ok: true; status: number; payload: OllamaTagsPayload }
   | { ok: false; status: number; error: string };
 
-function requestTags(baseUrl: string, headers: Record<string, string>): Promise<OllamaTagsResult> {
+function requestTags(
+  baseUrl: string,
+  headers: Record<string, string>,
+): Promise<OllamaTagsResult> {
   const urlStr = `${baseUrl.replace(/\/$/, "")}/api/tags`;
   let u: URL;
   try {
     u = new URL(urlStr);
   } catch {
-    return Promise.resolve({ ok: false, status: 0, error: `Ungültige URL: ${urlStr}` });
+    return Promise.resolve({
+      ok: false,
+      status: 0,
+      error: `Ungültige URL: ${urlStr}`,
+    });
   }
 
   const lib = u.protocol === "https:" ? https : http;
@@ -65,7 +73,7 @@ function requestTags(baseUrl: string, headers: Record<string, string>): Promise<
             });
           }
         });
-      }
+      },
     );
     req.on("timeout", () => {
       req.destroy();
@@ -82,7 +90,7 @@ function requestTags(baseUrl: string, headers: Record<string, string>): Promise<
 /** Connectivity + model list for Ollama (local http or cloud https). */
 export async function fetchOllamaTags(
   baseUrl: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
 ): Promise<OllamaTagsResult> {
   return requestTags(baseUrl, headers);
 }

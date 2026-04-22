@@ -212,7 +212,9 @@ export const LEGACY_ASSISTANT_SYSTEM_PROMPTS: readonly string[] = [
 /**
  * Empty DB value, legacy defaults, or whitespace-only → current default; otherwise trimmed user text.
  */
-export function normalizeAssistantSystemPrompt(raw: string | null | undefined): string {
+export function normalizeAssistantSystemPrompt(
+  raw: string | null | undefined,
+): string {
   const t = typeof raw === "string" ? raw.trim() : "";
   if (!t) return DEFAULT_ASSISTANT_SYSTEM_PROMPT;
   for (const leg of LEGACY_ASSISTANT_SYSTEM_PROMPTS) {

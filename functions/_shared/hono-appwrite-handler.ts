@@ -14,17 +14,31 @@ type AppwriteContext = {
     body?: unknown;
   };
   res: {
-    json: (body: unknown, status?: number, headers?: Record<string, string>) => unknown;
-    text: (text: string, status?: number, headers?: Record<string, string>) => unknown;
+    json: (
+      body: unknown,
+      status?: number,
+      headers?: Record<string, string>,
+    ) => unknown;
+    text: (
+      text: string,
+      status?: number,
+      headers?: Record<string, string>,
+    ) => unknown;
   };
 };
 
 function requestUrl(pathOrUrl: string): string {
-  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
-  return `http://local${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    return pathOrUrl;
+  }
+  return `http://local${
+    pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`
+  }`;
 }
 
-export function createHonoAppwriteHandler(app: { fetch: (request: Request) => Promise<Response> | Response }) {
+export function createHonoAppwriteHandler(app: {
+  fetch: (request: Request) => Promise<Response> | Response;
+}) {
   return async function honoHandler(ctx: AppwriteContext): Promise<unknown> {
     return dispatchHonoApp(
       app,
@@ -38,7 +52,7 @@ export function createHonoAppwriteHandler(app: { fetch: (request: Request) => Pr
       {
         json: (body, status, headers) => ctx.res.json(body, status, headers),
         text: (text, status, headers) => ctx.res.text(text, status, headers),
-      }
+      },
     );
   };
 }
@@ -53,9 +67,17 @@ export async function dispatchHonoApp(
     body?: unknown;
   },
   res: {
-    json: (body: unknown, status?: number, headers?: Record<string, string>) => unknown;
-    text: (text: string, status?: number, headers?: Record<string, string>) => unknown;
-  }
+    json: (
+      body: unknown,
+      status?: number,
+      headers?: Record<string, string>,
+    ) => unknown;
+    text: (
+      text: string,
+      status?: number,
+      headers?: Record<string, string>,
+    ) => unknown;
+  },
 ): Promise<unknown> {
   const method = req.method || "GET";
   const pathOrUrl = req.path || req.url || "/";
@@ -63,11 +85,22 @@ export async function dispatchHonoApp(
   const cors = corsHeadersForIncomingRequest(req.headers);
 
   let body: any;
-  if (method !== "GET" && method !== "HEAD" && req.body !== undefined && req.body !== null) {
-    if (typeof req.body === "string" || req.body instanceof Uint8Array || req.body instanceof ArrayBuffer) {
+  if (
+    method !== "GET" &&
+    method !== "HEAD" &&
+    req.body !== undefined &&
+    req.body !== null
+  ) {
+    if (
+      typeof req.body === "string" ||
+      req.body instanceof Uint8Array ||
+      req.body instanceof ArrayBuffer
+    ) {
       body = req.body as any;
     } else {
-      if (!headers.has("content-type")) headers.set("content-type", "application/json");
+      if (!headers.has("content-type")) {
+        headers.set("content-type", "application/json");
+      }
       body = JSON.stringify(req.body);
     }
   }
@@ -80,7 +113,7 @@ export async function dispatchHonoApp(
 
   const response = await app.fetch(request as unknown as Request);
   const responseHeaders = Object.fromEntries(
-    Array.from(response.headers as unknown as Iterable<[string, string]>)
+    Array.from(response.headers as unknown as Iterable<[string, string]>),
   );
   const mergedHeaders = { ...cors, ...responseHeaders };
   const contentType = response.headers.get("content-type") || "";

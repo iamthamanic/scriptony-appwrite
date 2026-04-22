@@ -41,7 +41,11 @@ export default async function handler(
         return;
       }
 
-      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      const _project = await requireProjectAccess(
+        projectId,
+        bootstrap.user.id,
+        res,
+      );
       if (!_project) return;
 
       const characters = await getCharactersByProject(projectId);
@@ -59,7 +63,11 @@ export default async function handler(
         return;
       }
 
-      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      const _project = await requireProjectAccess(
+        projectId,
+        bootstrap.user.id,
+        res,
+      );
       if (!_project) return;
 
       const created = await requestGraphql<{

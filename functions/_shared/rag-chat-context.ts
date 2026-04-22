@@ -70,12 +70,15 @@ async function fetchStoryBeats(projectId: string): Promise<
         }
       }
     `,
-    { projectId }
+    { projectId },
   );
   return data.story_beats || [];
 }
 
-async function fetchWorld(worldId: string, organizationId: string): Promise<Record<string, unknown> | null> {
+async function fetchWorld(
+  worldId: string,
+  organizationId: string,
+): Promise<Record<string, unknown> | null> {
   const data = await requestGraphql<{
     worlds: Array<Record<string, unknown>>;
   }>(
@@ -94,7 +97,7 @@ async function fetchWorld(worldId: string, organizationId: string): Promise<Reco
         }
       }
     `,
-    { worldId, organizationId }
+    { worldId, organizationId },
   );
   return (data.worlds[0] as Record<string, unknown>) || null;
 }
@@ -104,7 +107,7 @@ async function fetchAccessibleTimelineCharacter(
   characterId: string,
   userId: string,
   organizationId: string,
-  orgIds: string[]
+  orgIds: string[],
 ): Promise<Record<string, unknown> | null> {
   const ch = await getCharacterById(characterId);
   if (!ch) return null;
@@ -134,12 +137,18 @@ export type BuildRagChatContextParams = {
 /**
  * Loads accessible project/world/character data and returns a single markdown-ish block for the system prompt.
  */
-export async function buildRagChatContext(params: BuildRagChatContextParams): Promise<string> {
+export async function buildRagChatContext(
+  params: BuildRagChatContextParams,
+): Promise<string> {
   const orgIds = await getUserOrganizationIds(params.userId);
   const sections: string[] = [];
 
   for (const projectId of params.projectIds) {
-    const project = await getAccessibleProject(projectId, params.userId, orgIds);
+    const project = await getAccessibleProject(
+      projectId,
+      params.userId,
+      orgIds,
+    );
     if (!project || project.is_deleted === true) continue;
 
     const beats = await fetchStoryBeats(projectId);
@@ -148,8 +157,10 @@ export async function buildRagChatContext(params: BuildRagChatContextParams): Pr
       .map((b) => {
         const label = safeStr(b.label || b.title) || "Beat";
         const body = truncate(
-          [safeStr(b.content), safeStr(b.description), safeStr(b.notes)].filter(Boolean).join(" "),
-          MAX_BEAT_BODY_CHARS
+          [safeStr(b.content), safeStr(b.description), safeStr(b.notes)]
+            .filter(Boolean)
+            .join(" "),
+          MAX_BEAT_BODY_CHARS,
         );
         const sig = `${label}::${body}`;
         if (seenBeatSignatures.has(sig)) return "";
@@ -181,12 +192,17 @@ export async function buildRagChatContext(params: BuildRagChatContextParams): Pr
     const name = safeStr(world.name) || worldId;
     const desc = safeStr(world.description);
     sections.push(
-      [`## Welt: ${name}`, desc ? desc : ""].filter(Boolean).join("\n\n")
+      [`## Welt: ${name}`, desc ? desc : ""].filter(Boolean).join("\n\n"),
     );
   }
 
   for (const characterId of params.characterIds) {
-    const ch = await fetchAccessibleTimelineCharacter(characterId, params.userId, params.organizationId, orgIds);
+    const ch = await fetchAccessibleTimelineCharacter(
+      characterId,
+      params.userId,
+      params.organizationId,
+      orgIds,
+    );
     if (!ch) continue;
     const name = safeStr(ch.name) || characterId;
     const bits = [

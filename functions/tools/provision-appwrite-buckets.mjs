@@ -19,7 +19,7 @@ const require = createRequire(join(functionsRoot, "package.json"));
 const { Client, Storage, Permission, Role } = require("node-appwrite");
 
 const { endpoint, projectId, apiKey } = getAppwriteToolCredentials(
-  " Your .env*.local has APPWRITE_API_KEY= with no value after =."
+  " Your .env*.local has APPWRITE_API_KEY= with no value after =.",
 );
 
 /** Default bucket IDs — override in env with SCRIPTONY_STORAGE_BUCKET_* in Functions, not here. */
@@ -40,11 +40,19 @@ const bucketPermissions = [
   Permission.delete(Role.users()),
 ];
 
-const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+const client = new Client()
+  .setEndpoint(endpoint)
+  .setProject(projectId)
+  .setKey(apiKey);
 const storage = new Storage(client);
 
 function isConflict(err) {
-  return err?.code === 409 || String(err?.message || "").toLowerCase().includes("already exists");
+  return (
+    err?.code === 409 ||
+    String(err?.message || "")
+      .toLowerCase()
+      .includes("already exists")
+  );
 }
 
 async function ensureBucket(def) {
@@ -80,4 +88,6 @@ for (const def of BUCKETS) {
   await ensureBucket(def);
 }
 
-console.log("\nDone. Defaults in code: functions/_shared/env.ts (SCRIPTONY_STORAGE_BUCKET_* overrides).");
+console.log(
+  "\nDone. Defaults in code: functions/_shared/env.ts (SCRIPTONY_STORAGE_BUCKET_* overrides).",
+);

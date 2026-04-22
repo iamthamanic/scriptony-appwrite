@@ -2,7 +2,7 @@
  * Shared query helpers for GraphQL-to-Appwrite operation handlers.
  */
 
-import { Query, ID } from "node-appwrite";
+import { ID, Query } from "node-appwrite";
 import {
   C,
   createDocument,
@@ -10,7 +10,10 @@ import {
   listDocumentsFull,
 } from "../appwrite-db";
 
-export function queriesForUserProjects(organizationId: string, userId: string): string[] {
+export function queriesForUserProjects(
+  organizationId: string,
+  userId: string,
+): string[] {
   return [
     Query.and([
       Query.or([
@@ -23,8 +26,12 @@ export function queriesForUserProjects(organizationId: string, userId: string): 
   ];
 }
 
-export async function hydrateShot(shot: Record<string, any>): Promise<Record<string, any>> {
-  const links = await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", shot.id)]);
+export async function hydrateShot(
+  shot: Record<string, any>,
+): Promise<Record<string, any>> {
+  const links = await listDocumentsFull(C.shot_characters, [
+    Query.equal("shot_id", shot.id),
+  ]);
   const shot_characters: Array<{ character: Record<string, any> }> = [];
   for (const link of links) {
     const ch = await getDocument(C.characters, link.character_id as string);
@@ -39,8 +46,10 @@ export async function hydrateShot(shot: Record<string, any>): Promise<Record<str
   return { ...shot, shot_characters, shot_audio };
 }
 
-export async function hydrateShots(shots: Record<string, any>[]): Promise<Record<string, any>[]> {
+export async function hydrateShots(
+  shots: Record<string, any>[],
+): Promise<Record<string, any>[]> {
   return Promise.all(shots.map((s) => hydrateShot(s)));
 }
 
-export { ID, Query, C, createDocument, getDocument, listDocumentsFull };
+export { C, createDocument, getDocument, ID, listDocumentsFull, Query };

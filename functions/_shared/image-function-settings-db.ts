@@ -4,7 +4,12 @@
  */
 
 import { ID, Query } from "node-appwrite";
-import { C, createDocument, listDocumentsFull, updateDocument } from "./appwrite-db";
+import {
+  C,
+  createDocument,
+  listDocumentsFull,
+  updateDocument,
+} from "./appwrite-db";
 
 const AI_CHAT_SETTINGS_WRITABLE = new Set([
   "user_id",
@@ -38,7 +43,9 @@ const AI_CHAT_API_KEY_FIELDS = new Set([
   "ollama_image_api_key",
 ]);
 
-function sanitizeAiChatSettingsUpdate(data: Record<string, unknown>): Record<string, unknown> {
+function sanitizeAiChatSettingsUpdate(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
@@ -53,7 +60,9 @@ function sanitizeAiChatSettingsUpdate(data: Record<string, unknown>): Record<str
   return out;
 }
 
-function sanitizeAiChatSettingsInsert(data: Record<string, unknown>): Record<string, unknown> {
+function sanitizeAiChatSettingsInsert(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
@@ -70,16 +79,20 @@ export type AiChatSettingsRow = Record<string, unknown> & {
   ollama_image_api_key?: string | null;
 };
 
-export async function fetchAiChatSettingsByUserId(userId: string): Promise<AiChatSettingsRow | null> {
+export async function fetchAiChatSettingsByUserId(
+  userId: string,
+): Promise<AiChatSettingsRow | null> {
   const rows = await listDocumentsFull(
     C.ai_chat_settings,
     [Query.equal("user_id", userId), Query.limit(1)],
-    1
+    1,
   );
   return (rows[0] as AiChatSettingsRow) ?? null;
 }
 
-export async function createDefaultAiChatSettings(userId: string): Promise<AiChatSettingsRow> {
+export async function createDefaultAiChatSettings(
+  userId: string,
+): Promise<AiChatSettingsRow> {
   const row = await createDocument(
     C.ai_chat_settings,
     ID.unique(),
@@ -91,15 +104,19 @@ export async function createDefaultAiChatSettings(userId: string): Promise<AiCha
       temperature: 0.7,
       max_tokens: 2000,
       use_rag: true,
-    })
+    }),
   );
   return row as AiChatSettingsRow;
 }
 
 export async function updateAiChatSettingsById(
   id: string,
-  changes: Record<string, unknown>
+  changes: Record<string, unknown>,
 ): Promise<AiChatSettingsRow> {
-  const row = await updateDocument(C.ai_chat_settings, id, sanitizeAiChatSettingsUpdate(changes));
+  const row = await updateDocument(
+    C.ai_chat_settings,
+    id,
+    sanitizeAiChatSettingsUpdate(changes),
+  );
   return row as AiChatSettingsRow;
 }

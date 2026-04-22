@@ -3,17 +3,17 @@
  * Collection IDs and attribute keys match the legacy SQL-style model (snake_case).
  */
 
-import { Query, ID } from "node-appwrite";
+import { ID, Query } from "node-appwrite";
 import {
   C,
+  countDocuments,
   createDocument,
-  updateDocument,
   deleteDocument,
   getDocument,
   listDocumentsFull,
-  countDocuments,
+  updateDocument,
 } from "../appwrite-db";
-import { queriesForUserProjects, hydrateShot, hydrateShots } from "./helpers";
+import { hydrateShot, hydrateShots, queriesForUserProjects } from "./helpers";
 
 type V = Record<string, unknown>;
 type Op = (v: V) => Promise<unknown>;
@@ -54,7 +54,9 @@ const AI_CHAT_API_KEY_FIELDS = new Set([
   "ollama_image_api_key",
 ]);
 
-function sanitizeAiChatSettingsInsert(data: Record<string, unknown>): Record<string, unknown> {
+function sanitizeAiChatSettingsInsert(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
@@ -64,7 +66,9 @@ function sanitizeAiChatSettingsInsert(data: Record<string, unknown>): Record<str
   return out;
 }
 
-function sanitizeAiChatSettingsUpdate(data: Record<string, unknown>): Record<string, unknown> {
+function sanitizeAiChatSettingsUpdate(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(data)) {
     if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
@@ -79,7 +83,9 @@ function sanitizeAiChatSettingsUpdate(data: Record<string, unknown>): Record<str
   return out;
 }
 
-async function upsertUser(object: Record<string, unknown>): Promise<{ insert_users_one: { id: string } }> {
+async function upsertUser(
+  object: Record<string, unknown>,
+): Promise<{ insert_users_one: { id: string } }> {
   const id = object.id as string;
   const { id: _drop, ...rest } = object;
   const ex = await getDocument(C.users, id);
@@ -91,15 +97,27 @@ async function upsertUser(object: Record<string, unknown>): Promise<{ insert_use
   return { insert_users_one: { id } };
 }
 
-async function listShotAudioForOrg(organizationId: string): Promise<
+async function listShotAudioForOrg(
+  organizationId: string,
+): Promise<
   Array<{ file_name: string; file_size: number | null; created_at: string }>
 > {
-  const projects = await listDocumentsFull(C.projects, [Query.equal("organization_id", organizationId)]);
-  const out: Array<{ file_name: string; file_size: number | null; created_at: string }> = [];
+  const projects = await listDocumentsFull(C.projects, [
+    Query.equal("organization_id", organizationId),
+  ]);
+  const out: Array<{
+    file_name: string;
+    file_size: number | null;
+    created_at: string;
+  }> = [];
   for (const p of projects) {
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", p.id as string)]);
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", p.id as string),
+    ]);
     for (const s of shots) {
-      const aud = await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", s.id as string)]);
+      const aud = await listDocumentsFull(C.shot_audio, [
+        Query.equal("shot_id", s.id as string),
+      ]);
       for (const a of aud) {
         out.push({
           file_name: a.file_name as string,
@@ -113,12 +131,17 @@ async function listShotAudioForOrg(organizationId: string): Promise<
 }
 
 /** `ai_chat_messages` schema only has `metadata_json` for model/provider/tokens; expand for GraphQL-shaped clients. */
-function enrichAiChatMessageRow(row: Record<string, unknown>): Record<string, unknown> {
+function enrichAiChatMessageRow(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
   let meta: Record<string, unknown> = {};
   try {
     const mj = row.metadata_json;
-    if (typeof mj === "string" && mj.trim()) meta = JSON.parse(mj) as Record<string, unknown>;
-    else if (mj && typeof mj === "object" && !Array.isArray(mj)) meta = mj as Record<string, unknown>;
+    if (typeof mj === "string" && mj.trim()) {
+      meta = JSON.parse(mj) as Record<string, unknown>;
+    } else if (mj && typeof mj === "object" && !Array.isArray(mj)) {
+      meta = mj as Record<string, unknown>;
+    }
   } catch {
     /* ignore */
   }
@@ -135,24 +158,32 @@ export const allHandlers: Record<string, Op> = {
   GetProjects: async (v) => ({
     projects: await listDocumentsFull(
       C.projects,
-      queriesForUserProjects(v.organizationId as string, v.userId as string)
+      queriesForUserProjects(v.organizationId as string, v.userId as string),
     ),
   }),
 
   CreateProject: async (v) => ({
-    insert_projects_one: await createDocument(C.projects, ID.unique(), v.object as Record<string, unknown>),
+    insert_projects_one: await createDocument(
+      C.projects,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   UpdateProject: async (v) => ({
     update_projects_by_pk: await updateDocument(
       C.projects,
       v.projectId as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
   SoftDeleteProject: async (v) => ({
-    update_projects_by_pk: await updateDocument(C.projects, v.projectId as string, { is_deleted: true }),
+    update_projects_by_pk: await updateDocument(
+      C.projects,
+      v.projectId as string,
+      { is_deleted: true },
+    ),
   }),
 
   UpdateProjectCoverImage: async (v) => ({
@@ -164,12 +195,14 @@ export const allHandlers: Record<string, Op> = {
   LegacyProjectsList: async (v) => ({
     projects: await listDocumentsFull(
       C.projects,
-      queriesForUserProjects(v.organizationId as string, v.userId as string)
+      queriesForUserProjects(v.organizationId as string, v.userId as string),
     ),
   }),
 
   ProjectsHealthcheck: async () => ({
-    projects_aggregate: { aggregate: { count: await countDocuments(C.projects) } },
+    projects_aggregate: {
+      aggregate: { count: await countDocuments(C.projects) },
+    },
   }),
 
   GetUserOrganizations: async (v) => ({
@@ -196,10 +229,10 @@ export const allHandlers: Record<string, Op> = {
   },
 
   GetUserByIntegrationToken: async (v) => ({
-    user_integration_tokens: await listDocumentsFull(C.user_integration_tokens, [
-      Query.equal("token_hash", v.tokenHash as string),
-      Query.limit(1),
-    ]),
+    user_integration_tokens: await listDocumentsFull(
+      C.user_integration_tokens,
+      [Query.equal("token_hash", v.tokenHash as string), Query.limit(1)],
+    ),
   }),
 
   GetUserProfile: async (v) => ({
@@ -218,7 +251,7 @@ export const allHandlers: Record<string, Op> = {
     insert_organizations_one: await createDocument(
       C.organizations,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -226,7 +259,7 @@ export const allHandlers: Record<string, Op> = {
     insert_organization_members_one: await createDocument(
       C.organization_members,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -234,7 +267,7 @@ export const allHandlers: Record<string, Op> = {
     insert_organization_members_one: await createDocument(
       C.organization_members,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -246,7 +279,10 @@ export const allHandlers: Record<string, Op> = {
     ]);
     const organization_members = [];
     for (const m of memberships) {
-      const org = await getDocument(C.organizations, m.organization_id as string);
+      const org = await getDocument(
+        C.organizations,
+        m.organization_id as string,
+      );
       organization_members.push({
         role: m.role,
         organizations: org,
@@ -268,7 +304,7 @@ export const allHandlers: Record<string, Op> = {
     update_organizations_by_pk: await updateDocument(
       C.organizations,
       v.orgId as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -282,26 +318,36 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   UpdateProfile: async (v) => ({
-    update_users_by_pk: await updateDocument(C.users, v.userId as string, v.changes as Record<string, unknown>),
+    update_users_by_pk: await updateDocument(
+      C.users,
+      v.userId as string,
+      v.changes as Record<string, unknown>,
+    ),
   }),
 
   ListIntegrationTokens: async (v) => ({
-    user_integration_tokens: await listDocumentsFull(C.user_integration_tokens, [
-      Query.equal("user_id", v.userId as string),
-      Query.orderDesc("$createdAt"),
-    ]),
+    user_integration_tokens: await listDocumentsFull(
+      C.user_integration_tokens,
+      [
+        Query.equal("user_id", v.userId as string),
+        Query.orderDesc("$createdAt"),
+      ],
+    ),
   }),
 
   CreateIntegrationToken: async (v) => ({
     insert_user_integration_tokens_one: await createDocument(
       C.user_integration_tokens,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   GetIntegrationToken: async (v) => ({
-    user_integration_tokens_by_pk: await getDocument(C.user_integration_tokens, v.id as string),
+    user_integration_tokens_by_pk: await getDocument(
+      C.user_integration_tokens,
+      v.id as string,
+    ),
   }),
 
   DeleteIntegrationToken: async (v) => {
@@ -310,7 +356,9 @@ export const allHandlers: Record<string, Op> = {
   },
 
   AuthHealthcheck: async () => ({
-    organizations_aggregate: { aggregate: { count: await countDocuments(C.organizations) } },
+    organizations_aggregate: {
+      aggregate: { count: await countDocuments(C.organizations) },
+    },
   }),
 
   GetWorlds: async (v) => ({
@@ -321,7 +369,11 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   CreateWorld: async (v) => ({
-    insert_worlds_one: await createDocument(C.worlds, ID.unique(), v.object as Record<string, unknown>),
+    insert_worlds_one: await createDocument(
+      C.worlds,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   GetWorld: async (v) => ({
@@ -343,7 +395,11 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   UpdateWorld: async (v) => ({
-    update_worlds_by_pk: await updateDocument(C.worlds, v.worldId as string, v.changes as Record<string, unknown>),
+    update_worlds_by_pk: await updateDocument(
+      C.worlds,
+      v.worldId as string,
+      v.changes as Record<string, unknown>,
+    ),
   }),
 
   DeleteWorld: async (v) => {
@@ -372,16 +428,20 @@ export const allHandlers: Record<string, Op> = {
     insert_world_categories_one: await createDocument(
       C.world_categories,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   GetWorldItems: async (v) => ({
-    world_items: await listDocumentsFull(C.world_items, [Query.equal("world_id", v.worldId as string)]),
+    world_items: await listDocumentsFull(C.world_items, [
+      Query.equal("world_id", v.worldId as string),
+    ]),
   }),
 
   GetWorldbuildingCharacters: async (v) => {
-    const q: string[] = [Query.equal("organization_id", v.organizationId as string)];
+    const q: string[] = [
+      Query.equal("organization_id", v.organizationId as string),
+    ];
     if (v.worldId) {
       q.push(Query.equal("world_id", v.worldId as string));
     } else {
@@ -400,7 +460,10 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   GetTimelineNode: async (v) => ({
-    timeline_nodes_by_pk: await getDocument(C.timeline_nodes, v.nodeId as string),
+    timeline_nodes_by_pk: await getDocument(
+      C.timeline_nodes,
+      v.nodeId as string,
+    ),
   }),
 
   GetTimelineChildren: async (v) => ({
@@ -433,7 +496,7 @@ export const allHandlers: Record<string, Op> = {
       await listDocumentsFull(C.shots, [
         Query.equal("project_id", v.projectId as string),
         Query.orderAsc("order_index"),
-      ])
+      ]),
     ),
   }),
 
@@ -442,7 +505,7 @@ export const allHandlers: Record<string, Op> = {
       await listDocumentsFull(C.shots, [
         Query.equal("scene_id", v.sceneId as string),
         Query.orderAsc("order_index"),
-      ])
+      ]),
     ),
   }),
 
@@ -470,7 +533,7 @@ export const allHandlers: Record<string, Op> = {
     insert_story_beats_one: await createDocument(
       C.story_beats,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -482,7 +545,7 @@ export const allHandlers: Record<string, Op> = {
     update_story_beats_by_pk: await updateDocument(
       C.story_beats,
       v.beatId as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -492,14 +555,16 @@ export const allHandlers: Record<string, Op> = {
   },
 
   BeatsHealthcheck: async () => ({
-    story_beats_aggregate: { aggregate: { count: await countDocuments(C.story_beats) } },
+    story_beats_aggregate: {
+      aggregate: { count: await countDocuments(C.story_beats) },
+    },
   }),
 
   CreateTimelineNode: async (v) => ({
     insert_timeline_nodes_one: await createDocument(
       C.timeline_nodes,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -507,7 +572,7 @@ export const allHandlers: Record<string, Op> = {
     update_timeline_nodes_by_pk: await updateDocument(
       C.timeline_nodes,
       v.id as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -517,9 +582,13 @@ export const allHandlers: Record<string, Op> = {
   },
 
   ReorderTimelineNode: async (v) => ({
-    update_timeline_nodes_by_pk: await updateDocument(C.timeline_nodes, v.id as string, {
-      order_index: v.orderIndex,
-    }),
+    update_timeline_nodes_by_pk: await updateDocument(
+      C.timeline_nodes,
+      v.id as string,
+      {
+        order_index: v.orderIndex,
+      },
+    ),
   }),
 
   BulkCreateTimelineNodes: async (v) => {
@@ -541,11 +610,19 @@ export const allHandlers: Record<string, Op> = {
   },
 
   CreateShot: async (v) => ({
-    insert_shots_one: await createDocument(C.shots, ID.unique(), v.object as Record<string, unknown>),
+    insert_shots_one: await createDocument(
+      C.shots,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   UpdateShot: async (v) => ({
-    update_shots_by_pk: await updateDocument(C.shots, v.id as string, v.changes as Record<string, unknown>),
+    update_shots_by_pk: await updateDocument(
+      C.shots,
+      v.id as string,
+      v.changes as Record<string, unknown>,
+    ),
   }),
 
   DeleteShot: async (v) => {
@@ -568,10 +645,14 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   AddShotCharacter: async (v) => ({
-    insert_shot_characters_one: await createDocument(C.shot_characters, ID.unique(), {
-      shot_id: v.shotId,
-      character_id: v.characterId,
-    }),
+    insert_shot_characters_one: await createDocument(
+      C.shot_characters,
+      ID.unique(),
+      {
+        shot_id: v.shotId,
+        character_id: v.characterId,
+      },
+    ),
   }),
 
   RemoveShotCharacter: async (v) => {
@@ -587,14 +668,18 @@ export const allHandlers: Record<string, Op> = {
   },
 
   CreateCharacter: async (v) => ({
-    insert_characters_one: await createDocument(C.characters, ID.unique(), v.object as Record<string, unknown>),
+    insert_characters_one: await createDocument(
+      C.characters,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   UpdateCharacter: async (v) => ({
     update_characters_by_pk: await updateDocument(
       C.characters,
       v.id as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -607,12 +692,14 @@ export const allHandlers: Record<string, Op> = {
     insert_shot_audio_one: await createDocument(
       C.shot_audio,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   GetShotAudio: async (v) => ({
-    shot_audio: await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", v.shotId as string)]),
+    shot_audio: await listDocumentsFull(C.shot_audio, [
+      Query.equal("shot_id", v.shotId as string),
+    ]),
   }),
 
   GetShotAudioFile: async (v) => ({
@@ -623,7 +710,7 @@ export const allHandlers: Record<string, Op> = {
     update_shot_audio_by_pk: await updateDocument(
       C.shot_audio,
       v.id as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -637,7 +724,10 @@ export const allHandlers: Record<string, Op> = {
     const rows: Record<string, unknown>[] = [];
     for (const sid of shotIds) {
       rows.push(
-        ...(await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", sid), Query.orderAsc("$createdAt")]))
+        ...(await listDocumentsFull(C.shot_audio, [
+          Query.equal("shot_id", sid),
+          Query.orderAsc("$createdAt"),
+        ])),
       );
     }
     return { shot_audio: rows };
@@ -663,7 +753,7 @@ export const allHandlers: Record<string, Op> = {
     insert_ai_chat_settings_one: await createDocument(
       C.ai_chat_settings,
       ID.unique(),
-      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>)
+      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>),
     ),
   }),
 
@@ -679,7 +769,7 @@ export const allHandlers: Record<string, Op> = {
     insert_ai_chat_settings_one: await createDocument(
       C.ai_chat_settings,
       ID.unique(),
-      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>)
+      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>),
     ),
   }),
 
@@ -687,7 +777,7 @@ export const allHandlers: Record<string, Op> = {
     update_ai_chat_settings_by_pk: await updateDocument(
       C.ai_chat_settings,
       v.id as string,
-      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>)
+      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>),
     ),
   }),
 
@@ -696,7 +786,7 @@ export const allHandlers: Record<string, Op> = {
     update_ai_chat_settings_by_pk: await updateDocument(
       C.ai_chat_settings,
       v.id as string,
-      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>)
+      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>),
     ),
   }),
 
@@ -718,7 +808,7 @@ export const allHandlers: Record<string, Op> = {
     insert_ai_conversations_one: await createDocument(
       C.ai_conversations,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -731,9 +821,13 @@ export const allHandlers: Record<string, Op> = {
   },
 
   UpdateConversationPrompt: async (v) => ({
-    update_ai_conversations_by_pk: await updateDocument(C.ai_conversations, v.id as string, {
-      system_prompt: v.systemPrompt,
-    }),
+    update_ai_conversations_by_pk: await updateDocument(
+      C.ai_conversations,
+      v.id as string,
+      {
+        system_prompt: v.systemPrompt,
+      },
+    ),
   }),
 
   GetChatSettings: async (v) => ({
@@ -747,7 +841,7 @@ export const allHandlers: Record<string, Op> = {
     insert_ai_conversations_one: await createDocument(
       C.ai_conversations,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -760,24 +854,36 @@ export const allHandlers: Record<string, Op> = {
         role: o.role,
         content: o.content,
       };
-      if (typeof o.metadata_json === "string") payload.metadata_json = o.metadata_json;
-      returning.push(await createDocument(C.ai_chat_messages, ID.unique(), payload));
+      if (typeof o.metadata_json === "string") {
+        payload.metadata_json = o.metadata_json;
+      }
+      returning.push(
+        await createDocument(C.ai_chat_messages, ID.unique(), payload),
+      );
     }
-    return { insert_ai_chat_messages: { returning: returning.map((r) => enrichAiChatMessageRow(r)) } };
+    return {
+      insert_ai_chat_messages: {
+        returning: returning.map((r) => enrichAiChatMessageRow(r)),
+      },
+    };
   },
 
   TouchConversation: async (v) => ({
-    update_ai_conversations_by_pk: await updateDocument(C.ai_conversations, v.id as string, {
-      message_count: v.messageCount,
-      last_message_at: v.lastMessageAt,
-    }),
+    update_ai_conversations_by_pk: await updateDocument(
+      C.ai_conversations,
+      v.id as string,
+      {
+        message_count: v.messageCount,
+        last_message_at: v.lastMessageAt,
+      },
+    ),
   }),
 
   QueueRagSync: async (v) => ({
     insert_rag_sync_queue_one: await createDocument(
       C.rag_sync_queue,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -804,17 +910,30 @@ export const allHandlers: Record<string, Op> = {
     const timeline_nodes = await listDocumentsFull(C.timeline_nodes, [
       Query.equal("project_id", projectId),
     ]);
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", projectId)]);
-    const characters = await listDocumentsFull(C.characters, [Query.equal("project_id", projectId)]);
-    const worlds = await listDocumentsFull(C.worlds, [Query.equal("linked_project_id", projectId)]);
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", projectId),
+    ]);
+    const characters = await listDocumentsFull(C.characters, [
+      Query.equal("project_id", projectId),
+    ]);
+    const worlds = await listDocumentsFull(C.worlds, [
+      Query.equal("linked_project_id", projectId),
+    ]);
     return { projects_by_pk, timeline_nodes, shots, characters, worlds };
   },
 
   GetShotCharacterCounts: async (v) => {
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", v.projectId as string)]);
-    const links: Array<{ character_id: string; character: { name: string } | null }> = [];
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", v.projectId as string),
+    ]);
+    const links: Array<{
+      character_id: string;
+      character: { name: string } | null;
+    }> = [];
     for (const s of shots) {
-      const sc = await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", s.id as string)]);
+      const sc = await listDocumentsFull(C.shot_characters, [
+        Query.equal("shot_id", s.id as string),
+      ]);
       for (const l of sc) {
         const ch = await getDocument(C.characters, l.character_id as string);
         links.push({
@@ -838,10 +957,17 @@ export const allHandlers: Record<string, Op> = {
     const id = v.id as string;
     const node = await getDocument(C.timeline_nodes, id);
     if (!node) {
-      return { timeline_nodes_by_pk: null, timeline_nodes: [], shots: [], shot_characters: [] };
+      return {
+        timeline_nodes_by_pk: null,
+        timeline_nodes: [],
+        shots: [],
+        shot_characters: [],
+      };
     }
     const projectId = node.project_id as string;
-    const allNodes = await listDocumentsFull(C.timeline_nodes, [Query.equal("project_id", projectId)]);
+    const allNodes = await listDocumentsFull(C.timeline_nodes, [
+      Query.equal("project_id", projectId),
+    ]);
     const byParent = new Map<string | null, Array<Record<string, any>>>();
     for (const n of allNodes) {
       const key = (n.parent_id as string | null) ?? null;
@@ -860,12 +986,18 @@ export const allHandlers: Record<string, Op> = {
     for (const d of desc) {
       if ((d.level as number) === 3) sceneIds.add(d.id as string);
     }
-    const allShots = await listDocumentsFull(C.shots, [Query.equal("project_id", projectId)]);
-    const relevantShots = allShots.filter((s) => sceneIds.has(s.scene_id as string));
+    const allShots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", projectId),
+    ]);
+    const relevantShots = allShots.filter((s) =>
+      sceneIds.has(s.scene_id as string)
+    );
     const shot_characters: Record<string, unknown>[] = [];
     for (const s of relevantShots) {
       shot_characters.push(
-        ...(await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", s.id as string)]))
+        ...(await listDocumentsFull(C.shot_characters, [
+          Query.equal("shot_id", s.id as string),
+        ])),
       );
     }
     return {
@@ -880,24 +1012,33 @@ export const allHandlers: Record<string, Op> = {
     const shotIds = v.shotIds as string[];
     const rows: Array<{ character_id: string }> = [];
     for (const sid of shotIds) {
-      const sc = await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", sid)]);
+      const sc = await listDocumentsFull(C.shot_characters, [
+        Query.equal("shot_id", sid),
+      ]);
       for (const l of sc) rows.push({ character_id: l.character_id as string });
     }
     return { shot_characters: rows };
   },
 
   GetProjectAudioCount: async (v) => {
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", v.projectId as string)]);
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", v.projectId as string),
+    ]);
     let n = 0;
     for (const s of shots) {
-      const aud = await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", s.id as string)]);
+      const aud = await listDocumentsFull(C.shot_audio, [
+        Query.equal("shot_id", s.id as string),
+      ]);
       n += aud.length;
     }
     return { shot_audio_aggregate: { aggregate: { count: n } } };
   },
 
   GetSuperadminUsers: async () => ({
-    users: await listDocumentsFull(C.users, [Query.orderDesc("$createdAt"), Query.limit(500)]),
+    users: await listDocumentsFull(C.users, [
+      Query.orderDesc("$createdAt"),
+      Query.limit(500),
+    ]),
   }),
 
   GetSuperadminStats: async () => {
@@ -905,7 +1046,10 @@ export const allHandlers: Record<string, Op> = {
       countDocuments(C.users),
       countDocuments(C.organizations),
       countDocuments(C.projects, [
-        Query.or([Query.equal("is_deleted", false), Query.isNull("is_deleted")]),
+        Query.or([
+          Query.equal("is_deleted", false),
+          Query.isNull("is_deleted"),
+        ]),
       ]),
       countDocuments(C.worlds),
     ]);
@@ -922,7 +1066,10 @@ export const allHandlers: Record<string, Op> = {
       Query.orderDesc("$createdAt"),
       Query.limit(500),
     ]);
-    const organization_members = await listDocumentsFull(C.organization_members, [Query.limit(5000)]);
+    const organization_members = await listDocumentsFull(
+      C.organization_members,
+      [Query.limit(5000)],
+    );
     const projects = await listDocumentsFull(C.projects, [
       Query.or([Query.equal("is_deleted", false), Query.isNull("is_deleted")]),
       Query.limit(5000),
@@ -930,7 +1077,9 @@ export const allHandlers: Record<string, Op> = {
     const worlds = await listDocumentsFull(C.worlds, [Query.limit(5000)]);
     return {
       organizations,
-      organization_members: organization_members.map((m) => ({ organization_id: m.organization_id })),
+      organization_members: organization_members.map((m) => ({
+        organization_id: m.organization_id,
+      })),
       projects: projects.map((p) => ({ organization_id: p.organization_id })),
       worlds: worlds.map((w) => ({ organization_id: w.organization_id })),
     };
@@ -942,7 +1091,10 @@ export const allHandlers: Record<string, Op> = {
       Query.orderDesc("$createdAt"),
       Query.limit(500),
     ]);
-    const organization_members = await listDocumentsFull(C.organization_members, [Query.limit(2000)]);
+    const organization_members = await listDocumentsFull(
+      C.organization_members,
+      [Query.limit(2000)],
+    );
     return {
       activity_logs_aggregate: { aggregate: { count: totalEvents } },
       activity_logs,
@@ -953,19 +1105,28 @@ export const allHandlers: Record<string, Op> = {
   GetStorageUsage: async (v) => {
     const organizationId = v.organizationId as string;
     const shot_audio = await listShotAudioForOrg(organizationId);
-    const projects = await listDocumentsFull(C.projects, [Query.equal("organization_id", organizationId)]);
-    const worlds = await listDocumentsFull(C.worlds, [Query.equal("organization_id", organizationId)]);
+    const projects = await listDocumentsFull(C.projects, [
+      Query.equal("organization_id", organizationId),
+    ]);
+    const worlds = await listDocumentsFull(C.worlds, [
+      Query.equal("organization_id", organizationId),
+    ]);
     const allShots: Record<string, unknown>[] = [];
     for (const p of projects) {
       allShots.push(
-        ...(await listDocumentsFull(C.shots, [Query.equal("project_id", p.id as string)]))
+        ...(await listDocumentsFull(C.shots, [
+          Query.equal("project_id", p.id as string),
+        ])),
       );
     }
     return {
       shot_audio,
       projects: projects.map((p) => ({ cover_image_url: p.cover_image_url })),
       worlds: worlds.map((w) => ({ cover_image_url: w.cover_image_url })),
-      shots: allShots.map((s) => ({ image_url: s.image_url, storyboard_url: s.storyboard_url })),
+      shots: allShots.map((s) => ({
+        image_url: s.image_url,
+        storyboard_url: s.storyboard_url,
+      })),
     };
   },
 };

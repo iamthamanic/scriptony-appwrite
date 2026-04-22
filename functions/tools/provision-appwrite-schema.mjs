@@ -21,6 +21,7 @@ import { createRequire } from "module";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { getAppwriteToolCredentials } from "./_appwrite-tool-creds.mjs";
+import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const functionsRoot = join(__dirname, "..");
@@ -30,7 +31,7 @@ const { Client, Databases, IndexType, OrderBy } = require("node-appwrite");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const { endpoint, projectId, apiKey, databaseId } = getAppwriteToolCredentials(
-  " Your .env*.local has APPWRITE_API_KEY= with no value after = — paste the key from Appwrite Console → Your project → API keys."
+  " Your .env*.local has APPWRITE_API_KEY= with no value after = — paste the key from Appwrite Console → Your project → API keys.",
 );
 
 /** Below this max length, string attrs count toward MariaDB's tight inline row budget. */
@@ -376,21 +377,32 @@ async function waitAttribute(db, collectionId, key) {
   while (Date.now() < deadline) {
     const a = await db.getAttribute(databaseId, collectionId, key);
     if (a.status === "available") return;
-    if (a.status === "failed") throw new Error(`Attribute ${collectionId}.${key} failed: ${JSON.stringify(a)}`);
+    if (a.status === "failed") {
+      throw new Error(
+        `Attribute ${collectionId}.${key} failed: ${JSON.stringify(a)}`,
+      );
+    }
     await sleep(400);
   }
   throw new Error(`Timeout waiting for attribute ${collectionId}.${key}`);
 }
 
 function isConflict(err) {
-  return err?.code === 409 || String(err?.message || "").toLowerCase().includes("already exists");
+  return (
+    err?.code === 409 ||
+    String(err?.message || "")
+      .toLowerCase()
+      .includes("already exists")
+  );
 }
 
 function isAttributeLimitExceeded(err) {
   return (
     err?.type === "attribute_limit_exceeded" ||
     (err?.code === 400 &&
-      String(err?.message || "").toLowerCase().includes("maximum number or size of attributes"))
+      String(err?.message || "")
+        .toLowerCase()
+        .includes("maximum number or size of attributes"))
   );
 }
 
@@ -412,14 +424,24 @@ async function ensureCollection(db, collectionId) {
     console.log(`  collection exists: ${collectionId}`);
   } catch (e) {
     if (e?.code === 404) {
-      await db.createCollection(databaseId, collectionId, collectionId, [], false, true);
+      await db.createCollection(
+        databaseId,
+        collectionId,
+        collectionId,
+        [],
+        false,
+        true,
+      );
       console.log(`  collection created: ${collectionId}`);
     } else throw e;
   }
 }
 
 async function ensureAttribute(db, collectionId, key, spec) {
-  const { attributes: existingAttrs } = await db.listAttributes(databaseId, collectionId);
+  const { attributes: existingAttrs } = await db.listAttributes(
+    databaseId,
+    collectionId,
+  );
   if (existingAttrs.some((a) => a.key === key)) {
     console.log(`    attr skip (exists): ${key}`);
     return;
@@ -427,7 +449,13 @@ async function ensureAttribute(db, collectionId, key, spec) {
   const { kind, required = false } = spec;
   try {
     if (kind === "string") {
-      await db.createStringAttribute(databaseId, collectionId, key, spec.size, required);
+      await db.createStringAttribute(
+        databaseId,
+        collectionId,
+        key,
+        spec.size,
+        required,
+      );
     } else if (kind === "integer") {
       await db.createIntegerAttribute(databaseId, collectionId, key, required);
     } else if (kind === "boolean") {
@@ -455,7 +483,7 @@ async function ensureAttribute(db, collectionId, key, spec) {
         `\n[provision] attribute_limit_exceeded at ${collectionId}.${key}: ` +
           "Too many short string/URL columns in this collection for MariaDB’s row budget. " +
           "This script now provisions L()/XL() with min size 16385. If this collection was created earlier, " +
-          "delete the collection in Appwrite Console (or remove its long text attributes) and run provision again.\n"
+          "delete the collection in Appwrite Console (or remove its long text attributes) and run provision again.\n",
       );
     }
     throw e;
@@ -470,7 +498,14 @@ async function ensureIndex(db, collectionId, field) {
       console.log(`    index skip: ${idxKey}`);
       return;
     }
-    await db.createIndex(databaseId, collectionId, idxKey, IndexType.Key, [field], [OrderBy.Asc]);
+    await db.createIndex(
+      databaseId,
+      collectionId,
+      idxKey,
+      IndexType.Key,
+      [field],
+      [OrderBy.Asc],
+    );
     console.log(`    index ok: ${idxKey}`);
   } catch (e) {
     if (isConflict(e)) console.log(`    index skip (conflict): idx_${field}`);
@@ -479,9 +514,14 @@ async function ensureIndex(db, collectionId, field) {
 }
 
 async function main() {
-  console.log(`Endpoint ${endpoint}  project ${projectId}  database ${databaseId}`);
+  console.log(
+    `Endpoint ${endpoint}  project ${projectId}  database ${databaseId}`,
+  );
 
-  const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+  const client = new Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
   const db = new Databases(client);
 
   await ensureDatabase(db);

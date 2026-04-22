@@ -9,9 +9,10 @@
  * Location: functions/scripts/load-appwrite-cli-env.mjs
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { resolve, dirname, basename } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 /** Repo root: …/scriptony-appwrite (…/functions/scripts → ../..) */
@@ -29,7 +30,15 @@ function collectEnvPathsWalkingUp(startDir) {
   const out = [];
   let dir = resolve(startDir.trim());
   for (let depth = 0; depth < 14; depth++) {
-    for (const name of [".env.server.local", ".env.server", ".env.local", ".env", ".env.migration"]) {
+    for (
+      const name of [
+        ".env.server.local",
+        ".env.server",
+        ".env.local",
+        ".env",
+        ".env.migration",
+      ]
+    ) {
       const p = resolve(dir, name);
       if (existsSync(p)) out.push(p);
     }
@@ -49,7 +58,10 @@ function parseEnvFile(text) {
     if (i === -1) continue;
     const k = t.slice(0, i).trim();
     let v = t.slice(i + 1).trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
       v = v.slice(1, -1);
     }
     if (process.env[k] === undefined) {
@@ -88,7 +100,9 @@ export function loadAppwriteCliEnv() {
     resolve(cwd, ".env.local"),
     resolve(cwd, ".env"),
     resolve(cwd, ".env.migration"),
-    basename(cwd) === "functions" ? resolve(cwd, "..", ".env.server.local") : null,
+    basename(cwd) === "functions"
+      ? resolve(cwd, "..", ".env.server.local")
+      : null,
     basename(cwd) === "functions" ? resolve(cwd, "..", ".env.server") : null,
     basename(cwd) === "functions" ? resolve(cwd, "..", ".env.local") : null,
     basename(cwd) === "functions" ? resolve(cwd, "..", ".env") : null,
@@ -113,21 +127,33 @@ export function loadAppwriteCliEnv() {
       "  VITE_EP?",
       Boolean(process.env.VITE_APPWRITE_ENDPOINT),
       "APPWRITE_KEY?",
-      Boolean(process.env.APPWRITE_API_KEY || process.env.APPWRITE_APIKEY)
+      Boolean(process.env.APPWRITE_API_KEY || process.env.APPWRITE_APIKEY),
     );
   }
 
   const trimSlash = (s) => s.replace(/\/+$/, "");
 
-  if (!process.env.APPWRITE_ENDPOINT?.trim() && process.env.VITE_APPWRITE_ENDPOINT?.trim()) {
-    process.env.APPWRITE_ENDPOINT = trimSlash(process.env.VITE_APPWRITE_ENDPOINT.trim());
+  if (
+    !process.env.APPWRITE_ENDPOINT?.trim() &&
+    process.env.VITE_APPWRITE_ENDPOINT?.trim()
+  ) {
+    process.env.APPWRITE_ENDPOINT = trimSlash(
+      process.env.VITE_APPWRITE_ENDPOINT.trim(),
+    );
   }
-  if (!process.env.APPWRITE_PROJECT_ID?.trim() && process.env.VITE_APPWRITE_PROJECT_ID?.trim()) {
-    process.env.APPWRITE_PROJECT_ID = process.env.VITE_APPWRITE_PROJECT_ID.trim();
+  if (
+    !process.env.APPWRITE_PROJECT_ID?.trim() &&
+    process.env.VITE_APPWRITE_PROJECT_ID?.trim()
+  ) {
+    process.env.APPWRITE_PROJECT_ID = process.env.VITE_APPWRITE_PROJECT_ID
+      .trim();
   }
 
   /** Viele .env-Dateien nutzen `APPWRITE_APIKEY` (Console/ältere Docs); SDK erwartet `APPWRITE_API_KEY`. */
-  if (!process.env.APPWRITE_API_KEY?.trim() && process.env.APPWRITE_APIKEY?.trim()) {
+  if (
+    !process.env.APPWRITE_API_KEY?.trim() &&
+    process.env.APPWRITE_APIKEY?.trim()
+  ) {
     process.env.APPWRITE_API_KEY = process.env.APPWRITE_APIKEY.trim();
   }
 }
@@ -145,7 +171,9 @@ export function getMissingAppwriteServerEnvKeys() {
     missing.push("APPWRITE_PROJECT_ID oder VITE_APPWRITE_PROJECT_ID");
   }
   if (!process.env.APPWRITE_API_KEY?.trim()) {
-    missing.push("APPWRITE_API_KEY oder APPWRITE_APIKEY (Server-Key aus der Appwrite-Console)");
+    missing.push(
+      "APPWRITE_API_KEY oder APPWRITE_APIKEY (Server-Key aus der Appwrite-Console)",
+    );
   }
   return missing;
 }

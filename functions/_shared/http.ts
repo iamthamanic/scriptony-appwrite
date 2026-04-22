@@ -4,12 +4,13 @@
  * Handlers use Express-like request and response objects.
  */
 
+import process from "node:process";
 export type RequestLike = any;
 export type ResponseLike = any;
 
 function getHeaderCaseInsensitive(
   headers: Record<string, string> | undefined,
-  name: string
+  name: string,
 ): string {
   if (!headers) return "";
   const want = name.toLowerCase();
@@ -36,15 +37,15 @@ const CORS_COMMON: Record<string, string> = {
  * Otherwise `Access-Control-Allow-Origin: *` (works with Bearer tokens, not cookies).
  */
 export function corsHeadersForIncomingRequest(
-  incoming?: Record<string, string>
+  incoming?: Record<string, string>,
 ): Record<string, string> {
   const origin = getHeaderCaseInsensitive(incoming, "origin");
-  const extra =
-    process.env.SCRIPTONY_CORS_ALLOWED_ORIGINS?.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean) ?? [];
-  const localOk =
-    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin);
+  const extra = process.env.SCRIPTONY_CORS_ALLOWED_ORIGINS?.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean) ?? [];
+  const localOk = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(
+    origin,
+  );
   const listedOk = Boolean(origin && extra.includes(origin));
   const allowOrigin = (localOk || listedOk) && origin ? origin : "*";
 
@@ -60,11 +61,18 @@ export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
 };
 
-export function sendJson(res: ResponseLike, status: number, body: unknown): void {
+export function sendJson(
+  res: ResponseLike,
+  status: number,
+  body: unknown,
+): void {
   res.status(status).json(body);
 }
 
-export function sendMethodNotAllowed(res: ResponseLike, allowed: string[]): void {
+export function sendMethodNotAllowed(
+  res: ResponseLike,
+  allowed: string[],
+): void {
   res.setHeader("Allow", allowed.join(", "));
   sendJson(res, 405, { error: "Method not allowed", allowed });
 }
@@ -72,7 +80,7 @@ export function sendMethodNotAllowed(res: ResponseLike, allowed: string[]): void
 export function sendUnauthorized(
   res: ResponseLike,
   message = "Unauthorized",
-  code = "AUTH_UNAUTHORIZED"
+  code = "AUTH_UNAUTHORIZED",
 ): void {
   sendJson(res, 401, { error: message, code });
 }
@@ -101,12 +109,11 @@ type ClassifiedServerError = {
 };
 
 function classifyServerError(error: unknown): ClassifiedServerError {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "Unexpected server error";
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === "string"
+    ? error
+    : "Unexpected server error";
   const normalized = message.toLowerCase();
 
   if (normalized.includes("timed out after")) {
@@ -152,7 +159,10 @@ export function sendServerError(res: ResponseLike, error: unknown): void {
       message: error instanceof Error ? error.message : String(error),
     });
   } else {
-    console.error(`[Functions][${classified.code}] ${classified.logLabel}:`, error);
+    console.error(
+      `[Functions][${classified.code}] ${classified.logLabel}:`,
+      error,
+    );
   }
 
   sendJson(res, 500, { error: classified.message, code: classified.code });
@@ -162,7 +172,9 @@ export function sendNotImplemented(res: ResponseLike, message: string): void {
   sendJson(res, 501, { error: message });
 }
 
-export async function readJsonBody<T = Record<string, any>>(req: RequestLike): Promise<T> {
+export async function readJsonBody<T = Record<string, any>>(
+  req: RequestLike,
+): Promise<T> {
   if (req.body && typeof req.body === "object") {
     return req.body as T;
   }
@@ -183,7 +195,11 @@ export function getQuery(req: RequestLike, name: string): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export function sendRedirect(res: ResponseLike, status: 302 | 303, url: string): void {
+export function sendRedirect(
+  res: ResponseLike,
+  status: 302 | 303,
+  url: string,
+): void {
   res.setHeader("Location", url);
   res.status(status).end();
 }

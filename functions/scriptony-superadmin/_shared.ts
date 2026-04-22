@@ -4,10 +4,10 @@
 
 import { requireUserBootstrap } from "../_shared/auth";
 import {
-  sendForbidden,
-  sendUnauthorized,
   type RequestLike,
   type ResponseLike,
+  sendForbidden,
+  sendUnauthorized,
 } from "../_shared/http";
 
 export async function requireSuperadmin(req: RequestLike, res: ResponseLike) {
@@ -17,8 +17,8 @@ export async function requireSuperadmin(req: RequestLike, res: ResponseLike) {
     return null;
   }
 
-  const role =
-    (typeof bootstrap.user.metadata?.role === "string" && bootstrap.user.metadata.role) ||
+  const role = (typeof bootstrap.user.metadata?.role === "string" &&
+    bootstrap.user.metadata.role) ||
     bootstrap.user.defaultRole ||
     "user";
 

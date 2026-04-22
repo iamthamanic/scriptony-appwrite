@@ -5,9 +5,10 @@
  * Location: functions/tools/appwrite-env-load.mjs
  */
 
-import { readFileSync, existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const functionsRoot = join(__dirname, "..");

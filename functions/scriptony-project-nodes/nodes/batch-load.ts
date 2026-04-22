@@ -40,7 +40,11 @@ export default async function handler(
       return;
     }
 
-    const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+    const _project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
     if (!_project) return;
 
     const nodes = (await getAllProjectNodes(projectId))

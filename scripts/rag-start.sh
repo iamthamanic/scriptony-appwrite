@@ -224,7 +224,9 @@ stop_server() {
         pid=$(cat "$RAG_DIR/server.pid")
         if kill -0 "$pid" 2>/dev/null; then
             log "Stopping LightRAG server (PID: $pid)..."
-            kill "$pid" 2>/dev/null || true
+            if ! kill "$pid" 2>/dev/null; then
+                warn "Failed to send SIGTERM to PID $pid"
+            fi
             rm -f "$RAG_DIR/server.pid"
             log "Server stopped."
         else

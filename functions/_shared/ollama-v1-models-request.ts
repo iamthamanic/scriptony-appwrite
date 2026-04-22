@@ -5,6 +5,7 @@
 
 import * as http from "node:http";
 import * as https from "node:https";
+import { Buffer } from "node:buffer";
 
 const UA = "ScriptonyAppwrite/1.0";
 
@@ -17,13 +18,20 @@ export type OllamaV1ModelsResult =
   | { ok: true; status: number; payload: OllamaV1ModelsPayload }
   | { ok: false; status: number; error: string };
 
-function requestV1Models(baseUrl: string, headers: Record<string, string>): Promise<OllamaV1ModelsResult> {
+function requestV1Models(
+  baseUrl: string,
+  headers: Record<string, string>,
+): Promise<OllamaV1ModelsResult> {
   const urlStr = `${baseUrl.replace(/\/$/, "")}/v1/models`;
   let u: URL;
   try {
     u = new URL(urlStr);
   } catch {
-    return Promise.resolve({ ok: false, status: 0, error: `Ungültige URL: ${urlStr}` });
+    return Promise.resolve({
+      ok: false,
+      status: 0,
+      error: `Ungültige URL: ${urlStr}`,
+    });
   }
 
   const lib = u.protocol === "https:" ? https : http;
@@ -67,7 +75,7 @@ function requestV1Models(baseUrl: string, headers: Record<string, string>): Prom
             });
           }
         });
-      }
+      },
     );
     req.on("timeout", () => {
       req.destroy();
@@ -83,7 +91,7 @@ function requestV1Models(baseUrl: string, headers: Record<string, string>): Prom
 
 export async function fetchOllamaV1Models(
   baseUrl: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
 ): Promise<OllamaV1ModelsResult> {
   return requestV1Models(baseUrl, headers);
 }

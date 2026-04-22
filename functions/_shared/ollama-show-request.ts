@@ -6,6 +6,7 @@
 
 import * as http from "node:http";
 import * as https from "node:https";
+import { Buffer } from "node:buffer";
 
 const UA = "ScriptonyAppwrite/1.0";
 
@@ -22,7 +23,9 @@ export type OllamaShowResult =
   | { ok: false; status: number; error: string };
 
 function coercePositiveInt(v: unknown): number | undefined {
-  if (typeof v === "number" && Number.isFinite(v) && v > 0) return Math.floor(v);
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+    return Math.floor(v);
+  }
   if (typeof v === "string") {
     const n = Number(v.trim());
     if (Number.isFinite(n) && n > 0) return Math.floor(n);
@@ -33,7 +36,10 @@ function coercePositiveInt(v: unknown): number | undefined {
 
 function keyLooksLikeContextLength(k: string): boolean {
   const x = k.toLowerCase();
-  return x.includes("context_length") || (x.includes("context") && x.includes("length"));
+  return (
+    x.includes("context_length") ||
+    (x.includes("context") && x.includes("length"))
+  );
 }
 
 /**
@@ -91,12 +97,14 @@ function parseNumCtxFromText(text: string | undefined): number | undefined {
 /**
  * Best-effort context length from Ollama /api/show JSON (architecture-specific keys, parameters, modelfile).
  */
-export function contextLengthFromShowPayload(payload: OllamaShowPayload): number | undefined {
+export function contextLengthFromShowPayload(
+  payload: OllamaShowPayload,
+): number | undefined {
   const fromModelInfo = deepMaxContextLength(payload.model_info);
   if (fromModelInfo) return fromModelInfo;
 
   const fromParams = parseNumCtxFromText(
-    typeof payload.parameters === "string" ? payload.parameters : undefined
+    typeof payload.parameters === "string" ? payload.parameters : undefined,
   );
   if (fromParams) return fromParams;
 
@@ -104,7 +112,7 @@ export function contextLengthFromShowPayload(payload: OllamaShowPayload): number
   if (fromDetails) return fromDetails;
 
   const fromModelfile = parseNumCtxFromText(
-    typeof payload.modelfile === "string" ? payload.modelfile : undefined
+    typeof payload.modelfile === "string" ? payload.modelfile : undefined,
   );
   if (fromModelfile) return fromModelfile;
 
@@ -117,14 +125,18 @@ export function contextLengthFromShowPayload(payload: OllamaShowPayload): number
 function requestShow(
   baseUrl: string,
   modelName: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
 ): Promise<OllamaShowResult> {
   const urlStr = `${baseUrl.replace(/\/$/, "")}/api/show`;
   let u: URL;
   try {
     u = new URL(urlStr);
   } catch {
-    return Promise.resolve({ ok: false, status: 0, error: `Ungültige URL: ${urlStr}` });
+    return Promise.resolve({
+      ok: false,
+      status: 0,
+      error: `Ungültige URL: ${urlStr}`,
+    });
   }
 
   const lib = u.protocol === "https:" ? https : http;
@@ -171,7 +183,7 @@ function requestShow(
             });
           }
         });
-      }
+      },
     );
     req.on("timeout", () => {
       req.destroy();
@@ -190,7 +202,7 @@ function requestShow(
 export async function fetchOllamaShow(
   baseUrl: string,
   modelName: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
 ): Promise<OllamaShowResult> {
   return requestShow(baseUrl, modelName, headers);
 }

@@ -1,11 +1,15 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import { resolve, basename, dirname } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Client, Functions } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
-import { getMissingAppwriteServerEnvKeys, loadAppwriteCliEnv } from "./load-appwrite-cli-env.mjs";
+import {
+  getMissingAppwriteServerEnvKeys,
+  loadAppwriteCliEnv,
+} from "./load-appwrite-cli-env.mjs";
+import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FUNCTIONS_ROOT = resolve(__dirname, "..");
@@ -15,7 +19,7 @@ function printUsage() {
     "Usage: node functions/scripts/deploy-appwrite-function.mjs " +
       "--function-id <id> --source-dir <dir> --entrypoint <file> " +
       "[--commands <commands>] [--timeout <seconds>] [--poll-ms <ms>] [--wait-ms <ms>] " +
-      "[--sync-default-server-env] [--create-if-missing] [--runtime <runtime>]"
+      "[--sync-default-server-env] [--create-if-missing] [--runtime <runtime>]",
   );
 }
 
@@ -77,10 +81,19 @@ function tarDirectory(sourceDir, archivePath) {
   }
 }
 
-async function waitForDeployment(functions, functionId, deploymentId, pollMs, waitMs) {
+async function waitForDeployment(
+  functions,
+  functionId,
+  deploymentId,
+  pollMs,
+  waitMs,
+) {
   const startedAt = Date.now();
   while (true) {
-    const deployment = await functions.getDeployment({ functionId, deploymentId });
+    const deployment = await functions.getDeployment({
+      functionId,
+      deploymentId,
+    });
     const status = String(deployment.status || "");
     if (status === "ready") {
       return deployment;
@@ -109,7 +122,13 @@ async function maybeUpdateTimeout(functions, functionId, timeoutSeconds) {
   console.log(`Timeout updated to ${timeoutSeconds}s.`);
 }
 
-async function ensureFunctionExists(functions, functionId, entrypoint, commands, runtime) {
+async function ensureFunctionExists(
+  functions,
+  functionId,
+  entrypoint,
+  commands,
+  runtime,
+) {
   try {
     return await functions.get({ functionId });
   } catch (error) {
@@ -138,7 +157,9 @@ async function syncDefaultServerEnv(functions, functionId) {
   ];
 
   const current = await functions.listVariables({ functionId });
-  const currentByKey = new Map((current.variables || []).map((entry) => [entry.key, entry]));
+  const currentByKey = new Map(
+    (current.variables || []).map((entry) => [entry.key, entry]),
+  );
 
   for (const item of desired) {
     const value = process.env[item.key]?.trim();
@@ -186,8 +207,12 @@ async function main() {
 
   const absoluteSourceDir = resolve(FUNCTIONS_ROOT, sourceDir);
   const absoluteEntrypoint = resolve(absoluteSourceDir, entrypoint);
-  if (!existsSync(absoluteSourceDir)) fail(`source directory not found: ${absoluteSourceDir}`);
-  if (!existsSync(absoluteEntrypoint)) fail(`entrypoint not found: ${absoluteEntrypoint}`);
+  if (!existsSync(absoluteSourceDir)) {
+    fail(`source directory not found: ${absoluteSourceDir}`);
+  }
+  if (!existsSync(absoluteEntrypoint)) {
+    fail(`entrypoint not found: ${absoluteEntrypoint}`);
+  }
 
   loadAppwriteCliEnv();
   const missingEnv = getMissingAppwriteServerEnvKeys();
@@ -211,7 +236,9 @@ async function main() {
         functionId,
         entrypoint,
         args.commands ?? "",
-        args.runtime?.trim() || process.env.APPWRITE_FUNCTIONS_RUNTIME?.trim() || "node-16.0"
+        args.runtime?.trim() ||
+          process.env.APPWRITE_FUNCTIONS_RUNTIME?.trim() ||
+          "node-16.0",
       );
     }
 
@@ -237,7 +264,7 @@ async function main() {
       functionId,
       deployment.$id,
       args.pollMs,
-      args.waitMs
+      args.waitMs,
     );
 
     console.log(`Deployment ${readyDeployment.$id} is ready.`);

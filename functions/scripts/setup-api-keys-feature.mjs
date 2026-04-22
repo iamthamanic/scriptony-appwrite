@@ -10,11 +10,15 @@
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import process from "node:process";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 
 function run(script) {
-  execSync(`node ${path.join(dir, script)}`, { stdio: "inherit", env: process.env });
+  execSync(`node ${path.join(dir, script)}`, {
+    stdio: "inherit",
+    env: process.env,
+  });
 }
 
 run("ensure-api-keys-feature-attribute.mjs");

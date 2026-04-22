@@ -7,9 +7,14 @@ import { z } from "zod";
 const hexColorSchema = z
   .string()
   .trim()
-  .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, "Expected hex color");
+  .regex(
+    /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/,
+    "Expected hex color",
+  );
 
-const compactStringArraySchema = z.array(z.string().trim().min(1).max(255)).max(64);
+const compactStringArraySchema = z
+  .array(z.string().trim().min(1).max(255))
+  .max(64);
 const paletteArraySchema = z.array(hexColorSchema).max(32);
 const nullableTrimmedStringSchema = z.union([z.string(), z.null()]).optional();
 
@@ -69,11 +74,17 @@ export const applyStyleProfileBodySchema = z
   });
 
 export type StyleProfileConfig = z.infer<typeof styleProfileConfigSchema>;
-export type CreateStyleProfileBody = z.infer<typeof createStyleProfileBodySchema>;
-export type UpdateStyleProfileBody = z.infer<typeof updateStyleProfileBodySchema>;
+export type CreateStyleProfileBody = z.infer<
+  typeof createStyleProfileBodySchema
+>;
+export type UpdateStyleProfileBody = z.infer<
+  typeof updateStyleProfileBodySchema
+>;
 export type ApplyStyleProfileBody = z.infer<typeof applyStyleProfileBodySchema>;
 
-function normalizeNullableString(value: string | null | undefined): string | null | undefined {
+function normalizeNullableString(
+  value: string | null | undefined,
+): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   const trimmed = value.trim();
@@ -81,7 +92,7 @@ function normalizeNullableString(value: string | null | undefined): string | nul
 }
 
 export function normalizeStyleProfileCreateBody(
-  body: CreateStyleProfileBody
+  body: CreateStyleProfileBody,
 ): CreateStyleProfileBody {
   return {
     ...body,
@@ -91,7 +102,7 @@ export function normalizeStyleProfileCreateBody(
 }
 
 export function normalizeStyleProfileUpdateBody(
-  body: UpdateStyleProfileBody
+  body: UpdateStyleProfileBody,
 ): UpdateStyleProfileBody {
   return {
     ...body,
@@ -100,17 +111,22 @@ export function normalizeStyleProfileUpdateBody(
   };
 }
 
-export function normalizeApplyStyleProfileBody(
-  body: ApplyStyleProfileBody
-): { shotId: string; styleProfileId: string | null } {
-  const profileId = normalizeNullableString(body.styleProfileId ?? body.profileId);
+export function normalizeApplyStyleProfileBody(body: ApplyStyleProfileBody): {
+  shotId: string;
+  styleProfileId: string | null;
+} {
+  const profileId = normalizeNullableString(
+    body.styleProfileId ?? body.profileId,
+  );
   return {
     shotId: body.shotId.trim(),
     styleProfileId: profileId ?? null,
   };
 }
 
-export function serializeStyleProfileConfig(config: StyleProfileConfig): string {
+export function serializeStyleProfileConfig(
+  config: StyleProfileConfig,
+): string {
   const json = JSON.stringify(config);
   if (json.length > 10000) {
     throw new Error("config exceeds 10000 characters");

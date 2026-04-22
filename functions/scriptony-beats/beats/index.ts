@@ -15,7 +15,10 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../_shared/http";
-import { normalizeBeatInput, requireProjectAccess } from "../../_shared/scriptony";
+import {
+  normalizeBeatInput,
+  requireProjectAccess,
+} from "../../_shared/scriptony";
 
 function mapBeatForClient(row: Record<string, any>): Record<string, any> {
   return {
@@ -56,7 +59,11 @@ export default async function handler(
         return;
       }
 
-      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      const _project = await requireProjectAccess(
+        projectId,
+        bootstrap.user.id,
+        res,
+      );
       if (!_project) return;
 
       const data = await requestGraphql<{
@@ -107,7 +114,11 @@ export default async function handler(
         return;
       }
 
-      const _project = await requireProjectAccess(projectId, bootstrap.user.id, res);
+      const _project = await requireProjectAccess(
+        projectId,
+        bootstrap.user.id,
+        res,
+      );
       if (!_project) return;
 
       const created = await requestGraphql<{

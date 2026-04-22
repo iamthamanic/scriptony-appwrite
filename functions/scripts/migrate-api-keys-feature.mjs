@@ -1,4 +1,7 @@
-import { getMissingAppwriteServerEnvKeys, loadAppwriteCliEnv } from "./load-appwrite-cli-env.mjs";
+import {
+  getMissingAppwriteServerEnvKeys,
+  loadAppwriteCliEnv,
+} from "./load-appwrite-cli-env.mjs";
 
 loadAppwriteCliEnv();
 
@@ -16,6 +19,7 @@ loadAppwriteCliEnv();
  */
 
 import { Client, Databases, Query } from "node-appwrite";
+import process from "node:process";
 
 const missingEnv = getMissingAppwriteServerEnvKeys();
 if (missingEnv.length > 0) {
@@ -23,7 +27,9 @@ if (missingEnv.length > 0) {
   for (const line of missingEnv) {
     console.error(`  • ${line}`);
   }
-  console.error("  .env.local: VITE_APPWRITE_*; Appwrite key as APPWRITE_API_KEY or APPWRITE_APIKEY.");
+  console.error(
+    "  .env.local: VITE_APPWRITE_*; Appwrite key as APPWRITE_API_KEY or APPWRITE_APIKEY.",
+  );
   process.exit(1);
 }
 
@@ -33,7 +39,10 @@ const KEY = process.env.APPWRITE_API_KEY?.trim();
 const DB = process.env.AI_DATABASE_ID?.trim() || "scriptony_ai";
 const COL = "api_keys";
 
-const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT).setKey(KEY);
+const client = new Client()
+  .setEndpoint(ENDPOINT)
+  .setProject(PROJECT)
+  .setKey(KEY);
 const databases = new Databases(client);
 
 const res = await databases.listDocuments(DB, COL, [Query.limit(5000)]);
@@ -43,7 +52,9 @@ for (const doc of res.documents) {
   if (f !== undefined && f !== null && String(f).trim() !== "") {
     continue;
   }
-  await databases.updateDocument(DB, COL, doc.$id, { feature: "assistant_chat" });
+  await databases.updateDocument(DB, COL, doc.$id, {
+    feature: "assistant_chat",
+  });
   console.log("updated", doc.$id, "provider=", doc.provider);
   n++;
 }

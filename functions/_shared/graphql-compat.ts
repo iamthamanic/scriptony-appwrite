@@ -18,7 +18,7 @@ export function extractOperationName(query: string): string {
 
 export async function requestGraphql<T>(
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
 ): Promise<T> {
   const name = extractOperationName(query);
   const result = await dispatchGraphqlOperation(name, variables);

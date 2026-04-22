@@ -7,6 +7,8 @@ import { requireAuthenticatedUser } from "./auth";
 
 export type { AuthSource, AuthUser } from "./auth";
 
-export async function requireImageFunctionUser(authSource?: import("./auth").AuthSource) {
+export async function requireImageFunctionUser(
+  authSource?: import("./auth").AuthSource,
+) {
   return requireAuthenticatedUser(authSource);
 }

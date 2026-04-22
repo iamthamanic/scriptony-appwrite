@@ -351,9 +351,9 @@ run_refactor_orchestration() {
 
   mkdir -p "$REFACTOR_DIR"
   local latest_review=""
-  latest_review="$(find "$REVIEWS_DIR" -maxdepth 1 -name 'review-full-*.md' -print0 | sort -zr | head -zn1 | tr -d '\0' || true)"
+  latest_review="$(find "$REVIEWS_DIR" -maxdepth 1 -name 'review-full-*.md' -not -type d 2>/dev/null | sort -r | head -1 || true)"
   if [[ -z "$latest_review" ]]; then
-    latest_review="$(find "$REVIEWS_DIR" -maxdepth 1 -name 'review-*.md' -print0 | sort -zr | head -zn1 | tr -d '\0' || true)"
+    latest_review="$(find "$REVIEWS_DIR" -maxdepth 1 -name 'review-*.md' -not -type d 2>/dev/null | sort -r | head -1 || true)"
   fi
   if [[ -z "$latest_review" ]]; then
     echo "Refactor orchestration: no review file found under $REVIEWS_DIR; skipping." >&2

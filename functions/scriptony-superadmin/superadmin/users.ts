@@ -3,10 +3,19 @@
  */
 
 import { requestGraphql } from "../../_shared/graphql-compat";
-import { sendJson, sendMethodNotAllowed, sendServerError, type RequestLike, type ResponseLike } from "../../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+} from "../../_shared/http";
 import { requireSuperadmin } from "../_shared";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
     const bootstrap = await requireSuperadmin(req, res);
     if (!bootstrap) {
@@ -31,7 +40,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             avatar_url
           }
         }
-      `
+      `,
     );
 
     sendJson(res, 200, {

@@ -1,4 +1,7 @@
-import { getMissingAppwriteServerEnvKeys, loadAppwriteCliEnv } from "./load-appwrite-cli-env.mjs";
+import {
+  getMissingAppwriteServerEnvKeys,
+  loadAppwriteCliEnv,
+} from "./load-appwrite-cli-env.mjs";
 
 loadAppwriteCliEnv();
 
@@ -16,6 +19,7 @@ loadAppwriteCliEnv();
  */
 
 import { Client, Databases } from "node-appwrite";
+import process from "node:process";
 
 const missingEnv = getMissingAppwriteServerEnvKeys();
 if (missingEnv.length > 0) {
@@ -24,7 +28,7 @@ if (missingEnv.length > 0) {
     console.error(`  • ${line}`);
   }
   console.error(
-    "  Repo-Root .env.local: VITE_APPWRITE_* for endpoint/project; API key as APPWRITE_API_KEY or APPWRITE_APIKEY."
+    "  Repo-Root .env.local: VITE_APPWRITE_* for endpoint/project; API key as APPWRITE_API_KEY or APPWRITE_APIKEY.",
   );
   process.exit(1);
 }
@@ -36,12 +40,18 @@ const DB = process.env.AI_DATABASE_ID?.trim() || "scriptony_ai";
 const COL = "api_keys";
 const ATTR_KEY = "feature";
 
-const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT).setKey(KEY);
+const client = new Client()
+  .setEndpoint(ENDPOINT)
+  .setProject(PROJECT)
+  .setKey(KEY);
 const databases = new Databases(client);
 
 async function waitForAttributeAvailable(maxAttempts = 90, delayMs = 2000) {
   for (let i = 0; i < maxAttempts; i++) {
-    const list = await databases.listAttributes({ databaseId: DB, collectionId: COL });
+    const list = await databases.listAttributes({
+      databaseId: DB,
+      collectionId: COL,
+    });
     const attr = list.attributes.find((a) => a.key === ATTR_KEY);
     if (!attr) {
       await new Promise((r) => setTimeout(r, delayMs));
@@ -53,13 +63,18 @@ async function waitForAttributeAvailable(maxAttempts = 90, delayMs = 2000) {
     if (attr.status === "failed") {
       throw new Error(attr.error || `Attribute ${ATTR_KEY} failed to build`);
     }
-    console.log(`… attribute ${ATTR_KEY} status=${attr.status} (${i + 1}/${maxAttempts})`);
+    console.log(
+      `… attribute ${ATTR_KEY} status=${attr.status} (${i + 1}/${maxAttempts})`,
+    );
     await new Promise((r) => setTimeout(r, delayMs));
   }
   throw new Error(`Timeout: attribute ${ATTR_KEY} did not become available`);
 }
 
-const list = await databases.listAttributes({ databaseId: DB, collectionId: COL });
+const list = await databases.listAttributes({
+  databaseId: DB,
+  collectionId: COL,
+});
 const exists = list.attributes.some((a) => a.key === ATTR_KEY);
 
 if (!exists) {

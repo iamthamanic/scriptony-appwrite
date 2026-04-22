@@ -10,11 +10,19 @@
 import { Client, Databases, IndexType } from "node-appwrite";
 import "../tools/appwrite-env-load.mjs";
 import { getAppwriteToolCredentials } from "../tools/_appwrite-tool-creds.mjs";
+import process from "node:process";
 
-const { endpoint: ENDPOINT, projectId: PROJECT, apiKey: KEY } = getAppwriteToolCredentials();
+const {
+  endpoint: ENDPOINT,
+  projectId: PROJECT,
+  apiKey: KEY,
+} = getAppwriteToolCredentials();
 const DB_ID = process.env.AI_DATABASE_ID?.trim() || "scriptony_ai";
 
-const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT).setKey(KEY);
+const client = new Client()
+  .setEndpoint(ENDPOINT)
+  .setProject(PROJECT)
+  .setKey(KEY);
 const databases = new Databases(client);
 
 function isStatus(error, code) {
@@ -45,12 +53,22 @@ async function ensureCollection(collectionId, name) {
   }
 }
 
-async function waitAttributesAvailable(collectionId, keys, maxAttempts = 90, delayMs = 2000) {
+async function waitAttributesAvailable(
+  collectionId,
+  keys,
+  maxAttempts = 90,
+  delayMs = 2000,
+) {
   const want = new Set(keys);
   for (let i = 0; i < maxAttempts; i += 1) {
-    const list = await databases.listAttributes({ databaseId: DB_ID, collectionId });
+    const list = await databases.listAttributes({
+      databaseId: DB_ID,
+      collectionId,
+    });
     const attrs = list.attributes.filter((entry) => want.has(entry.key));
-    const allThere = keys.every((key) => attrs.some((entry) => entry.key === key));
+    const allThere = keys.every((key) =>
+      attrs.some((entry) => entry.key === key)
+    );
     if (!allThere) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       continue;
@@ -58,16 +76,30 @@ async function waitAttributesAvailable(collectionId, keys, maxAttempts = 90, del
     const pending = attrs.filter((entry) => entry.status !== "available");
     if (pending.length === 0) return;
     const failed = attrs.find((entry) => entry.status === "failed");
-    if (failed) throw new Error(`Attribute ${failed.key} failed: ${failed.error || "unknown"}`);
+    if (failed) {
+      throw new Error(
+        `Attribute ${failed.key} failed: ${failed.error || "unknown"}`,
+      );
+    }
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  throw new Error(`Timeout: attributes on ${collectionId} did not become available`);
+  throw new Error(
+    `Timeout: attributes on ${collectionId} did not become available`,
+  );
 }
 
-async function waitIndexesAvailable(collectionId, keys, maxAttempts = 90, delayMs = 2000) {
+async function waitIndexesAvailable(
+  collectionId,
+  keys,
+  maxAttempts = 90,
+  delayMs = 2000,
+) {
   const want = new Set(keys);
   for (let i = 0; i < maxAttempts; i += 1) {
-    const list = await databases.listIndexes({ databaseId: DB_ID, collectionId });
+    const list = await databases.listIndexes({
+      databaseId: DB_ID,
+      collectionId,
+    });
     const indexes = list.indexes.filter((entry) => want.has(entry.key));
     if (indexes.length < keys.length) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -75,60 +107,81 @@ async function waitIndexesAvailable(collectionId, keys, maxAttempts = 90, delayM
     }
     if (indexes.every((entry) => entry.status === "available")) return;
     const failed = indexes.find((entry) => entry.status === "failed");
-    if (failed) throw new Error(`Index ${failed.key} failed: ${failed.error || "unknown"}`);
+    if (failed) {
+      throw new Error(
+        `Index ${failed.key} failed: ${failed.error || "unknown"}`,
+      );
+    }
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  throw new Error(`Timeout: indexes on ${collectionId} did not become available`);
+  throw new Error(
+    `Timeout: indexes on ${collectionId} did not become available`,
+  );
 }
 
 async function ensureAttribute(collectionId, key, factory) {
-  const list = await databases.listAttributes({ databaseId: DB_ID, collectionId });
+  const list = await databases.listAttributes({
+    databaseId: DB_ID,
+    collectionId,
+  });
   if (list.attributes.some((entry) => entry.key === key)) return;
   await factory();
 }
 
 async function ensureStringAttribute(collectionId, key, size, required) {
-  await ensureAttribute(collectionId, key, () =>
-    databases.createStringAttribute({
-      databaseId: DB_ID,
-      collectionId,
-      key,
-      size,
-      required,
-    })
+  await ensureAttribute(
+    collectionId,
+    key,
+    () =>
+      databases.createStringAttribute({
+        databaseId: DB_ID,
+        collectionId,
+        key,
+        size,
+        required,
+      }),
   );
 }
 
 async function ensureIntegerAttribute(collectionId, key, required) {
-  await ensureAttribute(collectionId, key, () =>
-    databases.createIntegerAttribute({
-      databaseId: DB_ID,
-      collectionId,
-      key,
-      required,
-    })
+  await ensureAttribute(
+    collectionId,
+    key,
+    () =>
+      databases.createIntegerAttribute({
+        databaseId: DB_ID,
+        collectionId,
+        key,
+        required,
+      }),
   );
 }
 
 async function ensureFloatAttribute(collectionId, key, required) {
-  await ensureAttribute(collectionId, key, () =>
-    databases.createFloatAttribute({
-      databaseId: DB_ID,
-      collectionId,
-      key,
-      required,
-    })
+  await ensureAttribute(
+    collectionId,
+    key,
+    () =>
+      databases.createFloatAttribute({
+        databaseId: DB_ID,
+        collectionId,
+        key,
+        required,
+      }),
   );
 }
 
 async function ensureBooleanAttribute(collectionId, key, required) {
-  await ensureAttribute(collectionId, key, () =>
-    databases.createBooleanAttribute({
-      databaseId: DB_ID,
-      collectionId,
-      key,
-      required,
-    })
+  await ensureAttribute(
+    collectionId,
+    key,
+    () =>
+      databases.createBooleanAttribute({
+        databaseId: DB_ID,
+        collectionId,
+        key,
+        required,
+      }),
   );
 }
 
@@ -151,9 +204,18 @@ async function setupApiKeys() {
   await ensureStringAttribute(col, "feature", 128, false);
   await ensureStringAttribute(col, "provider", 64, true);
   await ensureStringAttribute(col, "api_key", 8192, true);
-  await waitAttributesAvailable(col, ["user_id", "feature", "provider", "api_key"]);
+  await waitAttributesAvailable(col, [
+    "user_id",
+    "feature",
+    "provider",
+    "api_key",
+  ]);
   await ensureIndex(col, "idx_user_id", IndexType.Key, ["user_id"]);
-  await ensureIndex(col, "idx_user_feature_provider", IndexType.Unique, ["user_id", "feature", "provider"]);
+  await ensureIndex(col, "idx_user_feature_provider", IndexType.Unique, [
+    "user_id",
+    "feature",
+    "provider",
+  ]);
   await waitIndexesAvailable(col, ["idx_user_id", "idx_user_feature_provider"]);
 }
 
@@ -165,9 +227,18 @@ async function setupFeatureConfig() {
   await ensureStringAttribute(col, "provider", 64, true);
   await ensureStringAttribute(col, "model", 256, true);
   await ensureStringAttribute(col, "voice", 128, false);
-  await waitAttributesAvailable(col, ["user_id", "feature", "provider", "model", "voice"]);
+  await waitAttributesAvailable(col, [
+    "user_id",
+    "feature",
+    "provider",
+    "model",
+    "voice",
+  ]);
   await ensureIndex(col, "idx_fc_user", IndexType.Key, ["user_id"]);
-  await ensureIndex(col, "idx_fc_user_feature", IndexType.Unique, ["user_id", "feature"]);
+  await ensureIndex(col, "idx_fc_user_feature", IndexType.Unique, [
+    "user_id",
+    "feature",
+  ]);
   await waitIndexesAvailable(col, ["idx_fc_user", "idx_fc_user_feature"]);
 }
 
