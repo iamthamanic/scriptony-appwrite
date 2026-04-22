@@ -33,6 +33,7 @@ import { toast } from "sonner@2.0.3";
 import { ChevronDown, ChevronUp, Loader2, Pin, Trash2 } from "lucide-react";
 import { useStyleGuideJob } from "../../hooks/useStyleGuideJob";
 import { createReferenceWithRetry } from "../../lib/api/style-guide-retry-api";
+import { rasterFileToWebpUnderMaxBytes } from "../../lib/image-upload-prep/webp-budget";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -119,7 +120,14 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
 
     if (kind === "image") {
       if (file) {
-        const b64 = await fileToBase64(file);
+        // Komprimiere Bild zu WebP vor Upload
+        toast.info("Bild wird komprimiert...");
+        const compressedFile = await rasterFileToWebpUnderMaxBytes(
+          file,
+          2 * 1024 * 1024,
+        ); // 2MB limit
+        const b64 = await fileToBase64(compressedFile);
+
         result = await createReferenceWithRetry(
           projectId,
           {
@@ -128,8 +136,8 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
             caption,
             tags,
             fileBase64: b64,
-            fileName: file.name,
-            mimeType: file.type || "image/jpeg",
+            fileName: compressedFile.name,
+            mimeType: compressedFile.type || "image/webp",
           },
           (status) => {
             if (status === "uploading") {
