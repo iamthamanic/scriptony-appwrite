@@ -358,7 +358,9 @@ export async function setProjectInspirations(
   }
 }
 
-export async function deleteProjectInspirations(projectId: string): Promise<void> {
+export async function deleteProjectInspirations(
+  projectId: string,
+): Promise<void> {
   await requestGraphql(
     `
       mutation DeleteProjectInspirations($projectId: uuid!) {

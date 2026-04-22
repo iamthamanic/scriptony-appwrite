@@ -1,6 +1,6 @@
 /**
  * Style Guide API with Job Queue fallback
- * 
+ *
  * First tries direct API call (fast operations).
  * Falls back to async job queue for slow operations (image upload, etc.)
  * to avoid 408 timeouts.

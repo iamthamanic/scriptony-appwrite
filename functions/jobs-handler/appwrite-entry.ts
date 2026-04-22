@@ -1,7 +1,7 @@
 /**
  * Jobs Handler - Central entry point for all async job operations
  * Replaces direct function calls for long-running operations
- * 
+ *
  * Endpoints:
  * POST /v1/jobs/:functionName - Create new job
  * GET  /v1/jobs/:jobId/status  - Check job status
@@ -17,12 +17,15 @@ import type { Context } from "npm:hono";
 const app = new Hono();
 
 // CORS for all origins in dev
-app.use("*", cors({
-  origin: "*",
-  allowMethods: ["GET", "POST", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-  maxAge: 86400,
-}));
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400,
+  }),
+);
 
 // Health check
 app.get("/health", (c: Context) => {
@@ -38,10 +41,10 @@ app.get("/health", (c: Context) => {
 app.post("/v1/jobs/:functionName", async (c: Context) => {
   const functionName = c.req.param("functionName");
   const payload = await c.req.json().catch(() => ({}));
-  
+
   // Generate job ID
   const jobId = crypto.randomUUID();
-  
+
   // Create job entry (pending status)
   const job = await jobService.createJob({
     functionName,
@@ -69,7 +72,7 @@ app.post("/v1/jobs/:functionName", async (c: Context) => {
 app.get("/v1/jobs/:jobId/status", async (c: Context) => {
   const jobId = c.req.param("jobId");
   const status = await getJobStatus(jobId);
-  
+
   if (!status) {
     return c.json({ success: false, error: "Job not found" }, 404);
   }
@@ -87,7 +90,7 @@ app.get("/v1/jobs/:jobId/status", async (c: Context) => {
 app.get("/v1/jobs/:jobId/result", async (c: Context) => {
   const jobId = c.req.param("jobId");
   const status = await getJobStatus(jobId);
-  
+
   if (!status) {
     return c.json({ success: false, error: "Job not found" }, 404);
   }
@@ -120,7 +123,7 @@ app.get("/v1/jobs/:jobId/result", async (c: Context) => {
 app.post("/v1/jobs/cleanup", async (c: Context) => {
   const body = await c.req.json().catch(() => ({ hours: 24 }));
   const deleted = await jobService.cleanupOldJobs(body.hours || 24);
-  
+
   return c.json({
     success: true,
     deleted,
@@ -135,20 +138,20 @@ app.post("/v1/jobs/cleanup", async (c: Context) => {
 async function triggerFunctionExecution(
   functionName: string,
   jobId: string,
-  payload: unknown
+  payload: unknown,
 ): Promise<void> {
   // In production, this could:
   // 1. Call the specific function directly via HTTP
   // 2. Use Appwrite's executeFunction
   // 3. Queue in Redis/SQS for worker processing
-  
-  const endpoint = Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") || 
-                   Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT") || 
-                   "http://appwrite/v1";
-  
+
+  const endpoint = Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
+    Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT") ||
+    "http://appwrite/v1";
+
   // Build the execution URL
   const execUrl = `${endpoint}/functions/scriptony-${functionName}/executions`;
-  
+
   try {
     const response = await fetch(execUrl, {
       method: "POST",
@@ -164,12 +167,21 @@ async function triggerFunctionExecution(
     });
 
     if (!response.ok) {
-      console.error(`Failed to trigger function ${functionName}:`, await response.text());
-      await jobService.failJob(jobId, `Failed to trigger function: ${response.status}`);
+      console.error(
+        `Failed to trigger function ${functionName}:`,
+        await response.text(),
+      );
+      await jobService.failJob(
+        jobId,
+        `Failed to trigger function: ${response.status}`,
+      );
     }
   } catch (error) {
     console.error(`Error triggering function ${functionName}:`, error);
-    await jobService.failJob(jobId, error instanceof Error ? error.message : String(error));
+    await jobService.failJob(
+      jobId,
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }
 

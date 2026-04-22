@@ -3,7 +3,7 @@
  * Functions call these to report progress/completion when running as jobs
  */
 
-import { getDatabases, dbId } from "../appwrite-db";
+import { dbId, getDatabases } from "../appwrite-db";
 
 const DATABASE_ID = dbId();
 const JOBS_COLLECTION = "jobs";
@@ -20,13 +20,13 @@ interface JobContext {
  */
 export function extractJobContext(payload: unknown): JobContext | null {
   if (!payload || typeof payload !== "object") return null;
-  
+
   const p = payload as Record<string, unknown>;
   const jobId = p.__jobId as string | undefined;
   const userId = p.__userId as string | undefined;
-  
+
   if (!jobId) return null;
-  
+
   return {
     jobId,
     userId: userId || "",
@@ -37,7 +37,9 @@ export function extractJobContext(payload: unknown): JobContext | null {
 /**
  * Strip internal job fields from payload before processing
  */
-export function stripJobFields(payload: Record<string, unknown>): Record<string, unknown> {
+export function stripJobFields(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
   const { __jobId, __userId, ...rest } = payload;
   return rest;
 }
@@ -47,7 +49,7 @@ export function stripJobFields(payload: Record<string, unknown>): Record<string,
  */
 export async function reportJobProgress(
   jobId: string,
-  progress: number
+  progress: number,
 ): Promise<void> {
   try {
     const db = getDatabases();
@@ -65,7 +67,7 @@ export async function reportJobProgress(
  */
 export async function completeJob<T>(
   jobId: string,
-  result: T
+  result: T,
 ): Promise<void> {
   try {
     const db = getDatabases();
@@ -86,7 +88,7 @@ export async function completeJob<T>(
  */
 export async function failJob(
   jobId: string,
-  error: string
+  error: string,
 ): Promise<void> {
   try {
     const db = getDatabases();
@@ -107,7 +109,7 @@ export async function failJob(
  */
 export async function wrapWithJobReporting<T>(
   context: JobContext | null,
-  operation: (reportProgress: (p: number) => void) => Promise<T>
+  operation: (reportProgress: (p: number) => void) => Promise<T>,
 ): Promise<T> {
   if (!context?.isJob) {
     // Not running as job, just execute
@@ -117,14 +119,14 @@ export async function wrapWithJobReporting<T>(
   try {
     // Mark as processing
     await reportJobProgress(context.jobId, 0);
-    
+
     const result = await operation(async (progress) => {
       await reportJobProgress(context.jobId, progress);
     });
-    
+
     // Mark as complete
     await completeJob(context.jobId, result);
-    
+
     return result;
   } catch (error) {
     // Mark as failed

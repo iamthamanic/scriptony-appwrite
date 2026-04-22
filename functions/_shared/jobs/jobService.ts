@@ -29,7 +29,7 @@ export class JobService {
    */
   async createJob(input: CreateJobInput): Promise<Job> {
     const jobId = input.jobId || ID.unique();
-    
+
     const job = await this.db.createDocument(
       DATABASE_ID,
       JOBS_COLLECTION_ID,
@@ -41,7 +41,7 @@ export class JobService {
         progress: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
 
     return this.mapToJob(job);
@@ -59,7 +59,7 @@ export class JobService {
         status: "processing",
         startedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
   }
 
@@ -74,7 +74,7 @@ export class JobService {
       {
         progress: Math.min(100, Math.max(0, progress)),
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
   }
 
@@ -92,7 +92,7 @@ export class JobService {
         progress: 100,
         completedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
   }
 
@@ -109,7 +109,7 @@ export class JobService {
         error: error.slice(0, 2000), // Limit error size
         completedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      },
     );
   }
 
@@ -121,7 +121,7 @@ export class JobService {
       const doc = await this.db.getDocument(
         DATABASE_ID,
         JOBS_COLLECTION_ID,
-        jobId
+        jobId,
       );
       return this.mapToJob(doc);
     } catch {
@@ -135,7 +135,7 @@ export class JobService {
   async cleanupOldJobs(olderThanHours: number = 24): Promise<number> {
     const cutoff = new Date();
     cutoff.setHours(cutoff.getHours() - olderThanHours);
-    
+
     const oldJobs = await this.db.listDocuments(
       DATABASE_ID,
       JOBS_COLLECTION_ID,
@@ -143,7 +143,7 @@ export class JobService {
         Query.equal("status", ["completed", "failed"]),
         Query.lessThan("updatedAt", cutoff.toISOString()),
         Query.limit(100),
-      ]
+      ],
     );
 
     let deleted = 0;

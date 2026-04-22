@@ -5,18 +5,18 @@
 
 export type {
   Job,
-  JobStatus,
   JobCreateRequest,
+  JobStatus,
   JobStatusResponse,
 } from "./types.ts";
 
-export { runAsJob, getJobStatus } from "./jobRunner.ts";
+export { getJobStatus, runAsJob } from "./jobRunner.ts";
 
 export {
-  extractJobContext,
-  stripJobFields,
-  reportJobProgress,
   completeJob,
+  extractJobContext,
   failJob,
+  reportJobProgress,
+  stripJobFields,
   wrapWithJobReporting,
 } from "./jobWorker.ts";

@@ -1,0 +1,13 @@
+{
+  "imports": {
+    "hono": "https://deno.land/x/hono@v3.12.0/mod.ts",
+    "hono/cors": "https://deno.land/x/hono@v3.12.0/middleware/cors/index.ts",
+    "node-appwrite": "npm:node-appwrite@14.2.0",
+    "../_shared/": "../_shared/"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true
+  }
+}

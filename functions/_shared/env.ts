@@ -3,7 +3,7 @@
  *
  * Reads `process.env` only here and in thin wrappers — keeps handlers free of duplicated
  * `process.env` access (DRY). Values like `APPWRITE_API_KEY` must never be imported from frontend code.
- * 
+ *
  * PRIORITY (highest to lowest):
  * 1. SCRIPTONY_APPWRITE_API_ENDPOINT - Custom override for external access (bypasses injected values)
  * 2. APPWRITE_FUNCTION_API_ENDPOINT - Injected by Appwrite for in-cluster calls
@@ -33,7 +33,7 @@ export function getRequiredEnv(name: string): string {
 
 /**
  * Server-to-server Appwrite endpoint.
- * 
+ *
  * CRITICAL: SCRIPTONY_APPWRITE_API_ENDPOINT must be set for external function domains
  * to override the injected APPWRITE_FUNCTION_API_ENDPOINT which points to internal
  * Docker network (http://appwrite/v1) that is not reachable from outside.
@@ -44,25 +44,25 @@ export function getAppwriteEndpoint(): string {
   if (customEndpoint) {
     return trimTrailingSlash(customEndpoint);
   }
-  
+
   // PRIORITY 2: Appwrite-injected endpoint for in-cluster calls (internal Docker network)
   const functionApiEndpoint = getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT");
   if (functionApiEndpoint) {
     return trimTrailingSlash(functionApiEndpoint);
   }
-  
+
   // PRIORITY 3: Public endpoint (fallback for manual configuration)
   const publicEndpoint = getOptionalEnv("APPWRITE_ENDPOINT");
   if (publicEndpoint) {
     return trimTrailingSlash(publicEndpoint);
   }
-  
+
   // PRIORITY 4: Alternative injected endpoint
   const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
   if (functionEndpoint) {
     return trimTrailingSlash(functionEndpoint);
   }
-  
+
   return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
 }
 

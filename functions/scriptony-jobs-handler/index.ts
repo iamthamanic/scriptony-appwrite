@@ -7,18 +7,18 @@ import { requireUserBootstrap } from "../_shared/auth";
 import {
   C,
   createDocument,
-  getDocument,
-  updateDocument,
-  listDocumentsFull,
-  deleteDocument,
   dbId,
+  deleteDocument,
+  getDocument,
+  listDocumentsFull,
+  updateDocument,
 } from "../_shared/appwrite-db";
 import {
   readJsonBody,
   type RequestLike,
   type ResponseLike,
-  sendJson,
   sendBadRequest,
+  sendJson,
   sendNotFound,
   sendServerError,
   sendUnauthorized,
@@ -61,7 +61,7 @@ interface JobCreateRequest {
 async function createJobEntry(
   functionName: string,
   payload: unknown,
-  userId: string
+  userId: string,
 ): Promise<Job> {
   const now = new Date().toISOString();
 
@@ -100,7 +100,9 @@ async function getJobById(jobId: string): Promise<Job | null> {
       functionName: doc.function_name as string,
       status: doc.status as JobStatus,
       payload: JSON.parse((doc.payload_json as string) || "{}"),
-      result: doc.result_json ? JSON.parse(doc.result_json as string) : undefined,
+      result: doc.result_json
+        ? JSON.parse(doc.result_json as string)
+        : undefined,
       error: doc.error as string | undefined,
       progress: doc.progress as number | undefined,
       createdAt: doc.created_at as string,
@@ -116,10 +118,9 @@ async function triggerFunctionExecution(
   functionId: string,
   jobId: string,
   payload: unknown,
-  userId: string
+  userId: string,
 ): Promise<void> {
-  const endpoint =
-    Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
+  const endpoint = Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
     Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT") ||
     "http://appwrite/v1";
   const apiKey = Deno.env.get("APPWRITE_API_KEY");
@@ -146,7 +147,7 @@ async function triggerFunctionExecution(
           ...payload,
         }),
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -158,7 +159,7 @@ async function triggerFunctionExecution(
 async function handleCreateJob(
   req: RequestLike,
   res: ResponseLike,
-  functionName: string
+  functionName: string,
 ): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
@@ -175,10 +176,19 @@ async function handleCreateJob(
   const body = (await readJsonBody(req)) as JobCreateRequest;
 
   try {
-    const job = await createJobEntry(functionName, body.payload, bootstrap.user.id);
+    const job = await createJobEntry(
+      functionName,
+      body.payload,
+      bootstrap.user.id,
+    );
 
-    triggerFunctionExecution(config.functionId, job.$id, body.payload, bootstrap.user.id).catch(
-      console.error
+    triggerFunctionExecution(
+      config.functionId,
+      job.$id,
+      body.payload,
+      bootstrap.user.id,
+    ).catch(
+      console.error,
     );
 
     sendJson(res, 201, {
@@ -195,7 +205,7 @@ async function handleCreateJob(
 async function handleGetStatus(
   req: RequestLike,
   res: ResponseLike,
-  jobId: string
+  jobId: string,
 ): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
@@ -224,7 +234,7 @@ async function handleGetStatus(
 async function handleGetResult(
   req: RequestLike,
   res: ResponseLike,
-  jobId: string
+  jobId: string,
 ): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
@@ -264,7 +274,10 @@ async function handleGetResult(
   });
 }
 
-async function handleCleanup(req: RequestLike, res: ResponseLike): Promise<void> {
+async function handleCleanup(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -312,8 +325,7 @@ const HEALTH_DATA = {
 };
 
 async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
-  const pathname =
-    (typeof req?.path === "string" && req.path) ||
+  const pathname = (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string"
       ? new URL(req.url, "http://localhost").pathname
       : "/");

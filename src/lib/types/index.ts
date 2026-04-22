@@ -186,6 +186,110 @@ export interface Sequence {
   scenes?: Scene[];
 }
 
+// =============================================================================
+// Hörbuch/Hörspiel Audio Production Types
+// =============================================================================
+
+export type AudioTrackType = "dialog" | "narrator" | "music" | "sfx" | "atmo";
+
+export interface AudioTrack {
+  id: string;
+  sceneId: string;
+  projectId: string;
+  type: AudioTrackType;
+  content?: string; // Text für Dialog/Narrator
+  characterId?: string;
+  character?: Character; // Expanded
+
+  // Audio Datei
+  audioFileId?: string;
+  audioFileUrl?: string;
+  waveformData?: number[]; // Amplitude Array für Visualisierung
+  audioDuration?: number; // Gesamtlänge des Audio-Files
+
+  // Timing in der Szene
+  startTime: number; // Sekunden Offset
+  duration: number; // Sekunden
+  fadeIn: number;
+  fadeOut: number;
+
+  // TTS
+  ttsVoiceId?: string;
+  ttsSettings?: {
+    emotion?: string;
+    stability?: number;
+    style?: number;
+    speed?: number;
+  };
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordingSession {
+  id: string;
+  projectId: string;
+  sceneId: string;
+  title: string;
+  description?: string;
+  status:
+    | "preparing"
+    | "ready"
+    | "recording"
+    | "paused"
+    | "completed"
+    | "cancelled";
+  participants: RecordingParticipant[];
+
+  startedAt?: string;
+  endedAt?: string;
+  recordingUrl?: string;
+  recordingDuration?: number;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordingParticipant {
+  id: string;
+  sessionId: string;
+  characterId?: string;
+  userId?: string;
+  externalSpeakerName?: string;
+  externalSpeakerEmail?: string;
+  role: "speaker" | "director" | "technician" | "observer";
+  joinedAt?: string;
+  leftAt?: string;
+}
+
+export interface CharacterVoiceAssignment {
+  id: string;
+  projectId: string;
+  characterId: string;
+  voiceActorType: "human" | "tts";
+
+  // Für Human Voice Actor
+  voiceActorName?: string;
+  voiceActorContact?: string;
+  voiceActorNotes?: string;
+
+  // Für TTS
+  ttsProvider?: "openai" | "elevenlabs" | "google";
+  ttsVoiceId?: string;
+  ttsVoicePreset?: {
+    voice: string;
+    model?: string;
+    settings?: Record<string, number>;
+  };
+
+  // Samples
+  sampleAudioUrl?: string;
+  sampleText?: string;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ShotAudio {
   id: string;
   shotId: string;

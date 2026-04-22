@@ -17,8 +17,8 @@ import {
 import {
   hydrateProjectRow,
   hydrateProjectRows,
-  hydrateProjectWithInspirations,
   hydrateProjectsWithInspirations,
+  hydrateProjectWithInspirations,
   normalizeProjectInput,
   setProjectInspirations,
 } from "../../_shared/scriptony";

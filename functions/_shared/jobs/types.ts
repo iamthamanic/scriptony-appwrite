@@ -3,7 +3,12 @@
  * SOLID: Interface Segregation for long-running operations
  */
 
-export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+export type JobStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 export interface Job<T = unknown> {
   $id: string;

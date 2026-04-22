@@ -15,11 +15,14 @@ import type { JobStatusResponse } from "./types.ts";
 export async function runAsJob<TPayload, TResult>(
   functionName: string,
   payload: TPayload,
-  executor: (payload: TPayload, updateProgress: (p: number) => Promise<void>) => Promise<TResult>,
+  executor: (
+    payload: TPayload,
+    updateProgress: (p: number) => Promise<void>,
+  ) => Promise<TResult>,
   options?: {
     jobId?: string;
     timeoutMs?: number;
-  }
+  },
 ): Promise<{ jobId: string } & JobStatusResponse<TResult>> {
   // Step 1: Create job entry (immediate)
   const job = await jobService.createJob({
@@ -32,7 +35,7 @@ export async function runAsJob<TPayload, TResult>(
   const startExecution = async () => {
     try {
       await jobService.startJob(job.$id);
-      
+
       // Progress updater
       const updateProgress = async (progress: number) => {
         await jobService.updateProgress(job.$id, progress);
@@ -40,11 +43,13 @@ export async function runAsJob<TPayload, TResult>(
 
       // Execute the actual work
       const result = await executor(payload, updateProgress);
-      
+
       // Mark as complete
       await jobService.completeJob(job.$id, result);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       await jobService.failJob(job.$id, errorMessage);
     }
   };
@@ -66,10 +71,10 @@ export async function runAsJob<TPayload, TResult>(
  * Fast operation - always < 100ms
  */
 export async function getJobStatus<TResult>(
-  jobId: string
+  jobId: string,
 ): Promise<JobStatusResponse<TResult> | null> {
   const job = await jobService.getJob(jobId);
-  
+
   if (!job) return null;
 
   return {
