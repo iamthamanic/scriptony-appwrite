@@ -7144,8 +7144,14 @@ function ProjectDetail({
                     </div>
                     <Separator />
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Logline
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="text-xs text-muted-foreground">
+                          Logline
+                        </div>
+                        <ProjectFieldTooltipIcon
+                          field="logline"
+                          tooltipSide="left"
+                        />
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {editedLogline || "Keine Logline"}
@@ -7154,8 +7160,14 @@ function ProjectDetail({
                     <Separator />
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">
-                          Projekt Type
+                        <div className="flex items-center gap-1 mb-1">
+                          <div className="text-xs text-muted-foreground">
+                            Projekt Type
+                          </div>
+                          <ProjectFieldTooltipIcon
+                            field="projectType"
+                            tooltipSide="left"
+                          />
                         </div>
                         <div className="text-sm">
                           {(() => {
@@ -7165,8 +7177,14 @@ function ProjectDetail({
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">
-                          {editedType === "book" ? "Zielumfang" : "Dauer"}
+                        <div className="flex items-center gap-1 mb-1">
+                          <div className="text-xs text-muted-foreground">
+                            {editedType === "book" ? "Zielumfang" : "Dauer"}
+                          </div>
+                          <ProjectFieldTooltipIcon
+                            field="duration"
+                            tooltipSide="left"
+                          />
                         </div>
                         <div className="text-sm">
                           {editedType === "book"
@@ -7226,8 +7244,14 @@ function ProjectDetail({
                       </div>
                     ) : (
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">
-                          Narrative Structure
+                        <div className="flex items-center gap-1 mb-1">
+                          <div className="text-xs text-muted-foreground">
+                            Narrative Structure
+                          </div>
+                          <ProjectFieldTooltipIcon
+                            field="narrativeStructure"
+                            tooltipSide="left"
+                          />
                         </div>
                         <div className="text-sm">
                           {editedNarrativeStructure || "-"}
@@ -7238,8 +7262,14 @@ function ProjectDetail({
 
                     {/* Beat Template - Desktop Read-Only */}
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Beat Template
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="text-xs text-muted-foreground">
+                          Beat Template
+                        </div>
+                        <ProjectFieldTooltipIcon
+                          field="beatTemplate"
+                          tooltipSide="left"
+                        />
                       </div>
                       <div className="text-sm">
                         {editedBeatTemplate === "lite-7"
@@ -7267,8 +7297,14 @@ function ProjectDetail({
 
                     {/* World Link - Desktop Read-Only */}
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Verknüpfte Welt
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="text-xs text-muted-foreground">
+                          Verknüpfte Welt
+                        </div>
+                        <ProjectFieldTooltipIcon
+                          field="linkedWorld"
+                          tooltipSide="left"
+                        />
                       </div>
                       <div className="text-sm">
                         {editedLinkedWorldId !== "none"
