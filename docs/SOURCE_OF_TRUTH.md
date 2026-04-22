@@ -4,11 +4,11 @@ Human-oriented map for new contributors (German): [ENTWICKLER_HANDBUCH.md](ENTWI
 
 ## Production architecture
 
-| Layer | Source of truth |
-|--------|-----------------|
-| **Identity & Appwrite platform** | **Appwrite** (users, sessions, OAuth redirects) |
-| **Application data & uploads** | **Appwrite Databases + Storage**, accessed only from **deployed `functions/*`** (server API key) |
-| **Frontend** | **Vite** static build (`npm run build` → `build/`), e.g. Vercel or any static host |
+| Layer                            | Source of truth                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Identity & Appwrite platform** | **Appwrite** (users, sessions, OAuth redirects)                                                  |
+| **Application data & uploads**   | **Appwrite Databases + Storage**, accessed only from **deployed `functions/*`** (server API key) |
+| **Frontend**                     | **Vite** static build (`npm run build` → `build/`), e.g. Vercel or any static host               |
 
 The browser talks to:
 
@@ -17,13 +17,13 @@ The browser talks to:
 
 ## Repository map
 
-| Path | Role |
-|------|------|
-| **`functions/`** | HTTP handlers; shared GraphQL-shaped layer in `functions/_shared/` maps to Appwrite |
-| **`src/`** | SPA |
-| **`.env.local.example`** | Frontend env template |
-| **`docker-compose.yml`** | Local **Appwrite** stack (`include` → `infra/appwrite/`) |
-| **`docker-compose.legacy.yml`** | Optional Postgres + Lucia (`profile: local-dev`) |
+| Path                            | Role                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| **`functions/`**                | HTTP handlers; shared GraphQL-shaped layer in `functions/_shared/` maps to Appwrite |
+| **`src/`**                      | SPA                                                                                 |
+| **`.env.local.example`**        | Frontend env template                                                               |
+| **`docker-compose.yml`**        | Local **Appwrite** stack (`include` → `infra/appwrite/`)                            |
+| **`docker-compose.legacy.yml`** | Optional Postgres + Lucia (`profile: local-dev`)                                    |
 
 ## Frontend environment (build-time `VITE_*`)
 

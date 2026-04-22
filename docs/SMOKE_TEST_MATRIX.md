@@ -39,14 +39,14 @@ npm run smoke:user-flows -- --list
 
 ## Matrix
 
-| Flow ID | User Journey | Route | Function | Erwartung |
-| --- | --- | --- | --- | --- |
-| `auth_profile_read` | App-Start kann Profil laden | `/profile` | `scriptony-auth` | JSON mit `profile` |
-| `projects_list_read` | Projects-Seite laedt | `/projects` | `scriptony-projects` | JSON mit `projects[]` |
-| `worlds_list_read` | Worldbuilding-Seite laedt | `/worlds` | `scriptony-worldbuilding` | JSON mit `worlds[]` |
-| `assistant_settings_read` | Assistant kann Chat-Settings laden | `/ai/settings` | `scriptony-ai` | JSON mit `settings` |
-| `assistant_conversations_read` | Assistant kann Chat-Historie laden | `/ai/conversations` | `scriptony-ai` | JSON mit `conversations[]` |
-| `ai_integrations_read` | Settings > Integrations kann Provider- und Feature-Daten laden | `/settings` | `scriptony-ai` | JSON mit `providers[]` und `features` |
+| Flow ID                        | User Journey                                                   | Route               | Function                  | Erwartung                             |
+| ------------------------------ | -------------------------------------------------------------- | ------------------- | ------------------------- | ------------------------------------- |
+| `auth_profile_read`            | App-Start kann Profil laden                                    | `/profile`          | `scriptony-auth`          | JSON mit `profile`                    |
+| `projects_list_read`           | Projects-Seite laedt                                           | `/projects`         | `scriptony-projects`      | JSON mit `projects[]`                 |
+| `worlds_list_read`             | Worldbuilding-Seite laedt                                      | `/worlds`           | `scriptony-worldbuilding` | JSON mit `worlds[]`                   |
+| `assistant_settings_read`      | Assistant kann Chat-Settings laden                             | `/ai/settings`      | `scriptony-ai`            | JSON mit `settings`                   |
+| `assistant_conversations_read` | Assistant kann Chat-Historie laden                             | `/ai/conversations` | `scriptony-ai`            | JSON mit `conversations[]`            |
+| `ai_integrations_read`         | Settings > Integrations kann Provider- und Feature-Daten laden | `/settings`         | `scriptony-ai`            | JSON mit `providers[]` und `features` |
 
 ## Abgrenzung zu `verify:parity`
 

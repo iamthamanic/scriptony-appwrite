@@ -11,12 +11,12 @@ Dieses Dokument richtet sich an **neue Maintainer**: was das Repo tut, wie **Sel
 
 ## 1. Was Scriptony runtime ausmacht
 
-| Schicht | Technik | Wer konfiguriert |
-|--------|---------|------------------|
-| **SPA (Browser)** | Vite + React (`src/`) | Build-Zeit: `VITE_*` in `.env.local` |
-| **Identität / Appwrite-Plattform** | Appwrite SDK im Browser | `VITE_APPWRITE_*` → öffentlicher Endpoint + Projekt-ID (keine API-Keys im Client) |
-| **App-Daten & Storage** | Appwrite Databases/Storage | Nur **serverseitig** aus `functions/*` mit API-Key |
-| **HTTP-API der App** | Deployte Funktionen `scriptony-*` | Browser ruft eine **Basis-URL** + Funktionspfad auf (`src/lib/api-gateway.ts`) |
+| Schicht                            | Technik                           | Wer konfiguriert                                                                  |
+| ---------------------------------- | --------------------------------- | --------------------------------------------------------------------------------- |
+| **SPA (Browser)**                  | Vite + React (`src/`)             | Build-Zeit: `VITE_*` in `.env.local`                                              |
+| **Identität / Appwrite-Plattform** | Appwrite SDK im Browser           | `VITE_APPWRITE_*` → öffentlicher Endpoint + Projekt-ID (keine API-Keys im Client) |
+| **App-Daten & Storage**            | Appwrite Databases/Storage        | Nur **serverseitig** aus `functions/*` mit API-Key                                |
+| **HTTP-API der App**               | Deployte Funktionen `scriptony-*` | Browser ruft eine **Basis-URL** + Funktionspfad auf (`src/lib/api-gateway.ts`)    |
 
 Der Browser spricht **niemals** direkt mit einer „Scriptony-Datenbank“ — nur mit **Appwrite** (Auth/SDK) und mit den **deployten HTTP-Functions**.
 
@@ -70,7 +70,7 @@ Diese Begriffe sind hier **konkret** gemeint, nicht als Buzzwords.
 
 ### SOLID (angewandt)
 
-- **Single Responsibility:** `api-gateway.ts` entscheidet nur *welche* Function für einen Pfad zuständig ist; die Function selbst enthält die Fachlogik.
+- **Single Responsibility:** `api-gateway.ts` entscheidet nur _welche_ Function für einen Pfad zuständig ist; die Function selbst enthält die Fachlogik.
 - **Open/Closed:** Neue API-Bereiche = neuer Eintrag in `ROUTE_MAP` + ggf. neuer Ordner unter `functions/`; bestehende Router-Struktur bleibt stabil.
 - **Dependency Inversion:** UI und Features hängen an `AuthClient` (Interface) und `getAuthClient()`, nicht an einer konkreten Lucia-Implementierung — Produktivweg ist Appwrite.
 
@@ -78,27 +78,27 @@ Diese Begriffe sind hier **konkret** gemeint, nicht als Buzzwords.
 
 ## 4. Verzeichnis-Landkarte
 
-| Pfad | Rolle |
-|------|--------|
-| `src/` | React-App, Komponenten, `lib/` (API, Auth, Env) |
-| `src/lib/env.ts` | **Ein** Ort für öffentliche Frontend-Konfiguration (`VITE_*`) |
-| `src/lib/appwrite/client.ts` | Singleton Appwrite SDK-Client (ohne Secret) |
-| `src/lib/auth/` | `AuthClient`-Interface, `AppwriteAuthAdapter`, Factory `getAuthClient.ts` |
-| `src/lib/api-gateway.ts` | Mappt Routen → `scriptony-*` Function-URLs |
-| `functions/` | HTTP-Handler pro Domäne; gemeinsame Helfer in `functions/_shared/` |
-| `functions/_shared/env.ts` | Server-only: `APPWRITE_*`, Buckets, keine Browser-Exports |
-| `infra/appwrite/` | Vendortes Docker-Compose + `.env.example` für **lokalen** Appwrite-Stack |
-| `docker-compose.yml` | Bindet `infra/appwrite` ein (Self-Host lokal) |
-| `docker-compose.legacy.yml` | Optional: Postgres + Lucia — **nicht** der Appwrite-Produktionsweg |
+| Pfad                         | Rolle                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `src/`                       | React-App, Komponenten, `lib/` (API, Auth, Env)                           |
+| `src/lib/env.ts`             | **Ein** Ort für öffentliche Frontend-Konfiguration (`VITE_*`)             |
+| `src/lib/appwrite/client.ts` | Singleton Appwrite SDK-Client (ohne Secret)                               |
+| `src/lib/auth/`              | `AuthClient`-Interface, `AppwriteAuthAdapter`, Factory `getAuthClient.ts` |
+| `src/lib/api-gateway.ts`     | Mappt Routen → `scriptony-*` Function-URLs                                |
+| `functions/`                 | HTTP-Handler pro Domäne; gemeinsame Helfer in `functions/_shared/`        |
+| `functions/_shared/env.ts`   | Server-only: `APPWRITE_*`, Buckets, keine Browser-Exports                 |
+| `infra/appwrite/`            | Vendortes Docker-Compose + `.env.example` für **lokalen** Appwrite-Stack  |
+| `docker-compose.yml`         | Bindet `infra/appwrite` ein (Self-Host lokal)                             |
+| `docker-compose.legacy.yml`  | Optional: Postgres + Lucia — **nicht** der Appwrite-Produktionsweg        |
 
 ---
 
 ## 5. Konfiguration: zwei getrennte Welten
 
-| Ort | Variablen | Sichtbarkeit |
-|-----|-----------|--------------|
-| Frontend | `VITE_APPWRITE_*`, `VITE_*FUNCTIONS*`, Redirect-URLs | Im Build eingebettet — **öffentlich** |
-| Functions | `APPWRITE_ENDPOINT`, `APPWRITE_API_KEY`, … | Nur Server/Container |
+| Ort       | Variablen                                            | Sichtbarkeit                          |
+| --------- | ---------------------------------------------------- | ------------------------------------- |
+| Frontend  | `VITE_APPWRITE_*`, `VITE_*FUNCTIONS*`, Redirect-URLs | Im Build eingebettet — **öffentlich** |
+| Functions | `APPWRITE_ENDPOINT`, `APPWRITE_API_KEY`, …           | Nur Server/Container                  |
 
 Vorlage Frontend: `.env.local.example`.  
 Appwrite-Container: `infra/appwrite/.env` (aus `.env.example` kopieren).
@@ -107,13 +107,13 @@ Appwrite-Container: `infra/appwrite/.env` (aus `.env.example` kopieren).
 
 ## 6. Typische Aufgaben
 
-| Aufgabe | Wo anfangen |
-|---------|-------------|
-| Auth-Flow / Session | `src/lib/auth/AppwriteAuthAdapter.ts`, Appwrite-Dashboard (Redirects) |
+| Aufgabe                     | Wo anfangen                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Auth-Flow / Session         | `src/lib/auth/AppwriteAuthAdapter.ts`, Appwrite-Dashboard (Redirects)                                            |
 | Neue REST-Route für die SPA | `ROUTE_MAP` in `src/lib/api-gateway.ts` (Ausnahmen in `getBackendFunctionForRoute`) + Handler unter `functions/` |
-| Datenmodell / Buckets | `functions/_shared/appwrite-db.ts`, `functions/_shared/env.ts` |
-| Lokalen Appwrite starten | [../infra/appwrite/README.md](../infra/appwrite/README.md) |
-| Env prüfen | `npm run verify:test-env` (Frontend) |
+| Datenmodell / Buckets       | `functions/_shared/appwrite-db.ts`, `functions/_shared/env.ts`                                                   |
+| Lokalen Appwrite starten    | [../infra/appwrite/README.md](../infra/appwrite/README.md)                                                       |
+| Env prüfen                  | `npm run verify:test-env` (Frontend)                                                                             |
 
 ---
 

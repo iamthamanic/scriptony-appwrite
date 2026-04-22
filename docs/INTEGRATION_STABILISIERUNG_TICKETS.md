@@ -27,19 +27,19 @@ Stand: 2026-04-11 08:24 CEST
 
 ### Ticket-Status
 
-| Ticket | Status | Kurzstand |
-| --- | --- | --- |
-| 01 | erledigt | Workspace- und Deployment-Snapshot dokumentiert |
-| 02 | erledigt | Branch-/Commit-Landkarte vorhanden |
-| 03 | erledigt | Auth-/Transportvertrag definiert |
-| 04 | erledigt, live verifiziert | `/projects` und `/worlds` wieder stabil |
-| 05 | erledigt, live verifiziert | `image`, `audio`, `gym`, `assistant` und `video` ueber zentralen Auth-/Deploy-Pfad live verifiziert |
-| 06 | erledigt, live verifiziert | Deploy-/Env-Paritaet und Auth-Smokes vorhanden |
-| 07 | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen |
-| 08 | erledigt, live verifiziert | Smoke-Matrix steht und ist aktuell `6/6` gruen |
-| 09 | erledigt, live verifiziert | Breiter Core-Rollout plus Runtime-Recovery ueber internen Appwrite-Override live verifiziert |
-| 10 | erledigt | Gruppen A bis E plus Rest-Follow-up sind committed; Root-`deno.lock` ist uebernommen, lokale Analyseartefakte sind ignoriert |
-| 11 | erledigt | Release-Gate und Rollback-Pfad sind dokumentiert |
+| Ticket | Status                                              | Kurzstand                                                                                                                    |
+| ------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 01     | erledigt                                            | Workspace- und Deployment-Snapshot dokumentiert                                                                              |
+| 02     | erledigt                                            | Branch-/Commit-Landkarte vorhanden                                                                                           |
+| 03     | erledigt                                            | Auth-/Transportvertrag definiert                                                                                             |
+| 04     | erledigt, live verifiziert                          | `/projects` und `/worlds` wieder stabil                                                                                      |
+| 05     | erledigt, live verifiziert                          | `image`, `audio`, `gym`, `assistant` und `video` ueber zentralen Auth-/Deploy-Pfad live verifiziert                          |
+| 06     | erledigt, live verifiziert                          | Deploy-/Env-Paritaet und Auth-Smokes vorhanden                                                                               |
+| 07     | fuer aktuellen Kernscope erledigt, live verifiziert | `scriptony-ai` reintegriert und AI-Read-Flows gruen                                                                          |
+| 08     | erledigt, live verifiziert                          | Smoke-Matrix steht und ist aktuell `6/6` gruen                                                                               |
+| 09     | erledigt, live verifiziert                          | Breiter Core-Rollout plus Runtime-Recovery ueber internen Appwrite-Override live verifiziert                                 |
+| 10     | erledigt                                            | Gruppen A bis E plus Rest-Follow-up sind committed; Root-`deno.lock` ist uebernommen, lokale Analyseartefakte sind ignoriert |
+| 11     | erledigt                                            | Release-Gate und Rollback-Pfad sind dokumentiert                                                                             |
 
 ## Ziel
 

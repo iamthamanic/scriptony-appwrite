@@ -10,12 +10,12 @@
 
 ## Was wohin gehört (Faustregel)
 
-| Inhalt | Typisch |
-|--------|---------|
-| Plot, Struktur, Szenenfolge | **Projekt** |
-| „Wer trifft wen“, Dialog, Shot-Plan | **Projekt** |
+| Inhalt                                         | Typisch                              |
+| ---------------------------------------------- | ------------------------------------ |
+| Plot, Struktur, Szenenfolge                    | **Projekt**                          |
+| „Wer trifft wen“, Dialog, Shot-Plan            | **Projekt**                          |
 | Orte, Faktionen, lange Hintergrundtexte, Atlas | **Welt** (`world_items`, Kategorien) |
-| Karten, Beziehungsgraph (Lore-Knoten) | **Welt** (UI: Worldbuilding) |
+| Karten, Beziehungsgraph (Lore-Knoten)          | **Welt** (UI: Worldbuilding)         |
 
 **Charaktere** können zunächst **nur im Projekt** leben (Cast dieser Produktion). Eine spätere **Spiegelung** in Lore-Einträgen ist optional.
 

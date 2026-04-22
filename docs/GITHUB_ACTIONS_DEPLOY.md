@@ -6,8 +6,8 @@
 
 Die Jobs **`deploy-prod`** / **`deploy-test`** laufen **nur**, wenn die Repository-**Variable** gesetzt ist:
 
-| Variable | Wert |
-|----------|------|
+| Variable                 | Wert   |
+| ------------------------ | ------ |
 | **`VPS_DEPLOY_ENABLED`** | `true` |
 
 **Settings → Secrets and variables → Actions → Variables → New repository variable**
@@ -33,9 +33,9 @@ Der frühere Deploy mit **`docker-compose.legacy.yml`** (Postgres/Lucia) ist **n
 
 Du kannst den **kompletten Inhalt** der Datei `infra/appwrite/.env` als **ein** mehrzeiliges Secret ablegen. Bei jedem Deploy schreibt der Workflow die Datei per SSH auf den Server (**nach** `git pull`).
 
-| Secret | Wann |
-|--------|------|
-| **`APPWRITE_INFRA_ENV`** | Push auf **`main`** → `/root/scriptony-prod/infra/appwrite/.env` |
+| Secret                           | Wann                                                                |
+| -------------------------------- | ------------------------------------------------------------------- |
+| **`APPWRITE_INFRA_ENV`**         | Push auf **`main`** → `/root/scriptony-prod/infra/appwrite/.env`    |
 | **`APPWRITE_INFRA_ENV_STAGING`** | Push auf **`develop`** → `/root/scriptony-test/infra/appwrite/.env` |
 
 **Anlegen in GitHub:** Repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** → Name z. B. `APPWRITE_INFRA_ENV` → Wert: gesamten Text der generierten `.env` (siehe unten).
@@ -71,10 +71,10 @@ Wenn das Secret **nicht** gesetzt ist, muss `infra/appwrite/.env` **weiterhin ma
 
 ## GitHub Secrets (SSH, weiterhin nötig)
 
-| Secret | Bedeutung |
-|--------|-----------|
-| `SSH_HOST` | VPS-Hostname oder IP |
-| `SSH_USER` | SSH-Login (z. B. `root`) |
+| Secret            | Bedeutung                                  |
+| ----------------- | ------------------------------------------ |
+| `SSH_HOST`        | VPS-Hostname oder IP                       |
+| `SSH_USER`        | SSH-Login (z. B. `root`)                   |
 | `SSH_PRIVATE_KEY` | Private Key (PEM), Zeilenumbrüche erhalten |
 
 ---
@@ -83,15 +83,15 @@ Wenn das Secret **nicht** gesetzt ist, muss `infra/appwrite/.env` **weiterhin ma
 
 Nur nötig, wenn **`DEPLOY_STATIC_FRONTEND`** (Variable) auf `true` steht:
 
-| Secret | Bedeutung |
-|--------|-----------|
-| `VITE_APPWRITE_ENDPOINT` | z. B. `https://appwrite.deine-domain.tld/v1` |
-| `VITE_APPWRITE_PROJECT_ID` | Appwrite-Projekt-ID |
-| `VITE_APPWRITE_FUNCTIONS_BASE_URL` **oder** `VITE_BACKEND_API_BASE_URL` | Basis-URL der `scriptony-*` Functions |
-| `VITE_APP_WEB_URL` | Öffentliche URL der SPA |
-| `VITE_AUTH_REDIRECT_URL` | Gleiche Origin wie Frontend (OAuth/E-Mail) |
-| `VITE_PASSWORD_RESET_REDIRECT_URL` | z. B. `https://app…/reset-password` |
-| `VITE_BACKEND_PUBLIC_TOKEN` | Optional |
+| Secret                                                                  | Bedeutung                                    |
+| ----------------------------------------------------------------------- | -------------------------------------------- |
+| `VITE_APPWRITE_ENDPOINT`                                                | z. B. `https://appwrite.deine-domain.tld/v1` |
+| `VITE_APPWRITE_PROJECT_ID`                                              | Appwrite-Projekt-ID                          |
+| `VITE_APPWRITE_FUNCTIONS_BASE_URL` **oder** `VITE_BACKEND_API_BASE_URL` | Basis-URL der `scriptony-*` Functions        |
+| `VITE_APP_WEB_URL`                                                      | Öffentliche URL der SPA                      |
+| `VITE_AUTH_REDIRECT_URL`                                                | Gleiche Origin wie Frontend (OAuth/E-Mail)   |
+| `VITE_PASSWORD_RESET_REDIRECT_URL`                                      | z. B. `https://app…/reset-password`          |
+| `VITE_BACKEND_PUBLIC_TOKEN`                                             | Optional                                     |
 
 `develop`-Deploy nutzt dieselben Secrets; für getrennte Test-URLs später **GitHub Environments** mit eigenen Secrets empfohlen.
 
@@ -101,11 +101,11 @@ Nur nötig, wenn **`DEPLOY_STATIC_FRONTEND`** (Variable) auf `true` steht:
 
 Unter **Settings → Secrets and variables → Actions → Variables**:
 
-| Variable | Wert | Wirkung |
-|----------|------|---------|
-| `DEPLOY_STATIC_FRONTEND` | `true` oder weglassen | Wenn `true`: nach dem Build wird `build/` per rsync ausgeliefert |
-| `SCRIPTONY_WEB_ROOT_PROD` | z. B. `/var/www/scriptony` | Zielverzeichnis für **main** (mit abschließendem `/` in rsync: `build/` → Inhalt des Ordners) |
-| `SCRIPTONY_WEB_ROOT_TEST` | z. B. `/var/www/scriptony-test` | Ziel für **develop** |
+| Variable                  | Wert                            | Wirkung                                                                                       |
+| ------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------- |
+| `DEPLOY_STATIC_FRONTEND`  | `true` oder weglassen           | Wenn `true`: nach dem Build wird `build/` per rsync ausgeliefert                              |
+| `SCRIPTONY_WEB_ROOT_PROD` | z. B. `/var/www/scriptony`      | Zielverzeichnis für **main** (mit abschließendem `/` in rsync: `build/` → Inhalt des Ordners) |
+| `SCRIPTONY_WEB_ROOT_TEST` | z. B. `/var/www/scriptony-test` | Ziel für **develop**                                                                          |
 
 Der Webserver (nginx/Caddy) muss dieses Verzeichnis ausliefern und **SPA-Fallback** auf `index.html` haben.
 
@@ -117,10 +117,10 @@ Der Webserver (nginx/Caddy) muss dieses Verzeichnis ausliefern und **SPA-Fallbac
 
 Standard im Workflow:
 
-| Umgebung | App-Verzeichnis auf dem Server |
-|----------|--------------------------------|
-| Produktion (`main`) | `/root/scriptony-prod` |
-| Test (`develop`) | `/root/scriptony-test` |
+| Umgebung            | App-Verzeichnis auf dem Server |
+| ------------------- | ------------------------------ |
+| Produktion (`main`) | `/root/scriptony-prod`         |
+| Test (`develop`)    | `/root/scriptony-test`         |
 
 Andere Pfade gewünscht: **`.github/workflows/ci.yml`** anpassen (Variablen `APP_ROOT` im Remote-Skript).
 

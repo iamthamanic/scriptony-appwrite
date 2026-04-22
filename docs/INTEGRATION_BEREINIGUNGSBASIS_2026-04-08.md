@@ -82,18 +82,18 @@ Die lokalen Aenderungen sind thematisch nicht homogen. Im selben Working Tree li
 
 ### 2.1 Live-Functions mit produktionsrelevanter Rolle
 
-| Function | Live | Deployment | Deployment-Datum (UTC) | Hinweise |
-| --- | --- | --- | --- | --- |
-| `scriptony-auth` | `true` | `69c30bbda32674b302f4` | `2026-03-24T22:10:05.688+00:00` | `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_PUBLIC_ENDPOINT` |
-| `scriptony-projects` | `true` | `69c3ed2ba0cb4b168a69` | `2026-03-25T14:11:55.671+00:00` | `execute:any`, Timeout `60`, volle Appwrite-Variablen |
-| `scriptony-shots` | `true` | `69c7b8d82f3a5f2b559d` | `2026-03-28T11:17:44.219+00:00` | volle Appwrite-Variablen |
-| `scriptony-assistant` | `true` | `69ccf26be61617fd7d97` | `2026-04-01T10:24:43.949+00:00` | Runtime aktiv |
-| `scriptony-image` | `true` | `69cd0bb786005845410d` | `2026-04-01T12:12:39.554+00:00` | Timeout `300`, keine sichtbaren Vars |
-| `scriptony-project-nodes` | `true` | `69ce426d446d7d1279a6` | `2026-04-02T10:18:21.291+00:00` | volle Appwrite-Variablen |
-| `scriptony-characters` | `true` | `69ce4271bedb1f505d0d` | `2026-04-02T10:18:25.789+00:00` | volle Appwrite-Variablen |
-| `scriptony-worldbuilding` | `true` | `69cee36142af761bb878` | `2026-04-02T21:45:05.281+00:00` | volle Appwrite-Variablen |
-| `scriptony-clips` | `true` | `69cf9752f3c231bc8730` | `2026-04-03T10:32:51.080+00:00` | Runtime aktiv |
-| `scriptony-ai` | `true` | `69d3d1e034d2ed965301` | `2026-04-06T15:31:44.224+00:00` | nur `APPWRITE_API_KEY` sichtbar |
+| Function                  | Live   | Deployment             | Deployment-Datum (UTC)          | Hinweise                                                                                   |
+| ------------------------- | ------ | ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------------ |
+| `scriptony-auth`          | `true` | `69c30bbda32674b302f4` | `2026-03-24T22:10:05.688+00:00` | `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_PUBLIC_ENDPOINT` |
+| `scriptony-projects`      | `true` | `69c3ed2ba0cb4b168a69` | `2026-03-25T14:11:55.671+00:00` | `execute:any`, Timeout `60`, volle Appwrite-Variablen                                      |
+| `scriptony-shots`         | `true` | `69c7b8d82f3a5f2b559d` | `2026-03-28T11:17:44.219+00:00` | volle Appwrite-Variablen                                                                   |
+| `scriptony-assistant`     | `true` | `69ccf26be61617fd7d97` | `2026-04-01T10:24:43.949+00:00` | Runtime aktiv                                                                              |
+| `scriptony-image`         | `true` | `69cd0bb786005845410d` | `2026-04-01T12:12:39.554+00:00` | Timeout `300`, keine sichtbaren Vars                                                       |
+| `scriptony-project-nodes` | `true` | `69ce426d446d7d1279a6` | `2026-04-02T10:18:21.291+00:00` | volle Appwrite-Variablen                                                                   |
+| `scriptony-characters`    | `true` | `69ce4271bedb1f505d0d` | `2026-04-02T10:18:25.789+00:00` | volle Appwrite-Variablen                                                                   |
+| `scriptony-worldbuilding` | `true` | `69cee36142af761bb878` | `2026-04-02T21:45:05.281+00:00` | volle Appwrite-Variablen                                                                   |
+| `scriptony-clips`         | `true` | `69cf9752f3c231bc8730` | `2026-04-03T10:32:51.080+00:00` | Runtime aktiv                                                                              |
+| `scriptony-ai`            | `true` | `69d3d1e034d2ed965301` | `2026-04-06T15:31:44.224+00:00` | nur `APPWRITE_API_KEY` sichtbar                                                            |
 
 ### 2.2 Aktiviert, aber nicht live oder nicht sauber deployt
 
@@ -185,13 +185,13 @@ Das bedeutet:
 
 ### 4.2 AI-Themenblock-Mapping
 
-| Themenblock | `feature/ai-service-refactor` | `workspace-main-ai-20260406` | Einschaetzung |
-| --- | --- | --- | --- |
-| zentraler AI-Service | `940e24a` | `bef31b7` | fachlich bereits erneut integriert |
-| `scriptony-gym` | `2f7811e` | `65322c2` | fachlich bereits erneut integriert |
-| `scriptony-image` und `scriptony-video` | `4627635` | `eb3a010` | fachlich bereits erneut integriert |
-| STT/TTS in `scriptony-audio` | `3597b3b` | `16c43c9` | fachlich bereits erneut integriert |
-| zentrale AI-Konfiguration auf neuer Basis | nicht vorhanden | `722ba3a` | nur im Workspace-/Integrationszweig enthalten |
+| Themenblock                               | `feature/ai-service-refactor` | `workspace-main-ai-20260406` | Einschaetzung                                 |
+| ----------------------------------------- | ----------------------------- | ---------------------------- | --------------------------------------------- |
+| zentraler AI-Service                      | `940e24a`                     | `bef31b7`                    | fachlich bereits erneut integriert            |
+| `scriptony-gym`                           | `2f7811e`                     | `65322c2`                    | fachlich bereits erneut integriert            |
+| `scriptony-image` und `scriptony-video`   | `4627635`                     | `eb3a010`                    | fachlich bereits erneut integriert            |
+| STT/TTS in `scriptony-audio`              | `3597b3b`                     | `16c43c9`                    | fachlich bereits erneut integriert            |
+| zentrale AI-Konfiguration auf neuer Basis | nicht vorhanden               | `722ba3a`                    | nur im Workspace-/Integrationszweig enthalten |
 
 ### 4.3 Scope-Vergleich der Branches
 

@@ -63,10 +63,10 @@ Build mit diesen Werten, dann `build/` ausliefern.
 
 ## 4. Kurzüberblick
 
-| Komponente | Typische Option |
-|------------|-----------------|
-| Frontend | Vercel, nginx, Caddy |
-| Auth + Plattform | Appwrite Cloud oder self-hosted |
+| Komponente             | Typische Option                  |
+| ---------------------- | -------------------------------- |
+| Frontend               | Vercel, nginx, Caddy             |
+| Auth + Plattform       | Appwrite Cloud oder self-hosted  |
 | App-Logik + DB-Zugriff | Deployte `scriptony-*` Functions |
 
 Details zu Sicherheit und Vercel: [DEPLOYMENT.md](DEPLOYMENT.md).

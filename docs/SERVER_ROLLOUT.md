@@ -59,28 +59,28 @@ Der **Legacy-Stack** (`docker-compose.legacy.yml`) wird **nicht** mehr von diese
 
 ## Was „noch fehlen“ kann (typisch)
 
-| Thema | Hinweis |
-|--------|---------|
-| **CI** | Deploy nutzt Appwrite-Compose; Pfade/Secrets siehe [GITHUB_ACTIONS_DEPLOY.md](GITHUB_ACTIONS_DEPLOY.md). |
-| **Ein Klick fehlt** | Kein fertiges „alles auf einen VPS“-Playbook im Repo — Schritte sind bewusst Host-abhängig. |
-| **Appwrite-Projekt leer** | Erst Collections/Buckets anlegen oder Migrations-Skripte ausführen (Projekt-spezifisch). |
-| **Functions-URL** | Muss exakt zu dem passen, was `VITE_APPWRITE_FUNCTIONS_BASE_URL` erwartet (Pfad-Prefix pro Hosting). |
+| Thema                     | Hinweis                                                                                                  |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **CI**                    | Deploy nutzt Appwrite-Compose; Pfade/Secrets siehe [GITHUB_ACTIONS_DEPLOY.md](GITHUB_ACTIONS_DEPLOY.md). |
+| **Ein Klick fehlt**       | Kein fertiges „alles auf einen VPS“-Playbook im Repo — Schritte sind bewusst Host-abhängig.              |
+| **Appwrite-Projekt leer** | Erst Collections/Buckets anlegen oder Migrations-Skripte ausführen (Projekt-spezifisch).                 |
+| **Functions-URL**         | Muss exakt zu dem passen, was `VITE_APPWRITE_FUNCTIONS_BASE_URL` erwartet (Pfad-Prefix pro Hosting).     |
 
 ---
 
 ## Wer macht was (Übersicht)
 
-| Kann **im Git-Repo** erledigt werden (Cursor/PR) | Musst **du** erledigen (VPS, Zugänge, Entscheidungen) |
-|---------------------------------------------------|------------------------------------------------------|
-| CI-Workflow (Appwrite-Deploy + optional rsync) — siehe [GITHUB_ACTIONS_DEPLOY.md](GITHUB_ACTIONS_DEPLOY.md) | SSH auf den VPS, alte Container stoppen, Daten sichern |
-| Doku, Checklisten, Skript-Vorlagen ergänzen | DNS/TLS für Appwrite + Frontend-Domain |
-| `infra/appwrite/.env.example` pflegen, Compose validieren | Echte `infra/appwrite/.env` auf dem Server mit starken Secrets |
-| Einheitliche Env-Beispiele für Functions | Appwrite Console: Projekt, Auth-URLs, API-Key erzeugen |
-| Optional: GitHub Actions Secrets vorbeschreiben (welche Keys nötig sind) | GitHub Secrets setzen, Deploy testen |
-| Code-Fixes, wenn Build/Functions an der Umgebung scheitern | Functions deployen (Runtime deiner Wahl) + `APPWRITE_*` setzen |
-| | Frontend-Build mit Produktions-`VITE_*` + `build/` ausrollen |
-| | Nhost-Stack entfernen (siehe unten), Ports freimachen |
-| | Nutzer/Daten: Migration von Nhost → Appwrite falls nötig (Konzept + Tooling meist bei dir) |
+| Kann **im Git-Repo** erledigt werden (Cursor/PR)                                                            | Musst **du** erledigen (VPS, Zugänge, Entscheidungen)                                      |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| CI-Workflow (Appwrite-Deploy + optional rsync) — siehe [GITHUB_ACTIONS_DEPLOY.md](GITHUB_ACTIONS_DEPLOY.md) | SSH auf den VPS, alte Container stoppen, Daten sichern                                     |
+| Doku, Checklisten, Skript-Vorlagen ergänzen                                                                 | DNS/TLS für Appwrite + Frontend-Domain                                                     |
+| `infra/appwrite/.env.example` pflegen, Compose validieren                                                   | Echte `infra/appwrite/.env` auf dem Server mit starken Secrets                             |
+| Einheitliche Env-Beispiele für Functions                                                                    | Appwrite Console: Projekt, Auth-URLs, API-Key erzeugen                                     |
+| Optional: GitHub Actions Secrets vorbeschreiben (welche Keys nötig sind)                                    | GitHub Secrets setzen, Deploy testen                                                       |
+| Code-Fixes, wenn Build/Functions an der Umgebung scheitern                                                  | Functions deployen (Runtime deiner Wahl) + `APPWRITE_*` setzen                             |
+|                                                                                                             | Frontend-Build mit Produktions-`VITE_*` + `build/` ausrollen                               |
+|                                                                                                             | Nhost-Stack entfernen (siehe unten), Ports freimachen                                      |
+|                                                                                                             | Nutzer/Daten: Migration von Nhost → Appwrite falls nötig (Konzept + Tooling meist bei dir) |
 
 Ich (Assistent) habe **keinen** Zugriff auf deinen VPS, DNS, Appwrite-Console oder Secrets — nur auf dieses Repository.
 
@@ -109,14 +109,14 @@ Typisch lag Nhost als **Docker Compose** (Auth, Postgres, Storage, Hasura/Gatewa
 
 ## Alles, was insgesamt ansteht (Reihenfolge sinnvoll)
 
-1. **Strategie:** Nur VPS vs. Frontend extern (Vercel) festlegen.  
-2. **Nhost:** Backup → Compose stoppen → Proxy/DNS bereinigen.  
-3. **Appwrite:** Auf VPS installieren (z. B. `infra/appwrite` + eigene `.env`) oder extern hosten; TLS + Domain.  
-4. **Appwrite Console:** Projekt, erlaubte URLs, API-Key mit nötigen Rechten.  
-5. **Schema:** Collections/Buckets wie in `functions/_shared/` (oder Env-Overrides).  
-6. **Functions:** Alle `scriptony-*` deployen, `APPWRITE_*` setzen, öffentliche URL testen.  
-7. **Frontend:** `npm run build` mit Produktions-`VITE_*`, `build/` ausliefern.  
-8. **CI:** `.github/workflows/ci.yml` an echtes Ziel anbinden (optional letzter Schritt).  
+1. **Strategie:** Nur VPS vs. Frontend extern (Vercel) festlegen.
+2. **Nhost:** Backup → Compose stoppen → Proxy/DNS bereinigen.
+3. **Appwrite:** Auf VPS installieren (z. B. `infra/appwrite` + eigene `.env`) oder extern hosten; TLS + Domain.
+4. **Appwrite Console:** Projekt, erlaubte URLs, API-Key mit nötigen Rechten.
+5. **Schema:** Collections/Buckets wie in `functions/_shared/` (oder Env-Overrides).
+6. **Functions:** Alle `scriptony-*` deployen, `APPWRITE_*` setzen, öffentliche URL testen.
+7. **Frontend:** `npm run build` mit Produktions-`VITE_*`, `build/` ausliefern.
+8. **CI:** `.github/workflows/ci.yml` an echtes Ziel anbinden (optional letzter Schritt).
 9. **Smoke-Tests:** Appwrite `/v1/health`, Login, eine API-Route über Functions.
 
 ---
