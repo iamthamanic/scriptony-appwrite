@@ -6233,18 +6233,36 @@ function ProjectDetail({
                         <h1 className="mb-0">{editedTitle}</h1>
                       </div>
                       <div>
-                        <p className="text-sm font-bold mb-1">Logline</p>
+                        <div className="flex items-center gap-1 mb-1">
+                          <p className="text-sm font-bold">Logline</p>
+                          <ProjectFieldTooltipIcon
+                            field="logline"
+                            tooltipSide="left"
+                          />
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {editedLogline}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <p className="text-sm font-bold mb-1">Project Type</p>
+                          <div className="flex items-center gap-1 mb-1">
+                            <p className="text-sm font-bold">Project Type</p>
+                            <ProjectFieldTooltipIcon
+                              field="projectType"
+                              tooltipSide="left"
+                            />
+                          </div>
                           <p className="text-sm">{editedType}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-bold mb-1">Dauer</p>
+                          <div className="flex items-center gap-1 mb-1">
+                            <p className="text-sm font-bold">Dauer</p>
+                            <ProjectFieldTooltipIcon
+                              field="duration"
+                              tooltipSide="left"
+                            />
+                          </div>
                           <p className="text-sm">
                             {formatDurationHrMinDe(
                               editedDurationHours,
@@ -6256,7 +6274,9 @@ function ProjectDetail({
 
                       {/* Genres - Multi Badge Display */}
                       <div>
-                        <p className="text-sm font-bold mb-1">Genres</p>
+                        <div className="flex items-center gap-1 mb-1">
+                          <p className="text-sm font-bold">Genres</p>
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {editedGenresMulti.length > 0 ? (
                             editedGenresMulti.map((genre) => (
@@ -6281,17 +6301,19 @@ function ProjectDetail({
                         /* SERIES: Episode Layout + Season Engine */
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <p className="text-sm font-bold mb-1">
-                              Episode Layout
-                            </p>
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-sm font-bold">
+                                Episode Layout
+                              </p>
+                            </div>
                             <p className="text-sm text-muted-foreground">
                               {editedEpisodeLayout || "Kein Layout"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm font-bold mb-1">
-                              Season Engine
-                            </p>
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-sm font-bold">Season Engine</p>
+                            </div>
                             <p className="text-sm text-muted-foreground">
                               {editedSeasonEngine || "Keine Engine"}
                             </p>
@@ -6300,9 +6322,15 @@ function ProjectDetail({
                       ) : (
                         /* FILM/BOOK/AUDIO: Narrative Structure */
                         <div>
-                          <p className="text-sm font-bold mb-1">
-                            Narrative Structure
-                          </p>
+                          <div className="flex items-center gap-1 mb-1">
+                            <p className="text-sm font-bold">
+                              Narrative Structure
+                            </p>
+                            <ProjectFieldTooltipIcon
+                              field="narrativeStructure"
+                              tooltipSide="left"
+                            />
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {editedNarrativeStructure ||
                               "Keine Struktur festgelegt"}
@@ -6312,7 +6340,13 @@ function ProjectDetail({
 
                       {/* Beat Template - Always shown */}
                       <div>
-                        <p className="text-sm font-bold mb-1">Beat Template</p>
+                        <div className="flex items-center gap-1 mb-1">
+                          <p className="text-sm font-bold">Beat Template</p>
+                          <ProjectFieldTooltipIcon
+                            field="beatTemplate"
+                            tooltipSide="left"
+                          />
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {editedBeatTemplate === "lite-7"
                             ? "Lite-7 (minimal)"
@@ -6337,9 +6371,13 @@ function ProjectDetail({
                       </div>
 
                       <div>
-                        <p className="text-sm font-bold mb-1">
-                          Verknüpfte Welt
-                        </p>
+                        <div className="flex items-center gap-1 mb-1">
+                          <p className="text-sm font-bold">Verknüpfte Welt</p>
+                          <ProjectFieldTooltipIcon
+                            field="linkedWorld"
+                            tooltipSide="left"
+                          />
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {editedLinkedWorldId !== "none"
                             ? worlds.find((w) => w.id === editedLinkedWorldId)

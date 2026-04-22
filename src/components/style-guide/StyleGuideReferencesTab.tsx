@@ -32,6 +32,7 @@ import { extractPaletteFromImageUrl } from "../../lib/extract-palette-client";
 import { toast } from "sonner@2.0.3";
 import { ChevronDown, ChevronUp, Loader2, Pin, Trash2 } from "lucide-react";
 import { useStyleGuideJob } from "../../hooks/useStyleGuideJob";
+import { createReferenceWithRetry } from "../../lib/api/style-guide-retry-api";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -114,20 +115,34 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
       .map((x) => x.trim())
       .filter(Boolean);
 
+    let result: StyleGuideData;
+
     if (kind === "image") {
       if (file) {
         const b64 = await fileToBase64(file);
-        await createReference(projectId, {
-          kind: "image",
-          title,
-          caption,
-          tags,
-          fileBase64: b64,
-          fileName: file.name,
-          mimeType: file.type || "image/jpeg",
-        });
+        result = await createReferenceWithRetry(
+          projectId,
+          {
+            kind: "image",
+            title,
+            caption,
+            tags,
+            fileBase64: b64,
+            fileName: file.name,
+            mimeType: file.type || "image/jpeg",
+          },
+          (status) => {
+            if (status === "uploading") {
+              toast.info("Bild wird hochgeladen...");
+            } else if (status === "processing") {
+              toast.info("Verarbeitung läuft, bitte warten...");
+            } else if (status === "completed") {
+              toast.success("Referenz hinzugefügt!");
+            }
+          },
+        );
       } else {
-        await createReference(projectId, {
+        result = await createReferenceWithRetry(projectId, {
           kind: "image",
           title,
           caption,
@@ -136,14 +151,14 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
         });
       }
     } else if (kind === "text") {
-      await createReference(projectId, {
+      result = await createReferenceWithRetry(projectId, {
         kind: "text",
         title,
         text_body: caption,
         tags,
       });
     } else {
-      await createReference(projectId, {
+      result = await createReferenceWithRetry(projectId, {
         kind: "link",
         title,
         caption,
@@ -152,6 +167,15 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
         tags,
       });
     }
+
+    onChange(result);
+    toast.success("Referenz gespeichert");
+    setSheetOpen(false);
+    setTitle("");
+    setCaption("");
+    setSourceUrl("");
+    setTagsStr("");
+    setFile(null);
   }
 
   async function togglePin(it: StyleGuideData["items"][0]) {
