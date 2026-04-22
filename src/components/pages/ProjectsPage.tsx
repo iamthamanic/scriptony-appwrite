@@ -89,6 +89,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ProjectFieldTooltipIcon } from "../ProjectFieldLabel";
+import { ProjectForm, type ProjectFormData } from "../project-form";
 import {
   Select,
   SelectContent,
@@ -1724,7 +1725,9 @@ export function ProjectsPage({
             {/* Project Title & Type */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="title">Project Title</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="title">Project Title</Label>
+                </div>
                 <Input
                   id="title"
                   placeholder="Enter project title"
@@ -1734,7 +1737,13 @@ export function ProjectsPage({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="type">Project Type</Label>
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="type">Project Type</Label>
+                  <ProjectFieldTooltipIcon
+                    field="projectType"
+                    tooltipSide="top"
+                  />
+                </div>
                 <Select
                   value={newProjectType}
                   onValueChange={setNewProjectType}
@@ -1919,9 +1928,12 @@ export function ProjectsPage({
             ) : (
               /* FILM/BOOK/AUDIO: Narrative Structure (1 Feld) */
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Label htmlFor="narrative">Narrative Structure</Label>
-                  <Info className="size-3.5 text-muted-foreground" />
+                  <ProjectFieldTooltipIcon
+                    field="narrativeStructure"
+                    tooltipSide="top"
+                  />
                 </div>
                 <Select
                   value={newProjectNarrativeStructure}
@@ -2042,7 +2054,13 @@ export function ProjectsPage({
 
             {/* Welt verknüpfen */}
             <div className="space-y-2">
-              <Label htmlFor="world">Welt verknüpfen (optional)</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="world">Welt verknüpfen</Label>
+                <ProjectFieldTooltipIcon
+                  field="linkedWorld"
+                  tooltipSide="top"
+                />
+              </div>
               <div className="flex gap-2">
                 <Select
                   value={newProjectLinkedWorld}
@@ -2077,7 +2095,10 @@ export function ProjectsPage({
 
             {/* Logline */}
             <div className="space-y-2">
-              <Label htmlFor="logline">Logline</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="logline">Logline</Label>
+                <ProjectFieldTooltipIcon field="logline" tooltipSide="top" />
+              </div>
               <Textarea
                 id="logline"
                 placeholder="A brief summary of your project..."
@@ -2211,7 +2232,13 @@ export function ProjectsPage({
 
             {/* Kurz-Inspirationen (Freitext beim Anlegen) */}
             <div className="space-y-2">
-              <Label>Inspirations (Freitext)</Label>
+              <div className="flex items-center gap-1">
+                <Label>Inspirations (Freitext)</Label>
+                <ProjectFieldTooltipIcon
+                  field="inspirations"
+                  tooltipSide="top"
+                />
+              </div>
               {projectInspirationNotes.map((note, index) => (
                 <div key={index} className="flex gap-2">
                   <Input
