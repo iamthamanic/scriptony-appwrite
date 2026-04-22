@@ -90,6 +90,7 @@ import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ProjectFieldTooltipIcon } from "../ProjectFieldLabel";
 import { ProjectForm, type ProjectFormData } from "../project-form";
+import { InspirationField, InspirationList } from "../InspirationField";
 import {
   Select,
   SelectContent,
@@ -2239,50 +2240,17 @@ export function ProjectsPage({
             {/* Kurz-Inspirationen (Freitext beim Anlegen) */}
             <div className="space-y-2">
               <div className="flex items-center gap-1">
-                <Label>Inspirations (Freitext)</Label>
+                <Label>Inspirations (Links & Text)</Label>
                 <ProjectFieldTooltipIcon
                   field="inspirations"
                   tooltipSide="left"
                 />
               </div>
-              {projectInspirationNotes.map((note, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={note}
-                    onChange={(e) => {
-                      const next = [...projectInspirationNotes];
-                      next[index] = e.target.value;
-                      setProjectInspirationNotes(next);
-                    }}
-                    placeholder={`Inspiration ${index + 1}`}
-                    className="h-11"
-                  />
-                  {projectInspirationNotes.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setProjectInspirationNotes(
-                          projectInspirationNotes.filter((_, i) => i !== index),
-                        );
-                      }}
-                      className="h-11 w-11 shrink-0"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setProjectInspirationNotes([...projectInspirationNotes, ""])
-                }
-                className="h-9"
-              >
-                <Plus className="size-4 mr-2" />
-                Zeile hinzufügen
-              </Button>
+              <InspirationField
+                items={projectInspirationNotes}
+                onChange={setProjectInspirationNotes}
+                placeholder="Inspiration"
+              />
             </div>
 
             {/* Cover Image */}
@@ -3939,6 +3907,9 @@ function ProjectDetail({
   const [editedReadingSpeed, setEditedReadingSpeed] = useState<string>(
     project.reading_speed_wpm?.toString() || "230",
   );
+  const [editedInspirations, setEditedInspirations] = useState<string[]>(
+    project.inspirations || [""],
+  );
   const [isCalculatingWords, setIsCalculatingWords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -4001,6 +3972,7 @@ function ProjectDetail({
     setEditedTargetPages(project.target_pages?.toString() || "");
     setEditedWordsPerPage(project.words_per_page?.toString() || "250");
     setEditedReadingSpeed(project.reading_speed_wpm?.toString() || "230");
+    setEditedInspirations(project.inspirations || [""]);
   }, [
     project.id,
     project.title,
@@ -4017,6 +3989,7 @@ function ProjectDetail({
     project.words_per_page,
     project.reading_speed_wpm,
     project.concept_blocks,
+    project.inspirations,
   ]);
 
   const editedDurationTotalMinutes = useMemo(
@@ -4107,6 +4080,7 @@ function ProjectDetail({
           ? editedNarrativeStructure || undefined
           : undefined,
       beat_template: editedBeatTemplate || undefined,
+      inspirations: editedInspirations,
       target_pages:
         editedType === "book"
           ? editedTargetPages
@@ -4145,6 +4119,7 @@ function ProjectDetail({
     editedTargetPages,
     editedWordsPerPage,
     editedReadingSpeed,
+    editedInspirations,
   ]);
 
   // 📖 Calculate word count from timeline cache (live recalculation)
@@ -5652,6 +5627,9 @@ function ProjectDetail({
                                   project.reading_speed_wpm?.toString() ||
                                     "230",
                                 );
+                                setEditedInspirations(
+                                  project.inspirations || [""],
+                                );
                               }}
                             >
                               <X className="size-3.5 mr-2" />
@@ -6231,6 +6209,22 @@ function ProjectDetail({
                           rows={3}
                         />
                       </div>
+                      <div>
+                        <div className="flex items-center gap-1 mb-2">
+                          <Label className="text-sm font-bold">
+                            Inspirations
+                          </Label>
+                          <ProjectFieldTooltipIcon
+                            field="inspirations"
+                            tooltipSide="left"
+                          />
+                        </div>
+                        <InspirationField
+                          items={editedInspirations}
+                          onChange={setEditedInspirations}
+                          placeholder="Inspiration"
+                        />
+                      </div>
                     </>
                   ) : (
                     <>
@@ -6404,6 +6398,17 @@ function ProjectDetail({
                             {getConceptContent("notes")?.trim() || "-"}
                           </p>
                         </div>
+                        <Separator />
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <p className="text-sm font-bold">Inspirations</p>
+                            <ProjectFieldTooltipIcon
+                              field="inspirations"
+                              tooltipSide="left"
+                            />
+                          </div>
+                          <InspirationList items={editedInspirations} />
+                        </div>
                       </div>
                     </>
                   )}
@@ -6503,6 +6508,9 @@ function ProjectDetail({
                               );
                               setEditedReadingSpeed(
                                 project.reading_speed_wpm?.toString() || "230",
+                              );
+                              setEditedInspirations(
+                                project.inspirations || [""],
                               );
                             }}
                           >
@@ -7073,6 +7081,20 @@ function ProjectDetail({
                         className="text-sm"
                       />
                     </div>
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Label className="text-xs">Inspirations</Label>
+                        <ProjectFieldTooltipIcon
+                          field="inspirations"
+                          tooltipSide="left"
+                        />
+                      </div>
+                      <InspirationField
+                        items={editedInspirations}
+                        onChange={setEditedInspirations}
+                        placeholder="Inspiration"
+                      />
+                    </div>
                   </>
                 ) : (
                   <>
@@ -7276,6 +7298,19 @@ function ProjectDetail({
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {getConceptContent("notes")?.trim() || "—"}
                       </div>
+                    </div>
+                    <Separator />
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="text-xs text-muted-foreground">
+                          Inspirations
+                        </div>
+                        <ProjectFieldTooltipIcon
+                          field="inspirations"
+                          tooltipSide="left"
+                        />
+                      </div>
+                      <InspirationList items={editedInspirations} />
                     </div>
 
                     {/* 📖 BOOK METRICS CARD - nur für Bücher */}
