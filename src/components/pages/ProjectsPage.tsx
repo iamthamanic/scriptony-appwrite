@@ -1741,7 +1741,7 @@ export function ProjectsPage({
                   <Label htmlFor="type">Project Type</Label>
                   <ProjectFieldTooltipIcon
                     field="projectType"
-                    tooltipSide="top"
+                    tooltipSide="left"
                   />
                 </div>
                 <Select
@@ -1932,7 +1932,7 @@ export function ProjectsPage({
                   <Label htmlFor="narrative">Narrative Structure</Label>
                   <ProjectFieldTooltipIcon
                     field="narrativeStructure"
-                    tooltipSide="top"
+                    tooltipSide="left"
                   />
                 </div>
                 <Select
@@ -2008,7 +2008,13 @@ export function ProjectsPage({
 
             {/* Story Beat Template - Always shown */}
             <div className="space-y-2">
-              <Label htmlFor="beat-template">Story Beat Template</Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="beat-template">Story Beat Template</Label>
+                <ProjectFieldTooltipIcon
+                  field="beatTemplate"
+                  tooltipSide="left"
+                />
+              </div>
               <Select
                 value={newProjectBeatTemplate}
                 onValueChange={setNewProjectBeatTemplate}
@@ -2058,7 +2064,7 @@ export function ProjectsPage({
                 <Label htmlFor="world">Welt verknüpfen</Label>
                 <ProjectFieldTooltipIcon
                   field="linkedWorld"
-                  tooltipSide="top"
+                  tooltipSide="left"
                 />
               </div>
               <div className="flex gap-2">
@@ -2097,7 +2103,7 @@ export function ProjectsPage({
             <div className="space-y-2">
               <div className="flex items-center gap-1">
                 <Label htmlFor="logline">Logline</Label>
-                <ProjectFieldTooltipIcon field="logline" tooltipSide="top" />
+                <ProjectFieldTooltipIcon field="logline" tooltipSide="left" />
               </div>
               <Textarea
                 id="logline"
@@ -2236,7 +2242,7 @@ export function ProjectsPage({
                 <Label>Inspirations (Freitext)</Label>
                 <ProjectFieldTooltipIcon
                   field="inspirations"
-                  tooltipSide="top"
+                  tooltipSide="left"
                 />
               </div>
               {projectInspirationNotes.map((note, index) => (
@@ -6147,7 +6153,7 @@ function ProjectDetail({
                           </Label>
                           <ProjectFieldTooltipIcon
                             field="premise"
-                            tooltipSide="top"
+                            tooltipSide="left"
                           />
                         </div>
                         <Textarea
@@ -6169,7 +6175,7 @@ function ProjectDetail({
                           </Label>
                           <ProjectFieldTooltipIcon
                             field="theme"
-                            tooltipSide="top"
+                            tooltipSide="left"
                           />
                         </div>
                         <Textarea
@@ -6191,7 +6197,7 @@ function ProjectDetail({
                           </Label>
                           <ProjectFieldTooltipIcon
                             field="hook"
-                            tooltipSide="top"
+                            tooltipSide="left"
                           />
                         </div>
                         <Textarea
@@ -6213,7 +6219,7 @@ function ProjectDetail({
                           </Label>
                           <ProjectFieldTooltipIcon
                             field="note"
-                            tooltipSide="top"
+                            tooltipSide="left"
                           />
                         </div>
                         <Textarea
@@ -6353,7 +6359,7 @@ function ProjectDetail({
                             <p className="text-sm font-bold">Prämisse</p>
                             <ProjectFieldTooltipIcon
                               field="premise"
-                              tooltipSide="top"
+                              tooltipSide="left"
                             />
                           </div>
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -6366,7 +6372,7 @@ function ProjectDetail({
                               <p className="text-sm font-bold">Thema</p>
                               <ProjectFieldTooltipIcon
                                 field="theme"
-                                tooltipSide="top"
+                                tooltipSide="left"
                               />
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -6378,7 +6384,7 @@ function ProjectDetail({
                               <p className="text-sm font-bold">Hook</p>
                               <ProjectFieldTooltipIcon
                                 field="hook"
-                                tooltipSide="top"
+                                tooltipSide="left"
                               />
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -6391,7 +6397,7 @@ function ProjectDetail({
                             <p className="text-sm font-bold">Notiz</p>
                             <ProjectFieldTooltipIcon
                               field="note"
-                              tooltipSide="top"
+                              tooltipSide="left"
                             />
                           </div>
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -6985,7 +6991,7 @@ function ProjectDetail({
                         </Label>
                         <ProjectFieldTooltipIcon
                           field="premise"
-                          tooltipSide="top"
+                          tooltipSide="left"
                         />
                       </div>
                       <Textarea
@@ -7008,7 +7014,7 @@ function ProjectDetail({
                         </Label>
                         <ProjectFieldTooltipIcon
                           field="theme"
-                          tooltipSide="top"
+                          tooltipSide="left"
                         />
                       </div>
                       <Textarea
@@ -7031,7 +7037,7 @@ function ProjectDetail({
                         </Label>
                         <ProjectFieldTooltipIcon
                           field="hook"
-                          tooltipSide="top"
+                          tooltipSide="left"
                         />
                       </div>
                       <Textarea
@@ -7054,7 +7060,7 @@ function ProjectDetail({
                         </Label>
                         <ProjectFieldTooltipIcon
                           field="note"
-                          tooltipSide="top"
+                          tooltipSide="left"
                         />
                       </div>
                       <Textarea
@@ -7220,7 +7226,7 @@ function ProjectDetail({
                         </div>
                         <ProjectFieldTooltipIcon
                           field="premise"
-                          tooltipSide="top"
+                          tooltipSide="left"
                         />
                       </div>
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -7235,7 +7241,7 @@ function ProjectDetail({
                           </div>
                           <ProjectFieldTooltipIcon
                             field="theme"
-                            tooltipSide="top"
+                            tooltipSide="left"
                           />
                         </div>
                         <div className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -7249,7 +7255,7 @@ function ProjectDetail({
                           </div>
                           <ProjectFieldTooltipIcon
                             field="hook"
-                            tooltipSide="top"
+                            tooltipSide="left"
                           />
                         </div>
                         <div className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -7264,7 +7270,7 @@ function ProjectDetail({
                         </div>
                         <ProjectFieldTooltipIcon
                           field="note"
-                          tooltipSide="top"
+                          tooltipSide="left"
                         />
                       </div>
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap">
