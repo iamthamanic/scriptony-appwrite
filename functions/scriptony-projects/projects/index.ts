@@ -17,7 +17,10 @@ import {
 import {
   hydrateProjectRow,
   hydrateProjectRows,
+  hydrateProjectWithInspirations,
+  hydrateProjectsWithInspirations,
   normalizeProjectInput,
+  setProjectInspirations,
 } from "../../_shared/scriptony";
 
 export default async function handler(
@@ -72,6 +75,7 @@ export default async function handler(
               target_pages
               words_per_page
               reading_speed_wpm
+              inspirations
               organization_id
               user_id
               is_deleted
@@ -86,7 +90,10 @@ export default async function handler(
         },
       );
 
-      sendJson(res, 200, { projects: hydrateProjectRows(data.projects) });
+      const projectsWithInspirations = await hydrateProjectsWithInspirations(
+        hydrateProjectRows(data.projects),
+      );
+      sendJson(res, 200, { projects: projectsWithInspirations });
       return;
     }
 
@@ -101,6 +108,12 @@ export default async function handler(
         sendBadRequest(res, "title is required");
         return;
       }
+
+      // Extract inspirations separately - they go into a different collection
+      const inspirations = body.inspirations ?? body.inspirations;
+
+      // Remove inspirations from project input (not in projects collection schema)
+      delete (projectInput as Record<string, any>).inspirations;
 
       const created = await requestGraphql<{
         insert_projects_one: Record<string, any>;
@@ -140,8 +153,21 @@ export default async function handler(
         },
       );
 
+      // Save inspirations separately if provided
+      if (created.insert_projects_one?.id && inspirations) {
+        await setProjectInspirations(
+          created.insert_projects_one.id,
+          Array.isArray(inspirations) ? inspirations : [],
+        );
+      }
+
+      // Fetch inspirations to include in response
+      const projectWithInspirations = await hydrateProjectWithInspirations(
+        created.insert_projects_one,
+      );
+
       sendJson(res, 201, {
-        project: hydrateProjectRow(created.insert_projects_one),
+        project: hydrateProjectRow(projectWithInspirations),
       });
       return;
     }

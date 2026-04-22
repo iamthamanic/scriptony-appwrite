@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/rag-reindex.py",
+            "timeout": 20,
+            "statusMessage": "Re-indexing changed file in RAG..."
+          }
+        ]
+      }
+    ]
+  },
+  "mcpServers": {
+    "lightrag": {
+      "command": "npx",
+      "args": ["-y", "@g99/lightrag-mcp-server"],
+      "env": {
+        "LIGHTRAG_SERVER_URL": "http://localhost:9621",
+        "LIGHTRAG_API_KEY": ""
+      }
+    }
+  }
+}

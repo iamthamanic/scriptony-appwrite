@@ -17,10 +17,13 @@ import {
   sendUnauthorized,
 } from "../../_shared/http";
 import {
+  deleteProjectInspirations,
   getAccessibleProject,
   getUserOrganizationIds,
   hydrateProjectRow,
+  hydrateProjectWithInspirations,
   normalizeProjectInput,
+  setProjectInspirations,
 } from "../../_shared/scriptony";
 
 export default async function handler(
@@ -52,7 +55,10 @@ export default async function handler(
     }
 
     if (req.method === "GET") {
-      sendJson(res, 200, { project: hydrateProjectRow(project) });
+      const projectWithInspirations = await hydrateProjectWithInspirations(
+        hydrateProjectRow(project),
+      );
+      sendJson(res, 200, { project: projectWithInspirations });
       return;
     }
 
@@ -68,6 +74,12 @@ export default async function handler(
       ) {
         changes.organization_id = body.organization_id.trim();
       }
+
+      // Extract inspirations separately - they go into a different collection
+      const inspirations = body.inspirations;
+
+      // Remove inspirations from changes (not in projects collection schema)
+      delete (changes as Record<string, any>).inspirations;
 
       const updated = await requestGraphql<{
         update_projects_by_pk: Record<string, any> | null;
@@ -104,8 +116,21 @@ export default async function handler(
         },
       );
 
+      // Update inspirations separately if provided
+      if (updated.update_projects_by_pk?.id && inspirations !== undefined) {
+        await setProjectInspirations(
+          projectId,
+          Array.isArray(inspirations) ? inspirations : [],
+        );
+      }
+
+      // Fetch updated inspirations to include in response
+      const projectWithInspirations = await hydrateProjectWithInspirations(
+        hydrateProjectRow(updated.update_projects_by_pk),
+      );
+
       sendJson(res, 200, {
-        project: hydrateProjectRow(updated.update_projects_by_pk),
+        project: projectWithInspirations,
       });
       return;
     }
@@ -124,6 +149,9 @@ export default async function handler(
         `,
         { projectId },
       );
+
+      // Also delete inspirations when project is soft-deleted
+      await deleteProjectInspirations(projectId);
 
       sendJson(res, 200, { success: true });
       return;

@@ -284,3 +284,109 @@ export async function requireProjectAccess(
   }
   return project;
 }
+
+// ============================================================================
+// Inspirations Collection Helpers (separate from projects collection)
+// ============================================================================
+
+export async function getProjectInspirations(
+  projectId: string,
+): Promise<string[]> {
+  try {
+    const data = await requestGraphql<{
+      project_inspirations: Array<{ body: string | null; order_index: number }>;
+    }>(
+      `
+        query GetProjectInspirations($projectId: uuid!) {
+          project_inspirations(
+            where: { project_id: { _eq: $projectId } }
+            order_by: { order_index: asc }
+          ) {
+            body
+            order_index
+          }
+        }
+      `,
+      { projectId },
+    );
+    return data.project_inspirations
+      .map((row) => row.body)
+      .filter((b): b is string => b !== null && b !== undefined);
+  } catch {
+    return [];
+  }
+}
+
+export async function setProjectInspirations(
+  projectId: string,
+  inspirations: string[],
+): Promise<void> {
+  const validInspirations = inspirations
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  // Delete existing inspirations first
+  await requestGraphql(
+    `
+      mutation DeleteProjectInspirations($projectId: uuid!) {
+        delete_project_inspirations(where: { project_id: { _eq: $projectId } }) {
+          affected_rows
+        }
+      }
+    `,
+    { projectId },
+  );
+
+  // Insert new inspirations if any
+  if (validInspirations.length > 0) {
+    const objects = validInspirations.map((inspiration, index) => ({
+      project_id: projectId,
+      body: inspiration,
+      order_index: index,
+    }));
+
+    await requestGraphql(
+      `
+        mutation InsertProjectInspirations($objects: [project_inspirations_insert_input!]!) {
+          insert_project_inspirations(objects: $objects) {
+            affected_rows
+          }
+        }
+      `,
+      { objects },
+    );
+  }
+}
+
+export async function deleteProjectInspirations(projectId: string): Promise<void> {
+  await requestGraphql(
+    `
+      mutation DeleteProjectInspirations($projectId: uuid!) {
+        delete_project_inspirations(where: { project_id: { _eq: $projectId } }) {
+          affected_rows
+        }
+      }
+    `,
+    { projectId },
+  );
+}
+
+/**
+ * Hydrate project with inspirations from separate collection
+ */
+export async function hydrateProjectWithInspirations<
+  T extends Record<string, any> | null,
+>(project: T): Promise<T> {
+  if (!project) return project;
+  const inspirations = await getProjectInspirations(project.id);
+  return {
+    ...project,
+    inspirations: inspirations.length > 0 ? inspirations : [],
+  } as T;
+}
+
+export async function hydrateProjectsWithInspirations<
+  T extends Record<string, any>,
+>(projects: T[]): Promise<T[]> {
+  return Promise.all(projects.map((p) => hydrateProjectWithInspirations(p)));
+}

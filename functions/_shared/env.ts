@@ -3,8 +3,12 @@
  *
  * Reads `process.env` only here and in thin wrappers — keeps handlers free of duplicated
  * `process.env` access (DRY). Values like `APPWRITE_API_KEY` must never be imported from frontend code.
- * Endpoint: prefer `APPWRITE_FUNCTION_ENDPOINT` (injected by Appwrite for in-cluster calls) over
- * `APPWRITE_ENDPOINT` (often a public URL that function containers cannot reach).
+ * 
+ * PRIORITY (highest to lowest):
+ * 1. SCRIPTONY_APPWRITE_API_ENDPOINT - Custom override for external access (bypasses injected values)
+ * 2. APPWRITE_FUNCTION_API_ENDPOINT - Injected by Appwrite for in-cluster calls
+ * 3. APPWRITE_ENDPOINT - Public URL (fallback)
+ * 4. APPWRITE_FUNCTION_ENDPOINT - Alternative injected value
  *
  * Location: functions/_shared/env.ts
  */
@@ -27,26 +31,38 @@ export function getRequiredEnv(name: string): string {
   return value;
 }
 
-/** Server-to-server Appwrite endpoint. Prefer a repo-controlled internal endpoint over injected/public hosts. */
+/**
+ * Server-to-server Appwrite endpoint.
+ * 
+ * CRITICAL: SCRIPTONY_APPWRITE_API_ENDPOINT must be set for external function domains
+ * to override the injected APPWRITE_FUNCTION_API_ENDPOINT which points to internal
+ * Docker network (http://appwrite/v1) that is not reachable from outside.
+ */
 export function getAppwriteEndpoint(): string {
-  const customInternalEndpoint = getOptionalEnv(
-    "SCRIPTONY_APPWRITE_API_ENDPOINT",
-  );
-  if (customInternalEndpoint) {
-    return trimTrailingSlash(customInternalEndpoint);
+  // PRIORITY 1: Custom override - must be explicit for external domain access
+  const customEndpoint = getOptionalEnv("SCRIPTONY_APPWRITE_API_ENDPOINT");
+  if (customEndpoint) {
+    return trimTrailingSlash(customEndpoint);
   }
+  
+  // PRIORITY 2: Appwrite-injected endpoint for in-cluster calls (internal Docker network)
   const functionApiEndpoint = getOptionalEnv("APPWRITE_FUNCTION_API_ENDPOINT");
   if (functionApiEndpoint) {
     return trimTrailingSlash(functionApiEndpoint);
   }
+  
+  // PRIORITY 3: Public endpoint (fallback for manual configuration)
   const publicEndpoint = getOptionalEnv("APPWRITE_ENDPOINT");
   if (publicEndpoint) {
     return trimTrailingSlash(publicEndpoint);
   }
+  
+  // PRIORITY 4: Alternative injected endpoint
   const functionEndpoint = getOptionalEnv("APPWRITE_FUNCTION_ENDPOINT");
   if (functionEndpoint) {
     return trimTrailingSlash(functionEndpoint);
   }
+  
   return trimTrailingSlash(getRequiredEnv("APPWRITE_ENDPOINT"));
 }
 

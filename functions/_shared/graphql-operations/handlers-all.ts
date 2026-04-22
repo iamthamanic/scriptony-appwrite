@@ -1129,4 +1129,38 @@ export const allHandlers: Record<string, Op> = {
       })),
     };
   },
+
+  // Project Inspirations
+  GetProjectInspirations: async (v) => ({
+    project_inspirations: await listDocumentsFull(C.project_inspirations, [
+      Query.equal("project_id", v.projectId as string),
+      Query.orderAsc("order_index"),
+    ]),
+  }),
+
+  DeleteProjectInspirations: async (v) => {
+    const rows = await listDocumentsFull(C.project_inspirations, [
+      Query.equal("project_id", v.projectId as string),
+    ]);
+    let affected_rows = 0;
+    for (const r of rows) {
+      const docId = r.$id || r.id;
+      if (docId) {
+        await deleteDocument(C.project_inspirations, docId as string);
+        affected_rows++;
+      }
+    }
+    return { delete_project_inspirations: { affected_rows } };
+  },
+
+  InsertProjectInspirations: async (v) => {
+    const objects = v.objects as Record<string, unknown>[];
+    const created = [];
+    for (const o of objects) {
+      created.push(
+        await createDocument(C.project_inspirations, ID.unique(), o),
+      );
+    }
+    return { insert_project_inspirations: { affected_rows: created.length } };
+  },
 };

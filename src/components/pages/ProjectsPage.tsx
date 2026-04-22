@@ -88,6 +88,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { ProjectFieldTooltipIcon } from "../ProjectFieldLabel";
 import {
   Select,
   SelectContent,
@@ -290,7 +291,7 @@ function totalMinutesFromHourMinuteParts(h: string, m: string): number {
 
 function formatDurationHrMinDe(h: string, m: string): string {
   const t = totalMinutesFromHourMinuteParts(h, m);
-  if (t <= 0) return "–";
+  if (t <= 0) return "-";
   const hh = Math.floor(t / 60);
   const mm = t % 60;
   if (hh === 0) return `${mm} Min.`;
@@ -526,7 +527,7 @@ export function ProjectsPage({
   );
   const [gifPendingNewProjectCover, setGifPendingNewProjectCover] =
     useState<File | null>(null);
-  // Cover upload runs in background — no local loading state
+  // Cover upload runs in background - no local loading state
   const newProjectCoverInputRef = useRef<HTMLInputElement>(null);
   const newProjectScriptImportInputRef = useRef<HTMLInputElement>(null);
   const [newProjectScriptImportFile, setNewProjectScriptImportFile] =
@@ -709,7 +710,7 @@ export function ProjectsPage({
       if (!token) {
         setStyleGuide(null);
         const msg =
-          "Nicht angemeldet oder JWT noch nicht bereit — bitte Seite aktualisieren oder neu anmelden.";
+          "Nicht angemeldet oder JWT noch nicht bereit - bitte Seite aktualisieren oder neu anmelden.";
         setStyleGuideError(msg);
         toast.error(`Style Guide: ${msg}`);
         return;
@@ -1501,14 +1502,14 @@ export function ProjectsPage({
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {/* LIST VIEW — primary click on left block only; ⋮ stays out of overlay (fixes dead Radix / hash) */}
+                    {/* LIST VIEW - primary click on left block only; ⋮ stays out of overlay (fixes dead Radix / hash) */}
                     <Card className="active:scale-[0.99] transition-transform overflow-hidden hover:border-primary/30 group/card">
                       <div className="flex w-full items-start justify-between gap-2 p-3 rounded-lg transition-all group-hover:bg-primary/10 border-2 border-transparent group-hover:border-primary/30">
                         <button
                           type="button"
                           disabled={!project.id}
                           className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left border-0 bg-transparent p-0 hover:bg-transparent disabled:opacity-60"
-                          aria-label={`Projekt „${project.title}“ öffnen`}
+                          aria-label={`Projekt "${project.title}" öffnen`}
                           onMouseEnter={() => {
                             if (!project.id) return;
                             void prefetchProjectTimeline(
@@ -1797,7 +1798,7 @@ export function ProjectsPage({
                 ) : null}
               </div>
               <p className="text-xs text-muted-foreground">
-                .txt, .fountain, .md, .docx, .pdf — nach dem Erstellen werden
+                .txt, .fountain, .md, .docx, .pdf - nach dem Erstellen werden
                 Akte/Sequenzen/Szenen angelegt (ohne bestehende zu löschen).
                 PDFs: reiner Text-Layer; komplexe Layouts können Lücken haben.
               </p>
@@ -1820,7 +1821,7 @@ export function ProjectsPage({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="sitcom-2-act">
-                          Sitcom 2-Akt (22–24 min)
+                          Sitcom 2-Akt (22-24 min)
                         </SelectItem>
                         <SelectItem value="sitcom-4-act">
                           Sitcom 4-Akt (22 min)
@@ -1829,16 +1830,16 @@ export function ProjectsPage({
                           Network 5-Akt (~45 min)
                         </SelectItem>
                         <SelectItem value="streaming-3-act">
-                          Streaming 3-Akt (45–60 min)
+                          Streaming 3-Akt (45-60 min)
                         </SelectItem>
                         <SelectItem value="streaming-4-act">
-                          Streaming 4-Akt (45–60 min)
+                          Streaming 4-Akt (45-60 min)
                         </SelectItem>
                         <SelectItem value="anime-ab">
                           Anime A/B (24 min)
                         </SelectItem>
                         <SelectItem value="sketch-segmented">
-                          Sketch/Segmented (3–5 Stories)
+                          Sketch/Segmented (3-5 Stories)
                         </SelectItem>
                         <SelectItem value="kids-11min">
                           Kids 11-Min (2 Segmente)
@@ -1875,7 +1876,7 @@ export function ProjectsPage({
                           Seasonal Anthology
                         </SelectItem>
                         <SelectItem value="limited-series">
-                          Limited Series (4–10)
+                          Limited Series (4-10)
                         </SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
@@ -1974,7 +1975,7 @@ export function ProjectsPage({
                           60 min / 4-Akt
                         </SelectItem>
                         <SelectItem value="podcast-25-35min">
-                          Podcast 25–35 min
+                          Podcast 25-35 min
                         </SelectItem>
                       </>
                     )}
@@ -2283,7 +2284,7 @@ export function ProjectsPage({
                         Entfernen
                       </Button>
                     </div>
-                    {/* Upload overlay removed — uploads run in background with toast notifications */}
+                    {/* Upload overlay removed - uploads run in background with toast notifications */}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center">
@@ -2342,7 +2343,7 @@ export function ProjectsPage({
             if (!f) return;
             if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
               toast.error(
-                `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`,
+                `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB - bitte mit Konvertierung oder ein kleineres GIF wählen.`,
               );
               return;
             }
@@ -3908,7 +3909,7 @@ function ProjectDetail({
   const [isCalculatingWords, setIsCalculatingWords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /** Timeline trim needs more span than project duration — confirm before extending stored minutes. */
+  /** Timeline trim needs more span than project duration - confirm before extending stored minutes. */
   const [projectDurationExtendOpen, setProjectDurationExtendOpen] =
     useState(false);
   const [pendingDurationHintSeconds, setPendingDurationHintSeconds] = useState<
@@ -4227,7 +4228,7 @@ function ProjectDetail({
   const [coverVisualStyle, setCoverVisualStyle] =
     useState<CoverVisualStyle>("realistic");
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
-  // Upload runs in background via startBackgroundUpload — no local loading state needed
+  // Upload runs in background via startBackgroundUpload - no local loading state needed
 
   const handleCoverClick = () => {
     setIsCoverActionModalOpen(true);
@@ -4265,7 +4266,7 @@ function ProjectDetail({
       if (!outBlob) {
         if (format === "webp") {
           toast.error(
-            "WebP wird in diesem Browser nicht unterstützt — bitte JPEG wählen.",
+            "WebP wird in diesem Browser nicht unterstützt - bitte JPEG wählen.",
           );
           return;
         }
@@ -4282,7 +4283,7 @@ function ProjectDetail({
       a.remove();
       URL.revokeObjectURL(objectUrl);
     } catch {
-      toast.error("Download nicht möglich — Bild wird geöffnet.");
+      toast.error("Download nicht möglich - Bild wird geöffnet.");
       window.open(url, "_blank", "noopener,noreferrer");
     }
   };
@@ -4406,7 +4407,7 @@ function ProjectDetail({
         setIsGeneratingCover(false);
         setIsCoverGenerateModalOpen(false);
       });
-      toast.success("Cover wird generiert und hochgeladen…");
+      toast.success("Cover wird generiert und hochgeladen...");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -4687,7 +4688,7 @@ function ProjectDetail({
   const [newCharacterImage, setNewCharacterImage] = useState<
     string | undefined
   >(undefined);
-  /** Zusätzliche Referenzbilder — gespeichert in `reference_images_json` */
+  /** Zusätzliche Referenzbilder - gespeichert in `reference_images_json` */
   const [newCharacterGalleryImages, setNewCharacterGalleryImages] = useState<
     string[]
   >([]);
@@ -5111,9 +5112,9 @@ function ProjectDetail({
       setIsEditingInfo(false);
       toast.success(
         narrativeStructureMaterialized
-          ? "Projekt gespeichert — Narrativ-Struktur angelegt"
+          ? "Projekt gespeichert - Narrativ-Struktur angelegt"
           : narrativeTimelineCleared
-            ? "Projekt gespeichert — bestehende Struktur wurde entfernt"
+            ? "Projekt gespeichert - bestehende Struktur wurde entfernt"
             : "Projekt gespeichert",
       );
     } catch (error: any) {
@@ -5202,7 +5203,7 @@ function ProjectDetail({
                 "active:scale-95",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45",
               )}
-              aria-label="Cover herunterladen — Format wählen"
+              aria-label="Cover herunterladen - Format wählen"
               title="Cover herunterladen"
             >
               <Download className="size-[7px]" strokeWidth={2.5} aria-hidden />
@@ -5261,8 +5262,8 @@ function ProjectDetail({
                       <strong className="text-foreground">
                         bestehende Timeline entfernt
                       </strong>
-                      (Acts, Sequenzen, Szenen, Shots, Clips) und — sofern für
-                      die neue Auswahl eine Vorlage existiert — die Struktur neu
+                      (Acts, Sequenzen, Szenen, Shots, Clips) und - sofern für
+                      die neue Auswahl eine Vorlage existiert - die Struktur neu
                       angelegt.
                     </p>
                   </>
@@ -5323,9 +5324,9 @@ function ProjectDetail({
             <AlertDialogDescription>
               Für dieses Projekt sind bereits Story-Beats angelegt. Beim
               Speichern wird nur die Template-Zuordnung im Projekt aktualisiert
-              — bestehende Beats werden nicht automatisch umbenannt oder
+              - bestehende Beats werden nicht automatisch umbenannt oder
               gelöscht. Du kannst sie in der Struktur-Sektion bei Bedarf über
-              „Beats aus Template erzeugen“ anpassen.
+              "Beats aus Template erzeugen" anpassen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -5356,14 +5357,14 @@ function ProjectDetail({
                 <strong className="text-foreground">
                   {pendingDurationHintSeconds != null
                     ? Math.ceil(pendingDurationHintSeconds / 60)
-                    : "—"}{" "}
+                    : "-"}{" "}
                   Min.
                 </strong>{" "}
                 (
                 {pendingDurationHintSeconds != null
                   ? `${pendingDurationHintSeconds} s`
                   : ""}{" "}
-                erkannt). Die aktuelle Projektdauer ist kürzer — ohne Anpassung
+                erkannt). Die aktuelle Projektdauer ist kürzer - ohne Anpassung
                 bleibt die Expansion am rechten Ende begrenzt.
               </p>
               <p>
@@ -5426,7 +5427,7 @@ function ProjectDetail({
             if (!f) return;
             if (f.size > STORAGE_CONFIG.MAX_FILE_SIZE) {
               toast.error(
-                `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB — bitte mit Konvertierung oder ein kleineres GIF wählen.`,
+                `GIF ist größer als ${(STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)} MB - bitte mit Konvertierung oder ein kleineres GIF wählen.`,
               );
               return;
             }
@@ -6009,7 +6010,7 @@ function ProjectDetail({
                                     60 min / 4-Akt
                                   </SelectItem>
                                   <SelectItem value="podcast-25-35min">
-                                    Podcast 25–35 min
+                                    Podcast 25-35 min
                                   </SelectItem>
                                 </>
                               )}
@@ -6110,42 +6111,17 @@ function ProjectDetail({
                         </p>
                       </div>
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1 mb-2">
                           <Label
                             htmlFor="project-premise"
-                            className="text-sm block font-bold"
+                            className="text-sm font-bold"
                           >
                             Prämisse
                           </Label>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                aria-label="Hilfe: Prämisse"
-                              >
-                                <Info className="size-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              sideOffset={6}
-                              className="max-w-[320px]"
-                            >
-                              <div className="space-y-1">
-                                <div className="font-semibold">
-                                  Was kommt hier rein?
-                                </div>
-                                <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
-                                <div className="opacity-90">
-                                  Beispiel: „Eine Therapeutin für Götter muss …,
-                                  bevor …“
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                          <ProjectFieldTooltipIcon
+                            field="premise"
+                            tooltipSide="top"
+                          />
                         </div>
                         <Textarea
                           id="project-premise"
@@ -6157,42 +6133,17 @@ function ProjectDetail({
                         />
                       </div>
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1 mb-2">
                           <Label
                             htmlFor="project-theme"
-                            className="text-sm block font-bold"
+                            className="text-sm font-bold"
                           >
                             Thema
                           </Label>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                aria-label="Hilfe: Thema"
-                              >
-                                <Info className="size-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              sideOffset={6}
-                              className="max-w-[320px]"
-                            >
-                              <div className="space-y-1">
-                                <div className="font-semibold">
-                                  Worum geht’s „eigentlich“?
-                                </div>
-                                <div>Aussage/Frage oder Spannungsfeld.</div>
-                                <div className="opacity-90">
-                                  Beispiele: „Verantwortung vs. Macht“, „Heilung
-                                  braucht Wahrheit“
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                          <ProjectFieldTooltipIcon
+                            field="theme"
+                            tooltipSide="top"
+                          />
                         </div>
                         <Textarea
                           id="project-theme"
@@ -6204,45 +6155,17 @@ function ProjectDetail({
                         />
                       </div>
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1 mb-2">
                           <Label
                             htmlFor="project-hook"
-                            className="text-sm block font-bold"
+                            className="text-sm font-bold"
                           >
                             Hook
                           </Label>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                aria-label="Hilfe: Hook"
-                              >
-                                <Info className="size-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              sideOffset={6}
-                              className="max-w-[320px]"
-                            >
-                              <div className="space-y-1">
-                                <div className="font-semibold">
-                                  Was ist das Einzigartige?
-                                </div>
-                                <div>
-                                  Der „Warum sollte ich das
-                                  schauen/lesen?“-Grund.
-                                </div>
-                                <div className="opacity-90">
-                                  Beispiele: „Therapie verändert die Welt“,
-                                  „Case + Meta-Plot“
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                          <ProjectFieldTooltipIcon
+                            field="hook"
+                            tooltipSide="top"
+                          />
                         </div>
                         <Textarea
                           id="project-hook"
@@ -6254,43 +6177,17 @@ function ProjectDetail({
                         />
                       </div>
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1 mb-2">
                           <Label
                             htmlFor="project-notes"
-                            className="text-sm block font-bold"
+                            className="text-sm font-bold"
                           >
                             Notiz
                           </Label>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                aria-label="Hilfe: Notiz"
-                              >
-                                <Info className="size-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              sideOffset={6}
-                              className="max-w-[320px]"
-                            >
-                              <div className="space-y-1">
-                                <div className="font-semibold">Sammelplatz</div>
-                                <div>
-                                  Tonalität, Regeln/No-Gos, offene Fragen,
-                                  Szenenideen, Links.
-                                </div>
-                                <div className="opacity-90">
-                                  Beispiel: „Keine Zeitreisen. Ton: Dramedy.
-                                  Offene Frage: …“
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                          <ProjectFieldTooltipIcon
+                            field="note"
+                            tooltipSide="top"
+                          />
                         </div>
                         <Textarea
                           id="project-notes"
@@ -6425,161 +6322,53 @@ function ProjectDetail({
                       </div>
                       <div className="space-y-3">
                         <div>
-                          <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1 mb-1">
                             <p className="text-sm font-bold">Prämisse</p>
-                            <Tooltip delayDuration={100}>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                  aria-label="Hilfe: Prämisse"
-                                >
-                                  <Info className="size-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="left"
-                                sideOffset={6}
-                                className="max-w-[320px]"
-                              >
-                                <div className="space-y-1">
-                                  <div className="font-semibold">
-                                    Was kommt hier rein?
-                                  </div>
-                                  <div>
-                                    Setup + Hauptfigur + Ziel + Konflikt.
-                                  </div>
-                                  <div className="opacity-90">
-                                    Beispiel: „Eine Therapeutin für Götter muss
-                                    …, bevor …“
-                                  </div>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                            <ProjectFieldTooltipIcon
+                              field="premise"
+                              tooltipSide="top"
+                            />
                           </div>
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {getConceptContent("premise")?.trim() || "—"}
+                            {getConceptContent("premise")?.trim() || "-"}
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1 mb-1">
                               <p className="text-sm font-bold">Thema</p>
-                              <Tooltip delayDuration={100}>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                    aria-label="Hilfe: Thema"
-                                  >
-                                    <Info className="size-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="left"
-                                  sideOffset={6}
-                                  className="max-w-[320px]"
-                                >
-                                  <div className="space-y-1">
-                                    <div className="font-semibold">
-                                      Worum geht’s „eigentlich“?
-                                    </div>
-                                    <div>Aussage/Frage oder Spannungsfeld.</div>
-                                    <div className="opacity-90">
-                                      Beispiele: „Verantwortung vs. Macht“,
-                                      „Heilung braucht Wahrheit“
-                                    </div>
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
+                              <ProjectFieldTooltipIcon
+                                field="theme"
+                                tooltipSide="top"
+                              />
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                              {getConceptContent("theme")?.trim() || "—"}
+                              {getConceptContent("theme")?.trim() || "-"}
                             </p>
                           </div>
                           <div>
-                            <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1 mb-1">
                               <p className="text-sm font-bold">Hook</p>
-                              <Tooltip delayDuration={100}>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                    aria-label="Hilfe: Hook"
-                                  >
-                                    <Info className="size-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="left"
-                                  sideOffset={6}
-                                  className="max-w-[320px]"
-                                >
-                                  <div className="space-y-1">
-                                    <div className="font-semibold">
-                                      Was ist das Einzigartige?
-                                    </div>
-                                    <div>
-                                      Der „Warum sollte ich das
-                                      schauen/lesen?“-Grund.
-                                    </div>
-                                    <div className="opacity-90">
-                                      Beispiele: „Therapie verändert die Welt“,
-                                      „Case + Meta-Plot“
-                                    </div>
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
+                              <ProjectFieldTooltipIcon
+                                field="hook"
+                                tooltipSide="top"
+                              />
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                              {getConceptContent("hook")?.trim() || "—"}
+                              {getConceptContent("hook")?.trim() || "-"}
                             </p>
                           </div>
                         </div>
                         <div>
-                          <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1 mb-1">
                             <p className="text-sm font-bold">Notiz</p>
-                            <Tooltip delayDuration={100}>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                  aria-label="Hilfe: Notiz"
-                                >
-                                  <Info className="size-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="left"
-                                sideOffset={6}
-                                className="max-w-[320px]"
-                              >
-                                <div className="space-y-1">
-                                  <div className="font-semibold">
-                                    Sammelplatz
-                                  </div>
-                                  <div>
-                                    Tonalität, Regeln/No-Gos, offene Fragen,
-                                    Szenenideen, Links.
-                                  </div>
-                                  <div className="opacity-90">
-                                    Beispiel: „Keine Zeitreisen. Ton: Dramedy.
-                                    Offene Frage: …“
-                                  </div>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                            <ProjectFieldTooltipIcon
+                              field="note"
+                              tooltipSide="top"
+                            />
                           </div>
                           <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {getConceptContent("notes")?.trim() || "—"}
+                            {getConceptContent("notes")?.trim() || "-"}
                           </p>
                         </div>
                       </div>
@@ -7070,7 +6859,7 @@ function ProjectDetail({
                                   60 min / 4-Akt
                                 </SelectItem>
                                 <SelectItem value="podcast-25-35min">
-                                  Podcast 25–35 min
+                                  Podcast 25-35 min
                                 </SelectItem>
                               </>
                             )}
@@ -7160,42 +6949,17 @@ function ProjectDetail({
                     </div>
                     <Separator />
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <Label
                           htmlFor="project-premise-desktop"
-                          className="text-xs block"
+                          className="text-xs"
                         >
                           Prämisse
                         </Label>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Prämisse"
-                            >
-                              <Info className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="left"
-                            sideOffset={6}
-                            className="max-w-[320px]"
-                          >
-                            <div className="space-y-1">
-                              <div className="font-semibold">
-                                Was kommt hier rein?
-                              </div>
-                              <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
-                              <div className="opacity-90">
-                                Beispiel: „Eine Therapeutin für Götter muss …,
-                                bevor …“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <ProjectFieldTooltipIcon
+                          field="premise"
+                          tooltipSide="top"
+                        />
                       </div>
                       <Textarea
                         id="project-premise-desktop"
@@ -7208,42 +6972,17 @@ function ProjectDetail({
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <Label
                           htmlFor="project-theme-desktop"
-                          className="text-xs block"
+                          className="text-xs"
                         >
                           Thema
                         </Label>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Thema"
-                            >
-                              <Info className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="left"
-                            sideOffset={6}
-                            className="max-w-[320px]"
-                          >
-                            <div className="space-y-1">
-                              <div className="font-semibold">
-                                Worum geht’s „eigentlich“?
-                              </div>
-                              <div>Aussage/Frage oder Spannungsfeld.</div>
-                              <div className="opacity-90">
-                                Beispiele: „Verantwortung vs. Macht“, „Heilung
-                                braucht Wahrheit“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <ProjectFieldTooltipIcon
+                          field="theme"
+                          tooltipSide="top"
+                        />
                       </div>
                       <Textarea
                         id="project-theme-desktop"
@@ -7256,42 +6995,17 @@ function ProjectDetail({
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <Label
                           htmlFor="project-hook-desktop"
-                          className="text-xs block"
+                          className="text-xs"
                         >
                           Hook
                         </Label>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Hook"
-                            >
-                              <Info className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="left"
-                            sideOffset={6}
-                            className="max-w-[320px]"
-                          >
-                            <div className="space-y-1">
-                              <div className="font-semibold">
-                                Was ist das Einzigartige?
-                              </div>
-                              <div>Der „Warum das?“-Grund in 1–2 Zeilen.</div>
-                              <div className="opacity-90">
-                                Beispiele: „Therapie verändert die Welt“, „Case
-                                + Meta-Plot“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <ProjectFieldTooltipIcon
+                          field="hook"
+                          tooltipSide="top"
+                        />
                       </div>
                       <Textarea
                         id="project-hook-desktop"
@@ -7304,43 +7018,17 @@ function ProjectDetail({
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <Label
                           htmlFor="project-notes-desktop"
-                          className="text-xs block"
+                          className="text-xs"
                         >
                           Notiz
                         </Label>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Notiz"
-                            >
-                              <Info className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="left"
-                            sideOffset={6}
-                            className="max-w-[320px]"
-                          >
-                            <div className="space-y-1">
-                              <div className="font-semibold">Sammelplatz</div>
-                              <div>
-                                Tonalität, Regeln/No-Gos, offene Fragen,
-                                Szenenideen, Links.
-                              </div>
-                              <div className="opacity-90">
-                                Beispiel: „Keine Zeitreisen. Ton: Dramedy.
-                                Offene Frage: …“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <ProjectFieldTooltipIcon
+                          field="note"
+                          tooltipSide="top"
+                        />
                       </div>
                       <Textarea
                         id="project-notes-desktop"
@@ -7391,7 +7079,7 @@ function ProjectDetail({
                           {editedType === "book"
                             ? editedTargetPages
                               ? `${editedTargetPages} Seiten`
-                              : "–"
+                              : "-"
                             : formatDurationHrMinDe(
                                 editedDurationHours,
                                 editedDurationMinutes,
@@ -7431,7 +7119,7 @@ function ProjectDetail({
                             Episode Layout
                           </div>
                           <div className="text-sm">
-                            {editedEpisodeLayout || "–"}
+                            {editedEpisodeLayout || "-"}
                           </div>
                         </div>
                         <div>
@@ -7439,7 +7127,7 @@ function ProjectDetail({
                             Season Engine
                           </div>
                           <div className="text-sm">
-                            {editedSeasonEngine || "–"}
+                            {editedSeasonEngine || "-"}
                           </div>
                         </div>
                       </div>
@@ -7449,7 +7137,7 @@ function ProjectDetail({
                           Narrative Structure
                         </div>
                         <div className="text-sm">
-                          {editedNarrativeStructure || "–"}
+                          {editedNarrativeStructure || "-"}
                         </div>
                       </div>
                     )}
@@ -7479,7 +7167,7 @@ function ProjectDetail({
                                         ? "Season-Lite-5 (Macro)"
                                         : editedBeatTemplate === "custom"
                                           ? "Custom"
-                                          : "–"}
+                                          : "-"}
                       </div>
                     </div>
                     <Separator />
@@ -7499,39 +7187,14 @@ function ProjectDetail({
                     <Separator />
 
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <div className="text-xs text-muted-foreground">
                           Prämisse
                         </div>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Prämisse"
-                            >
-                              <Info className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="left"
-                            sideOffset={6}
-                            className="max-w-[320px]"
-                          >
-                            <div className="space-y-1">
-                              <div className="font-semibold">
-                                Was kommt hier rein?
-                              </div>
-                              <div>Setup + Hauptfigur + Ziel + Konflikt.</div>
-                              <div className="opacity-90">
-                                Beispiel: „Eine Therapeutin für Götter muss …,
-                                bevor …“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <ProjectFieldTooltipIcon
+                          field="premise"
+                          tooltipSide="top"
+                        />
                       </div>
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {getConceptContent("premise")?.trim() || "—"}
@@ -7539,81 +7202,28 @@ function ProjectDetail({
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1 mb-1">
                           <div className="text-xs text-muted-foreground">
                             Thema
                           </div>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                aria-label="Hilfe: Thema"
-                              >
-                                <Info className="size-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              sideOffset={6}
-                              className="max-w-[320px]"
-                            >
-                              <div className="space-y-1">
-                                <div className="font-semibold">
-                                  Worum geht’s „eigentlich“?
-                                </div>
-                                <div>Aussage/Frage oder Spannungsfeld.</div>
-                                <div className="opacity-90">
-                                  Beispiele: „Verantwortung vs. Macht“, „Heilung
-                                  braucht Wahrheit“
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                          <ProjectFieldTooltipIcon
+                            field="theme"
+                            tooltipSide="top"
+                          />
                         </div>
                         <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                           {getConceptContent("theme")?.trim() || "—"}
                         </div>
                       </div>
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1 mb-1">
                           <div className="text-xs text-muted-foreground">
                             Hook
                           </div>
-                          <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                aria-label="Hilfe: Hook"
-                              >
-                                <Info className="size-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="left"
-                              sideOffset={6}
-                              className="max-w-[320px]"
-                            >
-                              <div className="space-y-1">
-                                <div className="font-semibold">
-                                  Was ist das Einzigartige?
-                                </div>
-                                <div>
-                                  Der „Warum sollte ich das
-                                  schauen/lesen?“-Grund.
-                                </div>
-                                <div className="opacity-90">
-                                  Beispiele: „Therapie verändert die Welt“,
-                                  „Case + Meta-Plot“
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
+                          <ProjectFieldTooltipIcon
+                            field="hook"
+                            tooltipSide="top"
+                          />
                         </div>
                         <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                           {getConceptContent("hook")?.trim() || "—"}
@@ -7621,40 +7231,14 @@ function ProjectDetail({
                       </div>
                     </div>
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <div className="text-xs text-muted-foreground">
                           Notiz
                         </div>
-                        <Tooltip delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              aria-label="Hilfe: Notiz"
-                            >
-                              <Info className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="left"
-                            sideOffset={6}
-                            className="max-w-[320px]"
-                          >
-                            <div className="space-y-1">
-                              <div className="font-semibold">Sammelplatz</div>
-                              <div>
-                                Tonalität, Regeln/No-Gos, offene Fragen,
-                                Szenenideen, Links.
-                              </div>
-                              <div className="opacity-90">
-                                Beispiel: „Keine Zeitreisen. Ton: Dramedy.
-                                Offene Frage: …“
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <ProjectFieldTooltipIcon
+                          field="note"
+                          tooltipSide="top"
+                        />
                       </div>
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {getConceptContent("notes")?.trim() || "—"}
@@ -8143,7 +7727,7 @@ function ProjectDetail({
             <div className="space-y-2">
               <Label>Weitere Referenzbilder (optional)</Label>
               <p className="text-xs text-muted-foreground">
-                Bis zu 12 Bilder — z. B. Outfits, Poses, Moodboard (getrennt vom
+                Bis zu 12 Bilder - z. B. Outfits, Poses, Moodboard (getrennt vom
                 Profilbild).
               </p>
               <div className="flex flex-wrap gap-2">

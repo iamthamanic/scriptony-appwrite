@@ -1,0 +1,99 @@
+ultra-batch-load:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+api-gateway.ts:475 [API Gateway] Function responded with error {method: 'GET', route: '/nodes/ultra-batch-load?project_id=69ddde8c000137e4542f&exclude_content=true', url: 'http://localhost:3000/__dev-proxy/scriptony-projec…ject_id=69ddde8c000137e4542f&exclude_content=true', functionName: 'scriptony-project-nodes', status: 500, …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+apiGateway @ api-gateway.ts:475
+api-client.ts:150 [API Client] Function error for GET /nodes/ultra-batch-load?project_id=69ddde8c000137e4542f&exclude_content=true {layer: 'function-response', functionName: 'scriptony-project-nodes', route: '/nodes/ultra-batch-load?project_id=69ddde8c000137e4542f&exclude_content=true', status: 500, statusText: 'Internal Server Error', …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+logGatewayFailure @ api-client.ts:150
+apiRequest @ api-client.ts:214
+timeline-api-v2.ts:249 [Timeline API V2] 🚀 Batch loading timeline: 69ddde8c000137e4542f
+timeline-api-v2.ts:251 Timer '[Timeline API V2] Batch Load 69ddde8c000137e4542f' already exists
+batchLoadTimeline @ timeline-api-v2.ts:251
+loadProjectTimelineBundle @ timeline-map.ts:137
+api-gateway.ts:415  GET http://localhost:3000/__dev-proxy/scriptony-project-nodes/nodes/batch-load?project_id=69ddde8c000137e4542f&exclude_content=true 500 (Internal Server Error)
+apiGateway @ api-gateway.ts:415
+apiRequest @ api-client.ts:203
+await in apiRequest
+apiGet @ api-client.ts:366
+batchLoadTimeline @ timeline-api-v2.ts:257
+loadProjectTimelineBundle @ timeline-map.ts:137
+api-gateway.ts:475 [API Gateway] Function responded with error {method: 'GET', route: '/nodes/batch-load?project_id=69ddde8c000137e4542f&exclude_content=true', url: 'http://localhost:3000/__dev-proxy/scriptony-projec…ject_id=69ddde8c000137e4542f&exclude_content=true', functionName: 'scriptony-project-nodes', status: 500, …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+apiGateway @ api-gateway.ts:475
+await in apiGateway
+apiRequest @ api-client.ts:203
+await in apiRequest
+apiGet @ api-client.ts:366
+batchLoadTimeline @ timeline-api-v2.ts:257
+loadProjectTimelineBundle @ timeline-map.ts:137
+api-client.ts:150 [API Client] Function error for GET /nodes/batch-load?project_id=69ddde8c000137e4542f&exclude_content=true {layer: 'function-response', functionName: 'scriptony-project-nodes', route: '/nodes/batch-load?project_id=69ddde8c000137e4542f&exclude_content=true', status: 500, statusText: 'Internal Server Error', …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+logGatewayFailure @ api-client.ts:150
+apiRequest @ api-client.ts:214
+await in apiRequest
+apiGet @ api-client.ts:366
+batchLoadTimeline @ timeline-api-v2.ts:257
+loadProjectTimelineBundle @ timeline-map.ts:137
+api-gateway.ts:415  GET http://localhost:3000/__dev-proxy/scriptony-shots/shots?project_id=69ddde8c000137e4542f 500 (Internal Server Error)
+apiGateway @ api-gateway.ts:415
+apiRequest @ api-client.ts:203
+await in apiRequest
+apiGet @ api-client.ts:366
+getAllShotsByProject @ shots-api.ts:394
+loadProjectTimelineBundle @ timeline-map.ts:147
+api-gateway.ts:475 [API Gateway] Function responded with error {method: 'GET', route: '/shots?project_id=69ddde8c000137e4542f', url: 'http://localhost:3000/__dev-proxy/scriptony-shots/shots?project_id=69ddde8c000137e4542f', functionName: 'scriptony-shots', status: 500, …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+apiGateway @ api-gateway.ts:475
+await in apiGateway
+apiRequest @ api-client.ts:203
+await in apiRequest
+apiGet @ api-client.ts:366
+getAllShotsByProject @ shots-api.ts:394
+loadProjectTimelineBundle @ timeline-map.ts:147
+api-client.ts:150 [API Client] Function error for GET /shots?project_id=69ddde8c000137e4542f {layer: 'function-response', functionName: 'scriptony-shots', route: '/shots?project_id=69ddde8c000137e4542f', status: 500, statusText: 'Internal Server Error', …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+logGatewayFailure @ api-client.ts:150
+apiRequest @ api-client.ts:214
+await in apiRequest
+apiGet @ api-client.ts:366
+getAllShotsByProject @ shots-api.ts:394
+loadProjectTimelineBundle @ timeline-map.ts:147
+69ddde8c000137e4542f:1  Failed to load resource: the server responded with a status of 408 (Request Timeout)
+api-gateway.ts:475 [API Gateway] Function responded with error {method: 'GET', route: '/style-guide/69ddde8c000137e4542f', url: 'http://localhost:3000/__dev-proxy/scriptony-style-guide/style-guide/69ddde8c000137e4542f', functionName: 'scriptony-style-guide', status: 408, …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+apiGateway @ api-gateway.ts:475
+api-client.ts:150 [API Client] Function error for GET /style-guide/69ddde8c000137e4542f {layer: 'function-response', functionName: 'scriptony-style-guide', route: '/style-guide/69ddde8c000137e4542f', status: 408, statusText: 'Request Timeout', …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+logGatewayFailure @ api-client.ts:150
+apiRequest @ api-client.ts:214
+ProjectsPage.tsx:519 [StyleGuide] Error loading: Error: Gateway timeout (408) before the function finished — common for slow image APIs. Restart `npm run dev` after vite proxy changes; on self‑hosted stacks increase reverse-proxy read timeouts (e.g. nginx `proxy_read_timeout`) in front of the function host. Appwrite → Functions → scriptony-style-guide: execution timeout 300s+; optional env SCRIPTONY_IMAGE_UPSTREAM_TIMEOUT_MS on the function.
+    at unwrapApiResult (api-client.ts:440:19)
+    at Object.get (api-client.ts:470:12)
+    at async Module.getStyleGuide (style-guide-api.ts:62:15)
+    at async loadStyleGuide (ProjectsPage.tsx:515:18)
+console.error @ react-konva.js?v=e7e09f8d:27156
+loadStyleGuide @ ProjectsPage.tsx:519
+api-gateway.ts:415  GET http://localhost:3000/__dev-proxy/scriptony-clips/clips?project_id=69ddde8c000137e4542f 500 (Internal Server Error)
+apiGateway @ api-gateway.ts:415
+apiRequest @ api-client.ts:203
+await in apiRequest
+apiGet @ api-client.ts:366
+listClipsByProject @ clips-api.ts:10
+loadProjectTimelineBundle @ timeline-map.ts:157
+api-gateway.ts:475 [API Gateway] Function responded with error {method: 'GET', route: '/clips?project_id=69ddde8c000137e4542f', url: 'http://localhost:3000/__dev-proxy/scriptony-clips/clips?project_id=69ddde8c000137e4542f', functionName: 'scriptony-clips', status: 500, …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+apiGateway @ api-gateway.ts:475
+await in apiGateway
+apiRequest @ api-client.ts:203
+await in apiRequest
+apiGet @ api-client.ts:366
+listClipsByProject @ clips-api.ts:10
+loadProjectTimelineBundle @ timeline-map.ts:157
+api-client.ts:150 [API Client] Function error for GET /clips?project_id=69ddde8c000137e4542f {layer: 'function-response', functionName: 'scriptony-clips', route: '/clips?project_id=69ddde8c000137e4542f', status: 500, statusText: 'Internal Server Error', …}
+console.error @ react-konva.js?v=e7e09f8d:27156
+logGatewayFailure @ api-client.ts:150
+apiRequest @ api-client.ts:214
+await in apiRequest
+apiGet @ api-client.ts:366
+listClipsByProject @ clips-api.ts:10
+loadProjectTimelineBundle @ timeline-map.ts:157

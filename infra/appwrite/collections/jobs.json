@@ -1,0 +1,85 @@
+{
+  "$id": "jobs",
+  "name": "jobs",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    {
+      "key": "function_name",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "status",
+      "type": "string",
+      "required": true,
+      "size": 50,
+      "default": "pending"
+    },
+    {
+      "key": "payload_json",
+      "type": "string",
+      "required": false,
+      "size": 1000000
+    },
+    {
+      "key": "result_json",
+      "type": "string",
+      "required": false,
+      "size": 1000000
+    },
+    {
+      "key": "error",
+      "type": "string",
+      "required": false,
+      "size": 2000
+    },
+    {
+      "key": "progress",
+      "type": "integer",
+      "required": false,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "user_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "created_at",
+      "type": "datetime",
+      "required": true
+    },
+    {
+      "key": "updated_at",
+      "type": "datetime",
+      "required": true
+    },
+    {
+      "key": "completed_at",
+      "type": "datetime",
+      "required": false
+    }
+  ],
+  "indexes": [
+    {
+      "key": "idx_jobs_status",
+      "type": "key",
+      "attributes": ["status"]
+    },
+    {
+      "key": "idx_jobs_user",
+      "type": "key",
+      "attributes": ["user_id"]
+    },
+    {
+      "key": "idx_jobs_updated",
+      "type": "key",
+      "attributes": ["updated_at"]
+    }
+  ]
+}
