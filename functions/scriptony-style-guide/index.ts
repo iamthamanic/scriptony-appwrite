@@ -622,6 +622,23 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           return;
         }
         
+        case "updateReference": {
+          const { referenceId, payload } = actualBody as { referenceId: string; payload: unknown };
+          req.body = payload;
+          
+          let capturedResult: unknown;
+          const mockRes = {
+            json: (data: unknown) => {
+              capturedResult = data;
+            },
+          } as ResponseLike;
+          
+          await handlePatchReference(req, mockRes, referenceId);
+          
+          await completeJob(jobContext.jobId, capturedResult);
+          return;
+        }
+        
         case "reorderReferences": {
           const { projectId, orderedIds } = actualBody as { projectId: string; orderedIds: string[] };
           req.body = { ordered_ids: orderedIds };

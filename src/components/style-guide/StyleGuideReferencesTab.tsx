@@ -28,10 +28,10 @@ import type {
   StyleGuideData,
   StyleGuideItemKind,
 } from "../../lib/api/style-guide-api";
-import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { extractPaletteFromImageUrl } from "../../lib/extract-palette-client";
 import { toast } from "sonner@2.0.3";
 import { ChevronDown, ChevronUp, Loader2, Pin, Trash2 } from "lucide-react";
+import { useStyleGuideJob } from "../../hooks/useStyleGuideJob";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -55,13 +55,40 @@ interface Props {
 export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
   const [filterTag, setFilterTag] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<StyleGuideItemKind>("image");
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [tagsStr, setTagsStr] = useState("");
   const [file, setFile] = useState<File | null>(null);
+
+  const {
+    createReference,
+    updateReference,
+    deleteReference,
+    reorderReferences,
+    extractPalette,
+    isLoading,
+    progress,
+    reset,
+  } = useStyleGuideJob({
+    onSuccess: (result) => {
+      if (result.styleGuide) {
+        onChange(result.styleGuide);
+        toast.success("Style Guide aktualisiert");
+        // Reset form after success
+        setTitle("");
+        setCaption("");
+        setSourceUrl("");
+        setTagsStr("");
+        setFile(null);
+        setSheetOpen(false);
+      }
+    },
+    onError: (error) => {
+      toast.error(error || "Fehler beim Aktualisieren");
+    },
+  });
 
   const allTags = useMemo(() => {
     const s = new Set<string>();
@@ -82,94 +109,60 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
   const rest = filtered.filter((i) => !i.pinned);
 
   async function submitAdd() {
-    setBusy(true);
-    try {
-      const tags = tagsStr
-        .split(/[,]+/)
-        .map((x) => x.trim())
-        .filter(Boolean);
-      if (kind === "image") {
-        if (file) {
-          const b64 = await fileToBase64(file);
-          const sg = await StyleGuideApi.createReference(projectId, {
-            kind: "image",
-            title,
-            caption,
-            tags,
-            fileBase64: b64,
-            fileName: file.name,
-            mimeType: file.type || "image/jpeg",
-          });
-          onChange(sg);
-        } else {
-          const sg = await StyleGuideApi.createReference(projectId, {
-            kind: "image",
-            title,
-            caption,
-            image_url: sourceUrl.trim(),
-            tags,
-          });
-          onChange(sg);
-        }
-      } else if (kind === "text") {
-        const sg = await StyleGuideApi.createReference(projectId, {
-          kind: "text",
-          title,
-          text_body: caption,
-          tags,
-        });
-        onChange(sg);
-      } else {
-        const sg = await StyleGuideApi.createReference(projectId, {
-          kind: "link",
+    const tags = tagsStr
+      .split(/[,]+/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    if (kind === "image") {
+      if (file) {
+        const b64 = await fileToBase64(file);
+        await createReference(projectId, {
+          kind: "image",
           title,
           caption,
-          source_url: sourceUrl.trim(),
-          source_name: title,
+          tags,
+          fileBase64: b64,
+          fileName: file.name,
+          mimeType: file.type || "image/jpeg",
+        });
+      } else {
+        await createReference(projectId, {
+          kind: "image",
+          title,
+          caption,
+          image_url: sourceUrl.trim(),
           tags,
         });
-        onChange(sg);
       }
-      toast.success("Referenz gespeichert");
-      setSheetOpen(false);
-      setTitle("");
-      setCaption("");
-      setSourceUrl("");
-      setTagsStr("");
-      setFile(null);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Fehler beim Speichern");
-    } finally {
-      setBusy(false);
+    } else if (kind === "text") {
+      await createReference(projectId, {
+        kind: "text",
+        title,
+        text_body: caption,
+        tags,
+      });
+    } else {
+      await createReference(projectId, {
+        kind: "link",
+        title,
+        caption,
+        source_url: sourceUrl.trim(),
+        source_name: title,
+        tags,
+      });
     }
   }
 
   async function togglePin(it: StyleGuideData["items"][0]) {
-    setBusy(true);
-    try {
-      const sg = await StyleGuideApi.updateReference(it.id, {
-        pinned: !it.pinned,
-      });
-      onChange(sg);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Fehler");
-    } finally {
-      setBusy(false);
-    }
+    await updateReference(it.id, {
+      pinned: !it.pinned,
+    });
   }
 
   async function remove(it: StyleGuideData["items"][0]) {
     if (!confirm("Referenz löschen?")) return;
-    setBusy(true);
-    try {
-      const sg = await StyleGuideApi.deleteReference(it.id);
-      onChange(sg);
-      toast.success("Gelöscht");
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Fehler");
-    } finally {
-      setBusy(false);
-    }
+    await deleteReference(it.id);
   }
 
   async function move(it: StyleGuideData["items"][0], dir: -1 | 1) {
@@ -180,15 +173,7 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
     const swapped = [...sorted];
     [swapped[idx], swapped[j]] = [swapped[j], swapped[idx]];
     const ids = swapped.map((x) => x.id);
-    setBusy(true);
-    try {
-      const sg = await StyleGuideApi.reorderReferences(projectId, ids);
-      onChange(sg);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Fehler");
-    } finally {
-      setBusy(false);
-    }
+    await reorderReferences(projectId, ids);
   }
 
   async function runExtractPalette(it: StyleGuideData["items"][0]) {
@@ -196,16 +181,11 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
       toast.error("Nur für Bild-Referenzen mit URL");
       return;
     }
-    setBusy(true);
     try {
       const colors = await extractPaletteFromImageUrl(it.imageUrl);
-      const sg = await StyleGuideApi.extractPalette(it.id, colors);
-      onChange(sg);
-      toast.success("Palette übernommen (Referenz)");
+      await extractPalette(it.id, colors);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Extraktion fehlgeschlagen");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -247,7 +227,7 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
               className="h-8"
               aria-label="Anheften"
               onClick={() => void togglePin(it)}
-              disabled={busy}
+              disabled={isLoading}
             >
               <Pin className={`size-3.5 ${it.pinned ? "text-primary" : ""}`} />
             </Button>
@@ -258,7 +238,7 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
               className="h-8"
               aria-label="Nach oben"
               onClick={() => void move(it, -1)}
-              disabled={busy}
+              disabled={isLoading}
             >
               <ChevronUp className="size-3.5" />
             </Button>
@@ -269,7 +249,7 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
               className="h-8"
               aria-label="Nach unten"
               onClick={() => void move(it, 1)}
-              disabled={busy}
+              disabled={isLoading}
             >
               <ChevronDown className="size-3.5" />
             </Button>
@@ -280,7 +260,7 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
                 variant="secondary"
                 className="h-8 text-xs"
                 onClick={() => void runExtractPalette(it)}
-                disabled={busy}
+                disabled={isLoading}
               >
                 Farben ableiten
               </Button>
@@ -292,7 +272,7 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
               className="h-8 text-destructive"
               aria-label="Löschen"
               onClick={() => void remove(it)}
-              disabled={busy}
+              disabled={isLoading}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -440,9 +420,11 @@ export function StyleGuideReferencesTab({ projectId, data, onChange }: Props) {
                 <Button
                   type="button"
                   onClick={() => void submitAdd()}
-                  disabled={busy}
+                  disabled={isLoading}
                 >
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {isLoading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : null}
                   Speichern
                 </Button>
               </div>

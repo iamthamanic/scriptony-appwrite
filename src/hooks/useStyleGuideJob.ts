@@ -78,8 +78,34 @@ export function useStyleGuideJob(options: UseStyleGuideJobOptions = {}) {
   );
 
   /**
-   * Extract palette via async job
+   * Update reference via async job
    */
+  const updateReference = useCallback(
+    async (
+      referenceId: string,
+      payload: Partial<{
+        kind: "image" | "text" | "link";
+        title?: string;
+        caption?: string;
+        image_url?: string;
+        source_url?: string;
+        source_name?: string;
+        tags?: string[];
+        influence?: number;
+        pinned?: boolean;
+        license_note?: string;
+        text_body?: string;
+      }>,
+    ) => {
+      reset();
+      await start("style-guide", {
+        action: "updateReference",
+        referenceId,
+        payload,
+      });
+    },
+    [start, reset],
+  );
   const extractPalette = useCallback(
     async (referenceId: string, colors: string[]) => {
       reset();
@@ -125,6 +151,7 @@ export function useStyleGuideJob(options: UseStyleGuideJobOptions = {}) {
     // Actions
     getStyleGuide,
     createReference,
+    updateReference,
     extractPalette,
     deleteReference,
     reorderReferences,
