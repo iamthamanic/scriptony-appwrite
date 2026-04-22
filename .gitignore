@@ -34,3 +34,7 @@ repo-visualization*.html
 
 # LightRAG index data (local only)
 .rag/
+scriptony-blender-addon.zip
+scriptony_blender_addon.zip
+scriptony_blender_extension.zip
+eslint-fix.mjs
