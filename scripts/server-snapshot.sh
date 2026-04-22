@@ -35,15 +35,15 @@ echo "=== common project paths (if present) ==="
 for d in /root/scriptony-prod /root/scriptony-test ~/nhost-upstream ~/nhost /opt/nhost /var/www; do
   if [[ -d "$d" ]]; then
     echo "[dir] $d"
-    ls -la "$d" 2>/dev/null | head -25
+    find "$d" -maxdepth 1 -ls 2>/dev/null | head -25
     echo
   fi
 done
 echo "=== nginx sites-enabled (if any) ==="
 if [[ -d /etc/nginx/sites-enabled ]]; then
-  ls -la /etc/nginx/sites-enabled 2>/dev/null || true
+  find /etc/nginx/sites-enabled -maxdepth 1 -ls 2>/dev/null || true
 elif [[ -d /etc/nginx/conf.d ]]; then
-  ls -la /etc/nginx/conf.d 2>/dev/null | true
+  find /etc/nginx/conf.d -maxdepth 1 -ls 2>/dev/null || true
 else
   echo "(no standard nginx path)"
 fi

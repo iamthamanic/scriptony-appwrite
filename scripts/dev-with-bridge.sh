@@ -47,7 +47,7 @@ rm -f "$COMPOSE_UP_LOG"
 echo ""
 echo -e "${CYAN}▸ Bridge erreichbarkeit prüfen...${NC}"
 BRIDGE_OK=false
-for i in $(seq 1 15); do
+for _ in $(seq 1 15); do
   if curl -sf http://localhost:9877/health > /dev/null 2>&1; then
     BRIDGE_OK=true
     break
@@ -56,7 +56,8 @@ for i in $(seq 1 15); do
 done
 
 if [ "$BRIDGE_OK" = true ]; then
-  BRIDGE_JSON=$(curl -sf http://localhost:9877/health 2>/dev/null || echo '{}')
+  # shellcheck disable=SC2034
+  BRIDGE_JSON="$(curl -sf http://localhost:9877/health 2>/dev/null || echo '{}')"
   echo -e "${GREEN}✓  Bridge erreichbar auf Port 9877${NC}"
 else
   echo -e "${RED}✗  Bridge nicht erreichbar (noch beim Starten?)${NC}"

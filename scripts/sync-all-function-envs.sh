@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/functions"
 
+# shellcheck source=/dev/null
 source "$ROOT/.env.server.local"
 
 FUNCTIONS=(

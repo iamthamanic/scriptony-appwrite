@@ -70,7 +70,8 @@ resolve_backend_dir() {
 
 normalize_ai_review_provider() {
   local provider_raw="$1"
-  local provider="$(echo "$provider_raw" | tr '[:upper:]' '[:lower:]')"
+  local provider
+  provider="$(echo "$provider_raw" | tr '[:upper:]' '[:lower:]')"
   case "$provider" in
     codex) echo "codex" ;;
     api|api-key|apikey|openai|anthropic) echo "api" ;;
@@ -350,9 +351,9 @@ run_refactor_orchestration() {
 
   mkdir -p "$REFACTOR_DIR"
   local latest_review=""
-  latest_review="$(ls -1t "$REVIEWS_DIR"/review-full-*.md 2>/dev/null | head -1 || true)"
+  latest_review="$(find "$REVIEWS_DIR" -maxdepth 1 -name 'review-full-*.md' -print0 | sort -zr | head -zn1 | tr -d '\0' || true)"
   if [[ -z "$latest_review" ]]; then
-    latest_review="$(ls -1t "$REVIEWS_DIR"/review-*.md 2>/dev/null | head -1 || true)"
+    latest_review="$(find "$REVIEWS_DIR" -maxdepth 1 -name 'review-*.md' -print0 | sort -zr | head -zn1 | tr -d '\0' || true)"
   fi
   if [[ -z "$latest_review" ]]; then
     echo "Refactor orchestration: no review file found under $REVIEWS_DIR; skipping." >&2
@@ -771,7 +772,7 @@ run_one() {
     shellcheck)
       if [[ "$run_shellcheck_rc" = "1" ]] && [[ "$run_shellcheck" = true ]]; then
         if command -v shellcheck >/dev/null 2>&1; then
-          shfiles="$(find . -name '*.sh' ! -path './node_modules/*' ! -path './.git/*' ! -path './.next/*' ! -path './dist/*' ! -path './build/*' ! -path './.shim/*' ! -path './.shimwrapper/*' ! -path './.stryker-tmp/*' ! -path './.codex-home/*' 2>/dev/null)"
+          shfiles="$(find . -name '*.sh' ! -path './node_modules/*' ! -path './.git/*' ! -path './.next/*' ! -path './dist/*' ! -path './build/*' ! -path './.shim/*' ! -path './.shimwrapper/*' ! -path './.stryker-tmp/*' ! -path './.codex-home/*' ! -path './.rag/*' 2>/dev/null)"
           if [[ -n "$shfiles" ]]; then
             echo "Shellcheck..."
             echo "$shfiles" | xargs shellcheck
