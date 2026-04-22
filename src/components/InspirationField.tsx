@@ -22,10 +22,22 @@ interface InspirationFieldProps {
   className?: string;
 }
 
-const URL_REGEX = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
+const URL_REGEX =
+  /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*(\?[^\s]*)?$/i;
 
 function isValidUrl(str: string): boolean {
-  return URL_REGEX.test(str.trim());
+  // First try regex
+  if (!URL_REGEX.test(str.trim())) return false;
+
+  // Additional validation with URL constructor if available
+  try {
+    const trimmed = str.trim();
+    const url = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function formatUrl(url: string): string {
