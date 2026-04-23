@@ -1,0 +1,19 @@
+{
+  "projectId": "69c04993003de8ff42aa",
+  "functions": [
+    {
+      "$id": "scriptony-audio-story",
+      "name": "Audio Story Production",
+      "runtime": "deno-1.40",
+      "execute": ["any"],
+      "events": [],
+      "schedule": "",
+      "timeout": 300,
+      "enabled": true,
+      "logging": true,
+      "entrypoint": "appwrite-entry.ts",
+      "path": "functions/scriptony-audio-story",
+      "scopes": ["users.read", "teams.read", "databases.read", "databases.write", "storage.read", "storage.write", "execution.write"]
+    }
+  ]
+}

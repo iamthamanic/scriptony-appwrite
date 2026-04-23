@@ -1,17 +1,35 @@
 /**
- * Recording Sessions API
- * Multi-User Recording (WebRTC Signaling Preparation)
+ * Recording Sessions Routes
+ * Node.js Handler für Audio Sessions
  */
 
-import { Hono } from "hono";
-import { requestGraphql } from "../../_shared/graphql-compat.ts";
+import type { RequestLike, ResponseLike } from "../../_shared/http";
+import { requireUserBootstrap } from "../../_shared/auth";
+import {
+  getQuery,
+  getParam,
+  readJsonBody,
+  sendJson,
+  sendBadRequest,
+  sendUnauthorized,
+  sendServerError,
+  sendMethodNotAllowed,
+  sendNotFound,
+} from "../../_shared/http";
+import { requestGraphql } from "../../_shared/graphql-compat";
 
-const app = new Hono();
+async function listSessions(req: RequestLike, res: ResponseLike): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
 
-// GET /sessions/:sceneId - Sessions für eine Szene
-app.get("/scene/:sceneId", async (c) => {
-  const sceneId = c.req.param("sceneId");
-  const _user = c.get("user");
+  const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
+  if (!sceneId) {
+    sendBadRequest(res, "sceneId is required");
+    return;
+  }
 
   try {
     const data = await requestGraphql<{
@@ -27,38 +45,38 @@ app.get("/scene/:sceneId", async (c) => {
           scene_id
           title
           status
-          participants {
-            id
-            character_id
-            user_id
-            role
-          }
           started_at
           ended_at
-          recording_url
+          recording_file_id
+          recording_duration
           created_at
+          updated_at
         }
       }
     `,
       { sceneId },
     );
 
-    return c.json({ sessions: data.audio_sessions });
+    sendJson(res, 200, { sessions: data.audio_sessions });
   } catch (error) {
     console.error("[Audio Story] Error fetching sessions:", error);
-    return c.json({ error: "Failed to fetch sessions" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-// POST /sessions - Neue Session erstellen
-app.post("/", async (c) => {
-  const body = await c.req.json();
-  const _user = c.get("user");
+async function createSession(req: RequestLike, res: ResponseLike): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
 
-  const { sceneId, title, _participantIds } = body;
+  const body = await readJsonBody<Record<string, unknown>>(req);
+  const { sceneId, title } = body;
 
   if (!sceneId || !title) {
-    return c.json({ error: "sceneId and title required" }, 400);
+    sendBadRequest(res, "sceneId and title are required");
+    return;
   }
 
   try {
@@ -73,6 +91,7 @@ app.post("/", async (c) => {
           title
           status
           created_at
+          updated_at
         }
       }
     `,
@@ -80,17 +99,83 @@ app.post("/", async (c) => {
         object: {
           scene_id: sceneId,
           title,
-          created_by: _user.id,
+          created_by: bootstrap.user.id,
           status: "preparing",
         },
       },
     );
 
-    return c.json({ session: data.insert_audio_sessions_one }, 201);
+    sendJson(res, 201, { session: data.insert_audio_sessions_one });
   } catch (error) {
     console.error("[Audio Story] Error creating session:", error);
-    return c.json({ error: "Failed to create session" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-export default app;
+async function getSession(req: RequestLike, res: ResponseLike, sessionId: string): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
+
+  try {
+    const data = await requestGraphql<{
+      audio_sessions_by_pk: Record<string, unknown> | null;
+    }>(
+      `
+      query GetAudioSession($id: uuid!) {
+        audio_sessions_by_pk(id: $id) {
+          id
+          scene_id
+          title
+          description
+          status
+          started_at
+          ended_at
+          recording_file_id
+          recording_duration
+          created_at
+          updated_at
+        }
+      }
+    `,
+      { id: sessionId },
+    );
+
+    if (!data.audio_sessions_by_pk) {
+      sendNotFound(res, "Session not found");
+      return;
+    }
+
+    sendJson(res, 200, { session: data.audio_sessions_by_pk });
+  } catch (error) {
+    console.error("[Audio Story] Error fetching session:", error);
+    sendServerError(res, error);
+  }
+}
+
+export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+  const pathname = (req.path || req.url || "/") as string;
+
+  // GET /sessions?sceneId=xxx
+  if (req.method === "GET" && !pathname.match(/sessions\/[\w-]+/)) {
+    await listSessions(req, res);
+    return;
+  }
+
+  // POST /sessions
+  if (req.method === "POST") {
+    await createSession(req, res);
+    return;
+  }
+
+  // GET /sessions/:id
+  const sessionMatch = pathname.match(/^\/sessions\/([\w-]+)$/);
+  if (sessionMatch && req.method === "GET") {
+    await getSession(req, res, sessionMatch[1]);
+    return;
+  }
+
+  sendMethodNotAllowed(res, ["GET", "POST"]);
+}

@@ -3,11 +3,14 @@
  * Verbindung zu scriptony-audio-story Function
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from "../api-client";
-import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../api-gateway";
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  unwrapApiResult,
+} from "../api-client";
 import type { AudioTrack, RecordingSession, CharacterVoiceAssignment } from "../types";
-
-const AUDIO_STORY_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUDIO_STORY || "audio-story");
 
 // =============================================================================
 // AUDIO TRACKS
@@ -17,18 +20,20 @@ export async function getSceneAudioTracks(
   sceneId: string,
   accessToken: string,
 ): Promise<AudioTrack[]> {
-  const result = await apiGet(`/tracks/scene/${encodeURIComponent(sceneId)}`);
+  const result = await apiGet(`/tracks?sceneId=${encodeURIComponent(sceneId)}`);
   const data = unwrapApiResult(result);
   return data?.tracks || [];
 }
 
 export async function createAudioTrack(
   sceneId: string,
+  projectId: string,
   trackData: Partial<AudioTrack>,
   accessToken: string,
 ): Promise<AudioTrack> {
   const result = await apiPost("/tracks", {
     sceneId,
+    projectId,
     ...trackData,
   });
   const data = unwrapApiResult(result);
@@ -60,7 +65,7 @@ export async function getAudioSessions(
   sceneId: string,
   accessToken: string,
 ): Promise<RecordingSession[]> {
-  const result = await apiGet(`/sessions/scene/${encodeURIComponent(sceneId)}`);
+  const result = await apiGet(`/sessions?sceneId=${encodeURIComponent(sceneId)}`);
   const data = unwrapApiResult(result);
   return data?.sessions || [];
 }
@@ -86,7 +91,7 @@ export async function getVoiceAssignments(
   projectId: string,
   accessToken: string,
 ): Promise<CharacterVoiceAssignment[]> {
-  const result = await apiGet(`/voices/project/${encodeURIComponent(projectId)}`);
+  const result = await apiGet(`/voices?projectId=${encodeURIComponent(projectId)}`);
   const data = unwrapApiResult(result);
   return data?.assignments || [];
 }

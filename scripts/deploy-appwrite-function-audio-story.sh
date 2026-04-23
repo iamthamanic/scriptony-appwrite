@@ -1,47 +1,39 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# Deploy scriptony-audio-story to Appwrite
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FUN="$ROOT/functions"
+STAGE="$FUN/.deploy-staging/scriptony-audio-story"
 
-echo "🎵 Deploying scriptony-audio-story..."
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
 
-# Load env
-set -a
-source .env.local 2>/dev/null || echo "No .env.local found"
-set +a
+echo "Bundling scriptony-audio-story (esbuild)..."
+cd "$FUN"
 
-APPWRITE_ENDPOINT="${APPWRITE_ENDPOINT:-http://localhost:8080/v1}"
-APPWRITE_PROJECT_ID="${APPWRITE_PROJECT_ID:-scriptony}"
-APPWRITE_API_KEY="${APPWRITE_API_KEY:-}"
+npx esbuild scriptony-audio-story/appwrite-entry.ts \
+  --bundle \
+  --platform=node \
+  --target=node16 \
+  --format=cjs \
+  --outfile=scriptony-audio-story/index.js \
+  --legal-comments=none \
+  --external:node:*
 
-if [ -z "$APPWRITE_API_KEY" ]; then
-  echo "❌ APPWRITE_API_KEY not set"
+if [[ ! -s "$FUN/scriptony-audio-story/index.js" ]]; then
+  echo "error: bundle is missing or empty: $FUN/scriptony-audio-story/index.js" >&2
   exit 1
 fi
 
-cd "$(dirname "$0")/.."
+cp "$FUN/scriptony-audio-story/index.js" "$STAGE/index.js"
 
-# Ensure deno is available
-if ! command -v deno &> /dev/null; then
-  echo "❌ Deno not found"
-  exit 1
-fi
-
-# Deploy function
-echo "📦 Deploying function..."
-npx appwrite deploy function \
+echo "Deploying bundle (entrypoint index.js)..."
+npx --yes appwrite-cli functions create-deployment \
   --function-id scriptony-audio-story \
-  --name "Audio Story Production" \
-  --runtime deno-1.40 \
-  --entrypoint functions/scriptony-audio-story/appwrite-entry.ts \
-  --path functions/scriptony-audio-story/ \
-  --permissions "["any"]" \
-  --timeout 300 \
-  --memory 1024 \
-  --env "SCRIPTONY_APPWRITE_API_ENDPOINT=http://appwrite/v1,APPWRITE_FUNCTION_PROJECT_ID=scriptony"
+  --code ".deploy-staging/scriptony-audio-story" \
+  --activate true \
+  --entrypoint "index.js" \
+  --commands ""
 
-echo "✅ Function deployed!"
-
-# Create/update collections
-echo "🗄️ Creating collections..."
-node scripts/create-audio-collections.js
-
-echo "🎉 Deployment complete!"
+echo ""
+echo "Done. scriptony-audio-story deployed successfully."

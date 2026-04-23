@@ -1,45 +1,75 @@
 /**
- * Appwrite Function Entry: scriptony-audio-story
+ * Appwrite Function Entry: scriptony-audio-story (Node.js)
  * Hörbuch/Hörspiel Audio Production Management
  * - Recording Sessions
- * - TTS Voice Management
- * - Multi-Track Audio
+ * - Audio Tracks (Dialog/Musik/SFX/Atmo)
+ * - Voice Casting (Human/TTS)
  * - Stem Mixing & Export
  */
 
-import { createAppwriteHandler } from "../_shared/appwrite-handler.ts";
-import { dispatchHonoApp } from "../_shared/hono-appwrite-handler.ts";
-import type { RequestLike, ResponseLike } from "../_shared/http.ts";
-import { app } from "./index.ts";
+import {
+  createAppwriteHandler,
+  getPathname,
+  sendRouteNotFound,
+  withParams,
+} from "../_shared/appwrite-handler";
+import type { RequestLike, ResponseLike } from "../_shared/http";
+
+// Import route handlers
+import sessionsHandler from "./routes/sessions";
+import tracksHandler from "./routes/tracks";
+import voicesHandler from "./routes/voices";
+import mixingHandler from "./routes/mixing";
 
 async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
-  // Health check vor dem Dispatch
-  const pathname = typeof req.path === "string"
-    ? req.path
-    : typeof req.url === "string"
-    ? new URL(req.url).pathname
-    : "/";
+  const pathname = getPathname(req);
 
+  // Health check
   if (pathname === "/" || pathname === "/health") {
-    res.status(200).json({
-      status: "ok",
-      service: "scriptony-audio-story",
-      version: "1.0.0",
-      features: [
-        "recording-sessions",
-        "audio-tracks",
-        "voice-casting",
-        "stem-mixing",
-        "chapter-export",
-      ],
-    });
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(
+      JSON.stringify({
+        status: "ok",
+        service: "scriptony-audio-story",
+        version: "1.0.0",
+        message: "Hörspiel Audio Production API",
+        endpoints: {
+          sessions: "/sessions - Recording Sessions",
+          tracks: "/tracks - Audio Track Management",
+          voices: "/voices - Voice Casting & TTS",
+          mixing: "/mixing - Stem Mixing & Export",
+        },
+      }),
+    );
     return;
   }
 
-  await dispatchHonoApp(app, req, {
-    json: (body, status) => res.status(status || 200).json(body),
-    text: (text, status) => res.status(status || 200).end(text),
-  });
+  // Sessions routes
+  if (pathname.startsWith("/sessions")) {
+    await sessionsHandler(req, res);
+    return;
+  }
+
+  // Tracks routes
+  if (pathname.startsWith("/tracks")) {
+    await tracksHandler(req, res);
+    return;
+  }
+
+  // Voices routes
+  if (pathname.startsWith("/voices")) {
+    await voicesHandler(req, res);
+    return;
+  }
+
+  // Mixing routes
+  if (pathname.startsWith("/mixing")) {
+    await mixingHandler(req, res);
+    return;
+  }
+
+  sendRouteNotFound("scriptony-audio-story", req, res);
 }
 
 export default createAppwriteHandler(dispatch);

@@ -1,16 +1,37 @@
 /**
- * Voice Casting API
- * Charakter-Sprecher-Zuordnung (Human oder TTS)
+ * Voice Casting Routes
+ * Node.js Handler für Voice Casting Management
  */
 
-import { Hono } from "hono";
-import { requestGraphql } from "../../_shared/graphql-compat.ts";
+import type { RequestLike, ResponseLike } from "../../_shared/http";
+import { requireUserBootstrap } from "../../_shared/auth";
+import {
+  getQuery,
+  getParam,
+  readJsonBody,
+  sendJson,
+  sendBadRequest,
+  sendUnauthorized,
+  sendServerError,
+  sendMethodNotAllowed,
+} from "../../_shared/http";
+import { requestGraphql } from "../../_shared/graphql-compat";
 
-const app = new Hono();
+async function listVoiceAssignments(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
 
-// GET /voices/project/:projectId - Alle Voice-Assignments
-app.get("/project/:projectId", async (c) => {
-  const projectId = c.req.param("projectId");
+  const projectId = getQuery(req, "projectId") || getParam(req, "projectId");
+  if (!projectId) {
+    sendBadRequest(res, "projectId is required");
+    return;
+  }
 
   try {
     const data = await requestGraphql<{
@@ -27,39 +48,49 @@ app.get("/project/:projectId", async (c) => {
           voice_actor_type
           voice_actor_name
           voice_actor_contact
+          voice_actor_notes
+          tts_provider
+          tts_voice_id
           tts_voice_preset
+          sample_audio_file_id
+          sample_text
           created_at
-          character {
-            id
-            name
-            avatar_url
-          }
+          updated_at
         }
       }
     `,
       { projectId },
     );
 
-    return c.json({ assignments: data.character_voice_assignments });
+    sendJson(res, 200, { assignments: data.character_voice_assignments });
   } catch (error) {
     console.error("[Audio Story] Error fetching voices:", error);
-    return c.json({ error: "Failed to fetch voice assignments" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-// POST /voices/assign - Voice zuweisen
-app.post("/assign", async (c) => {
-  const body = await c.req.json();
+async function assignVoice(req: RequestLike, res: ResponseLike): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
+
+  const body = await readJsonBody<Record<string, unknown>>(req);
   const {
     projectId,
     characterId,
     voiceActorType,
     voiceActorName,
+    voiceActorContact,
+    ttsProvider,
+    ttsVoiceId,
     ttsVoicePreset,
   } = body;
 
   if (!projectId || !characterId || !voiceActorType) {
-    return c.json({ error: "Missing required fields" }, 400);
+    sendBadRequest(res, "Missing required fields");
+    return;
   }
 
   try {
@@ -81,66 +112,56 @@ app.post("/assign", async (c) => {
         object: {
           project_id: projectId,
           character_id: characterId,
-          voice_actor_type: voiceActorType, // 'human' oder 'tts'
+          voice_actor_type: voiceActorType,
           voice_actor_name: voiceActorName || null,
+          voice_actor_contact: voiceActorContact || null,
+          tts_provider: ttsProvider || null,
+          tts_voice_id: ttsVoiceId || null,
           tts_voice_preset: ttsVoicePreset || null,
         },
       },
     );
 
-    return c.json(
-      { assignment: data.insert_character_voice_assignments_one },
-      201,
-    );
+    sendJson(res, 201, { assignment: data.insert_character_voice_assignments_one });
   } catch (error) {
     console.error("[Audio Story] Error assigning voice:", error);
-    return c.json({ error: "Failed to assign voice" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-// GET /voices/tts/voices - Verfügbare TTS-Stimmen
-app.get("/tts/voices", (c) => {
-  // In Zukunft könnte hier externe API (ElevenLabs, OpenAI) abgefragt werden
-  return c.json({
+function listTTSAvailableVoices(req: RequestLike, res: ResponseLike): void {
+  sendJson(res, 200, {
     ttsVoices: [
-      {
-        id: "alloy",
-        name: "Alloy",
-        provider: "openai",
-        language: "multilingual",
-      },
-      {
-        id: "echo",
-        name: "Echo",
-        provider: "openai",
-        language: "multilingual",
-      },
-      {
-        id: "fable",
-        name: "Fable",
-        provider: "openai",
-        language: "multilingual",
-      },
-      {
-        id: "onyx",
-        name: "Onyx",
-        provider: "openai",
-        language: "multilingual",
-      },
-      {
-        id: "nova",
-        name: "Nova",
-        provider: "openai",
-        language: "multilingual",
-      },
-      {
-        id: "shimmer",
-        name: "Shimmer",
-        provider: "openai",
-        language: "multilingual",
-      },
+      { id: "alloy", name: "Alloy", provider: "openai", language: "multilingual" },
+      { id: "echo", name: "Echo", provider: "openai", language: "multilingual" },
+      { id: "fable", name: "Fable", provider: "openai", language: "multilingual" },
+      { id: "onyx", name: "Onyx", provider: "openai", language: "multilingual" },
+      { id: "nova", name: "Nova", provider: "openai", language: "multilingual" },
+      { id: "shimmer", name: "Shimmer", provider: "openai", language: "multilingual" },
     ],
   });
-});
+}
 
-export default app;
+export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+  const pathname = (req.path || req.url || "/") as string;
+
+  // GET /voices?projectId=xxx
+  if (req.method === "GET" && pathname.match(/\/voices$/) && !pathname.includes("/tts/")) {
+    await listVoiceAssignments(req, res);
+    return;
+  }
+
+  // POST /voices/assign
+  if (req.method === "POST" && pathname.includes("/assign")) {
+    await assignVoice(req, res);
+    return;
+  }
+
+  // GET /voices/tts/voices
+  if (req.method === "GET" && pathname.includes("/tts/voices")) {
+    listTTSAvailableVoices(req, res);
+    return;
+  }
+
+  sendMethodNotAllowed(res, ["GET", "POST"]);
+}

@@ -1,16 +1,35 @@
 /**
- * Audio Tracks API
- * Verwaltung von Audio-Tracks pro Szene (Dialog, Music, SFX)
+ * Audio Tracks Routes
+ * Node.js Handler für Audio Track Management
  */
 
-import { Hono } from "hono";
-import { requestGraphql } from "../../_shared/graphql-compat.ts";
+import type { RequestLike, ResponseLike } from "../../_shared/http";
+import { requireUserBootstrap } from "../../_shared/auth";
+import {
+  getQuery,
+  getParam,
+  readJsonBody,
+  sendJson,
+  sendBadRequest,
+  sendUnauthorized,
+  sendServerError,
+  sendMethodNotAllowed,
+  sendNotFound,
+} from "../../_shared/http";
+import { requestGraphql } from "../../_shared/graphql-compat";
 
-const app = new Hono();
+async function listTracks(req: RequestLike, res: ResponseLike): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
 
-// GET /tracks/scene/:sceneId - Alle Tracks einer Szene
-app.get("/scene/:sceneId", async (c) => {
-  const sceneId = c.req.param("sceneId");
+  const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
+  if (!sceneId) {
+    sendBadRequest(res, "sceneId is required");
+    return;
+  }
 
   try {
     const data = await requestGraphql<{
@@ -24,6 +43,7 @@ app.get("/scene/:sceneId", async (c) => {
         ) {
           id
           scene_id
+          project_id
           type
           content
           character_id
@@ -33,29 +53,37 @@ app.get("/scene/:sceneId", async (c) => {
           duration
           fade_in
           fade_out
+          tts_voice_id
+          tts_settings
+          tts_audio_generated
           created_at
+          updated_at
         }
       }
     `,
       { sceneId },
     );
 
-    return c.json({ tracks: data.scene_audio_tracks });
+    sendJson(res, 200, { tracks: data.scene_audio_tracks });
   } catch (error) {
     console.error("[Audio Story] Error fetching tracks:", error);
-    return c.json({ error: "Failed to fetch tracks" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-// POST /tracks - Neuen Track erstellen
-app.post("/", async (c) => {
-  const body = await c.req.json();
-  const user = c.get("user");
+async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
 
-  const { sceneId, type, content, characterId, startTime, duration } = body;
+  const body = await readJsonBody<Record<string, unknown>>(req);
+  const { sceneId, type, content, characterId, startTime, duration, projectId } = body;
 
-  if (!sceneId || !type) {
-    return c.json({ error: "sceneId and type required" }, 400);
+  if (!sceneId || !type || !projectId) {
+    sendBadRequest(res, "sceneId, type, and projectId are required");
+    return;
   }
 
   try {
@@ -67,43 +95,50 @@ app.post("/", async (c) => {
         insert_scene_audio_tracks_one(object: $object) {
           id
           scene_id
+          project_id
           type
           content
           character_id
           start_time
           duration
           created_at
+          updated_at
         }
       }
     `,
       {
         object: {
           scene_id: sceneId,
-          type, // 'dialog', 'narrator', 'music', 'sfx', 'atmo'
+          project_id: projectId,
+          type,
           content: content || null,
           character_id: characterId || null,
           start_time: startTime || 0,
           duration: duration || 0,
-          created_by: user.id,
+          created_by: bootstrap.user.id,
         },
       },
     );
 
-    return c.json({ track: data.insert_scene_audio_tracks_one }, 201);
+    sendJson(res, 201, { track: data.insert_scene_audio_tracks_one });
   } catch (error) {
     console.error("[Audio Story] Error creating track:", error);
-    return c.json({ error: "Failed to create track" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-// PUT /tracks/:id - Track aktualisieren
-app.put("/:id", async (c) => {
-  const trackId = c.req.param("id");
-  const body = await c.req.json();
+async function updateTrack(req: RequestLike, res: ResponseLike, trackId: string): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
+
+  const body = await readJsonBody<Record<string, unknown>>(req);
 
   try {
     const data = await requestGraphql<{
-      update_scene_audio_tracks_by_pk: Record<string, unknown>;
+      update_scene_audio_tracks_by_pk: Record<string, unknown> | null;
     }>(
       `
       mutation UpdateAudioTrack($id: uuid!, $set: scene_audio_tracks_set_input!) {
@@ -114,6 +149,8 @@ app.put("/:id", async (c) => {
           character_id
           start_time
           duration
+          fade_in
+          fade_out
           updated_at
         }
       }
@@ -121,16 +158,24 @@ app.put("/:id", async (c) => {
       { id: trackId, set: body },
     );
 
-    return c.json({ track: data.update_scene_audio_tracks_by_pk });
+    if (!data.update_scene_audio_tracks_by_pk) {
+      sendNotFound(res, "Track not found");
+      return;
+    }
+
+    sendJson(res, 200, { track: data.update_scene_audio_tracks_by_pk });
   } catch (error) {
     console.error("[Audio Story] Error updating track:", error);
-    return c.json({ error: "Failed to update track" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-// DELETE /tracks/:id
-app.delete("/:id", async (c) => {
-  const trackId = c.req.param("id");
+async function deleteTrack(req: RequestLike, res: ResponseLike, trackId: string): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
 
   try {
     await requestGraphql(
@@ -144,11 +189,41 @@ app.delete("/:id", async (c) => {
       { id: trackId },
     );
 
-    return c.json({ success: true });
+    sendJson(res, 200, { success: true });
   } catch (error) {
     console.error("[Audio Story] Error deleting track:", error);
-    return c.json({ error: "Failed to delete track" }, 500);
+    sendServerError(res, error);
   }
-});
+}
 
-export default app;
+export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+  const pathname = (req.path || req.url || "/") as string;
+
+  // GET /tracks?sceneId=xxx
+  if (req.method === "GET" && !pathname.match(/tracks\/[\w-]+/)) {
+    await listTracks(req, res);
+    return;
+  }
+
+  // POST /tracks
+  if (req.method === "POST") {
+    await createTrack(req, res);
+    return;
+  }
+
+  // PUT /tracks/:id
+  const trackMatch = pathname.match(/^\/tracks\/([\w-]+)$/);
+  if (trackMatch) {
+    const trackId = trackMatch[1];
+    if (req.method === "PUT") {
+      await updateTrack(req, res, trackId);
+      return;
+    }
+    if (req.method === "DELETE") {
+      await deleteTrack(req, res, trackId);
+      return;
+    }
+  }
+
+  sendMethodNotAllowed(res, ["GET", "POST", "PUT", "DELETE"]);
+}
