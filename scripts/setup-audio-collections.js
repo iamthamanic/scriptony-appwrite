@@ -1,183 +1,172 @@
 #!/usr/bin/env node
 /**
- * Setup script for Audio Story Collections
- * Run: node scripts/setup-audio-collections.js
+ * Setup script for Audio Story Collections (using fetch/REST API)
+ * Run: APPWRITE_API_KEY=xxx node scripts/setup-audio-collections.js
  */
 
-const { Client, Databases, ID } = require("node-appwrite");
+const ENDPOINT = process.env.APPWRITE_ENDPOINT || "http://localhost:8080/v1";
+const PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "scriptony";
+const API_KEY = process.env.APPWRITE_API_KEY;
+const DATABASE_ID = "scriptony";
 
-const client = new Client();
-client
-  .setEndpoint(process.env.APPWRITE_ENDPOINT || "http://localhost:8080/v1")
-  .setProject(process.env.APPWRITE_PROJECT_ID || "scriptony")
-  .setKey(process.env.APPWRITE_API_KEY);
+if (!API_KEY) {
+  console.error("❌ ERROR: APPWRITE_API_KEY environment variable required");
+  console.log("Usage: APPWRITE_API_KEY=xxx node scripts/setup-audio-collections.js");
+  process.exit(1);
+}
 
-const databases = new Databases(client);
-const DATABASE_ID = "scriptony-dev";
+async function appwriteFetch(path, method = "GET", body = null) {
+  const url = `${ENDPOINT}${path}`;
+  const headers = {
+    "X-Appwrite-Project": PROJECT_ID,
+    "X-Appwrite-Key": API_KEY,
+    "Content-Type": "application/json",
+  };
 
-async function createCollection(id, name, attributes, indexes = []) {
+  const options = { method, headers };
+  if (body) options.body = JSON.stringify(body);
+
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`HTTP ${res.status}: ${error}`);
+  }
+  return res.json();
+}
+
+async function createCollection(id, name) {
+  console.log(`\n📁 Creating collection: ${name}...`);
   try {
-    console.log(`Creating collection: ${name}...`);
-    const collection = await databases.createCollection(
-      DATABASE_ID,
-      id,
-      name,
-      [],
-      [],
-      true,
-      true
-    );
-
-    for (const attr of attributes) {
-      console.log(`  - Adding attribute: ${attr.key}`);
-      switch (attr.type) {
-        case "string":
-          await databases.createStringAttribute(
-            DATABASE_ID,
-            id,
-            attr.key,
-            attr.size || 255,
-            attr.required,
-            attr.default,
-            attr.array
-          );
-          break;
-        case "double":
-          await databases.createFloatAttribute(
-            DATABASE_ID,
-            id,
-            attr.key,
-            attr.required,
-            attr.default,
-            attr.min,
-            attr.max
-          );
-          break;
-        case "boolean":
-          await databases.createBooleanAttribute(
-            DATABASE_ID,
-            id,
-            attr.key,
-            attr.required,
-            attr.default
-          );
-          break;
-        case "datetime":
-          await databases.createDatetimeAttribute(
-            DATABASE_ID,
-            id,
-            attr.key,
-            attr.required,
-            attr.default
-          );
-          break;
+    const collection = await appwriteFetch(
+      `/databases/${DATABASE_ID}/collections`,
+      "POST",
+      {
+        collectionId: id,
+        name: name,
+        documentSecurity: false,
+        permissions: [],
       }
-    }
-
-    console.log(`✅ Collection ${name} created successfully!`);
+    );
+    console.log(`✅ Collection created: ${collection.$id}`);
     return collection;
   } catch (error) {
-    console.error(`❌ Error creating ${name}:`, error.message);
+    if (error.message.includes("already exists")) {
+      console.log(`⚠️  Collection ${id} already exists, skipping...`);
+      return { $id: id };
+    }
     throw error;
   }
 }
 
+async function createStringAttribute(collectionId, key, size, required, def = null) {
+  try {
+    await appwriteFetch(
+      `/databases/${DATABASE_ID}/collections/${collectionId}/attributes/string`,
+      "POST",
+      { key, size, required, default: def, array: false }
+    );
+    console.log(`  ✅ String attribute: ${key}`);
+  } catch (e) {
+    console.log(`  ⚠️  Attribute ${key} may exist, skipping...`);
+  }
+}
+
+async function createFloatAttribute(collectionId, key, required, def = 0) {
+  try {
+    await appwriteFetch(
+      `/databases/${DATABASE_ID}/collections/${collectionId}/attributes/float`,
+      "POST",
+      { key, required, default: def, min: 0, max: 999999 }
+    );
+    console.log(`  ✅ Float attribute: ${key}`);
+  } catch (e) {
+    console.log(`  ⚠️  Attribute ${key} may exist, skipping...`);
+  }
+}
+
+async function createBooleanAttribute(collectionId, key, required, def = false) {
+  try {
+    await appwriteFetch(
+      `/databases/${DATABASE_ID}/collections/${collectionId}/attributes/boolean`,
+      "POST",
+      { key, required, default: def }
+    );
+    console.log(`  ✅ Boolean attribute: ${key}`);
+  } catch (e) {
+    console.log(`  ⚠️  Attribute ${key} may exist, skipping...`);
+  }
+}
+
 async function setup() {
-  console.log("🎵 Setting up Audio Story Collections...\n");
+  console.log("🎵 Setting up Audio Story Collections...");
+  console.log(`Endpoint: ${ENDPOINT}`);
+  console.log(`Database: ${DATABASE_ID}\n`);
 
-  // Scene Audio Tracks
-  await createCollection(
-    "scene_audio_tracks",
-    "Scene Audio Tracks",
-    [
-      { key: "scene_id", type: "string", required: true, size: 255 },
-      { key: "project_id", type: "string", required: true, size: 255 },
-      { key: "type", type: "string", required: true, size: 20 },
-      { key: "content", type: "string", required: false, size: 10000 },
-      { key: "character_id", type: "string", required: false, size: 255 },
-      { key: "audio_file_id", type: "string", required: false, size: 255 },
-      { key: "waveform_data", type: "string", required: false, size: 100000 },
-      { key: "audio_duration", type: "double", required: false },
-      { key: "start_time", type: "double", required: true, default: 0 },
-      { key: "duration", type: "double", required: true, default: 0 },
-      { key: "fade_in", type: "double", required: false, default: 0 },
-      { key: "fade_out", type: "double", required: false, default: 0 },
-      { key: "tts_voice_id", type: "string", required: false, size: 100 },
-      { key: "tts_settings", type: "string", required: false, size: 2000 },
-      { key: "tts_audio_generated", type: "boolean", required: false, default: false },
-      { key: "created_by", type: "string", required: false, size: 255 },
-      { key: "updated_by", type: "string", required: false, size: 255 },
-      { key: "created_at", type: "datetime", required: true },
-      { key: "updated_at", type: "datetime", required: true },
-    ]
-  );
+  // 1. Scene Audio Tracks
+  await createCollection("scene_audio_tracks", "Scene Audio Tracks");
+  await createStringAttribute("scene_audio_tracks", "scene_id", 255, true);
+  await createStringAttribute("scene_audio_tracks", "project_id", 255, true);
+  await createStringAttribute("scene_audio_tracks", "type", 20, true);
+  await createStringAttribute("scene_audio_tracks", "content", 10000, false);
+  await createStringAttribute("scene_audio_tracks", "character_id", 255, false);
+  await createStringAttribute("scene_audio_tracks", "audio_file_id", 255, false);
+  await createStringAttribute("scene_audio_tracks", "waveform_data", 100000, false);
+  await createFloatAttribute("scene_audio_tracks", "audio_duration", false);
+  await createFloatAttribute("scene_audio_tracks", "start_time", true, 0);
+  await createFloatAttribute("scene_audio_tracks", "duration", true, 0);
+  await createFloatAttribute("scene_audio_tracks", "fade_in", false, 0);
+  await createFloatAttribute("scene_audio_tracks", "fade_out", false, 0);
+  await createStringAttribute("scene_audio_tracks", "tts_voice_id", 100, false);
+  await createStringAttribute("scene_audio_tracks", "tts_settings", 2000, false);
+  await createBooleanAttribute("scene_audio_tracks", "tts_audio_generated", false, false);
+  await createStringAttribute("scene_audio_tracks", "created_by", 255, false);
+  await createStringAttribute("scene_audio_tracks", "updated_by", 255, false);
 
-  // Audio Sessions
-  await createCollection(
-    "audio_sessions",
-    "Audio Sessions",
-    [
-      { key: "project_id", type: "string", required: true, size: 255 },
-      { key: "scene_id", type: "string", required: true, size: 255 },
-      { key: "title", type: "string", required: true, size: 255 },
-      { key: "description", type: "string", required: false, size: 5000 },
-      { key: "status", type: "string", required: true, size: 20 },
-      { key: "started_at", type: "datetime", required: false },
-      { key: "ended_at", type: "datetime", required: false },
-      { key: "recording_file_id", type: "string", required: false, size: 255 },
-      { key: "recording_duration", type: "double", required: false },
-      { key: "created_by", type: "string", required: true, size: 255 },
-      { key: "updated_by", type: "string", required: false, size: 255 },
-      { key: "created_at", type: "datetime", required: true },
-      { key: "updated_at", type: "datetime", required: true },
-    ]
-  );
+  // 2. Audio Sessions
+  await createCollection("audio_sessions", "Audio Sessions");
+  await createStringAttribute("audio_sessions", "project_id", 255, true);
+  await createStringAttribute("audio_sessions", "scene_id", 255, true);
+  await createStringAttribute("audio_sessions", "title", 255, true);
+  await createStringAttribute("audio_sessions", "description", 5000, false);
+  await createStringAttribute("audio_sessions", "status", 20, true);
+  await createStringAttribute("audio_sessions", "recording_file_id", 255, false);
+  await createFloatAttribute("audio_sessions", "recording_duration", false);
+  await createStringAttribute("audio_sessions", "created_by", 255, true);
+  await createStringAttribute("audio_sessions", "updated_by", 255, false);
 
-  // Audio Session Participants
-  await createCollection(
-    "audio_session_participants",
-    "Audio Session Participants",
-    [
-      { key: "session_id", type: "string", required: true, size: 255 },
-      { key: "character_id", type: "string", required: false, size: 255 },
-      { key: "user_id", type: "string", required: false, size: 255 },
-      { key: "external_speaker_name", type: "string", required: false, size: 255 },
-      { key: "external_speaker_email", type: "string", required: false, size: 255 },
-      { key: "role", type: "string", required: true, size: 20 },
-      { key: "connection_id", type: "string", required: false, size: 255 },
-      { key: "joined_at", type: "datetime", required: false },
-      { key: "left_at", type: "datetime", required: false },
-      { key: "created_at", type: "datetime", required: true },
-    ]
-  );
+  // 3. Audio Session Participants
+  await createCollection("audio_session_participants", "Audio Session Participants");
+  await createStringAttribute("audio_session_participants", "session_id", 255, true);
+  await createStringAttribute("audio_session_participants", "character_id", 255, false);
+  await createStringAttribute("audio_session_participants", "user_id", 255, false);
+  await createStringAttribute("audio_session_participants", "external_speaker_name", 255, false);
+  await createStringAttribute("audio_session_participants", "external_speaker_email", 255, false);
+  await createStringAttribute("audio_session_participants", "role", 20, true);
+  await createStringAttribute("audio_session_participants", "connection_id", 255, false);
 
-  // Character Voice Assignments
-  await createCollection(
-    "character_voice_assignments",
-    "Character Voice Assignments",
-    [
-      { key: "project_id", type: "string", required: true, size: 255 },
-      { key: "character_id", type: "string", required: true, size: 255 },
-      { key: "voice_actor_type", type: "string", required: true, size: 20 },
-      { key: "voice_actor_name", type: "string", required: false, size: 255 },
-      { key: "voice_actor_contact", type: "string", required: false, size: 1000 },
-      { key: "voice_actor_notes", type: "string", required: false, size: 5000 },
-      { key: "tts_provider", type: "string", required: false, size: 50 },
-      { key: "tts_voice_id", type: "string", required: false, size: 100 },
-      { key: "tts_voice_preset", type: "string", required: false, size: 2000 },
-      { key: "sample_audio_file_id", type: "string", required: false, size: 255 },
-      { key: "sample_text", type: "string", required: false, size: 2000 },
-      { key: "created_by", type: "string", required: false, size: 255 },
-      { key: "updated_by", type: "string", required: false, size: 255 },
-      { key: "created_at", type: "datetime", required: true },
-      { key: "updated_at", type: "datetime", required: true },
-    ]
-  );
+  // 4. Character Voice Assignments
+  await createCollection("character_voice_assignments", "Character Voice Assignments");
+  await createStringAttribute("character_voice_assignments", "project_id", 255, true);
+  await createStringAttribute("character_voice_assignments", "character_id", 255, true);
+  await createStringAttribute("character_voice_assignments", "voice_actor_type", 20, true);
+  await createStringAttribute("character_voice_assignments", "voice_actor_name", 255, false);
+  await createStringAttribute("character_voice_assignments", "voice_actor_contact", 1000, false);
+  await createStringAttribute("character_voice_assignments", "voice_actor_notes", 5000, false);
+  await createStringAttribute("character_voice_assignments", "tts_provider", 50, false);
+  await createStringAttribute("character_voice_assignments", "tts_voice_id", 100, false);
+  await createStringAttribute("character_voice_assignments", "tts_voice_preset", 2000, false);
+  await createStringAttribute("character_voice_assignments", "sample_audio_file_id", 255, false);
+  await createStringAttribute("character_voice_assignments", "sample_text", 2000, false);
 
   console.log("\n✅ All Audio Story Collections created successfully!");
+  console.log("\nCollections:");
+  console.log("  - scene_audio_tracks");
+  console.log("  - audio_sessions");
+  console.log("  - audio_session_participants");
+  console.log("  - character_voice_assignments");
 }
 
 setup().catch((error) => {
-  console.error("Setup failed:", error);
+  console.error("\n❌ Setup failed:", error.message);
   process.exit(1);
 });
