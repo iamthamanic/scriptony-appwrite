@@ -93,7 +93,8 @@ export function nodeToScene(node: TimelineNode): Scene {
     location: node.metadata?.location,
     timeOfDay: node.metadata?.timeOfDay,
     characters: node.metadata?.characters || [],
-    content: node.metadata?.content, // 📚 Support for book content
+    content: node.metadata?.content,
+    imageUrl: node.metadata?.imageUrl,
     metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
@@ -290,7 +291,8 @@ export async function updateScene(
   if (updates.timeOfDay !== undefined) metadata.timeOfDay = updates.timeOfDay;
   if (updates.characters !== undefined)
     metadata.characters = updates.characters;
-  if (updates.content !== undefined) metadata.content = updates.content; // 📚 Support for book content
+  if (updates.content !== undefined) metadata.content = updates.content;
+  if (updates.imageUrl !== undefined) metadata.imageUrl = updates.imageUrl;
   if (updates.metadata) {
     Object.assign(metadata, updates.metadata);
   }

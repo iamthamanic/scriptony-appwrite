@@ -104,8 +104,8 @@ export interface Character {
   personality?: string;
   createdAt: string;
   updatedAt: string;
-  /** Legacy snake_case from some API payloads. */
-  image_url?: string;
+  // Legacy snake_case — mapped to imageUrl at API ingestion. Do NOT send to Appwrite.
+  // image_url?: string;
   updated_at?: string;
 }
 

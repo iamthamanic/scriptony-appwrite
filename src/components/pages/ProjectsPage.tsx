@@ -4655,8 +4655,8 @@ function ProjectDetail({
             ? char.weaknesses.join(", ")
             : char.weaknesses || "",
           characterTraits: char.personality || "",
-          image: char.imageUrl || char.image_url,
-          imageUrl: char.imageUrl || char.image_url, // For timeline/shots
+          image: char.imageUrl,
+          imageUrl: char.imageUrl, // For timeline/shots
           lastEdited: new Date(char.updatedAt || char.updated_at),
         }));
 
@@ -4930,12 +4930,8 @@ function ProjectDetail({
                   ? createdCharacter.weaknesses.join(", ")
                   : createdCharacter.weaknesses || "",
                 characterTraits: createdCharacter.personality || "",
-                image: createdCharacter.imageUrl || createdCharacter.image_url,
-                referenceImages:
-                  createdCharacter.referenceImageUrls ||
-                  (createdCharacter as { reference_image_urls?: string[] })
-                    .reference_image_urls ||
-                  [],
+                image: createdCharacter.imageUrl,
+                referenceImages: createdCharacter.referenceImageUrls || [],
                 lastEdited: new Date(
                   createdCharacter.updatedAt ??
                     createdCharacter.updated_at ??
