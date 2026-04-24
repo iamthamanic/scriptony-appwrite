@@ -66,7 +66,9 @@ export function AudioSceneView({
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Gesamtdauer</p>
-              <p className="text-2xl font-bold">{Math.round(totalDuration / 60)} min</p>
+              <p className="text-2xl font-bold">
+                {Math.round(totalDuration / 60)} min
+              </p>
             </div>
           </CardContent>
         </Card>

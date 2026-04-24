@@ -10,7 +10,11 @@ import {
   apiDelete,
   unwrapApiResult,
 } from "../api-client";
-import type { AudioTrack, RecordingSession, CharacterVoiceAssignment } from "../types";
+import type {
+  AudioTrack,
+  RecordingSession,
+  CharacterVoiceAssignment,
+} from "../types";
 
 // =============================================================================
 // AUDIO TRACKS
@@ -65,7 +69,9 @@ export async function getAudioSessions(
   sceneId: string,
   accessToken: string,
 ): Promise<RecordingSession[]> {
-  const result = await apiGet(`/sessions?sceneId=${encodeURIComponent(sceneId)}`);
+  const result = await apiGet(
+    `/sessions?sceneId=${encodeURIComponent(sceneId)}`,
+  );
   const data = unwrapApiResult(result);
   return data?.sessions || [];
 }
@@ -91,7 +97,9 @@ export async function getVoiceAssignments(
   projectId: string,
   accessToken: string,
 ): Promise<CharacterVoiceAssignment[]> {
-  const result = await apiGet(`/voices?projectId=${encodeURIComponent(projectId)}`);
+  const result = await apiGet(
+    `/voices?projectId=${encodeURIComponent(projectId)}`,
+  );
   const data = unwrapApiResult(result);
   return data?.assignments || [];
 }

@@ -75,6 +75,18 @@ export const queryKeys = {
   timeline: {
     byProject: (projectId: string) =>
       ["timeline", "bundle", projectId] as const,
+    audioByProject: (projectId: string) =>
+      ["timeline", "audio", projectId] as const,
+  },
+
+  // Audio
+  audio: {
+    tracksByScene: (sceneId: string) =>
+      ["audio", "tracks", "scene", sceneId] as const,
+    voicesByProject: (projectId: string) =>
+      ["audio", "voices", "project", projectId] as const,
+    sessionsByScene: (sceneId: string) =>
+      ["audio", "sessions", "scene", sceneId] as const,
   },
 
   // Playbook

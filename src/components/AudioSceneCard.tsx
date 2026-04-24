@@ -105,7 +105,8 @@ function AudioTrackItem({
   );
 
   const character = characters.find((c) => c.id === track.characterId);
-  const config = trackTypeConfig[track.type as AudioTrackType] || trackTypeConfig.dialog;
+  const config =
+    trackTypeConfig[track.type as AudioTrackType] || trackTypeConfig.dialog;
 
   const handleSave = () => {
     onUpdate({
@@ -368,9 +369,7 @@ export function AudioSceneCard({
               }}
               isPlaying={playingTrackId === track.id}
               onPlayToggle={() =>
-                setPlayingTrackId(
-                  playingTrackId === track.id ? null : track.id,
-                )
+                setPlayingTrackId(playingTrackId === track.id ? null : track.id)
               }
             />
           ))
@@ -379,7 +378,10 @@ export function AudioSceneCard({
 
       {/* Add Track */}
       <div className="flex items-center gap-2 pt-2 border-t">
-        <Select value={newTrackType} onValueChange={(v) => setNewTrackType(v as AudioTrackType)}>
+        <Select
+          value={newTrackType}
+          onValueChange={(v) => setNewTrackType(v as AudioTrackType)}
+        >
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>

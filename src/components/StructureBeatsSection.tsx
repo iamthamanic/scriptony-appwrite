@@ -18,8 +18,9 @@ import { Separator } from "./ui/separator";
 import { BeatColumn } from "./BeatColumn";
 import { VideoEditorTimeline } from "./VideoEditorTimeline";
 import type { BeatCardData, TimelineNode } from "./BeatCard";
-import { FilmDropdown, type TimelineData } from "./FilmDropdown";
-import { BookDropdown, type BookTimelineData } from "./BookDropdown";
+import { ProjectDropdown } from "./ProjectDropdown";
+import type { TimelineData } from "./FilmDropdown";
+import type { BookTimelineData } from "./BookDropdown";
 import { ScriptStructureImportButton } from "./ScriptStructureImportButton";
 import { NativeBookView } from "./NativeBookView";
 import { NativeScreenplayView } from "./NativeScreenplayView";
@@ -932,54 +933,31 @@ export function StructureBeatsSection({
               <div className="flex-1 min-h-0 overflow-y-auto h-full">
                 {/* Never block Film/Book dropdown: they must mount to load from API if parent cache is empty. */}
                 {structureView === "dropdown" ? (
-                  projectType === "book" ? (
-                    <>
-                      {isLoadingCache && !initialData ? (
-                        <div className="flex items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
-                          <span className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[#6E59A5] border-t-transparent" />
-                          Timeline wird geladen…
-                        </div>
-                      ) : null}
-                      {isLoadingCache && initialData ? (
-                        <div className="border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
-                          Timeline wird aktualisiert…
-                        </div>
-                      ) : null}
-                      <BookDropdown
-                        projectId={projectId}
-                        projectType={projectType}
-                        initialData={initialData}
-                        onDataChange={handleTimelineChange}
-                        containerRef={containerStackRef}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      {isLoadingCache && !initialData ? (
-                        <div className="flex items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
-                          <span className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[#6E59A5] border-t-transparent" />
-                          Timeline wird geladen…
-                        </div>
-                      ) : null}
-                      {isLoadingCache && initialData ? (
-                        <div className="border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
-                          Timeline wird aktualisiert…
-                        </div>
-                      ) : null}
-                      <FilmDropdown
-                        projectId={projectId}
-                        projectType={projectType}
-                        narrativeStructure={narrativeStructure}
-                        initialData={
-                          (timelineData ?? initialData) as TimelineData
-                        }
-                        onDataChange={handleTimelineChange}
-                        containerRef={containerStackRef}
-                        expandShotId={expandShotId}
-                        onExpandShotIdConsumed={() => setExpandShotId(null)}
-                      />
-                    </>
-                  )
+                  <>
+                    {isLoadingCache && !initialData ? (
+                      <div className="flex items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
+                        <span className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-[#6E59A5] border-t-transparent" />
+                        Timeline wird geladen…
+                      </div>
+                    ) : null}
+                    {isLoadingCache && initialData ? (
+                      <div className="border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
+                        Timeline wird aktualisiert…
+                      </div>
+                    ) : null}
+                    <ProjectDropdown
+                      projectId={projectId}
+                      projectType={projectType}
+                      initialData={(timelineData ?? initialData) as never}
+                      onDataChange={
+                        handleTimelineChange as (data: unknown) => void
+                      }
+                      containerRef={containerStackRef}
+                      expandShotId={expandShotId}
+                      onExpandShotIdConsumed={() => setExpandShotId(null)}
+                      narrativeStructure={narrativeStructure}
+                    />
+                  </>
                 ) : structureView === "timeline" ? (
                   <VideoEditorTimeline
                     projectId={projectId}
