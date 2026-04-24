@@ -135,6 +135,8 @@ export interface Scene {
   orderIndex?: number; // Sortierung innerhalb Sequence
   color?: string; // NEW: Farbe für Scene
   wordCount?: number; // 📖 For books (sections): Word count in this section
+  /** Scene preview image (for audio/book projects). */
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
   // Relations
