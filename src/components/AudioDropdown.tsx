@@ -7,7 +7,7 @@
  * Innerhalb Scene: Audio-Tracks statt Shots + Scene-Bild-Upload.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -19,7 +19,8 @@ import {
   Plus,
   Play,
   Pause,
-  ImagePlus,
+  Camera,
+  Loader2,
   User,
   Bot,
   Clock,
@@ -57,6 +58,28 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
   const [expandedSeqs, setExpandedSeqs] = useState<Set<string>>(new Set());
   const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const [uploadingSceneId, setUploadingSceneId] = useState<string | null>(null);
+  const [localSceneImages, setLocalSceneImages] = useState<
+    Record<string, string>
+  >({});
+
+  const handleSceneImageUpload = async (_sceneId: string, file: File) => {
+    setUploadingSceneId(_sceneId);
+    // Nur lokale Vorschau — Persistenz kommt später wenn Backend-Endpoint existiert
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        setLocalSceneImages((prev) => ({ ...prev, [_sceneId]: result }));
+      }
+      setUploadingSceneId(null);
+    };
+    reader.onerror = () => {
+      console.warn("Bildvorschau konnte nicht geladen werden");
+      setUploadingSceneId(null);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const toggleSet = (
     set: React.Dispatch<React.SetStateAction<Set<string>>>,
@@ -160,6 +183,9 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
                       voiceAssignments={data.voiceAssignments}
                       playingTrackId={playingTrackId}
                       onPlayTrack={setPlayingTrackId}
+                      localSceneImages={localSceneImages}
+                      uploadingSceneId={uploadingSceneId}
+                      onUploadSceneImage={handleSceneImageUpload}
                     />
                   ))}
                 </div>
@@ -185,6 +211,9 @@ function SequenceCard({
   voiceAssignments,
   playingTrackId,
   onPlayTrack,
+  localSceneImages,
+  uploadingSceneId,
+  onUploadSceneImage,
 }: {
   seq: Sequence;
   isExpanded: boolean;
@@ -196,6 +225,9 @@ function SequenceCard({
   voiceAssignments: Record<string, { voiceActorType?: string }>;
   playingTrackId: string | null;
   onPlayTrack: (id: string | null) => void;
+  localSceneImages: Record<string, string>;
+  uploadingSceneId: string | null;
+  onUploadSceneImage: (sceneId: string, file: File) => void;
 }) {
   return (
     <div
@@ -237,6 +269,9 @@ function SequenceCard({
               voiceAssignments={voiceAssignments}
               playingTrackId={playingTrackId}
               onPlayTrack={onPlayTrack}
+              localImageUrl={localSceneImages[scene.id]}
+              isUploading={uploadingSceneId === scene.id}
+              onUploadImage={(file) => onUploadSceneImage(scene.id, file)}
             />
           ))}
         </div>
@@ -255,6 +290,9 @@ function SceneCard({
   voiceAssignments,
   playingTrackId,
   onPlayTrack,
+  localImageUrl,
+  isUploading,
+  onUploadImage,
 }: {
   scene: Scene;
   isExpanded: boolean;
@@ -263,8 +301,12 @@ function SceneCard({
   voiceAssignments: Record<string, { voiceActorType?: string }>;
   playingTrackId: string | null;
   onPlayTrack: (id: string | null) => void;
+  localImageUrl?: string;
+  isUploading: boolean;
+  onUploadImage: (file: File) => void;
 }) {
-  const [showImageUpload, setShowImageUpload] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageUrl = localImageUrl || scene.imageUrl;
 
   const grouped = useMemo(() => {
     const g: Record<string, AudioTrack[]> = {
@@ -308,36 +350,62 @@ function SceneCard({
       {/* Scene Content */}
       {isExpanded && (
         <div className="px-2 pb-2 space-y-2">
-          {/* Scene Bild-Upload (wie Shot-Bild) */}
-          <div className="flex items-start gap-3 p-2 rounded-lg bg-white/60 dark:bg-black/20 border border-pink-200 dark:border-pink-800">
-            <div className="shrink-0">
-              {scene.imageUrl ? (
-                <img
-                  src={scene.imageUrl}
-                  alt={scene.title || "Szene"}
-                  className="w-24 h-24 object-cover rounded-lg border border-pink-200 dark:border-pink-800"
-                />
-              ) : (
-                <button
-                  onClick={() => setShowImageUpload(true)}
-                  className="w-24 h-24 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-pink-300 dark:border-pink-700 text-pink-500 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30 transition-colors"
-                >
-                  <ImagePlus className="size-6 mb-1" />
-                  <span className="text-[10px]">Bild</span>
-                </button>
+          {/* Szene-Bild — identisch zu Shot-Bild in ShotCard */}
+          <label className="block">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUploadImage(file);
+                e.target.value = "";
+              }}
+            />
+            <div
+              className="relative rounded-[5px] w-full flex items-center justify-center cursor-pointer aspect-[16/9] overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20"
+              style={
+                imageUrl
+                  ? {
+                      backgroundImage: `url(${imageUrl})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      backgroundBlendMode: "overlay",
+                    }
+                  : {}
+              }
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {!imageUrl && !isUploading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  <Camera className="size-12 text-primary/40" />
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-xs text-primary/60">
+                      Bild hochladen
+                    </span>
+                  </div>
+                </div>
               )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-muted-foreground mb-1">
-                {scene.setting || "Kein Setting"}
-              </div>
-              {scene.description && (
-                <div className="text-xs text-foreground line-clamp-2">
-                  {scene.description}
+
+              {/* Upload-Overlay */}
+              {isUploading && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm">
+                  <Loader2 className="size-8 animate-spin text-primary" />
+                  <span className="mt-2 text-xs text-primary font-medium">
+                    Hochladen…
+                  </span>
+                </div>
+              )}
+
+              {/* Bild-Info-Badge (wie Shot "Edit"-Badge) */}
+              {imageUrl && !isUploading && (
+                <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-black/50 text-white text-[10px]">
+                  Szene
                 </div>
               )}
             </div>
-          </div>
+          </label>
 
           {/* Audio Tracks */}
           {tracks.length === 0 ? (
