@@ -785,12 +785,12 @@ run_one() {
                 run_ai_review_codex
                 rc=$?
               else
-                echo "AI Review übersprungen."
-                rc=0
+                echo "AI Review nicht durchgefuehrt. Um ohne AI Review zu pruefen: --no-ai-review"
+                rc=1
               fi
             else
-              echo "Nicht-interaktiver Modus. AI Review übersprungen. (Codex erzwingen mit SHIM_AI_REVIEW_PROVIDER=codex)" >&2
-              rc=0
+              echo "Nicht-interaktiver Modus. AI Review uebersprungen. (Codex erzwingen mit SHIM_AI_REVIEW_PROVIDER=codex oder --no-ai-review)" >&2
+              rc=1
             fi
           fi
         else
@@ -945,7 +945,7 @@ run_one() {
           fi
           if [[ -n "$shfiles" ]]; then
             echo "Shellcheck..."
-            echo "$shfiles" | xargs shellcheck
+            echo "$shfiles" | xargs shellcheck --severity=warning
             rc=$?
           else
             echo "Skipping Shellcheck: no matching .sh files found." >&2

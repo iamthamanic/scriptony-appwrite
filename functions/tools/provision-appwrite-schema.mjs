@@ -37,23 +37,27 @@ const { endpoint, projectId, apiKey, databaseId } = getAppwriteToolCredentials(
 /** Below this max length, string attrs count toward MariaDB's tight inline row budget. */
 const APPWRITE_LONG_STRING_MIN = 16385;
 
-const S = (size = 512) => ({ kind: "string", size, required: false });
-const L = (size = 16000) => ({
+const S = (size = 512, required = false) => ({
+  kind: "string",
+  size,
+  required,
+});
+const L = (size = 16000, required = false) => ({
   kind: "string",
   size: Math.max(size, APPWRITE_LONG_STRING_MIN),
-  required: false,
+  required,
 });
-const XL = (size = 50000) => ({
+const XL = (size = 50000, required = false) => ({
   kind: "string",
   size: Math.max(size, APPWRITE_LONG_STRING_MIN),
-  required: false,
+  required,
 });
-const I = () => ({ kind: "integer", required: false });
-const B = () => ({ kind: "boolean", required: false });
-const D = () => ({ kind: "datetime", required: false });
-const E = () => ({ kind: "email", required: false });
-const U = () => ({ kind: "url", required: false });
-const F = () => ({ kind: "float", required: false });
+const I = (required = false) => ({ kind: "integer", required });
+const B = (required = false) => ({ kind: "boolean", required });
+const D = (required = false) => ({ kind: "datetime", required });
+const E = (required = false) => ({ kind: "email", required });
+const U = (required = false) => ({ kind: "url", required });
+const F = (required = false) => ({ kind: "float", required });
 
 /** @type {Record<string, Record<string, object>>} */
 const SCHEMA = {
@@ -346,7 +350,7 @@ const SCHEMA = {
   },
   /** Script container for a project (screenplay, book, series, audiobook, radioplay). */
   scripts: {
-    project_id: S(64),
+    project_id: S(64, true),
     user_id: S(64),
     title: S(1024),
     type: S(128),
@@ -359,7 +363,7 @@ const SCHEMA = {
   /** Individual blocks inside a script (beats, dialogue, action, etc.). */
   script_blocks: {
     script_id: S(64),
-    project_id: S(64),
+    project_id: S(64, true),
     node_id: S(64),
     parent_id: S(64),
     order_index: I(),
@@ -396,7 +400,15 @@ const INDEXES = {
   project_visual_style: ["project_id", "user_id"],
   project_visual_style_items: ["visual_style_id", "project_id", "order_index"],
   scripts: ["project_id", "node_id", "user_id"],
-  script_blocks: ["script_id", "project_id", "node_id", "parent_id", "order_index", "speaker_character_id", "type"],
+  script_blocks: [
+    "script_id",
+    "project_id",
+    "node_id",
+    "parent_id",
+    "order_index",
+    "speaker_character_id",
+    "type",
+  ],
 };
 
 async function waitAttribute(db, collectionId, key) {

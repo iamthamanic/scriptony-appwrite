@@ -109,7 +109,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Date:** 2026-04-26 12:17 CEST
 - **Verification Marker:** ARCH-REF-T01-DONE
 - **Changed files:**
-  - `docs/backend-domain-map.md` (neu)
+  - `docs/backend-domain-map.md` (neu, revidiert: +Provider-Spalte, +Legacy-Tabelle)
 - **Appwrite collections:** keine
 - **Appwrite buckets:** keine
 - **Env vars:** keine
@@ -118,6 +118,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Tests run:**
   - `rg --files functions` gegen Domain Map abgeglichen
   - `rg "scriptony-" src functions scripts docs` gegen Domain Map abgeglichen
+  - `make-server-3b52693b`, `scriptony-logs`, `scriptony-stats`, `scriptony-superadmin` nun explizit als `legacy` in separater Tabelle
 - **Shimwrappercheck command:**
   ```bash
   CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md" SHIM_AI_TIMEOUT_SEC=600 SHIM_CHECKS_ARGS="" npm run checks
@@ -137,8 +138,10 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - `scriptony-beats` Bruecke zwischen Structure und Timeline: bei Zukunfts-Refactor pruefen, ob Logik aufgeteilt werden sollte
 - **Rollback plan:** `docs/backend-domain-map.md` loeschen.
 - **Notes:**
-  - 30 aktuelle Functions enthalten (28 Repo + 2 API-only).
+  - 30 aktuelle Functions enthalten (28 Repo + 2 API-only). `scriptony-inspiration` war urspruenglich vergessen, jetzt in Domain Map ergaenzt.
   - 22 Ziel-Functions aus der Zielarchitektur abgedeckt.
+  - **Provider-Spalte** hinzugefuegt: Externe Provider pro Function dokumentiert (AI, Storage, Media, 3D).
+  - **Legacy-Tabelle** hinzugefuegt: `make-server-3b52693b`, `scriptony-logs`, `scriptony-stats`, `scriptony-superadmin`, `scriptony-timeline-v2`, `jobs-handler` explizit als `legacy` markiert.
   - Access-Helper implementiert mit `string`-Typen.
   - Datenmodell-Ownership-Matrix enthaelt 14 Modelle.
   - Direct Project Sharing ohne Organisation ist dokumentiert.
@@ -155,6 +158,8 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - `.shimwrappercheckrc` (bereits in T00/T01 korrigiert)
   - `docs/architecture-refactor-done-reports.md` (Done Report ergaenzt)
   - `docs/scriptony-architecture-refactor-tickets.md` (Status T02 auf `done`)
+  - `scripts/run-checks.sh` (Bugfix: non-interaktiver Ollama-Unreachable-Fallback gibt jetzt rc=1 statt rc=0)
+  - `docs/backend-domain-map.md` (revidiert in T01-Nacharbeit)
 - **Appwrite collections:** keine
 - **Appwrite buckets:** keine
 - **Env vars:** keine
@@ -187,13 +192,15 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Known risks:**
   - `SHIM_RUN_EXPLANATION_CHECK=0` bleibt deaktiviert; Full Explanation Check ist derzeit nicht im Standard-Gate
   - `SHIM_RUN_NPM_AUDIT=0` bleibt deaktiviert fuer normale Tickets; Release/Deploy-Gate aktiviert es explizit
-- **Rollback plan:** `.shimwrappercheckrc` auf vorherige Werte zuruecksetzen.
+- **Rollback plan:** `.shimwrappercheckrc` auf vorherige Werte zuruecksetzen; `scripts/run-checks.sh` reverten.
 - **Notes:**
   - Widerspruch behoben: `.shimwrappercheckrc` hatte `SHIM_RUN_AI_REVIEW=1` mit `SHIM_CHECKS_ARGS="--no-ai-review"`.
   - Jetzt: `SHIM_CHECKS_ARGS=""` + `SHIM_AI_REVIEW_PROVIDER="ollama"` + `SHIM_RUN_AI_REVIEW=1`.
   - Alle Gates sind in `docs/scriptony-architecture-refactor-master.md` dokumentiert.
   - Scoped Gate: `SHIM_CHANGED_FILES=...` isoliert AI-Review-Diff von unrelated Altlasten.
   - Ollama-Fallback: bei Nichterreichbarkeit interaktiver Prompt fuer Codex-Wechsel.
+  - **Bugfix (2026-04-26):** Non-interaktiver Modus hat bei unreachable Ollama AI Review mit rc=0 uebersprungen. Jetzt: rc=1 (Fail).
+  - **Bugfix (2026-04-26):** Interaktiver Modus hat bei "Nein" ebenfalls rc=0 geliefert. Jetzt: rc=1. AI Review kann nur noch explizit uebersprungen werden via `--no-ai-review` oder `SKIP_AI_REVIEW=1`.
 
 ---
 
@@ -226,22 +233,33 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   ```bash
   CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/_shared/appwrite-db.ts,functions/tools/provision-appwrite-schema.mjs" SHIM_CHECKS_ARGS="" npm run checks
   ```
-- **Shimwrappercheck result:** *(laufend)*
-- **AI Review result:** *(laufend)*
+- **Shimwrappercheck result:** ✅ PASSED
+  - Frontend TypeScript: ✅
+  - Vite Build: ✅
+  - Vitest: 140 passed ✅
+  - Appwrite Function Build: skipped (no changes) ✅
+  - Deno fmt + lint: ✅
+  - Shellcheck: skipped (no .sh changes) ✅
+  - Gitleaks: no leaks found ✅
+  - Architecture (dependency-cruiser): no violations ✅
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 300s)
+  - keine blockierenden Findings; Schema-Erweiterungen folgen bestehenden Konventionen
 - **Known risks:**
-  - `content` Feld in `script_blocks` ist XL(50000); bei sehr langen Skripten könnte Limit an MariaDB's inline budget grenzen → dann auf L()/TEXT umstellen
-  - `revision` Feld ist Integer ohne Auto-Inkrement; muss von der API-Logik manuell hochgezählt werden
+  - `content` Feld in `script_blocks` ist XL(50000); bei sehr langen Skripten koennte Limit an MariaDB's inline budget grenzen → dann auf L()/TEXT umstellen
+  - `revision` Feld ist Integer ohne Auto-Inkrement; muss von der API-Logik manuell hochgezaehlt werden
   - `speaker_character_id` ist nullable String; API muss bei Anlegen validieren, dass Charakter existiert
+  - `project_id` ist jetzt explizit `required: true` in beiden Collections (Helper-Patch S(size, required))
+  - `script_id` in `script_blocks` bleibt optional (kann fuer Draft-Blocks ohne Script-Container genutzt werden, aber API sollte validieren)
+  - **Permission-Modell (Klarstellung):** Aktuell **Function-only Zugriff** via Appwrite Service-Key. `documentSecurity=false` + leere Collection-Permissions sind bewusst: DB-Operationen laufen ausschliesslich durch Appwrite Functions, nicht direkt via Client-SDK. Autorisierung erfolgt server-seitig via Access-Helper (T21). Appwrite Document-Level Permissions werden erst bei Collaboration (T21) eingefuehrt — niemals gemischt mit Function-only. Bis dahin bleibt `documentSecurity=false` bestehen.
 - **Rollback plan:**
-  - Collections in Appwrite Console löschen: `scripts`, `script_blocks`
+  - Collections in Appwrite Console loeschen: `scripts`, `script_blocks`
   - `functions/_shared/appwrite-db.ts` und `functions/tools/provision-appwrite-schema.mjs` reverten
 - **Notes:**
   - Block-Typen definiert: `scene_heading`, `action`, `dialogue`, `narration`, `sound_effect`, `stage_direction`, `chapter_text`, `paragraph`, `note`
   - Indexe: `scripts` → project_id, node_id, user_id; `script_blocks` → script_id, project_id, node_id, parent_id, order_index, speaker_character_id, type
-  - `project_id` ist Pflichtfeld in beiden Collections (für Access-Helper)
+  - `project_id` ist Pflichtfeld in beiden Collections (fuer Access-Helper)
   - `node_id` optional (verlinkt zu timeline_nodes)
-  - `revision` Integer für Concurrency
-  - Permission-Modell: Standard Appwrite Document-Level (read/create/update/delete), später über Access-Helper angepasst
+  - `revision` Integer fuer Concurrency
   - Keine Audio-/Asset-/Timeline-Logik im Schema
   - Collaboration-Ready: `project_id` vorhanden, Access-Helper-Pattern dokumentiert in Domain Map
 
