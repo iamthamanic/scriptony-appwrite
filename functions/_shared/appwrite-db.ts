@@ -101,6 +101,8 @@ export const C = {
   characters: "characters",
   scenes: "scenes",
   story_beats: "story_beats",
+  scripts: "scripts",
+  script_blocks: "script_blocks",
   activity_logs: "activity_logs",
   ai_chat_settings: "ai_chat_settings",
   ai_conversations: "ai_conversations",

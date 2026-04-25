@@ -200,3 +200,53 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 ## Phase 2 - Script
 
 *(noch keine Tickets abgeschlossen)*
+
+---
+
+### Done Report: T03 - scriptony-script Schema planen und provisionieren
+
+- **Date:** 2026-04-26 21:05 CEST
+- **Verification Marker:** ARCH-REF-T03-DONE
+- **Changed files:**
+  - `functions/_shared/appwrite-db.ts` (+2 Zeilen: `scripts`, `script_blocks`)
+  - `functions/tools/provision-appwrite-schema.mjs` (+27 Zeilen: Schema + Indexe)
+- **Appwrite collections:**
+  - `scripts` (neu erstellt)
+  - `script_blocks` (neu erstellt)
+- **Appwrite buckets:** keine
+- **Env vars:** keine
+- **Routes:** keine
+- **UI/UX checks:** keine (Backend-Schema-Ticket, keine UI-Aenderung)
+- **Tests run:**
+  - Provisioning lokal via `node functions/tools/provision-appwrite-schema.mjs`
+  - Verifikation: Console → Databases → scriptony → `scripts` und `script_blocks` existieren
+  - Attr-Verifikation: alle 9 Attribute pro Collection vorhanden
+  - Index-Verifikation: alle 7 Indexe auf `script_blocks`, alle 3 Indexe auf `scripts`
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/_shared/appwrite-db.ts,functions/tools/provision-appwrite-schema.mjs" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** *(laufend)*
+- **AI Review result:** *(laufend)*
+- **Known risks:**
+  - `content` Feld in `script_blocks` ist XL(50000); bei sehr langen Skripten könnte Limit an MariaDB's inline budget grenzen → dann auf L()/TEXT umstellen
+  - `revision` Feld ist Integer ohne Auto-Inkrement; muss von der API-Logik manuell hochgezählt werden
+  - `speaker_character_id` ist nullable String; API muss bei Anlegen validieren, dass Charakter existiert
+- **Rollback plan:**
+  - Collections in Appwrite Console löschen: `scripts`, `script_blocks`
+  - `functions/_shared/appwrite-db.ts` und `functions/tools/provision-appwrite-schema.mjs` reverten
+- **Notes:**
+  - Block-Typen definiert: `scene_heading`, `action`, `dialogue`, `narration`, `sound_effect`, `stage_direction`, `chapter_text`, `paragraph`, `note`
+  - Indexe: `scripts` → project_id, node_id, user_id; `script_blocks` → script_id, project_id, node_id, parent_id, order_index, speaker_character_id, type
+  - `project_id` ist Pflichtfeld in beiden Collections (für Access-Helper)
+  - `node_id` optional (verlinkt zu timeline_nodes)
+  - `revision` Integer für Concurrency
+  - Permission-Modell: Standard Appwrite Document-Level (read/create/update/delete), später über Access-Helper angepasst
+  - Keine Audio-/Asset-/Timeline-Logik im Schema
+  - Collaboration-Ready: `project_id` vorhanden, Access-Helper-Pattern dokumentiert in Domain Map
+
+---
+
+## Phase 3 - Assets
+
+*(noch keine Tickets abgeschlossen)*

@@ -344,6 +344,31 @@ const SCHEMA = {
     file_size: I(),
     license_note: L(4000),
   },
+  /** Script container for a project (screenplay, book, series, audiobook, radioplay). */
+  scripts: {
+    project_id: S(64),
+    user_id: S(64),
+    title: S(1024),
+    type: S(128),
+    format: S(128),
+    status: S(128),
+    node_id: S(64),
+    language: S(16),
+    revision: I(),
+  },
+  /** Individual blocks inside a script (beats, dialogue, action, etc.). */
+  script_blocks: {
+    script_id: S(64),
+    project_id: S(64),
+    node_id: S(64),
+    parent_id: S(64),
+    order_index: I(),
+    type: S(128),
+    content: XL(50000),
+    speaker_character_id: S(64),
+    notes: L(8000),
+    revision: I(),
+  },
 };
 
 /** Single-field key indexes for common Query.equal / order fields */
@@ -370,6 +395,8 @@ const INDEXES = {
   project_inspirations: ["project_id"],
   project_visual_style: ["project_id", "user_id"],
   project_visual_style_items: ["visual_style_id", "project_id", "order_index"],
+  scripts: ["project_id", "node_id", "user_id"],
+  script_blocks: ["script_id", "project_id", "node_id", "parent_id", "order_index", "speaker_character_id", "type"],
 };
 
 async function waitAttribute(db, collectionId, key) {
