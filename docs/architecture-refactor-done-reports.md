@@ -145,6 +145,58 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+## Phase 1 - Gate Konsolidierung
+
+### Done Report: T02 - Shimwrappercheck Refactor Gate klaeren
+
+- **Date:** 2026-04-26 19:55 CEST
+- **Verification Marker:** ARCH-REF-T02-DONE
+- **Changed files:**
+  - `.shimwrappercheckrc` (bereits in T00/T01 korrigiert)
+  - `docs/architecture-refactor-done-reports.md` (Done Report ergaenzt)
+  - `docs/scriptony-architecture-refactor-tickets.md` (Status T02 auf `done`)
+- **Appwrite collections:** keine
+- **Appwrite buckets:** keine
+- **Env vars:** keine
+- **Routes:** keine
+- **UI/UX checks:** keine (Dokumentationsticket, keine UI-Aenderung)
+- **Deploy:** **Kein Deploy erforderlich.** T02 ist reines Dokumentation-/Config-Ticket:
+  - Keine Appwrite Functions geaendert.
+  - Keine Collections oder Buckets modifiziert.
+  - Keine Env Vars hinzugefuegt/entfernt.
+  - Keine Frontend-Routen geaendert.
+  - Kein `npx shimwrappercheck run --cli appwrite -- functions deploy` noetig.
+- **Tests run:**
+  - `.shimwrappercheckrc` geprueft: `SHIM_RUN_AI_REVIEW=1` und `SHIM_CHECKS_ARGS=""` sind konsistent
+  - `SHIM_AI_REVIEW_PROVIDER="ollama"` verifiziert
+  - `SKIP_AI_REVIEW` nicht gesetzt
+  - `CHECK_MODE=snippet` Scope-Verifikation: Diff betrachtet geaenderte Dateien
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/scriptony-architecture-refactor-tickets.md,docs/architecture-refactor-done-reports.md" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+  - Frontend TypeScript: ✅
+  - Vite Build: ✅
+  - Vitest: 140 passed ✅
+  - Appwrite Function Build: skipped (no changes) ✅
+  - Shellcheck: skipped (no .sh changes) ✅
+  - Gitleaks: no leaks found ✅
+  - Architecture (dependency-cruiser): no violations ✅
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 600s)
+- **Known risks:**
+  - `SHIM_RUN_EXPLANATION_CHECK=0` bleibt deaktiviert; Full Explanation Check ist derzeit nicht im Standard-Gate
+  - `SHIM_RUN_NPM_AUDIT=0` bleibt deaktiviert fuer normale Tickets; Release/Deploy-Gate aktiviert es explizit
+- **Rollback plan:** `.shimwrappercheckrc` auf vorherige Werte zuruecksetzen.
+- **Notes:**
+  - Widerspruch behoben: `.shimwrappercheckrc` hatte `SHIM_RUN_AI_REVIEW=1` mit `SHIM_CHECKS_ARGS="--no-ai-review"`.
+  - Jetzt: `SHIM_CHECKS_ARGS=""` + `SHIM_AI_REVIEW_PROVIDER="ollama"` + `SHIM_RUN_AI_REVIEW=1`.
+  - Alle Gates sind in `docs/scriptony-architecture-refactor-master.md` dokumentiert.
+  - Scoped Gate: `SHIM_CHANGED_FILES=...` isoliert AI-Review-Diff von unrelated Altlasten.
+  - Ollama-Fallback: bei Nichterreichbarkeit interaktiver Prompt fuer Codex-Wechsel.
+
+---
+
 ## Phase 2 - Script
 
 *(noch keine Tickets abgeschlossen)*

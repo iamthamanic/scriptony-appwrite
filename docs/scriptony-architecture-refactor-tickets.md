@@ -126,7 +126,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | --- | --- | --- | --- | --- |
 | T00 | 0 | Echte Appwrite Deployments inventarisieren | **done** | keine |
 | T01 | 1 | Backend Domain Map anlegen | **done** | T00 |
-| T02 | 1 | Shimwrappercheck Refactor Gate klaeren | todo | T01 |
+| T02 | 1 | Shimwrappercheck Refactor Gate klaeren | **done** | T01 |
 | T03 | 2 | `scriptony-script` Schema planen und provisionieren | todo | T01, T02 |
 | T04 | 2 | `scriptony-script` Basis-API implementieren | todo | T03 |
 | T05 | 3 | `scriptony-assets` Schema planen und provisionieren | todo | T01, T02 |
