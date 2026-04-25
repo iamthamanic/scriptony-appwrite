@@ -238,7 +238,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - Vite Build: ✅
   - Vitest: 140 passed ✅
   - Appwrite Function Build: skipped (no changes) ✅
-  - Deno fmt + lint: ✅
+  - Deno fmt + lint: skipped (deaktiviert in .shimwrappercheckrc)
   - Shellcheck: skipped (no .sh changes) ✅
   - Gitleaks: no leaks found ✅
   - Architecture (dependency-cruiser): no violations ✅
