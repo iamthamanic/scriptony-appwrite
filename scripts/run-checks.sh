@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Shared checks for pre-push (GitHub) and supabase-checked (Supabase deploy).
+# Shared checks for pre-push and checked Appwrite deploy workflows.
 # Usage: run-checks.sh [--frontend] [--backend] [--refactor|--until-95] [--no-frontend] [--no-backend] [--no-ai-review] [--no-explanation-check] ...
-#   With no args: run frontend and backend checks (same as --frontend --backend). CHECK_MODE defaults to full (whole-codebase AI review).
+#   With no args: run frontend and backend checks (same as --frontend --backend). CHECK_MODE comes from .shimwrappercheckrc.
 #   --refactor / --until-95: force CHECK_MODE=full (chunked full scan). Use for refactor loops until all chunks >=95%.
 #   Pre-push should set CHECK_MODE=snippet so AI review only runs on pushed changes; run-checks.sh does not override CHECK_MODE if already set.
 #   AI review runs by default; use --no-ai-review to disable (or SKIP_AI_REVIEW=1).
 #   Provider: SHIM_AI_REVIEW_PROVIDER=auto|codex|api (auto prefers Codex, else API-key review).
-#   Full Explanation check runs by default after AI review; use --no-explanation-check to disable (or SKIP_EXPLANATION_CHECK=1).
-# Includes security: npm audit (frontend), deno audit (backend). Optional: Snyk (frontend, skip with SKIP_SNYK=1).
+#   Full Explanation check can run after AI review when enabled; use --no-explanation-check to disable (or SKIP_EXPLANATION_CHECK=1).
+# Includes security: npm audit, optional SAST/secret checks, and Node/Appwrite function source/build checks.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,6 +34,12 @@ if [[ -d "$PROJECT_ROOT/.shimwrapper/checktools/node_modules/.bin" ]]; then
 fi
 
 BACKEND_PATH_PATTERNS="${SHIM_BACKEND_PATH_PATTERNS:-supabase/functions,src/supabase/functions}"
+
+if [[ -x /usr/bin/git ]]; then
+  GIT_CMD="${GIT_CMD:-/usr/bin/git}"
+else
+  GIT_CMD="${GIT_CMD:-git}"
+fi
 
 trim() {
   local s="$1"
@@ -74,6 +80,7 @@ normalize_ai_review_provider() {
   provider="$(echo "$provider_raw" | tr '[:upper:]' '[:lower:]')"
   case "$provider" in
     codex) echo "codex" ;;
+    ollama) echo "ollama" ;;
     api|api-key|apikey|openai|anthropic) echo "api" ;;
     auto|"") echo "auto" ;;
     *)
@@ -104,6 +111,18 @@ run_ai_review_api() {
     node "$PROJECT_ROOT/node_modules/shimwrappercheck/scripts/ai-deductive-review.js"
   else
     echo "Skipping AI review: ai-deductive-review.js not found for API mode." >&2
+  fi
+}
+
+run_ai_review_ollama() {
+  if [[ -f "$ROOT_DIR/scripts/ai-ollama-review.sh" ]]; then
+    bash "$ROOT_DIR/scripts/ai-ollama-review.sh"
+  elif [[ -f "$PROJECT_ROOT/scripts/ai-ollama-review.sh" ]]; then
+    bash "$PROJECT_ROOT/scripts/ai-ollama-review.sh"
+  elif [[ -f "$PROJECT_ROOT/node_modules/shimwrappercheck/scripts/ai-ollama-review.sh" ]]; then
+    bash "$PROJECT_ROOT/node_modules/shimwrappercheck/scripts/ai-ollama-review.sh"
+  else
+    echo "Skipping AI review: ai-ollama-review.sh not found for Ollama mode." >&2
   fi
 }
 
@@ -206,6 +225,9 @@ run_snyk="${SHIM_RUN_SNYK:-1}"
 run_deno_fmt="${SHIM_RUN_DENO_FMT:-1}"
 run_deno_lint="${SHIM_RUN_DENO_LINT:-1}"
 run_deno_audit="${SHIM_RUN_DENO_AUDIT:-1}"
+run_functions_format="${SHIM_RUN_FUNCTIONS_FORMAT:-1}"
+run_functions_lint="${SHIM_RUN_FUNCTIONS_LINT:-1}"
+run_functions_build="${SHIM_RUN_FUNCTIONS_BUILD:-1}"
 run_update_readme="${SHIM_RUN_UPDATE_README:-1}"
 run_ai_review_rc="${SHIM_RUN_AI_REVIEW:-1}"
 run_explanation_check_rc="${SHIM_RUN_EXPLANATION_CHECK:-1}"
@@ -229,7 +251,7 @@ is_frontend_check() {
 
 is_backend_check() {
   case "$1" in
-    denoFmt|denoLint|denoAudit) return 0 ;;
+    functionsFormat|functionsLint|functionsBuild|denoFmt|denoLint|denoAudit) return 0 ;;
   esac
   return 1
 }
@@ -248,6 +270,60 @@ should_run_check() {
 has_npm_script() {
   local script_name="$1"
   node -e "try{const p=require('./package.json');process.exit(p&&p.scripts&&p.scripts['$script_name']?0:1)}catch(e){process.exit(1)}" >/dev/null 2>&1
+}
+
+is_incremental_check_mode() {
+  local mode
+  mode="$(echo "${CHECK_MODE:-}" | tr '[:upper:]' '[:lower:]')"
+  case "$mode" in
+    snippet|commit|diff) return 0 ;;
+  esac
+  return 1
+}
+
+if [[ -f "$ROOT_DIR/scripts/_shared/collect-changed-files.sh" ]]; then
+  source "$ROOT_DIR/scripts/_shared/collect-changed-files.sh"
+fi
+
+run_prettier_for_changed_files() {
+  local include_regex="$1"
+  local exclude_regex="${2:-^$}"
+  local label="$3"
+  local files=()
+  local file=""
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && files+=("$file")
+  done < <(
+    collect_changed_files |
+      grep -E "$include_regex" |
+      grep -vE "$exclude_regex" || true
+  )
+
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    echo "Skipping $label: no changed matching files."
+    return 0
+  fi
+
+  npx prettier --check "${files[@]}"
+}
+
+run_eslint_for_changed_files() {
+  local include_regex="$1"
+  local label="$2"
+  local files=()
+  local file=""
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && files+=("$file")
+  done < <(collect_changed_files | grep -E "$include_regex" || true)
+
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    echo "Skipping $label: no changed matching files."
+    return 0
+  fi
+
+  npx eslint "${files[@]}"
 }
 
 is_transient_network_or_tls_error() {
@@ -480,11 +556,27 @@ run_one() {
     prettier)
       if [[ "$run_prettier" = "1" ]]; then
         echo "Prettier..."
-        if [[ -n "$CHECKTOOLS_BIN" ]] && [[ -x "$CHECKTOOLS_BIN/prettier" ]]; then
+        if is_incremental_check_mode; then
+          run_prettier_for_changed_files \
+            '^(src/.*\.(ts|tsx|css|json)|scripts/.*\.(js|mjs|cjs|json)|[^/]+\.(json|js|mjs))$' \
+            '^(functions/|docs/|tickets/|node_modules/|build/|dist/)' \
+            "Prettier frontend/scripts"
+          rc=$?
+        elif has_npm_script "format:check:frontend" && has_npm_script "format:check:scripts"; then
+          npm run format:check:frontend
+          rc=$?
+          if [[ $rc -eq 0 ]]; then
+            npm run format:check:scripts
+            rc=$?
+          fi
+        elif has_npm_script "format:check"; then
+          npm run format:check
+          rc=$?
+        elif [[ -n "$CHECKTOOLS_BIN" ]] && [[ -x "$CHECKTOOLS_BIN/prettier" ]]; then
           "$CHECKTOOLS_BIN/prettier" --check .
           rc=$?
         else
-          (npm run format:check 2>/dev/null) || npx prettier --check .
+          npx prettier --check .
           rc=$?
         fi
       fi
@@ -492,7 +584,10 @@ run_one() {
     lint)
       if [[ "$run_lint" = "1" ]]; then
         echo "Lint..."
-        if has_npm_script "lint"; then
+        if is_incremental_check_mode; then
+          run_eslint_for_changed_files '^src/.*\.(ts|tsx)$' "ESLint frontend"
+          rc=$?
+        elif has_npm_script "lint"; then
           npm run lint
           rc=$?
         elif [[ -n "$CHECKTOOLS_BIN" ]] && [[ -x "$CHECKTOOLS_BIN/eslint" ]]; then
@@ -504,14 +599,62 @@ run_one() {
         fi
       fi
       ;;
+    functionsFormat)
+      if [[ "$run_functions_format" = "1" ]]; then
+        echo "Appwrite functions format..."
+        if is_incremental_check_mode; then
+          run_prettier_for_changed_files \
+            '^functions/.*\.(ts|json|mjs|cjs)$' \
+            '^(functions/.*/index\.js|functions/meta\.json|functions/package-lock\.json)$' \
+            "Prettier Appwrite functions"
+          rc=$?
+        elif has_npm_script "format:check:functions"; then
+          npm run format:check:functions
+          rc=$?
+        else
+          npx prettier --check "functions/**/*.{ts,json,mjs,cjs}"
+          rc=$?
+        fi
+      fi
+      ;;
+    functionsLint)
+      if [[ "$run_functions_lint" = "1" ]]; then
+        echo "Appwrite functions lint..."
+        if is_incremental_check_mode; then
+          run_eslint_for_changed_files '^functions/.*\.ts$' "ESLint Appwrite functions"
+          rc=$?
+        elif has_npm_script "lint:functions"; then
+          npm run lint:functions
+          rc=$?
+        else
+          npx eslint "functions/**/*.ts"
+          rc=$?
+        fi
+      fi
+      ;;
+    functionsBuild)
+      if [[ "$run_functions_build" = "1" ]]; then
+        echo "Appwrite functions build..."
+        if has_npm_script "functions:build:check"; then
+          npm run functions:build:check
+          rc=$?
+        else
+          npm --prefix functions run build:appwrite-deploy
+          rc=$?
+        fi
+      fi
+      ;;
     typecheck)
       if [[ "$run_typecheck" = "1" ]]; then
         echo "TypeScript check..."
         if [[ -n "$CHECKTOOLS_BIN" ]] && [[ -x "$CHECKTOOLS_BIN/tsc" ]]; then
           "$CHECKTOOLS_BIN/tsc" --noEmit
           rc=$?
+        elif has_npm_script "typecheck"; then
+          npm run typecheck
+          rc=$?
         else
-          (npm run typecheck 2>/dev/null) || npx tsc --noEmit
+          npx tsc --noEmit
           rc=$?
         fi
       fi
@@ -629,6 +772,27 @@ run_one() {
           echo "AI Review provider: api-key"
           run_ai_review_api
           rc=$?
+        elif [[ "$ai_provider" == "ollama" ]]; then
+          echo "AI Review provider: ollama"
+          run_ai_review_ollama
+          rc=$?
+          if [[ $rc -eq 77 ]]; then
+            echo "⚠️  Ollama ist nicht erreichbar unter ${OLLAMA_HOST:-http://localhost:11434}." >&2
+            if [[ -t 0 ]] && [[ -t 1 ]]; then
+              read -r -p "Soll stattdessen Codex für das AI Review verwendet werden? [j/N] " answer < /dev/tty
+              if [[ "$answer" =~ ^[jJyY] ]]; then
+                echo "Wechsle zu Codex..."
+                run_ai_review_codex
+                rc=$?
+              else
+                echo "AI Review übersprungen."
+                rc=0
+              fi
+            else
+              echo "Nicht-interaktiver Modus. AI Review übersprungen. (Codex erzwingen mit SHIM_AI_REVIEW_PROVIDER=codex)" >&2
+              rc=0
+            fi
+          fi
         else
           echo "AI Review provider: codex"
           run_ai_review_codex
@@ -772,13 +936,19 @@ run_one() {
     shellcheck)
       if [[ "$run_shellcheck_rc" = "1" ]] && [[ "$run_shellcheck" = true ]]; then
         if command -v shellcheck >/dev/null 2>&1; then
-          shfiles="$(find . -name '*.sh' ! -path './node_modules/*' ! -path './.git/*' ! -path './.next/*' ! -path './dist/*' ! -path './build/*' ! -path './.shim/*' ! -path './.shimwrapper/*' ! -path './.stryker-tmp/*' ! -path './.codex-home/*' ! -path './.rag/*' 2>/dev/null)"
+          if is_incremental_check_mode; then
+            # collect_changed_files returns ALL changed files regardless of path.
+            # The grep below selects .sh files from any directory including functions/.
+            shfiles="$(collect_changed_files | grep -E '\.sh$' || true)"
+          else
+            shfiles="$(find . -name '*.sh' ! -path './node_modules/*' ! -path './.git/*' ! -path './.next/*' ! -path './dist/*' ! -path './build/*' ! -path './.shim/*' ! -path './.shimwrapper/*' ! -path './.stryker-tmp/*' ! -path './.codex-home/*' ! -path './.rag/*' 2>/dev/null)"
+          fi
           if [[ -n "$shfiles" ]]; then
             echo "Shellcheck..."
             echo "$shfiles" | xargs shellcheck
             rc=$?
           else
-            echo "Skipping Shellcheck: no .sh files found." >&2
+            echo "Skipping Shellcheck: no matching .sh files found." >&2
           fi
         else
           echo "Skipping Shellcheck: not installed (e.g. brew install shellcheck)." >&2
@@ -849,7 +1019,7 @@ else
 
   if [[ "$run_backend" = true ]]; then
     echo "Running backend checks..."
-    DEFAULT_ORDER+=(denoFmt denoLint denoAudit)
+    DEFAULT_ORDER+=(functionsFormat functionsLint functionsBuild denoFmt denoLint denoAudit)
   fi
 
   DEFAULT_ORDER+=(ruff shellcheck sast gitleaks licenseChecker architecture complexity mutation e2e)

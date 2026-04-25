@@ -1,0 +1,150 @@
+# Architecture Refactor – Done Reports
+
+Stand: 2026-04-24
+
+Dieses Dokument sammelt alle Done Reports fuer die Architektur-Refactor-Phasen.
+Es wird von `docs/scriptony-architecture-refactor-master.md` referenziert.
+
+---
+
+## Done Report Vorlage
+
+```markdown
+### Txx - <Ticket-Titel> - Done Report - YYYY-MM-DD
+
+- Changed files:
+- Routes added/changed:
+- Appwrite collections changed:
+- Appwrite buckets changed:
+- Appwrite env vars changed:
+- UI/UX impact:
+- Tests run:
+- Shimwrappercheck command:
+- Shimwrappercheck result:
+- AI Review result:
+- Known risks:
+- Rollback plan:
+```
+
+### T20 - Done Report Erweiterungen
+
+Fuer T20 muessen zusaetzlich dokumentiert werden:
+- Storage-Dateien/OAuth-Dateien inventarisiert:
+- Google Drive OAuth aktueller Stand:
+- Buckets inventarisiert:
+- Domain Map aktualisiert:
+- Storage-Adapter Konzept dokumentiert:
+
+### T21 - Done Report Erweiterungen
+
+Fuer T21 muessen zusaetzlich dokumentiert werden:
+- `rg` nach `created_by` in Functions:
+- Bestehende Orgs/Invites-Logik inventarisiert:
+- Access-Helper Implementierungsort:
+- Collaboration-Readiness von T03/T04/T05/T06 dokumentiert:
+- Direct Project Sharing dokumentiert:
+
+---
+
+## Phase 0 - Inventarisierung
+
+### Done Report: T00 - Echte Appwrite Deployments inventarisieren
+
+- **Date:** 2026-04-24 10:35 CEST
+- **Verification Marker:** ARCH-REF-T00-DONE
+- **Changed files:**
+  - `docs/appwrite-function-inventory.md` (neu, repo-basiert + API-verifiziert)
+  - `docs/scriptony-architecture-refactor-master.md` (gesplittet aus altem Monolith)
+  - `docs/architecture-refactor-done-reports.md` (neu, ausgelagerte Done Reports)
+  - `docs/architecture-refactor-domains.md` (neu, ausgelagerte Ziel-Domänen)
+  - `scripts/_shared/collect-changed-files.sh` (neu, Shared Helper)
+  - `scripts/ai-ollama-review.sh` (VERDICT-Normalisierung, Shared Helper)
+  - `scripts/run-checks.sh` (Shared Helper, Ollama-Fallback, Shellcheck-Kommentar)
+  - `.shimwrappercheckrc` (Provider auf `ollama` gesetzt)
+  - `docs/appwrite-function-inventory-verified.md` (geloescht, in Hauptdokument integriert)
+- **Appwrite collections:** keine
+- **Appwrite buckets:** keine
+- **Env vars:** keine
+- **Routes:** keine
+- **UI/UX checks:** keine (Dokumentationsticket, keine UI-Aenderung)
+- **Tests run:**
+  - Repo-Files: `ls -1 functions/`, `grep -rn`, `find`
+  - `appwrite.json` Inhalt analysiert
+  - `scripts/appwrite-create-functions.sh` Inhalt analysiert
+  - `scripts/deploy-appwrite-function-*.sh` Liste analysiert
+  - `package.json` npm scripts analysiert
+  - `src/lib/api-gateway.ts` Frontend-Routen analysiert
+  - **Live API-Abfrage:** `GET /v1/functions?limit=100` → 200 OK, 29 Functions
+  - `docs/appwrite-function-inventory-verified.md` erstellt mit API-Mismatches
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/appwrite-function-inventory.md,docs/scriptony-architecture-refactor-master.md,docs/architecture-refactor-done-reports.md,docs/architecture-refactor-domains.md,docs/appwrite-function-inventory-verified.md,.shimwrappercheckrc,scripts/ai-ollama-review.sh,scripts/run-checks.sh" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+  - Frontend TypeScript: ✅
+  - Vite Build: ✅
+  - Vitest: 140 passed ✅
+  - Appwrite Function Build: skipped (no changes) ✅
+  - Shellcheck: ✅
+  - Gitleaks: no leaks found ✅
+  - Architecture (dependency-cruiser): no violations ✅
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 600s)
+  - low: interaktiver read-Prompt in run-checks.sh blockiert bei TTY — **by design**, User hat explizit interaktiven Fallback gefordert. Keine Änderung erforderlich.
+- **Known risks:**
+  - `appwrite.json` ist veraltet (nur 1 Function) und unzuverlaessig.
+  - 5 Functions im Repo nicht in API deployt: `scriptony-audio-story`, `scriptony-stage3d`, `scriptony-sync`, `scriptony-jobs-handler`, `jobs-handler`
+  - 2 Functions in API aber nicht im Repo: `scriptony-inspiration`, `scriptony-timeline-v2`
+  - 6 Functions ohne aktives Deployment: `make-server-3b52693b`, `scriptony-logs`, `scriptony-stats`, `scriptony-superadmin`, `scriptony-timeline-v2`, `scriptony-mcp-appwrite`
+- **Rollback plan:** `docs/appwrite-function-inventory*.md` loeschen.
+- **Notes:**
+  - Alle Runtimes sind `node-16.0` (nicht `deno-1.40` wie in `appwrite.json`).
+  - Alle Entrypoints sind `index.js` (nicht `.ts`).
+
+---
+
+## Phase 1 - Domain Map
+
+### Done Report: T01 - Backend Domain Map anlegen
+
+- **Date:** 2026-04-26 12:17 CEST
+- **Verification Marker:** ARCH-REF-T01-DONE
+- **Changed files:**
+  - `docs/backend-domain-map.md` (neu)
+- **Appwrite collections:** keine
+- **Appwrite buckets:** keine
+- **Env vars:** keine
+- **Routes:** keine
+- **UI/UX checks:** keine (Dokumentationsticket, keine UI-Aenderung)
+- **Tests run:**
+  - `rg --files functions` gegen Domain Map abgeglichen
+  - `rg "scriptony-" src functions scripts docs` gegen Domain Map abgeglichen
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md" SHIM_AI_TIMEOUT_SEC=600 SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+  - Frontend TypeScript: ✅
+  - Vite Build: ✅
+  - Vitest: 140 passed ✅
+  - Appwrite Function Build: skipped (no changes) ✅
+  - Shellcheck: skipped (no .sh changes) ✅
+  - Gitleaks: no leaks found ✅
+  - Architecture (dependency-cruiser): no violations ✅
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 600s)
+  - low: Access-Helper Code-Beispiel fehlte explizite Parameter-Typen → **fixed** in `docs/backend-domain-map.md`
+- **Known risks:**
+  - `scriptony-timeline-v2` ist leere API-Definition → T17 entfernen
+  - `scriptony-beats` Bruecke zwischen Structure und Timeline: bei Zukunfts-Refactor pruefen, ob Logik aufgeteilt werden sollte
+- **Rollback plan:** `docs/backend-domain-map.md` loeschen.
+- **Notes:**
+  - 30 aktuelle Functions enthalten (28 Repo + 2 API-only).
+  - 22 Ziel-Functions aus der Zielarchitektur abgedeckt.
+  - Access-Helper implementiert mit `string`-Typen.
+  - Datenmodell-Ownership-Matrix enthaelt 14 Modelle.
+  - Direct Project Sharing ohne Organisation ist dokumentiert.
+
+---
+
+## Phase 2 - Script
+
+*(noch keine Tickets abgeschlossen)*
