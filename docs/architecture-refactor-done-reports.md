@@ -265,6 +265,80 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+## Phase 2 - Script
+
+### Done Report: T04 - scriptony-script Basis-API implementieren
+
+- **Date:** 2026-04-26 22:45 CEST
+- **Verification Marker:** ARCH-REF-T04-DONE
+- **Changed files:**
+  - `functions/scriptony-script/appwrite-entry.ts` (neu, Hono Entrypoint)
+  - `functions/scriptony-script/routes/scripts.ts` (neu, Script CRUD)
+  - `functions/scriptony-script/routes/blocks.ts` (neu, Block CRUD + Reorder)
+  - `functions/scriptony-script/_shared/access.ts` (neu, Access-Helper)
+  - `functions/scriptony-script/_shared/validation.ts` (neu, Zod-Schemas)
+  - `functions/build-appwrite-deploy.mjs` (+1 Bundle: scriptony-script)
+- **Appwrite collections:** keine neuen (nutzt T03 `scripts` + `script_blocks`)
+- **Appwrite buckets:** keine
+- **Env vars:** keine neuen (nutzt bestehende APPWRITE_* Variablen)
+- **Routes:**
+  - `GET  /scripts?project_id=...`
+  - `GET  /scripts/by-project/:projectId`
+  - `POST /scripts`
+  - `GET  /scripts/:id`
+  - `PATCH /scripts/:id`
+  - `DELETE /scripts/:id`
+  - `GET  /scripts/:id/blocks`
+  - `POST /scripts/:id/blocks`
+  - `GET  /script-blocks/:id`
+  - `PATCH /script-blocks/:id`
+  - `DELETE /script-blocks/:id`
+  - `POST /script-blocks/reorder`
+  - `GET  /nodes/:nodeId/script-blocks?project_id=...`
+- **UI/UX checks:** keine (Backend-API-Ticket, keine UI-Aenderung)
+- **Tests run:**
+  - Build-Check: `node functions/build-appwrite-deploy.mjs --filter=scriptony-script` → ✅ 2.5mb bundle
+  - Full Bundle Build: `scriptony-script` in `functions:build:check` integriert
+  - Syntaktische Pruefung: `node --check` nicht direkt anwendbar (TS), aber `esbuild` Build erfolgreich
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-script/,functions/build-appwrite-deploy.mjs" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+  - Frontend TypeScript: ✅
+  - Vite Build: ✅
+  - Vitest: 140 passed ✅
+  - Appwrite Function Build: ✅ `scriptony-script` 2.5mb
+  - Deno fmt + lint: skipped (deaktiviert in .shimwrappercheckrc)
+  - Shellcheck: skipped (no .sh changes) ✅
+  - Gitleaks: no leaks found ✅
+  - Architecture (dependency-cruiser): no violations ✅
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 300s)
+  - keine blockierenden Findings im T04-Diff
+  - medium/low Findings betreffen Altlasten in `build-appwrite-deploy.mjs` (nicht T04)
+- **Known risks:**
+  - `scriptony-script` ist noch nicht in Appwrite deployed (nur gebaut). Deploy wird spaeter via `npx shimwrappercheck run --cli appwrite -- functions deploy scriptony-script` durchgefuehrt.
+  - `speaker_character_id` wird nicht gegen `characters`-Collection validiert (nullable, API-Verantwortung des Callers)
+  - `node_id` wird nicht gegen `timeline_nodes`-Collection validiert (nur Project-Access-Check)
+  - Access-Helper nutzt initial `created_by`/`user_id`/`owner_type`/`owner_id` — extensible fuer T21 Collaboration
+  - `revision` wird fuer Patch-Operationen inkrementiert, aber kein echter Optimistic-Concurrency-Check (kein `if revision == expected`)
+  - DELETE /scripts/:id löscht kaskadierend alle Blocks (N+1), bei grossen Skripten spaeter Bulk-Delete noetig
+- **Rollback plan:**
+  - Function-Verzeichnis loeschen: `rm -rf functions/scriptony-script`
+  - `functions/build-appwrite-deploy.mjs` Bundle-Eintrag entfernen
+  - Appwrite Function in Console stoppen/deaktivieren (falls deployed)
+- **Notes:**
+  - Hono-Framework mit `createHonoAppwriteHandler` (wie `scriptony-gym`)
+  - Direkte Appwrite SDK-Nutzung (Databases, Query) — kein GraphQL-Adapter-Indirektion
+  - Zod-Validierung aller Inputs
+  - Access-Helper (`canReadProject`, `canEditProject`, `canManageProject`) in `_shared/access.ts`
+  - Keine direkten `created_by`-Checks in Route-Handlern (nur via Access-Helper)
+  - `project_id` Pflichtfeld fuer alle Schreiboperationen
+  - `revision` Integer fuer Concurrency (manuell hochgezaehlt)
+  - `scriptony-script` Bundle: 2.5mb (vergleichbar mit `scriptony-gym` 2.2mb)
+
+---
+
 ## Phase 3 - Assets
 
 *(noch keine Tickets abgeschlossen)*
