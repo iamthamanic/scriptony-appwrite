@@ -370,7 +370,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Appwrite collections changed:**
   - `assets` (neu, in DB `scriptony`)
     - 19 Attribute: project_id, user_id, owner_type, owner_id, media_type, purpose, file_id, bucket_id, filename, mime_type, size, duration, width, height, status, metadata, created_by, created_at, updated_at
-    - 7 Indexe: idx_project_id, idx_owner_type, idx_owner_id, idx_media_type, idx_purpose, idx_status, idx_file_id
+    - 9 Indexe: idx_project_id, idx_owner_type, idx_owner_id, idx_media_type, idx_purpose, idx_status, idx_file_id, idx_owner_type_owner_id (compound), idx_project_id_status (compound)
 - **Appwrite buckets changed:**
   - `stage-documents` Bucket hinzugefuegt in `functions/tools/provision-appwrite-buckets.mjs`
   - Bereits als Default in `functions/_shared/env.ts` vorhanden (stageDocuments: "stage-documents"), aber fehlte im Provisioning-Skript
@@ -443,7 +443,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - status Enum: 'uploading' | 'active' | 'failed' | 'deleted' (wird in T06 validiert)
   - metadata ist XL(50000) JSON-String fuer zusaetzliche Provider-spezifische Daten
   - project_id ist required fuer Access-Checks und Collaboration-Readiness
-  - Compound-Indexe fuer T06 pruefen: `(owner_type, owner_id)` und `(project_id, status)` koennen Query-Performance verbessern (AI Review Finding) |
+  - Compound-Indexe implementiert in ARCH-REF-T05-COMPOUND: `idx_owner_type_owner_id` (owner_type+owner_id) und `idx_project_id_status` (project_id+status)
 
 ---
 
