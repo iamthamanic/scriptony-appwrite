@@ -20,6 +20,7 @@ import sessionsHandler from "./routes/sessions";
 import tracksHandler from "./routes/tracks";
 import voicesHandler from "./routes/voices";
 import mixingHandler from "./routes/mixing";
+import audioProductionHandler from "./routes/audio-production";
 
 async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   const pathname = getPathname(req);
@@ -39,6 +40,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           tracks: "/tracks - Audio Track Management",
           voices: "/voices - Voice Casting & TTS",
           mixing: "/mixing - Stem Mixing & Export",
+          audioProduction: "/audio-production - T08 Orchestration",
         },
       }),
     );
@@ -66,6 +68,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   // Mixing routes
   if (pathname.startsWith("/mixing")) {
     await mixingHandler(req, res);
+    return;
+  }
+
+  // Audio Production Orchestration (T08)
+  if (pathname.startsWith("/audio-production")) {
+    await audioProductionHandler(req, res);
     return;
   }
 

@@ -116,6 +116,10 @@ export const C = {
   styleProfiles: "styleProfiles",
   /** Central asset metadata (T05). Physical storage is managed by scriptony-storage. */
   assets: "assets",
+  /** Async job queue control plane (T08). */
+  jobs: "jobs",
+  /** Job snapshot data — serialized script-block references, not inline in job payload (T08). */
+  job_snapshots: "job_snapshots",
   /** Puppet-Layer: official render jobs with review lifecycle (Ticket 3). */
   renderJobs: "renderJobs",
   /** Puppet-Layer: exploratory image tasks, no review (Ticket 4). */

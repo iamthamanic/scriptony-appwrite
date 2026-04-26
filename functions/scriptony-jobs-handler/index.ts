@@ -52,6 +52,22 @@ const SUPPORTED_JOBS: Record<
     timeoutMs: 300000,
     requiresAuth: true,
   },
+  // T08: Audio Production Orchestration
+  "audio-production-generate": {
+    functionId: "scriptony-audio-story",
+    timeoutMs: 300000,
+    requiresAuth: true,
+  },
+  "audio-production-preview": {
+    functionId: "scriptony-audio-story",
+    timeoutMs: 300000,
+    requiresAuth: true,
+  },
+  "audio-production-export": {
+    functionId: "scriptony-audio-story",
+    timeoutMs: 600000,
+    requiresAuth: true,
+  },
 };
 
 interface JobCreateRequest {
@@ -120,7 +136,8 @@ async function triggerFunctionExecution(
   payload: unknown,
   userId: string,
 ): Promise<void> {
-  const endpoint = Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
+  const endpoint =
+    Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
     Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT") ||
     "http://appwrite/v1";
   const apiKey = Deno.env.get("APPWRITE_API_KEY");
@@ -187,9 +204,7 @@ async function handleCreateJob(
       job.$id,
       body.payload,
       bootstrap.user.id,
-    ).catch(
-      console.error,
-    );
+    ).catch(console.error);
 
     sendJson(res, 201, {
       jobId: job.$id,
@@ -325,7 +340,8 @@ const HEALTH_DATA = {
 };
 
 async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
-  const pathname = (typeof req?.path === "string" && req.path) ||
+  const pathname =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string"
       ? new URL(req.url, "http://localhost").pathname
       : "/");
@@ -336,19 +352,19 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   try {
-    const createMatch = pathname.match(/^\/v1\/jobs\/([^\/]+)$/);
+    const createMatch = pathname.match(/^\/v1\/jobs\/([^/]+)$/);
     if (createMatch && req.method === "POST") {
       await handleCreateJob(req, res, createMatch[1]);
       return;
     }
 
-    const statusMatch = pathname.match(/^\/v1\/jobs\/([^\/]+)\/status$/);
+    const statusMatch = pathname.match(/^\/v1\/jobs\/([^/]+)\/status$/);
     if (statusMatch && req.method === "GET") {
       await handleGetStatus(req, res, statusMatch[1]);
       return;
     }
 
-    const resultMatch = pathname.match(/^\/v1\/jobs\/([^\/]+)\/result$/);
+    const resultMatch = pathname.match(/^\/v1\/jobs\/([^/]+)\/result$/);
     if (resultMatch && req.method === "GET") {
       await handleGetResult(req, res, resultMatch[1]);
       return;

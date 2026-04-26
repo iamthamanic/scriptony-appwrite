@@ -400,6 +400,28 @@ const SCHEMA = {
     created_at: D(),
     updated_at: D(),
   },
+  jobs: {
+    function_name: S(128, true),
+    status: S(128, true),
+    payload_json: XL(50000),
+    user_id: S(64, true),
+    progress: I(),
+    result_json: XL(50000),
+    error: L(4000),
+    created_at: D(),
+    updated_at: D(),
+    completed_at: D(),
+  },
+  job_snapshots: {
+    project_id: S(64, true),
+    scene_id: S(64),
+    script_id: S(64),
+    script_block_ids: XL(50000),
+    snapshot_json: XL(50000),
+    created_by: S(64, true),
+    created_at: D(),
+    updated_at: D(),
+  },
 };
 
 /** Single-field key indexes for common Query.equal / order fields */
@@ -446,6 +468,18 @@ const INDEXES = {
     "file_id",
     { key: "idx_owner_type_owner_id", fields: ["owner_type", "owner_id"] },
     { key: "idx_project_id_status", fields: ["project_id", "status"] },
+  ],
+  jobs: [
+    "function_name",
+    "status",
+    "user_id",
+    { key: "idx_status_created", fields: ["status", "created_at"] },
+  ],
+  job_snapshots: [
+    "project_id",
+    "scene_id",
+    "script_id",
+    { key: "idx_project_scene", fields: ["project_id", "scene_id"] },
   ],
 };
 
