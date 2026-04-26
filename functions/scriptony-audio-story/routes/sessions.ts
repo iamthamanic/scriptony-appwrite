@@ -7,7 +7,8 @@
  *
  * T08/T21 Access-Note:
  *   `audio_sessions` hat kein `project_id`-Feld (Schema-Mismatch).
- *   listSessions nutzt scene_id-Filter; einzelne Sessions pruefen created_by.
+ *   `listSessions` erfordert daher `project_id` als REQUIRED Query-Param
+ *   fuer Access-Checks. `getSession` prueft `created_by` als Workaround.
  *   Vollstaendige canReadProject-Pruefung erfordert audio_sessions.project_id.
  */
 
@@ -38,16 +39,12 @@ async function listSessions(
   }
 
   const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
-  if (!sceneId) {
-    sendBadRequest(res, "sceneId is required");
+  const projectId = getQuery(req, "project_id") || getParam(req, "project_id");
+  if (!sceneId || !projectId) {
+    sendBadRequest(res, "sceneId and project_id are required");
     return;
   }
-
-  // T08/T21: Optional project_id fuer Access-Check.
-  // audio_sessions hat kein project_id-Feld; daher pruefen wir
-  // bei VORHANDENSEIN von project_id, sonst scene-id-Filter.
-  const projectId = getQuery(req, "project_id") || getParam(req, "project_id");
-  if (projectId && !(await canReadProject(bootstrap.user.id, projectId))) {
+  if (!(await canReadProject(bootstrap.user.id, projectId))) {
     sendUnauthorized(res);
     return;
   }

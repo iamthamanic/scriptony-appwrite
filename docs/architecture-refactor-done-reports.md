@@ -531,7 +531,9 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Known risks:**
   - `scriptony-audio-story` ist zurzeit deployed und aktiv (Node-20 mit Hono, laeuft im Appwrite 1.8.1 via node-16 Kompatibilitaet).
   - Die Route `GET /voices/tts/voices` ist als MIGRATION markiert — sie enthaelt statische TTS-Voice-Daten und gehoert technisch zu `scriptony-audio`.
-  - Mix/Export-Routen liefern aktuell Fake-Ergebnisse; richtige Orchestration kommt in T08.
+  - Mix/Export-Routen liefern `501 Not Implemented` (T08-Orchestration fehlt noch). Keine Fake-Ergebnisse mehr.
+  - `audio_sessions` hat kein `project_id` (Schema-Mismatch). `listSessions` erfordert daher `project_id` als Query-Param fuer Access-Checks.
+  - `getSession` nutzt `created_by`-Direktcheck als Workaround (Schema-Mismatch). T08/T21 Collaboration ergaenzt `project_id`.
 - **Rollback plan:**
   - Code-Comments entfernen: `git checkout -- functions/scriptony-audio-story/routes/ functions/scriptony-audio/index.ts`
   - Domain-Map-Section entfernen: `git checkout -- docs/backend-domain-map.md`
