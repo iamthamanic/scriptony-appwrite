@@ -130,7 +130,6 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T03 | 2 | `scriptony-script` Schema planen und provisionieren | **done** | T01, T02 |
 | T04 | 2 | `scriptony-script` Basis-API implementieren | **done** | T03 |
 | T05 | 3 | `scriptony-assets` Schema planen und provisionieren | **done** | T01, T02 |
-- **Verification Marker:** `ARCH-REF-T05-DONE`
 | T06 | 3 | `scriptony-assets` Upload-, Link- und Query-API implementieren | todo | T05 |
 | T07 | 4 | `scriptony-audio-story` als `scriptony-audio-production` abgrenzen | todo | T01 |
 | T08 | 4 | Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden | todo | T04, T06, T07 |
