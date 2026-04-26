@@ -136,6 +136,51 @@ Matrix in `validation.ts`. Appwrite speichert sie als Freitext (kein Enum-Constr
 
 ---
 
+## Audio Production / Technical Audio Boundary
+
+**`scriptony-audio-production`** (zurzeit `scriptony-audio-story`) =  
+Orchestration: Audio-Sessions, Tracks, Voice-Casting, Mixing-Orchestration, Export-Job-Erstellung.
+
+**`scriptony-audio`** = Technische Engine:  
+TTS, STT, Voice Discovery, Audio-Uploads, technische Audio-Processing.
+
+### Regeln
+
+| Regel | Details |
+|---|---|
+| R1 | `scriptony-audio-production` darf keine TTS/STT-Provider-Engine-Logik enthalten. TTS-Aufrufe gehen an `scriptony-audio` (oder dessen Service-Abstraktion). |
+| R2 | `scriptony-audio-production` darf Script-Text nicht als Source of Truth kopieren; es liest `script_blocks` und referenziert sie per `script_block_id`. |
+| R3 | `scriptony-audio` darf keine Audio-Production-Planung (Sessions, Tracks, Mixing-Orchestration) enthalten. |
+| R4 | Generierte Audio-Dateien werden uber `scriptony-assets` gespeichert/verlinkt (Metadaten), nicht als Inline-Binary in `audio_sessions`/`scene_audio_tracks`. |
+| R5 | Mix/Export erzeugt `jobs`-Eintrage (Status/Referenz), keine Fake-Ergebnisse. Echte Ausfuhrung liegt bei `scriptony-media-worker` oder `scriptony-audio`. |
+
+### Routes: Zuordnung und Migration
+
+| Route | Aktuell in | Ziel-Domain | Status |
+|---|---|---|---|
+| `/sessions` | `scriptony-audio-story` | `scriptony-audio-production` | Keep |
+| `/tracks` | `scriptony-audio-story` | `scriptony-audio-production` | Keep |
+| `/voices` (Voice Casting) | `scriptony-audio-story` | `scriptony-audio-production` | Keep |
+| `/voices/tts/voices` | `scriptony-audio-story` | `scriptony-audio` | **T07 MIGRATE** |
+| `/mixing/preview` | `scriptony-audio-story` | `scriptony-audio-production` | Keep — Orchestration |
+| `/mixing/export` | `scriptony-audio-story` | `scriptony-audio-production` | Keep — Orchestration |
+| `/tts` | `scriptony-audio` | `scriptony-audio` | Keep — technisch |
+| `/stt` | `scriptony-audio` | `scriptony-audio` | Keep — technisch |
+| `/shots/:id/upload-audio` | `scriptony-audio` | `scriptony-audio` | Legacy — T09 |
+| `/shots/:id/audio` | `scriptony-audio` | `scriptony-audio` | Legacy — T09 |
+
+### Owned Models
+
+| Collection | Besitzer | Lesende Domains |
+|---|---|---|
+| `audio_sessions` | `scriptony-audio-production` | `scriptony-editor-readmodel` |
+| `scene_audio_tracks` | `scriptony-audio-production` | `scriptony-editor-readmodel` |
+| `character_voice_assignments` | `scriptony-audio-production` | `scriptony-editor-readmodel` |
+| `tts_requests` | `scriptony-audio` | `scriptony-audio-production` |
+| `stt_requests` | `scriptony-audio` | `scriptony-audio-production` |
+
+---
+
 ## Access-Helper Konzept
 
 ```typescript

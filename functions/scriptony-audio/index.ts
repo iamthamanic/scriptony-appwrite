@@ -1,5 +1,10 @@
 /**
  * Appwrite function entrypoint: scriptony-audio.
+ *
+ * Verantwortung (T07):
+ *   Technische Audio-Engine: TTS, STT, Voice Discovery, Audio-Uploads.
+ *   Audio-Production-Planung (Sessions, Tracks, Mixing-Orchestration)
+ *   ist VERBOTEN hier — gehoert zu scriptony-audio-production.
  */
 
 import "../_shared/fetch-polyfill";
@@ -19,7 +24,8 @@ import { app as sttApp } from "./stt";
 import { app as ttsApp } from "./tts";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -87,9 +93,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/stt" || pathname.startsWith("/stt/")) {
-    const forwardedPath = pathname === "/stt"
-      ? "/"
-      : pathname.slice("/stt".length) || "/";
+    const forwardedPath =
+      pathname === "/stt" ? "/" : pathname.slice("/stt".length) || "/";
     await dispatchHonoApp(sttApp, withPath(req, forwardedPath), {
       json: (body, status) => res.status(status || 200).json(body),
       text: (text, status) => res.status(status || 200).end(text),
@@ -98,9 +103,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/tts" || pathname.startsWith("/tts/")) {
-    const forwardedPath = pathname === "/tts"
-      ? "/"
-      : pathname.slice("/tts".length) || "/";
+    const forwardedPath =
+      pathname === "/tts" ? "/" : pathname.slice("/tts".length) || "/";
     await dispatchHonoApp(ttsApp, withPath(req, forwardedPath), {
       json: (body, status) => res.status(status || 200).json(body),
       text: (text, status) => res.status(status || 200).end(text),

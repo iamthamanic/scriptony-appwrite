@@ -1,6 +1,10 @@
 /**
- * Mixing & Export Routes
- * Node.js Handler für Stem Mixing
+ * Mixing & Export Routes — Audio Production Orchestration.
+ *
+ * Verantwortung (T07):
+ *   Mixing-Orchestration, Export-Job-Erstellung, Preview-Queueing.
+ *   Technische Engine (FFmpeg, Audio-Processing) ist VERBOTEN hier.
+ *   Echte Ausfuehrung liegt bei scriptony-media-worker oder scriptony-audio.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
@@ -12,7 +16,10 @@ import {
   sendMethodNotAllowed,
 } from "../../_shared/http";
 
-async function createPreviewMix(req: RequestLike, res: ResponseLike): Promise<void> {
+async function createPreviewMix(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -33,7 +40,10 @@ async function createPreviewMix(req: RequestLike, res: ResponseLike): Promise<vo
   });
 }
 
-async function exportChapter(req: RequestLike, res: ResponseLike): Promise<void> {
+async function exportChapter(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -54,7 +64,11 @@ async function exportChapter(req: RequestLike, res: ResponseLike): Promise<void>
   });
 }
 
-async function getMixStatus(req: RequestLike, res: ResponseLike, jobId: string): Promise<void> {
+async function getMixStatus(
+  req: RequestLike,
+  res: ResponseLike,
+  jobId: string,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -71,7 +85,10 @@ async function getMixStatus(req: RequestLike, res: ResponseLike, jobId: string):
   });
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const pathname = (req.path || req.url || "/") as string;
 
   // POST /mixing/preview

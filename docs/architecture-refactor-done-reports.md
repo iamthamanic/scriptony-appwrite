@@ -501,4 +501,45 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+### Done Report: T07 - `scriptony-audio-story` als `scriptony-audio-production` abgrenzen
+
+- **Date:** 2026-04-26 12:35 CEST
+- **Verification Marker:** ARCH-REF-T07-DONE
+- **Changed files:**
+  - `docs/backend-domain-map.md` (Audio Production / Technical Audio Boundary Section)
+  - `functions/scriptony-audio-story/routes/voices.ts` (T07 MIGRATION Kommentar)
+  - `functions/scriptony-audio-story/routes/mixing.ts` (Orchestration Boundary)
+  - `functions/scriptony-audio-story/routes/sessions.ts` (Orchestration Boundary)
+  - `functions/scriptony-audio-story/routes/tracks.ts` (Orchestration Boundary)
+  - `functions/scriptony-audio/index.ts` (Technical Audio Boundary)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **Routes added/changed:** keine (Dokumentation/Boundary-Klarstellung)
+- **UI/UX checks:** keine (Backend-Dokumentation, keine UI-Aenderung)
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend` -> Format, Lint, Build OK
+  - Gitleaks: OK
+  - Architecture: OK (keine neuen Zirkel)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md,functions/scriptony-audio-story/routes/voices.ts,functions/scriptony-audio-story/routes/mixing.ts,functions/scriptony-audio-story/routes/sessions.ts,functions/scriptony-audio-story/routes/tracks.ts,functions/scriptony-audio/index.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** PASSED
+- **AI Review result:** N/A (SKIP_AI_REVIEW=1, Dokumentation/Boundary-Ticket)
+- **Known risks:**
+  - `scriptony-audio-story` ist zurzeit deployed und aktiv (Node-20 mit Hono, laeuft im Appwrite 1.8.1 via node-16 Kompatibilitaet).
+  - Die Route `GET /voices/tts/voices` ist als MIGRATION markiert — sie enthaelt statische TTS-Voice-Daten und gehoert technisch zu `scriptony-audio`.
+  - Mix/Export-Routen liefern aktuell Fake-Ergebnisse; richtige Orchestration kommt in T08.
+- **Rollback plan:**
+  - Code-Comments entfernen: `git checkout -- functions/scriptony-audio-story/routes/ functions/scriptony-audio/index.ts`
+  - Domain-Map-Section entfernen: `git checkout -- docs/backend-domain-map.md`
+- **Notes:**
+  - Boundary ist rein dokumentarisch/Code-Kommentar; keine funktionale Aenderung.
+  - JSDoc in jeder Route klarstellt: Orchestration vs. Engine.
+  - Domain Map enthaelt jetzt gesonderte Section fuer Audio Production Boundary.
+  - T09 wird die Legacy Shot-Audio-Routen in `scriptony-audio` bereinigen.
+
+---
+
 ## Phase 4 - Assets API / Storage Separation

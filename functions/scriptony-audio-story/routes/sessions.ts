@@ -1,6 +1,9 @@
 /**
- * Recording Sessions Routes
- * Node.js Handler für Audio Sessions
+ * Recording Sessions Routes — Audio Production Orchestration.
+ *
+ * Verantwortung (T07):
+ *   Audio-Sessions CRUD: Planung, Aufnahmesitzungen, Status.
+ *   Technische Audio-Engine-Logik ist VERBOTEN hier.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
@@ -18,7 +21,10 @@ import {
 } from "../../_shared/http";
 import { requestGraphql } from "../../_shared/graphql-compat";
 
-async function listSessions(req: RequestLike, res: ResponseLike): Promise<void> {
+async function listSessions(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -64,7 +70,10 @@ async function listSessions(req: RequestLike, res: ResponseLike): Promise<void> 
   }
 }
 
-async function createSession(req: RequestLike, res: ResponseLike): Promise<void> {
+async function createSession(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -112,7 +121,11 @@ async function createSession(req: RequestLike, res: ResponseLike): Promise<void>
   }
 }
 
-async function getSession(req: RequestLike, res: ResponseLike, sessionId: string): Promise<void> {
+async function getSession(
+  req: RequestLike,
+  res: ResponseLike,
+  sessionId: string,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -155,7 +168,10 @@ async function getSession(req: RequestLike, res: ResponseLike, sessionId: string
   }
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const pathname = (req.path || req.url || "/") as string;
 
   // GET /sessions?sceneId=xxx

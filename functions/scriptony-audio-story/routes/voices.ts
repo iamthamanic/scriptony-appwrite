@@ -1,6 +1,13 @@
 /**
- * Voice Casting Routes
- * Node.js Handler für Voice Casting Management
+ * Voice Casting Routes — Audio Production Orchestration.
+ *
+ * Verantwortung (T07):
+ *   Voice-Casting: Zuordnung von Stimmen zu Charakteren.
+ *   Technische TTS/Engine-Logik ist VERBOTEN hier — nutzt scriptony-audio.
+ *
+ * T07 MIGRATION:
+ *   - listTTSAvailableVoices() → zu scriptony-audio migrieren.
+ *     Voice Discovery ist technische Audio-Faehigkeit, nicht Production-Planung.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
@@ -122,31 +129,76 @@ async function assignVoice(req: RequestLike, res: ResponseLike): Promise<void> {
       },
     );
 
-    sendJson(res, 201, { assignment: data.insert_character_voice_assignments_one });
+    sendJson(res, 201, {
+      assignment: data.insert_character_voice_assignments_one,
+    });
   } catch (error) {
     console.error("[Audio Story] Error assigning voice:", error);
     sendServerError(res, error);
   }
 }
 
+/**
+ * T07 MIGRATION: Diese Route gehoert zu `scriptony-audio` (technische Engine),
+ * nicht zu `scriptony-audio-production` (Orchestration).
+ * Beim Umbenennen/Restrukturieren nach scriptony-audio-production muss diese
+ * Route zu scriptony-audio verschoben werden.
+ */
 function listTTSAvailableVoices(req: RequestLike, res: ResponseLike): void {
   sendJson(res, 200, {
     ttsVoices: [
-      { id: "alloy", name: "Alloy", provider: "openai", language: "multilingual" },
-      { id: "echo", name: "Echo", provider: "openai", language: "multilingual" },
-      { id: "fable", name: "Fable", provider: "openai", language: "multilingual" },
-      { id: "onyx", name: "Onyx", provider: "openai", language: "multilingual" },
-      { id: "nova", name: "Nova", provider: "openai", language: "multilingual" },
-      { id: "shimmer", name: "Shimmer", provider: "openai", language: "multilingual" },
+      {
+        id: "alloy",
+        name: "Alloy",
+        provider: "openai",
+        language: "multilingual",
+      },
+      {
+        id: "echo",
+        name: "Echo",
+        provider: "openai",
+        language: "multilingual",
+      },
+      {
+        id: "fable",
+        name: "Fable",
+        provider: "openai",
+        language: "multilingual",
+      },
+      {
+        id: "onyx",
+        name: "Onyx",
+        provider: "openai",
+        language: "multilingual",
+      },
+      {
+        id: "nova",
+        name: "Nova",
+        provider: "openai",
+        language: "multilingual",
+      },
+      {
+        id: "shimmer",
+        name: "Shimmer",
+        provider: "openai",
+        language: "multilingual",
+      },
     ],
   });
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const pathname = (req.path || req.url || "/") as string;
 
   // GET /voices?projectId=xxx
-  if (req.method === "GET" && pathname.match(/\/voices$/) && !pathname.includes("/tts/")) {
+  if (
+    req.method === "GET" &&
+    pathname.match(/\/voices$/) &&
+    !pathname.includes("/tts/")
+  ) {
     await listVoiceAssignments(req, res);
     return;
   }

@@ -1,6 +1,9 @@
 /**
- * Audio Tracks Routes
- * Node.js Handler für Audio Track Management
+ * Audio Tracks Routes — Audio Production Orchestration.
+ *
+ * Verantwortung (T07):
+ *   Track-Management: Dialog, Musik, SFX, Atmo auf Timeline-Ebene.
+ *   Technische Audio-Processing/Engine-Logik ist VERBOTEN hier.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
@@ -79,7 +82,15 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   const body = await readJsonBody<Record<string, unknown>>(req);
-  const { sceneId, type, content, characterId, startTime, duration, projectId } = body;
+  const {
+    sceneId,
+    type,
+    content,
+    characterId,
+    startTime,
+    duration,
+    projectId,
+  } = body;
 
   if (!sceneId || !type || !projectId) {
     sendBadRequest(res, "sceneId, type, and projectId are required");
@@ -127,7 +138,11 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 }
 
-async function updateTrack(req: RequestLike, res: ResponseLike, trackId: string): Promise<void> {
+async function updateTrack(
+  req: RequestLike,
+  res: ResponseLike,
+  trackId: string,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -170,7 +185,11 @@ async function updateTrack(req: RequestLike, res: ResponseLike, trackId: string)
   }
 }
 
-async function deleteTrack(req: RequestLike, res: ResponseLike, trackId: string): Promise<void> {
+async function deleteTrack(
+  req: RequestLike,
+  res: ResponseLike,
+  trackId: string,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
@@ -196,7 +215,10 @@ async function deleteTrack(req: RequestLike, res: ResponseLike, trackId: string)
   }
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const pathname = (req.path || req.url || "/") as string;
 
   // GET /tracks?sceneId=xxx
