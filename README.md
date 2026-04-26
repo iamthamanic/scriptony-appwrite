@@ -16,9 +16,9 @@ Vom ersten Satz bis zum finalen Render — in einem einzigen, selbst hostbaren W
 
 ## 🎬 Was ist Scriptony? (30-Sekunden-Version)
 
-Scriptony ist ein **Open-Source-Produktionssystem** für Autoren, Drehbuchautoren, Game-Developer und Medienproduktionsteams. Es vereint:
+Scriptony ist ein **Open-Source-Produktionssystem** für Autoren, Drehbuchautoren, Regisseure und Medienproduktionsteams. Es vereint:
 
-- 📝 **Script-Editor** (Drehbuch, Buch, Hörspiel, Game Script)
+- 📝 **Script-Editor** (Drehbuch, Buch, Hörspiel)
 - 🌍 **Worldbuilding** (Orte, Kulturen, Zeitrechnung, Lore)
 - 🎭 **Charakter-System** (Traits, Beziehungen, Voice-Casting)
 - 🎬 **Story-Beats & Timeline** (Save the Cat, Hero's Journey, Shot-Listen)
@@ -50,8 +50,8 @@ Alles in **einer** Anwendung. Alles **selbst hostbar**. Deine Daten, deine Serve
 
 | Feature | Status | Beschreibung |
 |---------|--------|--------------|
-| **Script-Editor** | ✅ Stabil | Drehbuch, Buch, Hörspiel, Game Script. Blocks mit Typen (Scene Heading, Action, Dialogue, Narration, Sound Effect). Reorder. Node-Zuordnung. |
-| **Projekte & Templates** | ✅ Stabil | Film, Serie, Buch, Podcast, Game. Templates (Beat-Struktur, Episode Layout, Season Engine). Drag & Drop. |
+| **Script-Editor** | ✅ Stabil | Drehbuch, Buch, Hörspiel. Blocks mit Typen (Scene Heading, Action, Dialogue, Narration, Sound Effect). Reorder. Node-Zuordnung. |
+| **Projekte & Templates** | ✅ Stabil | Film, Serie, Buch, Podcast. Templates (Beat-Struktur, Episode Layout, Season Engine). Drag & Drop. |
 | **Story-Beats** | ✅ Stabil | Save the Cat, Hero's Journey, prozentuale Timeline-Position. CapCut-Style Ripple Editing. |
 | **Projektstruktur (Nodes)** | ✅ Stabil | Hierarchische Timeline-Nodes (Acts → Sequences → Scenes). Templates pro Projekttyp. |
 | **Charaktere** | ✅ Stabil | CRUD, Attribute, Traits (JSON), Avatar, Beziehungen. |
