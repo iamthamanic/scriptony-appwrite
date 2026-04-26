@@ -373,6 +373,34 @@ const SCHEMA = {
     notes: L(8000),
     revision: I(),
   },
+  /**
+   * Central asset metadata.
+   * Owner / Purpose Matrix documented in docs/backend-domain-map.md.
+   * Physical storage is not owned here; bucket_id + file_id reference storage.
+   * Delete policy: DELETE /assets/:id removes metadata only; storage-file
+   * delete is orchestrated by scriptony-storage or a cleanup job.
+   */
+  assets: {
+    project_id: S(64, true),
+    user_id: S(64),
+    owner_type: S(128),
+    owner_id: S(64),
+    media_type: S(128),
+    purpose: S(128),
+    file_id: S(128),
+    bucket_id: S(128),
+    filename: S(1024),
+    mime_type: S(128),
+    size: I(),
+    duration: I(),
+    width: I(),
+    height: I(),
+    status: S(128),
+    metadata: XL(50000),
+    created_by: S(64),
+    created_at: D(),
+    updated_at: D(),
+  },
 };
 
 /** Single-field key indexes for common Query.equal / order fields */
@@ -408,6 +436,15 @@ const INDEXES = {
     "order_index",
     "speaker_character_id",
     "type",
+  ],
+  assets: [
+    "project_id",
+    "owner_type",
+    "owner_id",
+    "media_type",
+    "purpose",
+    "status",
+    "file_id",
   ],
 };
 

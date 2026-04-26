@@ -114,6 +114,8 @@ export const C = {
   project_visual_style: "project_visual_style",
   project_visual_style_items: "project_visual_style_items",
   styleProfiles: "styleProfiles",
+  /** Central asset metadata (T05). Physical storage is managed by scriptony-storage. */
+  assets: "assets",
   /** Puppet-Layer: official render jobs with review lifecycle (Ticket 3). */
   renderJobs: "renderJobs",
   /** Puppet-Layer: exploratory image tasks, no review (Ticket 4). */

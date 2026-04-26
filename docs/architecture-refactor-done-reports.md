@@ -354,4 +354,79 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ## Phase 3 - Assets
 
-*(noch keine Tickets abgeschlossen)*
+### Done Report: T05 - `scriptony-assets` Schema planen und provisionieren
+
+- **Date:** 2026-04-24 09:50 CEST
+- **Verification Marker:** ARCH-REF-T05-DONE
+- **Changed files:**
+  - `functions/tools/provision-appwrite-schema.mjs` (assets Schema + Indexe)
+  - `functions/_shared/appwrite-db.ts` (C.assets hinzugefuegt)
+  - `docs/backend-domain-map.md` (assets Owner/Purpose Matrix)
+  - `docs/architecture-refactor-done-reports.md` (dieser Done Report)
+- **Routes added/changed:** keine (T06 baut API)
+- **Appwrite collections changed:**
+  - `assets` (neu, in DB `scriptony`)
+    - 17 Attribute: project_id, user_id, owner_type, owner_id, media_type, purpose, file_id, bucket_id, filename, mime_type, size, duration, width, height, status, metadata, created_by, created_at, updated_at
+    - 7 Indexe: idx_project_id, idx_owner_type, idx_owner_id, idx_media_type, idx_purpose, idx_status, idx_file_id
+- **Appwrite buckets changed:** keine (T05 macht keine Bucket-Aenderungen)
+- **Appwrite env vars changed:** keine
+- **UI/UX checks:** keine (Backend-Schema-Ticket, keine UI-Aenderung)
+- **Tests run:**
+  - Schema-Provisioning: `node functions/tools/provision-appwrite-schema.mjs` -> assets collection created, alle attrs ok, alle indexe ok
+  - TypeScript Check: `tsc --noEmit` (keine neuen Fehler durch T05)
+  - Prettier: `npx prettier --check` -> ok
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/tools/provision-appwrite-schema.mjs,functions/_shared/appwrite-db.ts,docs/backend-domain-map.md,docs/architecture-refactor-done-reports.md" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud)
+  - Minor: Compound-Indexe (`owner_type+owner_id`, `project_id+status`) fuer T06 pruefen
+- **Known risks:**
+  - assets collection hat keine Document-Level Permissions (Function-only, wie T03/T04)
+  - Delete-Policy ist definiert als "metadata-only delete"; physische Storage-Datei-Deletion ist Verantwortung von scriptony-storage / Cleanup-Job
+  - owner_type wird als Freitext gespeichert (kein Enum-Constraint auf Appwrite-Ebene); Validierung muss in API (T06)
+  - purpose wird als Freitext gespeichert (kein Enum-Constraint); Validierung muss in API (T06)
+- **Owner / Purpose Matrix:**
+
+| owner_type | Erlaubte purpose | Beispiel |
+|---|---|---|
+| project | cover, backdrop, reference | Projekt-Cover-Image |
+| shot | storyboard, reference, dialogue_audio | Shot-Dialog-Audio |
+| script | reference, attachment, export_pdf | Script-Anhang |
+| script_block | dialogue_audio, ambience, sfx | Block-Audio |
+| world | reference_map, style_reference | Welt-Referenz |
+| world_item | image, attachment | Item-Image |
+| character | avatar, reference, concept_art | Charakter-Avatar |
+| style_guide | reference, color_palette, font | Styleguide-Referenz |
+| stage | stage_document, prop_image | Stage-Dokument |
+| scene | mood_image, reference | Szenen-Moodboard |
+
+| media_type | Erlaubte purpose |
+|---|---|
+| image | cover, backdrop, reference, storyboard, avatar, concept_art, mood_image, prop_image, color_palette |
+| audio | dialogue_audio, ambience, sfx, music, voiceover |
+| video | reference, clip, animatic |
+| document | attachment, export_pdf, stage_document, script, font |
+
+- **Delete Policy:**
+  - `DELETE /assets/:id` in `scriptony-assets` (T06) entfernt nur das `assets` Document.
+  - Die physische Datei (Appwrite Storage file_id) wird NICHT geloescht.
+  - Storage-Datei-Cleanup ist Verantwortung von `scriptony-storage` oder eines dedizierten Cleanup-Jobs (prueft `assets` Referenzen vor Loeschung).
+  - Diese Policy verhindert, dass ein versehentlicher Asset-Delete Daten in anderen Owner-Domaenen zerstoert.
+- **Rollback plan:**
+  - Collection in Appwrite Console -> Databases -> scriptony -> assets loeschen
+  - `functions/tools/provision-appwrite-schema.mjs` assets-Schema entfernen
+  - `functions/_shared/appwrite-db.ts` C.assets entfernen
+- **Notes:**
+  - Schema trennt fachliche Asset-Metadaten (owner_type, purpose) von physischem Storage (file_id, bucket_id)
+  - bucket_id ist initial Appwrite Storage Bucket-ID; zukuenftig kann sie auf externe Provider verweisen (future scriptony-storage)
+  - size ist Integer (Bytes), duration ist Integer (ms), width/height sind Integer (Pixel)
+  - status Enum: 'uploading' | 'active' | 'failed' | 'deleted' (wird in T06 validiert)
+  - metadata ist XL(50000) JSON-String fuer zusaetzliche Provider-spezifische Daten
+  - project_id ist required fuer Access-Checks und Collaboration-Readiness
+  - Compound-Indexe fuer T06 pruefen: `(owner_type, owner_id)` und `(project_id, status)` koennen Query-Performance verbessern (AI Review Finding) |
+
+---
+
+## Phase 4 - Assets API / Storage Separation
