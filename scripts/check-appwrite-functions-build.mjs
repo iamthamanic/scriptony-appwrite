@@ -13,6 +13,7 @@ const KNOWN_FUNCTIONS = new Set([
   "scriptony-beats",
   "scriptony-characters",
   "scriptony-clips",
+  "scriptony-editor-readmodel",
   "scriptony-gym",
   "scriptony-image",
   "scriptony-jobs-handler",

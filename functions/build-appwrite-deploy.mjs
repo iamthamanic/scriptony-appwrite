@@ -54,6 +54,10 @@ const bundles = [
     entry: join(here, "scriptony-audio-story", "appwrite-entry.ts"),
   },
   { name: "scriptony-clips", entry: join(here, "scriptony-clips", "index.ts") },
+  {
+    name: "scriptony-editor-readmodel",
+    entry: join(here, "scriptony-editor-readmodel", "index.ts"),
+  },
   { name: "scriptony-gym", entry: join(here, "scriptony-gym", "index.ts") },
   { name: "scriptony-image", entry: join(here, "scriptony-image", "index.ts") },
   {
