@@ -23,6 +23,7 @@ import {
   sendMethodNotAllowed,
 } from "../../_shared/http";
 import { requestGraphql } from "../../_shared/graphql-compat";
+import { canReadProject, canEditProject } from "../_shared/access";
 
 // T09: Konstanter Voice-Pool — wird an scriptony-audio delegiert.
 const TTS_VOICES = [
@@ -52,6 +53,10 @@ async function listVoiceAssignments(
   const projectId = getQuery(req, "projectId") || getParam(req, "projectId");
   if (!projectId) {
     sendBadRequest(res, "projectId is required");
+    return;
+  }
+  if (!(await canReadProject(bootstrap.user.id, projectId))) {
+    sendUnauthorized(res);
     return;
   }
 
@@ -112,6 +117,10 @@ async function assignVoice(req: RequestLike, res: ResponseLike): Promise<void> {
 
   if (!projectId || !characterId || !voiceActorType) {
     sendBadRequest(res, "Missing required fields");
+    return;
+  }
+  if (!(await canEditProject(bootstrap.user.id, String(projectId)))) {
+    sendUnauthorized(res);
     return;
   }
 

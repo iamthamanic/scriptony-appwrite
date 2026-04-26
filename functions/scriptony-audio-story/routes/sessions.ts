@@ -4,6 +4,11 @@
  * Verantwortung (T07):
  *   Audio-Sessions CRUD: Planung, Aufnahmesitzungen, Status.
  *   Technische Audio-Engine-Logik ist VERBOTEN hier.
+ *
+ * T08/T21 Access-Note:
+ *   `audio_sessions` hat kein `project_id`-Feld (Schema-Mismatch).
+ *   listSessions nutzt scene_id-Filter; einzelne Sessions pruefen created_by.
+ *   Vollstaendige canReadProject-Pruefung erfordert audio_sessions.project_id.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
@@ -20,6 +25,7 @@ import {
   sendNotFound,
 } from "../../_shared/http";
 import { requestGraphql } from "../../_shared/graphql-compat";
+import { canReadProject, canEditProject } from "../_shared/access";
 
 async function listSessions(
   req: RequestLike,
@@ -34,6 +40,15 @@ async function listSessions(
   const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
   if (!sceneId) {
     sendBadRequest(res, "sceneId is required");
+    return;
+  }
+
+  // T08/T21: Optional project_id fuer Access-Check.
+  // audio_sessions hat kein project_id-Feld; daher pruefen wir
+  // bei VORHANDENSEIN von project_id, sonst scene-id-Filter.
+  const projectId = getQuery(req, "project_id") || getParam(req, "project_id");
+  if (projectId && !(await canReadProject(bootstrap.user.id, projectId))) {
+    sendUnauthorized(res);
     return;
   }
 
@@ -81,10 +96,17 @@ async function createSession(
   }
 
   const body = await readJsonBody<Record<string, unknown>>(req);
-  const { sceneId, title } = body;
+  const { sceneId, title, projectId } = body;
 
   if (!sceneId || !title) {
     sendBadRequest(res, "sceneId and title are required");
+    return;
+  }
+  if (
+    projectId &&
+    !(await canEditProject(bootstrap.user.id, String(projectId)))
+  ) {
+    sendUnauthorized(res);
     return;
   }
 
@@ -158,6 +180,12 @@ async function getSession(
 
     if (!data.audio_sessions_by_pk) {
       sendNotFound(res, "Session not found");
+      return;
+    }
+    // T07: Minimaler Owner-Check — audio_sessions hat kein project_id.
+    const createdBy = data.audio_sessions_by_pk.created_by;
+    if (createdBy && createdBy !== bootstrap.user.id) {
+      sendUnauthorized(res);
       return;
     }
 

@@ -20,6 +20,7 @@ import {
   sendNotFound,
 } from "../../_shared/http";
 import { requestGraphql } from "../../_shared/graphql-compat";
+import { canReadProject, canEditProject } from "../_shared/access";
 
 async function listTracks(req: RequestLike, res: ResponseLike): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
@@ -29,8 +30,13 @@ async function listTracks(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
+  const projectId = getQuery(req, "project_id") || getParam(req, "project_id");
   if (!sceneId) {
     sendBadRequest(res, "sceneId is required");
+    return;
+  }
+  if (projectId && !(await canReadProject(bootstrap.user.id, projectId))) {
+    sendUnauthorized(res);
     return;
   }
 
@@ -94,6 +100,10 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
 
   if (!sceneId || !type || !projectId) {
     sendBadRequest(res, "sceneId, type, and projectId are required");
+    return;
+  }
+  if (!(await canEditProject(bootstrap.user.id, String(projectId)))) {
+    sendUnauthorized(res);
     return;
   }
 
