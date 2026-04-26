@@ -447,4 +447,85 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+### Done Report: T06 - `scriptony-assets` Upload-, Link- und Query-API implementieren
+
+- **Date:** 2026-04-24 11:00 CEST
+- **Verification Marker:** ARCH-REF-T06-DONE
+- **Changed files:**
+  - `functions/scriptony-assets/appwrite-entry.ts` (Hono Entrypoint)
+  - `functions/scriptony-assets/routes/assets.ts` (CRUD + Upload/Link/Query)
+  - `functions/scriptony-assets/_shared/access.ts` (Projekt-Access-Helper)
+  - `functions/scriptony-assets/_shared/hono-auth.ts` (Auth-Middleware)
+  - `functions/scriptony-assets/_shared/storage-adapter.ts` (Storage-Abstraktion)
+  - `functions/scriptony-assets/_shared/validation.ts` (Zod-Schemas)
+  - `functions/scriptony-assets/_shared/types.ts` (ContextVariableMap)
+  - `functions/build-appwrite-deploy.mjs` (scriptony-assets Bundle)
+  - `scripts/check-appwrite-functions-build.mjs` (scriptony-assets in KNOWN_FUNCTIONS)
+  - `tsconfig.json` (scriptony-assets Scope)
+  - `docs/architecture-refactor-done-reports.md` (dieser Done Report)
+  - `docs/scriptony-architecture-refactor-tickets.md` (T06 als done markiert)
+- **Routes added/changed:**
+  - `POST /assets/upload` - Base64 Upload (fileBase64 + fileName + mimeType)
+  - `GET /assets` - Liste mit Filter (project_id, owner_type, media_type)
+  - `GET /assets/:id` - Einzelnes Asset
+  - `PATCH /assets/:id` - Asset-Metadaten updaten
+  - `DELETE /assets/:id` - Asset-Metadaten löschen (Storage-Datei bleibt)
+  - `GET /assets/by-project/:projectId`
+  - `GET /assets/by-owner/:ownerType/:ownerId?project_id=...`
+  - `POST /assets/:id/link` - Owner verknüpfen
+  - `POST /assets/:id/unlink` - Owner entknüpfen
+  - `GET /health` - Health-Check
+- **Appwrite collections changed:** keine (T05 hat assets bereits provisioniert)
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **UI/UX checks:** keine (Backend-API-Ticket, keine UI-Aenderung)
+- **Tests run:**
+  - Build-Check: `node functions/build-appwrite-deploy.mjs --filter=scriptony-assets` -> 2.5mb Bundle
+  - TypeScript Check: `tsc --noEmit` -> keine Fehler
+  - Prettier: Alle Dateien ok
+  - Function Build: scriptony-assets in KNOWN_FUNCTIONS integriert
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-assets/,functions/build-appwrite-deploy.mjs,scripts/check-appwrite-functions-build.mjs,tsconfig.json" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud)
+  - (keine blockierenden Findings)
+- **Known risks:**
+  - Upload nutzt Base64 (JSON-Body), keine multipart form-data. Browser-Clients müssen Dateien vorher als Base64 kodieren. Multipart-Upload kann in T06-Erweiterung nachgerüstet werden.
+  - Storage-Datei wird beim Asset-Delete nicht gelöscht (T05 Delete Policy). Cleanup-Job in T20.
+  - Owner-Type Validierung prüft nur Projekt-Access, nicht ob der Owner (z.B. shot_id) im Projekt existiert. Erweiterung in T21.
+  - `canManageProject` == `canEditProject` == `canReadProject` (alle prüfen nur `created_by`). Collaboration in T21 erweitert.
+- **SOLID/KISS/DRY Analyse:**
+  - **KISS:** Base64-Upload statt überkomplexem multipart. Storage-Adapter hat nur 1 Methode (`upload`). Kein Provider-OAuth, keine externe Logik.
+  - **SOLID:**
+    - SRP: `scriptony-assets` besitzt Asset-Metadaten, Storage-Abstraktion in `storage-adapter.ts`, Auth in `hono-auth.ts`, Access in `access.ts`
+    - OCP: `StorageAdapter`-Interface erlaubt zukünftige S3/GCS-Adapter ohne Routen-Änderung
+    - LSP: `AppwriteStorageAdapter` implementiert `StorageAdapter`
+    - ISP: Kleine Interfaces (kein God-Interface)
+    - DIP: Routen hängen von `StorageAdapter`-Interface ab, nicht von konkreter Appwrite-Implementierung
+  - **DRY:** Auth-Middleware wiederverwendet (wie scriptony-script), Access-Helper `canReadProject`/`canEditProject`/`canManageProject` wiederverwendet, `getDatabases()`/`dbId()` aus `_shared/appwrite-db.ts`, Storage-Upload aus `_shared/storage.ts`
+- **Review-Findings und Fixes**
+  1. `db` Export fehlte: `getDatabases()` statt `db()` verwendet (wie scriptony-script)
+  2. `user.getId()` falsch: `user.id` verwendet (wie scriptony-script)
+  3. `corsHeadersForIncomingRequest` keine Hono-Middleware: `hono/cors` verwendet (wie scriptony-script)
+  4. `parsed.error.errors` falsch: `parsed.error.issues` verwendet (Zod v3 API)
+  5. `z.ZodError` Import: `import { z }` statt `import type { z }` (Typ kann nicht für Runtime-Deklaration verwendet werden)
+- **Rollback plan:**
+  - Function-Verzeichnis loeschen: `rm -rf functions/scriptony-assets`
+  - `functions/build-appwrite-deploy.mjs` Bundle-Eintrag entfernen
+  - `scripts/check-appwrite-functions-build.mjs` `scriptony-assets` aus KNOWN_FUNCTIONS entfernen
+  - `tsconfig.json` `functions/scriptony-assets/**/*.ts` aus include entfernen
+- **Notes:**
+  - Bundle: 2.5mb (vergleichbar mit scriptony-script und scriptony-gym)
+  - Hono-Framework mit `createHonoAppwriteHandler`
+  - Zod-Validierung aller Inputs mit `.strict()`
+  - Kein `any` in scriptony-assets
+  - DELETE 204 verwendet `c.body(null, 204)` (kein JSON-Body)
+  - Base64-Upload kompatibel mit `_shared/storage.ts` `extractUploadedFile`
+  - Keine OAuth-/Provider-Token-Imports
+  - Bucket-Kind wird aus `media_type` abgeleitet (image -> projectImages, audio -> audioFiles, sonst -> general)
+
+---
+
 ## Phase 4 - Assets API / Storage Separation

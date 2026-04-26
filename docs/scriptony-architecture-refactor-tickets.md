@@ -130,7 +130,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T03 | 2 | `scriptony-script` Schema planen und provisionieren | **done** | T01, T02 |
 | T04 | 2 | `scriptony-script` Basis-API implementieren | **done** | T03 |
 | T05 | 3 | `scriptony-assets` Schema planen und provisionieren | **done** | T01, T02 |
-| T06 | 3 | `scriptony-assets` Upload-, Link- und Query-API implementieren | todo | T05 |
+| T06 | 3 | `scriptony-assets` Upload-, Link- und Query-API implementieren | **done** | T05 |
 | T07 | 4 | `scriptony-audio-story` als `scriptony-audio-production` abgrenzen | todo | T01 |
 | T08 | 4 | Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden | todo | T04, T06, T07 |
 | T09 | 5 | `scriptony-audio` auf technische Audiofaehigkeiten begrenzen | todo | T06, T08 |
@@ -548,7 +548,7 @@ Aktuell sind Mixing/Export Fake-Antworten und Script ist nicht Source of Truth.
 
 ### Loesung
 
-`scriptony-audio-production` Orchestration implementieren oder vorbereiten: `generate-from-script`, Preview Mix und Export erzeugen Jobs oder delegieren an eine Job-Facade. TTS-Execution bleibt in `scriptony-audio`.
+`scriptony-audio-production` Orchestration implementieren oder vorbereiten: `generate-from-script`, Preview Mix und Export erzeugen Jobs oder delegieren an eine Job-Facade. TTS-Execution bleibt in `scriptony-audio`. Job-Payloads speichern keine vollstaendigen Script-Inhalte als Inline-JSON; stattdessen wird ein Snapshot als Asset/externe Referenz abgelegt und im Job nur per `snapshot_id` verlinkt.
 
 ### User Journey
 
@@ -560,7 +560,8 @@ Ein Nutzer waehlt eine Szene, weist Stimmen zu, erzeugt Audio aus Dialogbloecken
 - TTS wird ueber `scriptony-audio` oder dessen Service-Abstraktion ausgefuehrt.
 - Generierte Dateien werden ueber `scriptony-assets` gespeichert oder verlinkt.
 - Mix/Export erzeugt Jobstatus statt Fake-Ergebnis.
-- Job Payload enthaelt Script-Revision oder nachvollziehbaren Snapshot.
+- Job Payload enthaelt eine Script-Revision **Referenz** (`script_id`, `revision`, `snapshot_id`), nicht den vollstaendigen Inhalt als Inline-JSON.
+- Snapshot-Daten (z. B. serialisierte Script-Blocks fuer nachvollziehbare Wiedergabe) werden als separates Asset oder in einer eigenen `job_snapshots`-Collection gespeichert; das `jobs`-Dokument bleibt unter 100 KB Payload.
 - Voice Discovery wird nicht lokal dupliziert.
 - UI/UX: Audio-Production UI zeigt Loading, Job-Status, Fehler und leere Zustaende nach bestehenden Patterns; keine neuen ungeprueften Controls.
 - Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` muss laufen; Job-/Route-Smokes, UI/UX-Pruefung und AI Review muessen im Done Report dokumentiert sein.
@@ -576,8 +577,13 @@ Ein Nutzer waehlt eine Szene, weist Stimmen zu, erzeugt Audio aus Dialogbloecken
 - Preview mix creates job.
 - Export creates job.
 - Permission denied fuer falsches Projekt.
+- Ein Export-Job mit >100 Script-Blocks erzeugt ein `jobs`-Dokument unter 100 KB; der Snapshot liegt als Asset oder externe Referenz.
 - UI smoke fuer Jobstatus/Fehler, falls UI geaendert wird.
 - Shimwrappercheck Gate: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
+
+### Architektur-Hinweis
+
+Die `jobs`-Collection bleibt Control-Plane (Status, Referenzen, Timestamps). Die echten Arbeitsobjekte (Script-Inhalte, Audio, Renders) liegen in ihren eigenen Domains und werden ueber Assets oder Snapshot-Collections referenziert, nicht inline im Job-Dokument.
 
 ### Verifizierungsmarker
 
@@ -731,7 +737,7 @@ Der Editor braucht zusammengesetzte Daten. Der aktuelle `nodes/ultra-batch-load`
 
 ### Loesung
 
-Neue read-only Function `scriptony-editor-readmodel` mit `GET /editor/projects/:projectId/state`. Sie aggregiert Project, Structure, Characters, Script Blocks, Shots, Clips, Assets, Scene Audio Tracks und Style Summary.
+Neue read-only Function `scriptony-editor-readmodel` mit `GET /editor/projects/:projectId/state`. Sie aggregiert Project, Structure, Characters, Script Blocks, Shots, Clips, Assets, Scene Audio Tracks und Style Summary. Falls die Aggregation bei grossen Projekten zu langsam wird, unterstuetzt sie einen `lite`-Modus (nur Meta/Struktur) neben `full`, und die Langfriststrategie ist ein gecachter Snapshot (Redis, `project_editor_snapshots`-Collection oder aehnlich).
 
 ### User Journey
 
@@ -746,6 +752,9 @@ Ein Nutzer oeffnet den Editor und bekommt schnell einen vollstaendigen Ladezusta
 - Keine Job-Erstellung.
 - Permissions werden fuer alle gelesenen Daten respektiert.
 - `ultra-batch-load` wird nicht mehr erweitert.
+- Response-Zeit fuer Projekte mit >100 Nodes/Shots wird gemessen. Ueberschreitet sie 10 Sekunden, wird im Done Report dokumentiert, dass dieses Readmodel **V1** ist und durch eine Async-Strategie (Snapshot/Cache) ersetzt werden muss.
+- Ein optionaler `lite`-Query-Parameter ist dokumentiert: `lite` liefert nur Meta/Struktur, `full` liefert Assets/Tracks.
+- Die JSON-Antwortgroesse wird ueberwacht; grossen Response-Streaming oder Chunking sind als Fallback dokumentiert.
 - UI/UX: Editor Loading, Empty States und Fehler nutzen bestehende Patterns; keine Layoutverschiebungen auf Desktop/Mobile.
 - Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` muss laufen; Editor-Smoke, Read-only-Pruefung und AI Review muessen im Done Report dokumentiert sein.
 
@@ -758,8 +767,13 @@ Ein Nutzer oeffnet den Editor und bekommt schnell einen vollstaendigen Ladezusta
 - Response enthaelt erwartete Bereiche.
 - No mutation side effects.
 - Performance-Messung gegen bisherigen Editor Load.
+- Performance-Test mit einem „grossen Projekt“ (mind. 100 timeline_nodes, 200 shots, 50 clips, 100 script_blocks, 50 assets). Falls der Test fehlschlaegt, wird im Done Report ein Migrationspfad zu einem gecachten Snapshot dokumentiert.
 - UI smoke fuer Editor-Start.
 - Shimwrappercheck Gate: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
+
+### Architektur-Hinweis
+
+`scriptony-editor-readmodel` ist explizit als **read-only View-Model V1** dokumentiert. Es darf niemals Schreiblogik enthalten und ist kein Ersatz fuer eine spaetere Such-/Analytics-Ebene. Bei Skalierungsproblemen ist der Wechsel auf einen gecachten Snapshot (Redis oder `project_editor_snapshots`) die bevorzugte Fortsetzung.
 
 ### Verifizierungsmarker
 
@@ -868,7 +882,7 @@ Ohne klare Worker-Grenze landen lange Jobs in `image`, `audio-production`, `styl
 
 ### Loesung
 
-`scriptony-media-worker` als Worker-Abstraktion definieren. Erste Implementierung darf Appwrite Function sein, muss aber spaeter Container/Queue-Worker erlauben.
+`scriptony-media-worker` als Worker-Abstraktion definieren. Der HTTP-Entrypoint/API ist eine Appwrite Function, die aber **keine** schwere Medienverarbeitung (FFmpeg, Mixing, Rendering, Conversion) im eigenen Prozess ausfuehrt. Stattdessen validiert sie Payload, erstellt einen Job in `scriptony-jobs` und delegiert die Ausfuehrung sofort an einen externen Worker/Queue-Prozess. Langfristig wird der externe Worker unabhaengig von Appwrite Functions laufen (Container/Queue).
 
 ### User Journey
 
@@ -881,6 +895,9 @@ Ein Nutzer startet einen Export. Die UI bekommt sofort einen Jobstatus, waehrend
 - Worker kann Jobstatus ueber `scriptony-jobs` aktualisieren.
 - Erste Actions sind definiert: mix audio, export audio production, render video, execute image render, extract palette, export style guide, normalize audio, convert file.
 - Keine Produktentscheidungen im Worker.
+- Die Function fuehrt keine Media-Verarbeitung (FFmpeg, Bild-Merge, Audio-Mix, Video-Render) im eigenen Prozess aus.
+- Die Function gibt nach maximal 5 Sekunden einen `jobId` als Async-Response zurueck, ohne auf das Worker-Ergebnis zu warten.
+- Die Uebergabe an spaetere externe Queue-Worker (Redis/Bull/eigener Container) ist dokumentiert, so dass keine Business-Logik an das „Appwrite Function bleibt Worker“-Pattern gebunden wird.
 - UI/UX: user-facing Status bleibt ueber Workflow-/Job-UI, nicht ueber Worker-UI.
 - Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` muss laufen; Worker-Build, Jobstatus-Smoke und AI Review muessen im Done Report dokumentiert sein.
 
@@ -891,6 +908,7 @@ Ein Nutzer startet einen Export. Die UI bekommt sofort einen Jobstatus, waehrend
 - Worker failure updates job error.
 - Idempotency fuer wiederholte Trigger.
 - Timeout-/Retry-Verhalten dokumentiert.
+- Ein Mix-/Render-Job wird getriggert; die Function returned sofort einen Job-Status. Die tatsaechliche Ausfuehrung erfolgt initial in einem separaten Prozess oder ueber eine Queue.
 - Shimwrappercheck Gate: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
 
 ### Verifizierungsmarker
@@ -911,7 +929,7 @@ Read-only Observability und Admin haben unterschiedliche Security- und Ownership
 
 ### Loesung
 
-`scriptony-stats` und `scriptony-logs` zu future `scriptony-observability` zusammenfuehren. `scriptony-superadmin` zu future `scriptony-admin` umbenennen oder klar mappen.
+`scriptony-stats` und `scriptony-logs` zu future `scriptony-observability` zusammenfuehren. `scriptony-superadmin` zu future `scriptony-admin` umbenennen oder klar mappen. `scriptony-observability` beschraenkt sich auf strukturierte Listen und einfache Filter; komplexe Analytics, Billing-Reports und Kosten-Aggregationen ueber mehrere Collections/Zeitfenster sind explizit out-of-scope und spaeter ein separates System (Analytics/BI).
 
 ### User Journey
 
@@ -924,6 +942,8 @@ Ein Admin sieht globale Kennzahlen und Logs aus einer klaren Admin-/Observabilit
 - Top-Level Entrypoint-Status fuer `stats`, `logs`, `superadmin` ist geklaert.
 - Routen sind in Domain Map und Deployment-Inventar dokumentiert.
 - Keine Business Writes in Observability.
+- Observability fuehrt keine Aggregationen ueber mehr als zwei Collections gleichzeitig durch.
+- Komplexe Cross-Project-Billing-Stats, Kosten-Reports oder Nutzungs-Aggregationen ueber Zeitfenster sind als `future/separates System` markiert und nicht Teil dieses Tickets.
 - UI/UX: Admin-/Stats-Views behalten bestehende Tabellen-, Empty-, Loading- und Error-Patterns.
 - Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` muss laufen; Admin-/Observability-Smokes und AI Review muessen im Done Report dokumentiert sein.
 
@@ -937,6 +957,7 @@ Ein Admin sieht globale Kennzahlen und Logs aus einer klaren Admin-/Observabilit
 - Superadmin orgs.
 - Superadmin stats.
 - Permission denied fuer Nicht-Admin.
+- Admin-Call fuer Projekt-Stats returned in <2 Sekunden fuer ein Projekt mit <10.000 Log-Eintraegen. Langsame Abfragen werden nicht durch Erhoehung der Query-Tiefe „optimiert“, sondern als Out-of-Scope markiert.
 - UI smoke fuer Stats/Logs/Admin Views.
 - Shimwrappercheck Gate: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
 

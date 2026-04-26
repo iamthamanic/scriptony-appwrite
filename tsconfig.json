@@ -118,6 +118,7 @@
     "functions/_shared/appwrite-handler.ts",
     "functions/_shared/env.ts",
     "functions/scriptony-script/**/*.ts",
+    "functions/scriptony-assets/**/*.ts",
     "functions/_shared/default-assistant-system-prompt.ts",
     "functions/_shared/freshness.ts"
   ],
