@@ -20,6 +20,7 @@ import { cors } from "hono/cors";
 import { Client, Databases, Query } from "node-appwrite";
 import { type AuthSource, requireAuthenticatedUser } from "../_shared/auth";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
+import handleGenerateStarter from "./routes/generate-starter";
 import process from "node:process";
 
 // =============================================================================
@@ -102,6 +103,12 @@ app.get("/", (c) => {
 app.get("/health", (c) => {
   return c.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// =============================================================================
+// GENERATE STARTER (T11: von scriptony-assistant migriert)
+// =============================================================================
+
+app.post("/generate-starter", handleGenerateStarter);
 
 // =============================================================================
 // EXERCISES ROUTES

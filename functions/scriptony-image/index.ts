@@ -1,23 +1,26 @@
 /**
  * Appwrite function entrypoint: scriptony-image.
  *
- * Legacy routes (kept for backward compatibility):
- *   POST /ai/image/validate-key
- *   GET/PUT /ai/image/settings
- *   POST /ai/image/generate-cover
+ * T10 BEREINIGT:
+ *   - Technische Bildoperationen: drawtoai, segment, image tasks, generate-cover.
+ *   - AI Key Validation und Image Settings sind nach scriptony-ai migriert.
+ *   - execute-render ist nach scriptony-stage migriert.
  *
- * Puppet-Layer routes (Ticket 4):
+ * Legacy routes (410 Gone mit Verweis):
+ *   POST /ai/image/validate-key  → scriptony-ai /providers/:id/validate
+ *   GET/PUT /ai/image/settings   → scriptony-ai /features/image_generation
+ *   POST /ai/image/execute-render → scriptony-stage /stage/render-jobs/:id/execute
+ *
+ * Aktive routes:
  *   POST /ai/image/drawtoai       — exploratory: create draw-to-AI task
  *   POST /ai/image/segment        — exploratory: create segmentation task
  *   GET  /ai/image/tasks/:id      — get exploratory task status
  *   GET  /ai/image/tasks           — list tasks for user (optional ?projectId=)
- *   POST /ai/image/execute-render — official: execute render job, callback to stage
+ *   POST /ai/image/generate-cover  — generate cover image (technical)
  */
 
 import "../_shared/fetch-polyfill";
-import imageValidateKeyHandler from "./ai/image-validate-key";
 import imageGenerateCoverHandler from "./ai/image-generate-cover";
-import imageSettingsHandler from "./ai/image-settings";
 import { requireUserBootstrap } from "../_shared/auth";
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import { getUserOrganizationIds } from "../_shared/scriptony";
@@ -38,7 +41,6 @@ import {
   listImageTasksForUser,
   userCanAccessProject,
 } from "./image-task-service";
-import { C, getDocument } from "../_shared/appwrite-db";
 
 function getPathname(req: RequestLike): string {
   const direct = (typeof req?.path === "string" && req.path) ||
@@ -85,27 +87,47 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   // -------------------------------------------------------------------------
-  // Legacy routes
+  // T10: Migrierte Legacy-Routen — 410 Gone
   // -------------------------------------------------------------------------
 
   if (pathname === "/ai/image/validate-key") {
-    await imageValidateKeyHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T10: AI Key Validation wurde zu scriptony-ai verschoben. " +
+        "Nutze POST /providers/:provider/validate bei scriptony-ai.",
+    });
     return;
   }
 
   if (pathname === "/ai/image/settings") {
-    await imageSettingsHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T10: Image Settings wurden zu scriptony-ai verschoben. " +
+        "Nutze GET/PUT /features/image_generation oder /settings bei scriptony-ai.",
+    });
     return;
   }
+
+  if (pathname === "/ai/image/execute-render") {
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T10: Render Execution wurde zu scriptony-stage verschoben. " +
+        "Nutze POST /stage/render-jobs/:id/execute bei scriptony-stage.",
+    });
+    return;
+  }
+
+  // -------------------------------------------------------------------------
+  // Technische Bild-Routen (T10: bleiben in scriptony-image)
+  // -------------------------------------------------------------------------
 
   if (pathname === "/ai/image/generate-cover") {
     await imageGenerateCoverHandler(req, res);
     return;
   }
-
-  // -------------------------------------------------------------------------
-  // Puppet-Layer routes (Ticket 4)
-  // -------------------------------------------------------------------------
 
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
@@ -225,62 +247,6 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
     sendJson(res, 200, { task: imageTaskRowToApi(row) });
-    return;
-  }
-
-  // POST /ai/image/execute-render — official render execution with stage callback
-  if (pathname === "/ai/image/execute-render") {
-    if (req.method !== "POST") {
-      sendMethodNotAllowed(res, ["POST"]);
-      return;
-    }
-    const body = await readJsonBody<{
-      jobId: string;
-      payload?: Record<string, unknown>;
-      callbackBaseUrl?: string;
-    }>(req);
-
-    if (!body.jobId) {
-      sendBadRequest(res, "jobId is required");
-      return;
-    }
-
-    // Verify the render job exists
-    const renderJob = await getDocument(C.renderJobs, body.jobId);
-    if (!renderJob) {
-      sendNotFound(res, "Render job not found");
-      return;
-    }
-
-    // Verify user has access to the job's project
-    const jobProjectId = typeof renderJob.projectId === "string"
-      ? renderJob.projectId.trim()
-      : "";
-    if (
-      jobProjectId &&
-      !(await userCanAccessProject(jobProjectId, userId, organizationIds))
-    ) {
-      sendNotFound(res, "Render job not found");
-      return;
-    }
-
-    // Update render job status to executing
-    const { updateDocument: updateDoc } = await import(
-      "../_shared/appwrite-db"
-    );
-    await updateDoc(C.renderJobs, body.jobId, { status: "executing" });
-
-    // In a real implementation, this is where the actual image generation happens.
-    // For now, we create the orchestration flow: mark as executing and return.
-    // The actual executor (ComfyUI, local bridge, etc.) will call back when done.
-
-    sendJson(res, 200, {
-      jobId: body.jobId,
-      status: "executing",
-      message:
-        "Render job is now executing. Callback will be sent to stage on completion.",
-      callbackBaseUrl: body.callbackBaseUrl || null,
-    });
     return;
   }
 

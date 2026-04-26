@@ -176,6 +176,19 @@ export async function listRenderJobsForShot(
 // Lifecycle transitions
 // ---------------------------------------------------------------------------
 
+export async function executeRenderJob(
+  row: RenderJobRow,
+): Promise<RenderJobApi> {
+  const current = toString(row.status);
+  if (current !== "queued") {
+    throw new Error(`Cannot execute job in status "${current}"`);
+  }
+  const updated = await updateDocument(C.renderJobs, String(row.id), {
+    status: "executing",
+  });
+  return renderJobRowToApi(updated);
+}
+
 export async function completeRenderJob(
   row: RenderJobRow,
   outputImageIds?: string[],

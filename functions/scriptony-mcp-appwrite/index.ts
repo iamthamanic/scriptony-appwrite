@@ -58,6 +58,53 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
+    // T11: MCP Tool Registry (von scriptony-assistant migriert)
+    if (pathname === "/tools" || pathname === "/tools/") {
+      const bootstrap = await requireUserBootstrap(req);
+      if (!bootstrap) {
+        sendUnauthorized(res);
+        return;
+      }
+      if (req.method === "GET") {
+        sendJson(res, 200, {
+          version: "0.1",
+          tools: [
+            {
+              name: "list_projects",
+              description:
+                "List projects for the authenticated user (HTTP: GET /projects)",
+              input_schema: { type: "object", properties: {} },
+            },
+            {
+              name: "get_shots_by_scene",
+              description:
+                "List shots for a scene (HTTP: GET /shots/by-scene/:sceneId)",
+              input_schema: {
+                type: "object",
+                properties: { scene_id: { type: "string" } },
+                required: ["scene_id"],
+              },
+            },
+            {
+              name: "ai_chat",
+              description:
+                "Send a message to Scriptony Assistant (HTTP: POST /ai/chat)",
+              input_schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+                required: ["message"],
+              },
+            },
+          ],
+          note:
+            "Invoke the same operations via Appwrite HTTP routes; MCP server can mirror this registry.",
+        });
+        return;
+      }
+      sendMethodNotAllowed(res, ["GET"]);
+      return;
+    }
+
     if (pathname !== "/invoke" && pathname !== "/invoke/") {
       sendBadRequest(res, `Unknown route: ${pathname}`);
       return;

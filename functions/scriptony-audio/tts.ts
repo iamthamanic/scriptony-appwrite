@@ -152,15 +152,11 @@ app.get("/voices", async (c) => {
     return c.json({ voices });
   } catch (_error: any) {
     // Return default voices if provider doesn't support voice listing
+    const { OPENAI_TTS_VOICES } = await import(
+      "../_shared/ai-service/services/tts"
+    );
     const defaultVoices: Record<string, any> = {
-      openai: [
-        { id: "alloy", name: "Alloy", gender: "neutral" },
-        { id: "echo", name: "Echo", gender: "male" },
-        { id: "fable", name: "Fable", gender: "neutral" },
-        { id: "onyx", name: "Onyx", gender: "male" },
-        { id: "nova", name: "Nova", gender: "female" },
-        { id: "shimmer", name: "Shimmer", gender: "female" },
-      ],
+      openai: OPENAI_TTS_VOICES.map((v) => ({ ...v, gender: "neutral" })),
       elevenlabs: [
         { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", gender: "female" },
         { id: "AZnzlk1XvdvUkg3lJpIB", name: "Domi", gender: "male" },

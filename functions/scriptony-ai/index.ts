@@ -1,7 +1,14 @@
 /**
  * Appwrite function entrypoint: scriptony-ai.
  *
- * Central control plane for AI configuration stored in Appwrite DB `scriptony_ai`.
+ * Central control plane for AI configuration stored in Appwrite DB.
+ *
+ * T10: Image Settings und Image Key Validation leben hier
+ * (frueher in scriptony-image). Nutze /features/image_generation
+ * und /providers/:id/validate fuer Bild-spezifische Config.
+ *
+ * T11: AI Settings, Models und Validate-Key wurden von scriptony-assistant
+ * hierher migriert. Nutze /settings, /ai/settings, /providers/:id/validate.
  */
 
 import {
@@ -43,16 +50,14 @@ import {
 } from "../_shared/ai-service/providers";
 import { fetchOllamaTags } from "../_shared/ollama-tags-request";
 import { fetchOllamaV1Models } from "../_shared/ollama-v1-models-request";
-// Legacy assistant dispatch removed — gateway now routes /ai/chat, /ai/settings, etc.
-// directly to scriptony-assistant. See assistant-legacy.ts for history.
-// import { dispatchAssistantLegacyRoute } from "./assistant-legacy";
 
 async function ensureFetchPolyfillLoaded(): Promise<void> {
   await import("../_shared/fetch-polyfill");
 }
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -73,9 +78,10 @@ function getQueryParam(req: RequestLike, key: string): string {
   }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url = raw.startsWith("http://") || raw.startsWith("https://")
-      ? new URL(raw)
-      : new URL(raw, "http://local");
+    const url =
+      raw.startsWith("http://") || raw.startsWith("https://")
+        ? new URL(raw)
+        : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
@@ -209,7 +215,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         sendBadRequest(res, "feature is required");
         return;
       }
-      const apiKey = body.api_key?.trim() ||
+      const apiKey =
+        body.api_key?.trim() ||
         (await getStoredApiKey(
           userId,
           body.feature as CanonicalAiFeature,
@@ -239,7 +246,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         base_url?: string;
         feature?: CanonicalAiFeature;
       }>(req);
-      const apiKey = body.api_key?.trim() ||
+      const apiKey =
+        body.api_key?.trim() ||
         (body.feature
           ? (await getStoredApiKey(userId, body.feature, provider as any)) || ""
           : "");
@@ -256,16 +264,23 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           message: valid
             ? "Ollama Cloud connection is valid"
             : "Ollama Cloud validation failed",
-          ...(valid ? {} : {
-            error: v1.status > 0 || tags.status > 0
-              ? [
-                v1.ok ? null : `v1/models: ${v1.status || 0} ${v1.error}`,
-                tags.ok ? null : `api/tags: ${tags.status || 0} ${tags.error}`,
-              ]
-                .filter(Boolean)
-                .join(" | ")
-              : v1.error || tags.error || "Validation failed",
-          }),
+          ...(valid
+            ? {}
+            : {
+                error:
+                  v1.status > 0 || tags.status > 0
+                    ? [
+                        v1.ok
+                          ? null
+                          : `v1/models: ${v1.status || 0} ${v1.error}`,
+                        tags.ok
+                          ? null
+                          : `api/tags: ${tags.status || 0} ${tags.error}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" | ")
+                    : v1.error || tags.error || "Validation failed",
+              }),
         });
         return;
       }
@@ -280,11 +295,14 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           message: tags.ok
             ? "Ollama connection is valid"
             : "Ollama validation failed",
-          ...(tags.ok ? {} : {
-            error: tags.status > 0
-              ? `api/tags: ${tags.status} ${tags.error}`
-              : tags.error || "Validation failed",
-          }),
+          ...(tags.ok
+            ? {}
+            : {
+                error:
+                  tags.status > 0
+                    ? `api/tags: ${tags.status} ${tags.error}`
+                    : tags.error || "Validation failed",
+              }),
         });
         return;
       }
@@ -446,7 +464,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       return;
     }
 
-    if (pathname === "/settings") {
+    if (pathname === "/settings" || pathname === "/ai/settings") {
       if (req.method === "GET") {
         sendJson(res, 200, await buildSettingsPayload(userId));
         return;
@@ -528,6 +546,136 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       sendMethodNotAllowed(res, ["GET", "PUT", "POST"]);
+      return;
+    }
+
+    // -------------------------------------------------------------------------
+    // T11: /ai/validate-key — Compat-Route (frueher in scriptony-assistant)
+    // -------------------------------------------------------------------------
+    if (pathname === "/ai/validate-key") {
+      if (req.method !== "POST") {
+        sendMethodNotAllowed(res, ["POST"]);
+        return;
+      }
+      const body = await readJsonBody<{
+        api_key?: string;
+        provider?: string;
+        base_url?: string;
+        ollama_mode?: string;
+      }>(req);
+      const explicit = (body.provider ?? "").trim().toLowerCase();
+      let provider = explicit || null;
+      const modeRaw = (body.ollama_mode ?? "").trim().toLowerCase();
+      if (!provider && (modeRaw === "cloud" || modeRaw === "local")) {
+        provider = "ollama";
+      }
+      const apiKey = (body.api_key ?? "").trim();
+      if (provider === "ollama") {
+        const mode = modeRaw === "cloud" ? "cloud" : "local";
+        provider = mode === "cloud" ? "ollama_cloud" : "ollama_local";
+      }
+      if (!provider) {
+        if (!apiKey) {
+          sendBadRequest(res, "api_key is required");
+          return;
+        }
+        if (apiKey.startsWith("sk-ant-")) provider = "anthropic";
+        else if (apiKey.startsWith("AIza")) provider = "google";
+        else if (apiKey.startsWith("sk-or-")) provider = "openrouter";
+        else if (apiKey.startsWith("sk-")) provider = "openai";
+        else if (apiKey.startsWith("ds-") || apiKey.startsWith("sk-ds"))
+          provider = "deepseek";
+      }
+      if (!provider) {
+        sendJson(res, 200, {
+          valid: false,
+          error: "Waehle den Anbieter in der Liste oder nutze ein Key-Format.",
+        });
+        return;
+      }
+      const baseUrl =
+        (body.base_url ?? "").trim().replace(/\/$/, "") || undefined;
+      let valid = false;
+      try {
+        const prov = getProvider(provider, {
+          apiKey: apiKey || undefined,
+          baseUrl,
+        });
+        valid = (await prov.healthCheck?.()) ?? false;
+      } catch {
+        valid = false;
+      }
+      if (!valid) {
+        sendJson(res, 200, {
+          valid: false,
+          provider,
+          error: `Key-Validierung fuer "${provider}" fehlgeschlagen.`,
+        });
+        return;
+      }
+      let discoveredModels: Array<{
+        id: string;
+        name: string;
+        provider: string;
+      }> = [];
+      try {
+        const models = await discoverModels(provider, "assistant_chat", {
+          apiKey: apiKey || undefined,
+          baseUrl,
+        });
+        discoveredModels = models.map((m) => ({
+          id: m.id,
+          name: m.name,
+          provider: m.provider,
+        }));
+      } catch {
+        // Discovery optional — health check passed
+      }
+      const fallbackModels = getModelsForProvider(provider);
+      const usedRemote = discoveredModels.length > 0;
+      const finalList = usedRemote
+        ? discoveredModels
+        : fallbackModels.map((m) => ({
+            id: m.id,
+            name: m.name,
+            provider,
+            context_window: (m as any).context_window ?? 0,
+          }));
+      sendJson(res, 200, {
+        valid: true,
+        provider,
+        default_model: finalList[0]?.id ?? null,
+        models: finalList.map((e: any) => e.id),
+        available_models: finalList.map((e: any) => e.id),
+        models_with_context: finalList,
+        models_with_capabilities: discoveredModels,
+        source: usedRemote ? "remote" : "registry",
+      });
+      return;
+    }
+
+    // -------------------------------------------------------------------------
+    // T11: /ai/models — Compat-Route (frueher in scriptony-assistant)
+    // -------------------------------------------------------------------------
+    if (pathname === "/ai/models") {
+      if (req.method !== "GET") {
+        sendMethodNotAllowed(res, ["GET"]);
+        return;
+      }
+      const qProvider =
+        getQueryParam(req, "provider").trim().toLowerCase() || "openai";
+      const qOllamaBase = getQueryParam(req, "ollama_base_url")
+        .trim()
+        .replace(/\/$/, "");
+      const models = getModelsForProvider(qProvider);
+      sendJson(res, 200, {
+        provider: qProvider,
+        models: models.map((m) => m.id),
+        models_with_context: models,
+        models_with_capabilities: models,
+        source: "registry",
+        registry_fallback: true,
+      });
       return;
     }
 

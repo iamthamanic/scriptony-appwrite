@@ -4,7 +4,15 @@
  * T09 LEGACY: Shot-Audio-Verwaltung ist Asset-/Timeline-Kontext,
  * keine technische Audiofaehigkeit.
  * Neue Shot-Audio-Uploads sollten ueber scriptony-assets laufen.
- * Diese Route bleibt als Compatibility Wrapper bis vollstaendige Migration.
+ *
+ * T09 Schema-Mismatch (dokumentiert):
+ *   Appwrite-Schema (provision-appwrite-schema.mjs):
+ *     shot_id, file_name, file_size, bucket_file_id, mime_type, duration_ms,
+ *     user_id, storage_path
+ *   GraphQL-Schema (Route-Handler):
+ *     file_url, start_time, end_time, fade_in, fade_out, waveform_data,
+ *     audio_duration
+ *   → Fast keine gemeinsamen Felder. Beide Schemas existieren parallel.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";

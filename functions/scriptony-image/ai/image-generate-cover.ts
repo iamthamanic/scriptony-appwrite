@@ -3,7 +3,8 @@
  * Resolves provider/key/model from per-user feature config and delegates
  * to the shared generateImage() service function.
  *
- * Location: functions/scriptony-image/ai/image-generate-cover.ts
+ * T10: Technische Bildoperation — bleibt in scriptony-image.
+ * Die fachliche Zuordnung zum Projekt (Cover) erfolgt durch den Aufrufer.
  */
 
 import { generateImage } from "../../_shared/ai-service/services/image";

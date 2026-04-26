@@ -13,7 +13,6 @@ import { ID } from "node-appwrite";
 import {
   createDocument,
   getDocument,
-  dbId,
   C,
 } from "../../_shared/appwrite-db";
 
@@ -47,6 +46,8 @@ export interface CreatedJob {
   id: string;
   status: JobStatus;
   created_at: string;
+  /** Voller Job-Payload als JSON-String (verfügbar bei DB-Reads). */
+  payload_json?: string;
 }
 
 /**
@@ -75,7 +76,7 @@ export async function createAudioProductionJob(
     meta: payload.meta,
   };
 
-  const doc = await createDocument(dbId(), C.jobs, ID.unique(), {
+  const doc = await createDocument(C.jobs, ID.unique(), {
     function_name: `audio-production-${type}`,
     status: "pending",
     payload_json: JSON.stringify(minimalPayload),
@@ -102,11 +103,14 @@ export async function getAudioProductionJob(
   jobId: string,
 ): Promise<CreatedJob | null> {
   try {
-    const doc = await getDocument(dbId(), C.jobs, jobId);
+    const doc = await getDocument(C.jobs, jobId);
     return {
       id: doc.$id as string,
       status: (doc.status as JobStatus) || "pending",
       created_at: (doc.created_at as string) || new Date().toISOString(),
+      payload_json: typeof doc.payload_json === "string"
+        ? doc.payload_json
+        : undefined,
     };
   } catch {
     return null;

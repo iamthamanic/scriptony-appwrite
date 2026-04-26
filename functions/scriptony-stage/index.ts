@@ -31,6 +31,7 @@ import {
   acceptRenderJob,
   completeRenderJob,
   createRenderJob,
+  executeRenderJob,
   failRenderJob,
   getRenderJobById,
   listRenderJobsForShot,
@@ -145,6 +146,33 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
       }
 
       sendMethodNotAllowed(res, ["GET", "POST"]);
+      return;
+    }
+
+    // POST /stage/render-jobs/:id/execute
+    const executeMatch = pathname.match(
+      /^\/stage\/render-jobs\/([^/]+)\/execute$/,
+    );
+    if (executeMatch) {
+      if (req.method !== "POST") {
+        sendMethodNotAllowed(res, ["POST"]);
+        return;
+      }
+      const jobId = executeMatch[1];
+      const row = await getRenderJobById(jobId);
+      if (!row) {
+        sendNotFound(res, "Render job not found");
+        return;
+      }
+      try {
+        const job = await executeRenderJob(row);
+        sendJson(res, 200, { job });
+      } catch (error) {
+        sendBadRequest(
+          res,
+          error instanceof Error ? error.message : "Cannot execute job",
+        );
+      }
       return;
     }
 

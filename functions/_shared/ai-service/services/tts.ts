@@ -7,6 +7,16 @@
 import { resolveFeatureRuntime } from "../config/settings";
 import { getProvider, type TTSOptions, type TTSResponse } from "../providers";
 
+/** OpenAI TTS default voices — single source of truth. */
+export const OPENAI_TTS_VOICES = [
+  { id: "alloy", name: "Alloy" },
+  { id: "echo", name: "Echo" },
+  { id: "fable", name: "Fable" },
+  { id: "onyx", name: "Onyx" },
+  { id: "nova", name: "Nova" },
+  { id: "shimmer", name: "Shimmer" },
+] as const;
+
 /**
  * Synthesize text to speech
  *
@@ -68,14 +78,7 @@ export async function getVoices(
 
   // Default voices for other providers
   if (providerName === "openai") {
-    return [
-      { id: "alloy", name: "Alloy" },
-      { id: "echo", name: "Echo" },
-      { id: "fable", name: "Fable" },
-      { id: "onyx", name: "Onyx" },
-      { id: "nova", name: "Nova" },
-      { id: "shimmer", name: "Shimmer" },
-    ];
+    return [...OPENAI_TTS_VOICES];
   }
 
   return [{ id: "default", name: "Default" }];

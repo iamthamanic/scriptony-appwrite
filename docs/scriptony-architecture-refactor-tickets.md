@@ -134,8 +134,8 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T07 | 4 | `scriptony-audio-story` als `scriptony-audio-production` abgrenzen | **done** | T01 |
 | T08 | 5 | Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden | **done** | T04, T06, T07 |
 | T09 | 5 | `scriptony-audio` auf technische Audiofaehigkeiten begrenzen | **done** | T06, T08 |
-| T10 | 6 | `scriptony-image` bereinigen | todo | T01, T02 |
-| T11 | 6 | `scriptony-assistant` bereinigen | todo | T01, T02 |
+| T10 | 6 | `scriptony-image` bereinigen | **done** | T01, T02 |
+| T11 | 6 | `scriptony-assistant` bereinigen | **done** | T01, T02 |
 | T12 | 7 | `scriptony-editor-readmodel` bauen | todo | T04, T06, T08 |
 | T13 | 8 | Timeline-Konsolidierung vorbereiten | todo | T04, T06, T12 |
 | T14 | 9 | `scriptony-jobs` konsolidieren | todo | T02, T08 |

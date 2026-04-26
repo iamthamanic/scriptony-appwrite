@@ -12,6 +12,7 @@ import {
 
 import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
+import { estimateTokens } from "../../_shared/estimate-tokens";
 import {
   readJsonBody,
   type RequestLike,
@@ -52,10 +53,6 @@ function enrichChatMessageForApi(
 
 const RAG_CONTEXT_SEPARATOR =
   "\n\n--- Scriptony Kontext (Auszug, nur zur Orientierung) ---\n";
-
-function estimateTokens(value: string): number {
-  return value.trim() ? value.trim().split(/\s+/).length : 0;
-}
 
 async function getConversationMessages(
   conversationId: string,
@@ -102,9 +99,8 @@ export default async function handler(
     }
 
     const body = await readJsonBody<Record<string, any>>(req);
-    const rawMessage = typeof body.message === "string"
-      ? body.message.trim()
-      : "";
+    const rawMessage =
+      typeof body.message === "string" ? body.message.trim() : "";
     if (!rawMessage) {
       sendBadRequest(res, "message is required");
       return;
@@ -152,9 +148,10 @@ export default async function handler(
     }
 
     const baseSystemPrompt = runtime.userSettings.system_prompt || "";
-    const effectiveSystemPrompt = retrievalContext && retrievalContext.trim()
-      ? `${baseSystemPrompt}${RAG_CONTEXT_SEPARATOR}${retrievalContext.trim()}`
-      : baseSystemPrompt;
+    const effectiveSystemPrompt =
+      retrievalContext && retrievalContext.trim()
+        ? `${baseSystemPrompt}${RAG_CONTEXT_SEPARATOR}${retrievalContext.trim()}`
+        : baseSystemPrompt;
 
     const generated = await runAiServiceChat(
       bootstrap.user.id,
@@ -215,7 +212,7 @@ export default async function handler(
             metadata_json: chatMessageMetadata(
               model,
               provider,
-              rawMessage.split(/\s+/).filter(Boolean).length,
+              estimateTokens(rawMessage),
             ),
           },
           {
@@ -254,7 +251,8 @@ export default async function handler(
       `,
       {
         id: conversationId,
-        messageCount: priorMessages.length +
+        messageCount:
+          priorMessages.length +
           createdMessages.insert_ai_chat_messages.returning.length,
         lastMessageAt: assistantMessage.created_at,
       },
@@ -264,11 +262,13 @@ export default async function handler(
       conversation_id: conversationId,
       message: enrichChatMessageForApi(assistantMessage),
       token_details: {
-        input_tokens: generated.usage?.promptTokens ??
-          estimateTokens(rawMessage),
-        output_tokens: generated.usage?.completionTokens ??
+        input_tokens:
+          generated.usage?.promptTokens ?? estimateTokens(rawMessage),
+        output_tokens:
+          generated.usage?.completionTokens ??
           estimateTokens(generated.content),
-        total_tokens: generated.usage?.totalTokens ??
+        total_tokens:
+          generated.usage?.totalTokens ??
           (generated.usage?.promptTokens ?? estimateTokens(rawMessage)) +
             (generated.usage?.completionTokens ??
               estimateTokens(generated.content)),

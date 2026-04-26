@@ -240,18 +240,19 @@ const ROUTE_MAP: Record<string, string> = {
   // ---------------------------------------------------------------------------
   "/ai/assistant": BACKEND_FUNCTIONS.ASSISTANT,
 
-  // Legacy assistant paths — routed directly to ASSISTANT so scriptony-ai
-  // no longer needs to proxy them via dispatchAssistantLegacyRoute().
+  // Legacy assistant paths — T11 bereinigt:
+  //   /ai/settings, /ai/models, /ai/validate-key -> scriptony-ai
+  //   /ai/gym -> scriptony-gym
+  //   /mcp -> scriptony-mcp-appwrite
   "/ai/chat": BACKEND_FUNCTIONS.ASSISTANT,
   "/ai/conversations": BACKEND_FUNCTIONS.ASSISTANT,
   "/ai/rag": BACKEND_FUNCTIONS.ASSISTANT,
-  "/ai/settings": BACKEND_FUNCTIONS.ASSISTANT,
-  "/ai/models": BACKEND_FUNCTIONS.ASSISTANT,
-  "/ai/validate-key": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/settings": BACKEND_FUNCTIONS.AI,
+  "/ai/models": BACKEND_FUNCTIONS.AI,
+  "/ai/validate-key": BACKEND_FUNCTIONS.AI,
   "/ai/count-tokens": BACKEND_FUNCTIONS.ASSISTANT,
-  "/ai/gym": BACKEND_FUNCTIONS.ASSISTANT,
+  "/ai/gym": BACKEND_FUNCTIONS.GYM,
 
-  // ---------------------------------------------------------------------------
   // scriptony-ai control plane (provider registry, feature routing, key storage)
   // ---------------------------------------------------------------------------
   "/providers": BACKEND_FUNCTIONS.AI,
@@ -265,7 +266,7 @@ const ROUTE_MAP: Record<string, string> = {
   // Remaining standalone assistant-only routes (legacy non-/ai paths)
   "/conversations": BACKEND_FUNCTIONS.ASSISTANT,
   "/rag": BACKEND_FUNCTIONS.ASSISTANT,
-  "/mcp": BACKEND_FUNCTIONS.ASSISTANT,
+  "/mcp": BACKEND_FUNCTIONS.MCP_APPWRITE,
 
   // scriptony-audio-story (Hörspiel/audiobook tracks, sessions, voices, mixing)
   "/tracks": BACKEND_FUNCTIONS.AUDIO_STORY,

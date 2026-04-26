@@ -657,4 +657,140 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+## Phase 6 - Image Cleanup
+
+### Done Report: T10 - `scriptony-image` bereinigen
+
+- **Date:** 2026-04-26 19:35 CEST
+- **Verification Marker:** ARCH-REF-T10-DONE
+- **Changed files:**
+  - `functions/scriptony-image/index.ts` (Legacy-Routen entfernt, 410 Gone für migrierte Endpunkte)
+  - `functions/scriptony-image/ai/image-validate-key.ts` (geloescht — nach scriptony-ai migriert)
+  - `functions/scriptony-image/ai/image-settings.ts` (geloescht — nach scriptony-ai migriert)
+  - `functions/scriptony-image/ai/image-generate-cover.ts` (T10 JSDoc — bleibt technische Bildoperation)
+  - `functions/scriptony-stage/stage-service.ts` (+ `executeRenderJob` Lifecycle-Transition)
+  - `functions/scriptony-stage/index.ts` (+ Route `POST /stage/render-jobs/:id/execute`)
+  - `functions/scriptony-ai/index.ts` (T10 JSDoc — image settings/validation leben hier)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **Routes added/changed:**
+  - `scriptony-image`:
+    - `POST /ai/image/validate-key` → 410 Gone (nach scriptony-ai /providers/:id/validate)
+    - `GET/PUT /ai/image/settings` → 410 Gone (nach scriptony-ai /features/image_generation)
+    - `POST /ai/image/execute-render` → 410 Gone (nach scriptony-stage /stage/render-jobs/:id/execute)
+    - `POST /ai/image/generate-cover` — bleibt aktiv (technische Bildoperation)
+    - `POST /ai/image/drawtoai` — bleibt aktiv
+    - `POST /ai/image/segment` — bleibt aktiv
+    - `GET /ai/image/tasks` — bleibt aktiv
+    - `GET /ai/image/tasks/:id` — bleibt aktiv
+  - `scriptony-stage`:
+    - `POST /stage/render-jobs/:id/execute` — neu (queued → executing)
+- **UI/UX checks:** keine (Backend-Domain-Refactor, keine UI-Aenderung)
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend` → Format ✅, Lint ✅, Build ✅
+  - `scriptony-stage` Build verifiziert
+  - `scriptony-image` Build verifiziert
+  - Gitleaks: ✅
+  - Architecture: ✅ (keine Zirkel)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-image/index.ts,functions/scriptony-image/ai/image-generate-cover.ts,functions/scriptony-stage/stage-service.ts,functions/scriptony-stage/index.ts,functions/scriptony-ai/index.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** N/A (SKIP_AI_REVIEW=1)
+- **Known risks:**
+  - Frontend-Code, der `/ai/image/validate-key` oder `/ai/image/settings` direkt aufruft, bekommt jetzt 410 Gone. Muss auf `scriptony-ai` umgestellt werden (Frontend-Ticket T19).
+  - `/ai/image/execute-render` Aufrufer muessen auf `/stage/render-jobs/:id/execute` wechseln.
+  - `executeRenderJob` in `scriptony-stage` markiert den Job als `executing`, startet aber noch keine tatsaechliche Render-Pipeline. Das kommt in T15 (Media Worker).
+- **Rollback plan:**
+  - `image-validate-key.ts` und `image-settings.ts` aus Git wiederherstellen
+  - `scriptony-image/index.ts` auf vorherige Version zurücksetzen
+  - `execute-render` Route aus `scriptony-stage` entfernen
+- **Notes:**
+  - `scriptony-ai` hatte bereits `/providers/:id/validate` und `/features/:id` — die Logik aus `scriptony-image` war ein duenner Wrapper, der jetzt entfernt wurde (DRY).
+  - `scriptony-image` enthaelt jetzt nur noch technische Bildoperationen: `generate-cover`, `drawtoai`, `segment`, `tasks`.
+  - `execute-render` war Stage-Orchestration, keine Bild-API-Logik — korrekt nach `scriptony-stage` verschoben.
+  - Cover-Produktlogik (Prompt + Projekt-Zuordnung) bleibt in `scriptony-image` als technische Operation; die fachliche Asset-Verlinkung erfolgt durch den Aufrufer.
+
+---
+
+## Phase 6 - Assistant Cleanup
+
+### Done Report: T11 - `scriptony-assistant` bereinigen
+
+- **Date:** 2026-04-26 20:20 CEST
+- **Verification Marker:** ARCH-REF-T11-DONE
+- **Changed files:**
+  - `functions/scriptony-assistant/index.ts` (T11 bereinigt — 410 Gone fuer migrierte Routen)
+  - `functions/scriptony-assistant/ai/settings.ts` (geloescht — nach scriptony-ai)
+  - `functions/scriptony-assistant/ai/settings-models.ts` (geloescht — nicht mehr benoetigt)
+  - `functions/scriptony-assistant/ai/validate-key.ts` (geloescht — nach scriptony-ai)
+  - `functions/scriptony-assistant/ai/models.ts` (geloescht — nach scriptony-ai)
+  - `functions/scriptony-assistant/ai/fetch-dynamic-models.ts` (geloescht — nach scriptony-ai)
+  - `functions/scriptony-assistant/ai/gym-generate-starter.ts` (geloescht — nach scriptony-gym)
+  - `functions/scriptony-assistant/ai/mcp-tools-registry.ts` (geloescht — nach scriptony-mcp-appwrite)
+  - `functions/scriptony-ai/index.ts` (+ T11 Compat-Routen: /ai/settings, /ai/validate-key, /ai/models)
+  - `functions/scriptony-gym/index.ts` (+ POST /generate-starter)
+  - `functions/scriptony-gym/routes/generate-starter.ts` (neu, Hono-Handler)
+  - `functions/scriptony-mcp-appwrite/index.ts` (+ GET /tools)
+  - `src/lib/api-gateway.ts` (T11 Routing-Update)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **Routes added/changed:**
+  - `scriptony-assistant`:
+    - `POST /ai/settings` → 410 Gone (nach scriptony-ai /settings)
+    - `GET /ai/models` → 410 Gone (nach scriptony-ai /providers/:provider/models)
+    - `POST /ai/validate-key` → 410 Gone (nach scriptony-ai /providers/:provider/validate)
+    - `POST /ai/gym/generate-starter` → 410 Gone (nach scriptony-gym /generate-starter)
+    - `GET /mcp/tools` → 410 Gone (nach scriptony-mcp-appwrite /tools)
+    - `GET/POST /ai/chat` — bleibt aktiv
+    - `GET/POST /ai/conversations/*` — bleibt aktiv
+    - `POST /ai/rag/sync` — bleibt aktiv
+    - `POST /ai/count-tokens` — bleibt aktiv
+  - `scriptony-ai`:
+    - `GET/PUT /ai/settings` — neu (Alias fuer /settings)
+    - `POST /ai/validate-key` — neu (Compat mit Model-Discovery)
+    - `GET /ai/models` — neu (Compat mit Registry-Fallback)
+  - `scriptony-gym`:
+    - `POST /generate-starter` — neu (von scriptony-assistant migriert)
+  - `scriptony-mcp-appwrite`:
+    - `GET /tools` — neu (von scriptony-assistant migriert)
+- **UI/UX checks:**
+  - API-Gateway-Routing aktualisiert: Frontend ruft `/ai/settings`, `/ai/models`, `/ai/validate-key` weiterhin auf, aber jetzt geroutet zu `scriptony-ai`
+  - `/ai/gym/generate-starter` geroutet zu `scriptony-gym`
+  - `/mcp/*` geroutet zu `scriptony-mcp-appwrite`
+  - Keine Frontend-Komponenten geaendert — Kompatibilitaet durch Gateway + Compat-Handler
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend` → Format ✅, Lint ✅, Build ✅
+  - Frontend-Checks: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --frontend` → TypeScript ✅, Build ✅, Vitest ✅
+  - `scriptony-ai` Build verifiziert
+  - `scriptony-gym` Build verifiziert
+  - `scriptony-mcp-appwrite` Build verifiziert
+  - Gitleaks: ✅
+  - Architecture: ✅ (keine Zirkel)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-assistant/,functions/scriptony-ai/index.ts,functions/scriptony-gym/index.ts,functions/scriptony-gym/routes/generate-starter.ts,functions/scriptony-mcp-appwrite/index.ts,src/lib/api-gateway.ts" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** N/A (SKIP_AI_REVIEW=1)
+- **Known risks:**
+  - `scriptony-ai` Compat-Routen `/ai/validate-key` und `/ai/models` sind Legacy-Aliase. Langfristig sollte das Frontend auf `/providers/:id/validate` und `/providers/:id/models` umsteigen.
+  - `scriptony-gym` importiert Seed-Daten aus `src/modules/creative-gym/`. Bei Frontend-Refactor muss sichergestellt werden, dass der Import-Pfad stabil bleibt.
+  - `scriptony-mcp-appwrite` hat jetzt `/tools` neben `/invoke`. Beide sind MCP-relevant.
+- **Rollback plan:**
+  - Geloeschte Dateien aus Git wiederherstellen
+  - `api-gateway.ts` auf vorherige Version zuruecksetzen
+  - `scriptony-ai` Compat-Blocks entfernen
+- **Notes:**
+  - `scriptony-assistant` enthaelt jetzt nur noch Chat, Conversations, Messages, RAG und Count-Tokens (T11-Ziel erreicht).
+  - Alle AI-Control-Plane-Routen (Settings, Models, Validate) leben jetzt zentral in `scriptony-ai`.
+  - Gym Starter lebt jetzt fachlich in `scriptony-gym`.
+  - MCP Tool Registry lebt jetzt in `scriptony-mcp-appwrite`.
+  - Frontend-Code braucht keine sofortige Aenderung dank Gateway-Routing + Compat-Handlern.
+
+---
+
 ## Phase 4 - Assets API / Storage Separation

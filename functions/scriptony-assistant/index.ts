@@ -1,19 +1,26 @@
 /**
- * Appwrite function entry: scriptony-assistant (AI settings, chat, conversations, gym starter, MCP stub).
+ * Appwrite function entry: scriptony-assistant (T11 bereinigt).
+ *
+ * Verbleibende Verantwortung:
+ *   - Chat Experience (/ai/chat)
+ *   - Conversations, Messages, Prompts (/ai/conversations/*)
+ *   - RAG Sync (/ai/rag/sync)
+ *   - Token Counting (/ai/count-tokens)
+ *   - assistant-spezifische Utilities
+ *
+ * T11 MIGRIERT:
+ *   - AI Settings/Models/Validate-Key → scriptony-ai
+ *   - Gym Starter → scriptony-gym
+ *   - MCP Tool Registry → scriptony-mcp-appwrite
  */
 
 import "../_shared/fetch-polyfill";
 import chatHandler from "./ai/chat";
-import settingsHandler from "./ai/settings";
-import modelsHandler from "./ai/models";
-import validateKeyHandler from "./ai/validate-key";
-import countTokensHandler from "./ai/count-tokens";
-import gymGenerateStarterHandler from "./ai/gym-generate-starter";
 import ragSyncHandler from "./ai/rag/sync";
+import countTokensHandler from "./ai/count-tokens";
 import conversationsCollectionHandler from "./ai/conversations/index";
 import conversationMessagesHandler from "./ai/conversations/[id]/messages";
 import conversationPromptHandler from "./ai/conversations/[id]/prompt";
-import mcpToolsRegistryHandler from "./ai/mcp-tools-registry";
 import {
   type RequestLike,
   type ResponseLike,
@@ -75,7 +82,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/ai/gym/generate-starter") {
-    await gymGenerateStarterHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T11: Gym Starter wurde zu scriptony-gym verschoben. " +
+        "Nutze POST /generate-starter bei scriptony-gym.",
+    });
     return;
   }
 
@@ -105,12 +117,22 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/ai/settings") {
-    await settingsHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T11: AI Settings wurden zu scriptony-ai verschoben. " +
+        "Nutze GET/PUT /settings oder /features/assistant_chat bei scriptony-ai.",
+    });
     return;
   }
 
   if (pathname === "/ai/models") {
-    await modelsHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T11: AI Models wurden zu scriptony-ai verschoben. " +
+        "Nutze GET /providers/:provider/models bei scriptony-ai.",
+    });
     return;
   }
 
@@ -120,7 +142,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/ai/validate-key") {
-    await validateKeyHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T11: AI Key Validation wurde zu scriptony-ai verschoben. " +
+        "Nutze POST /providers/:provider/validate bei scriptony-ai.",
+    });
     return;
   }
 
@@ -130,7 +157,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   if (pathname === "/mcp/tools" || pathname === "/mcp/tools/") {
-    await mcpToolsRegistryHandler(req, res);
+    sendJson(res, 410, {
+      error: "Gone",
+      message:
+        "T11: MCP Tool Registry wurde zu scriptony-mcp-appwrite verschoben. " +
+        "Nutze GET /tools bei scriptony-mcp-appwrite.",
+    });
     return;
   }
 

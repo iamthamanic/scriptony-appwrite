@@ -1,23 +1,18 @@
 /**
- * POST /ai/gym/generate-starter — Creative Gym starter text (one-shot completion).
- * Uses the central ai-service chat() function with feature "creative_gym".
- * Location: functions/scriptony-assistant/ai/gym-generate-starter.ts
+ * POST /generate-starter — Creative Gym starter text (one-shot completion).
+ *
+ * T11: Von scriptony-assistant hierher migriert.
+ * Nutze POST /generate-starter bei scriptony-gym.
  */
 
+import { type Context } from "hono";
 import { chat } from "../../_shared/ai-service/services/text";
-import { requireUserBootstrap } from "../../_shared/auth";
+import { requireAuthenticatedUser } from "../../_shared/auth";
 import { getCharactersByProject, getProjectById } from "../../_shared/timeline";
-import { requireProjectAccess } from "../../_shared/scriptony";
 import {
-  readJsonBody,
-  type RequestLike,
-  type ResponseLike,
-  sendBadRequest,
-  sendJson,
-  sendMethodNotAllowed,
-  sendServerError,
-  sendUnauthorized,
-} from "../../_shared/http";
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../_shared/scriptony";
 import { CHALLENGE_SEEDS } from "../../../src/modules/creative-gym/infrastructure/seeds/challenge-seeds";
 
 type GymMedium = "prose" | "screenplay" | "audio_drama" | "film_visual";
@@ -41,54 +36,41 @@ function allowGymRate(
 }
 
 function languageBlock(
-  json: { output_language?: string; custom_locale?: string },
+  _json: { output_language?: string; custom_locale?: string },
   uiLanguage?: string,
 ): string {
-  const ol = json.output_language ?? "ui";
-  if (ol === "de") return "Sprache: Deutsch.";
-  if (ol === "en") return "Language: English.";
-  if (ol === "custom" && json.custom_locale?.trim()) {
-    return `Sprache / Locale: ${json.custom_locale.trim()}.`;
-  }
   if (uiLanguage === "en") return "Language: English.";
   return "Sprache: Deutsch.";
 }
 
-export default async function handler(
-  req: RequestLike,
-  res: ResponseLike,
-): Promise<void> {
+export default async function handleGenerateStarter(
+  c: Context,
+): Promise<Response> {
   try {
-    const bootstrap = await requireUserBootstrap(req);
-    if (!bootstrap) {
-      sendUnauthorized(res);
-      return;
+    const authHeader = c.req.header("Authorization");
+    const user = await requireAuthenticatedUser(authHeader);
+    if (!user) {
+      return c.json({ error: "Unauthorized" }, 401);
     }
 
-    if (req.method !== "POST") {
-      sendMethodNotAllowed(res, ["POST"]);
-      return;
+    if (!allowGymRate(user.id)) {
+      return c.json({ error: "Zu viele Anfragen. Bitte kurz warten." }, 429);
     }
 
-    if (!allowGymRate(bootstrap.user.id)) {
-      sendJson(res, 429, { error: "Zu viele Anfragen. Bitte kurz warten." });
-      return;
-    }
-
-    const body = await readJsonBody<{
+    const body = await c.req.json<{
       challenge_template_id?: string;
       medium?: string;
       source_project_id?: string;
       regenerate?: boolean;
       ui_language?: string;
-    }>(req);
+    }>();
 
-    const challengeId = typeof body.challenge_template_id === "string"
-      ? body.challenge_template_id.trim()
-      : "";
+    const challengeId =
+      typeof body.challenge_template_id === "string"
+        ? body.challenge_template_id.trim()
+        : "";
     if (!challengeId) {
-      sendBadRequest(res, "challenge_template_id is required");
-      return;
+      return c.json({ error: "challenge_template_id is required" }, 400);
     }
 
     const medium = (body.medium ?? "prose") as GymMedium;
@@ -99,40 +81,46 @@ export default async function handler(
       "film_visual",
     ];
     if (!validMedia.includes(medium)) {
-      sendBadRequest(res, "invalid medium");
-      return;
+      return c.json({ error: "invalid medium" }, 400);
     }
 
     const tpl = CHALLENGE_SEEDS.find((c) => c.id === challengeId);
     if (!tpl) {
-      sendBadRequest(res, "Unknown challenge_template_id");
-      return;
+      return c.json({ error: "Unknown challenge_template_id" }, 400);
     }
 
     const renderer = tpl.renderers[medium];
     if (!renderer) {
-      sendBadRequest(res, "Challenge has no renderer for this medium");
-      return;
+      return c.json(
+        { error: "Challenge has no renderer for this medium" },
+        400,
+      );
     }
 
+    const organizationIds = await getUserOrganizationIds(user.id);
+
     let projectContext = "";
-    const projectId = typeof body.source_project_id === "string"
-      ? body.source_project_id.trim()
-      : "";
+    const projectId =
+      typeof body.source_project_id === "string"
+        ? body.source_project_id.trim()
+        : "";
     if (projectId) {
-      const _project = await requireProjectAccess(
+      const project = await getAccessibleProject(
         projectId,
-        bootstrap.user.id,
-        res,
+        user.id,
+        organizationIds,
       );
-      if (!_project) return;
+      if (!project) {
+        return c.json({ error: "Project not found" }, 404);
+      }
 
       const p = await getProjectById(projectId);
       if (p) {
         const title = typeof p.title === "string" ? p.title : "";
-        const logline = typeof (p as { logline?: string }).logline === "string"
-          ? (p as { logline: string }).logline
-          : "";
+        const logline =
+          typeof (p as { logline?: string }).logline === "string"
+            ? (p as { logline: string }).logline
+            : "";
         const description =
           typeof (p as { description?: string }).description === "string"
             ? (p as { description: string }).description
@@ -141,8 +129,7 @@ export default async function handler(
           .filter(Boolean)
           .join("\n")
           .slice(0, 1500);
-        projectContext =
-          `\n\nProjekt-Kontext (optional nutzen):\nTitel: ${title}\nKurz: ${blurb}`;
+        projectContext = `\n\nProjekt-Kontext (optional nutzen):\nTitel: ${title}\nKurz: ${blurb}`;
       }
 
       const chars = await getCharactersByProject(projectId);
@@ -173,7 +160,7 @@ export default async function handler(
       .join("\n");
 
     const result = await chat(
-      bootstrap.user.id,
+      user.id,
       [{ role: "user", content: userPrompt }],
       "creative_gym",
       {
@@ -181,7 +168,7 @@ export default async function handler(
       },
     );
 
-    sendJson(res, 200, {
+    return c.json({
       text: result.content,
       challenge_template_id: challengeId,
       medium,
@@ -191,6 +178,10 @@ export default async function handler(
       },
     });
   } catch (error) {
-    sendServerError(res, error);
+    console.error("[Gym Generate Starter] Error:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Server error" },
+      500,
+    );
   }
 }

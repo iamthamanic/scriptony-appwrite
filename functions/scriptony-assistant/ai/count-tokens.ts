@@ -3,6 +3,7 @@
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
+import { estimateTokens } from "../../_shared/estimate-tokens";
 import {
   readJsonBody,
   type RequestLike,
@@ -34,9 +35,7 @@ export default async function handler(
   const messageText = Array.isArray(body.messages)
     ? body.messages.map((entry) => entry.content || "").join(" ")
     : body.text || "";
-  const tokens = messageText.trim()
-    ? messageText.trim().split(/\s+/).length
-    : 0;
+  const tokens = estimateTokens(messageText);
 
   sendJson(res, 200, {
     token_count: tokens,
