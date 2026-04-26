@@ -445,6 +445,8 @@ const INDEXES = {
     "purpose",
     "status",
     "file_id",
+    { key: "idx_owner_type_owner_id", fields: ["owner_type", "owner_id"] },
+    { key: "idx_project_id_status", fields: ["project_id", "status"] },
   ],
 };
 
@@ -566,25 +568,31 @@ async function ensureAttribute(db, collectionId, key, spec) {
   }
 }
 
-async function ensureIndex(db, collectionId, field) {
-  const idxKey = `idx_${field}`;
+async function ensureIndex(db, collectionId, def) {
+  if (typeof def !== "string" && !Array.isArray(def?.fields)) {
+    console.warn(`    index skip (malformed): ${JSON.stringify(def)}`);
+    return;
+  }
+  const isCompound = typeof def !== "string";
+  const key = isCompound ? def.key : `idx_${def}`;
+  const fields = isCompound ? def.fields : [def];
   try {
     const { indexes } = await db.listIndexes(databaseId, collectionId);
-    if (indexes.some((i) => i.key === idxKey)) {
-      console.log(`    index skip: ${idxKey}`);
+    if (indexes.some((i) => i.key === key)) {
+      console.log(`    index skip: ${key}`);
       return;
     }
     await db.createIndex(
       databaseId,
       collectionId,
-      idxKey,
+      key,
       IndexType.Key,
-      [field],
-      [OrderBy.Asc],
+      fields,
+      fields.map(() => OrderBy.Asc),
     );
-    console.log(`    index ok: ${idxKey}`);
+    console.log(`    index ok: ${key}`);
   } catch (e) {
-    if (isConflict(e)) console.log(`    index skip (conflict): idx_${field}`);
+    if (isConflict(e)) console.log(`    index skip (conflict): ${key}`);
     else throw e;
   }
 }
@@ -607,10 +615,14 @@ async function main() {
     for (const [key, spec] of Object.entries(attrs)) {
       await ensureAttribute(db, collectionId, key, spec);
     }
-    const idxFields = INDEXES[collectionId];
-    if (idxFields?.length) {
-      for (const f of idxFields) {
-        if (attrs[f]) await ensureIndex(db, collectionId, f);
+    const idxDefs = INDEXES[collectionId];
+    if (idxDefs?.length) {
+      for (const def of idxDefs) {
+        if (typeof def === "string") {
+          if (attrs[def]) await ensureIndex(db, collectionId, def);
+        } else if (def.fields.every((f) => attrs[f])) {
+          await ensureIndex(db, collectionId, def);
+        }
       }
     }
   }
