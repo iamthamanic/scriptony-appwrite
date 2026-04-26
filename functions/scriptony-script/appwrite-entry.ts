@@ -2,20 +2,11 @@
  * scriptony-script — Appwrite Function Entrypoint
  *
  * Routes:
- *   GET  /scripts?project_id=...
- *   GET  /scripts/by-project/:projectId
- *   POST /scripts
- *   GET  /scripts/:id
- *   PATCH /scripts/:id
- *   DELETE /scripts/:id
- *   GET  /scripts/:id/blocks
- *   POST /scripts/:id/blocks
- *   GET  /script-blocks/:id
- *   PATCH /script-blocks/:id
- *   DELETE /script-blocks/:id
- *   POST /script-blocks/reorder
- *   GET  /nodes/:nodeId/script-blocks?project_id=...
+ *   ...
  */
+
+// Polyfill: Appwrite node-16 Runtime hat keinen globalen fetch/Headers/ReadableStream.
+import "../_shared/fetch-polyfill";
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";

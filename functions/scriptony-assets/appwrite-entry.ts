@@ -2,6 +2,9 @@
  * scriptony-assets — Asset-Metadaten API (T06)
  */
 
+// Polyfill: Appwrite node-16 Runtime hat keinen globalen fetch/Headers/ReadableStream.
+import "../_shared/fetch-polyfill";
+
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAppwriteHandler, authMiddleware } from "./_shared/hono-auth";
