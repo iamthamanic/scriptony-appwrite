@@ -153,7 +153,7 @@ router.delete("/:id", async (c) => {
 
   await databases.deleteDocument(DB_ID, BLOCKS_COLLECTION, id);
 
-  return c.json({ success: true }, 204);
+  return c.body(null, 204);
 });
 
 // POST /script-blocks/reorder

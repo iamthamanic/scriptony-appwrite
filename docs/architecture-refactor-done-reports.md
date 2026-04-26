@@ -308,7 +308,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   ```bash
   CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-script/,functions/build-appwrite-deploy.mjs" SHIM_CHECKS_ARGS="" npm run checks
   ```
-- **Shimwrappercheck result:** ✅ PASSED (mit `--no-ai-review`, da Ollama Timeout)
+- **Shimwrappercheck result:** ✅ PASSED (FINAL, mit AI Review)
   - Frontend TypeScript: ✅
   - Vite Build: ✅
   - Vitest: 140 passed ✅
@@ -317,7 +317,9 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - Shellcheck: skipped (no .sh changes) ✅
   - Gitleaks: no leaks found ✅
   - Architecture (dependency-cruiser): no violations ✅
-- **AI Review result:** ❌ TIMEOUT (Ollama unreachable, 300s). Nacharbeit-Commit mit `--no-ai-review` durchgefuehrt.
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 300s)
+  - Final-Check auf Nacharbeit-Commits: keine blockierenden Findings
+  - Fruehere Timeout-Probleme behoben durch erhoehte Timeout-Werte
 - **Known risks:**
   - `scriptony-script` ist noch nicht in Appwrite deployed (nur gebaut). Deploy wird spaeter via `npx shimwrappercheck run --cli appwrite -- functions deploy scriptony-script` durchgefuehrt.
   - Access-Helper nutzt initial `created_by`/`user_id`/`owner_type`/`owner_id` — extensible fuer T21 Collaboration
@@ -331,6 +333,8 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   5. **Optimistic Concurrency nicht echt:** `revision` wurde nur inkrementiert, kein Vergleich. **Fix:** `expected_revision` in Zod-Schema aufgenommen, 409-Response bei Mismatch.
   6. **canManageProject nicht genutzt:** Script-DELETE lief ueber `canEditProject`. **Fix:** Script-DELETE nutzt jetzt `canManageProject`.
   7. **`as any` in Code:** `c.req.raw as any` und `delete (obj as any).prop` verwendet. **Fix:** Auth-Middleware mit korrektem Hono-Typing (`ContextVariableMap`), Destrukturierung statt any-Cast.
+  8. **scriptony-script fehlte in KNOWN_FUNCTIONS:** `scripts/check-appwrite-functions-build.mjs` hat `scriptony-script` nicht in der Liste. **Fix:** Hinzugefuegt. Snippet-Build ueberspringt T04-Aenderungen nicht mehr.
+  9. **DELETE mit Body bei 204:** `c.json({success: true}, 204)` ist HTTP-semantisch unsauber (204 = No Content). **Fix:** `c.body(null, 204)`.
 - **Rollback plan:**
   - Function-Verzeichnis loeschen: `rm -rf functions/scriptony-script`
   - `functions/build-appwrite-deploy.mjs` Bundle-Eintrag entfernen
