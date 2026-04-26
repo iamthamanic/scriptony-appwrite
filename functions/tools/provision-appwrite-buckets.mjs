@@ -29,6 +29,7 @@ const BUCKETS = [
   { bucketId: "world-images", name: "Scriptony world images" },
   { bucketId: "shots", name: "Scriptony shot images" },
   { bucketId: "audio-files", name: "Scriptony audio files" },
+  { bucketId: "stage-documents", name: "Scriptony stage documents" },
 ];
 
 const MAX_BYTES = 10_000_000; // ~10 MB — Appwrite self-hosted default max; raise via _APP_STORAGE_LIMIT

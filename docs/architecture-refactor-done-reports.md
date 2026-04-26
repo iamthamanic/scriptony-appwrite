@@ -360,24 +360,32 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Verification Marker:** ARCH-REF-T05-DONE
 - **Changed files:**
   - `functions/tools/provision-appwrite-schema.mjs` (assets Schema + Indexe)
+  - `functions/tools/provision-appwrite-buckets.mjs` (stage-documents Bucket ergaenzt)
   - `functions/_shared/appwrite-db.ts` (C.assets hinzugefuegt)
-  - `docs/backend-domain-map.md` (assets Owner/Purpose Matrix)
+  - `functions/_shared/env.ts` (stageDocuments Bucket bereits vorhanden)
+  - `docs/backend-domain-map.md` (assets Owner/Purpose Matrix + Bucket-Mapping)
+  - `docs/scriptony-architecture-refactor-tickets.md` (T05 als done markiert)
   - `docs/architecture-refactor-done-reports.md` (dieser Done Report)
 - **Routes added/changed:** keine (T06 baut API)
 - **Appwrite collections changed:**
   - `assets` (neu, in DB `scriptony`)
-    - 17 Attribute: project_id, user_id, owner_type, owner_id, media_type, purpose, file_id, bucket_id, filename, mime_type, size, duration, width, height, status, metadata, created_by, created_at, updated_at
+    - 19 Attribute: project_id, user_id, owner_type, owner_id, media_type, purpose, file_id, bucket_id, filename, mime_type, size, duration, width, height, status, metadata, created_by, created_at, updated_at
     - 7 Indexe: idx_project_id, idx_owner_type, idx_owner_id, idx_media_type, idx_purpose, idx_status, idx_file_id
-- **Appwrite buckets changed:** keine (T05 macht keine Bucket-Aenderungen)
+- **Appwrite buckets changed:**
+  - `stage-documents` Bucket hinzugefuegt in `functions/tools/provision-appwrite-buckets.mjs`
+  - Bereits als Default in `functions/_shared/env.ts` vorhanden (stageDocuments: "stage-documents"), aber fehlte im Provisioning-Skript
+  - Alle 6 Buckets: general, project-images, world-images, shots, audio-files, stage-documents
 - **Appwrite env vars changed:** keine
 - **UI/UX checks:** keine (Backend-Schema-Ticket, keine UI-Aenderung)
 - **Tests run:**
   - Schema-Provisioning: `node functions/tools/provision-appwrite-schema.mjs` -> assets collection created, alle attrs ok, alle indexe ok
+  - Bucket-Mapping-Check: `rg "stage-documents" functions/tools/provision-appwrite-buckets.mjs` -> vorhanden
+  - Bucket-Default-Check: `rg "stageDocuments" functions/_shared/env.ts` -> vorhanden
   - TypeScript Check: `tsc --noEmit` (keine neuen Fehler durch T05)
   - Prettier: `npx prettier --check` -> ok
 - **Shimwrappercheck command:**
   ```bash
-  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/tools/provision-appwrite-schema.mjs,functions/_shared/appwrite-db.ts,docs/backend-domain-map.md,docs/architecture-refactor-done-reports.md" SHIM_CHECKS_ARGS="" npm run checks
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/tools/provision-appwrite-schema.mjs,functions/tools/provision-appwrite-buckets.mjs,functions/_shared/appwrite-db.ts,functions/_shared/env.ts,docs/backend-domain-map.md,docs/scriptony-architecture-refactor-tickets.md,docs/architecture-refactor-done-reports.md" SHIM_CHECKS_ARGS="" npm run checks
   ```
 - **Shimwrappercheck result:** ✅ PASSED
 - **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud)
@@ -408,6 +416,16 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 | audio | dialogue_audio, ambience, sfx, music, voiceover |
 | video | reference, clip, animatic |
 | document | attachment, export_pdf, stage_document, script, font |
+
+**Invalid-Beispiele (werden in T06 API abgelehnt):**
+
+| owner_type | media_type | purpose | Warum invalid |
+|---|---|---|---|
+| project | audio | dialogue_audio | Audio gehoert zu Shot/Block, nicht Projekt |
+| character | document | export_pdf | Charakter hat keine Dokument-Exports |
+| script | video | clip | Script ist Text-Domaene, keine Clips |
+| world | audio | voiceover | Welt-Domaene hat keine Voiceover |
+| shot | document | font | Shot hat keine Font-Zuweisung |
 
 - **Delete Policy:**
   - `DELETE /assets/:id` in `scriptony-assets` (T06) entfernt nur das `assets` Document.

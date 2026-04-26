@@ -109,6 +109,50 @@ obigen Map.
 
 ---
 
+## Asset Owner/Purpose-Matrix
+
+`assets` ist der zentrale Metadaten-Container fuer Dateien. Owner und Purpose verhindern unkontrollierte Ablage.
+
+| owner_type | Erlaubte purpose | Beispiel |
+|---|---|---|
+| project | cover, backdrop, reference | Projekt-Cover-Image |
+| shot | storyboard, reference, dialogue_audio | Shot-Dialog-Audio |
+| script | reference, attachment, export_pdf | Script-Anhang |
+| script_block | dialogue_audio, ambience, sfx | Block-Audio |
+| world | reference_map, style_reference | Welt-Referenz |
+| world_item | image, attachment | Item-Image |
+| character | avatar, reference, concept_art | Charakter-Avatar |
+| style_guide | reference, color_palette, font | Styleguide-Referenz |
+| stage | stage_document, prop_image | Stage-Dokument |
+| scene | mood_image, reference | Szenen-Moodboard |
+
+| media_type | Erlaubte purpose |
+|---|---|
+| image | cover, backdrop, reference, storyboard, avatar, concept_art, mood_image, prop_image, color_palette |
+| audio | dialogue_audio, ambience, sfx, music, voiceover |
+| video | reference, clip, animatic |
+| document | attachment, export_pdf, stage_document, script, font |
+
+**Verbotene Kombinationen (Invalid-Beispiele):**
+
+| owner_type | media_type | purpose | Warum invalid |
+|---|---|---|---|
+| project | audio | dialogue_audio | Audio gehoert zu Shot/Block, nicht Projekt |
+| character | document | export_pdf | Charakter hat keine Dokument-Exports |
+| script | video | clip | Script ist Text-Domaene, keine Clips |
+| world | audio | voiceover | Welt-Domaene hat keine Voiceover |
+| shot | document | font | Shot hat keine Font-Zuweisung |
+
+**Validierung:** API (T06) prueft `owner_type` + `media_type` + `purpose` gegen diese Matrix. Appwrite speichert sie als Freitext (kein Enum-Constraint).
+
+**Delete Policy:** `DELETE /assets/:id` entfernt nur Metadaten. Physische Datei bleibt in Storage (Verantwortung: `scriptony-storage` / Cleanup-Job).
+
+**Bucket-Defaults:** Provisioniert in `functions/tools/provision-appwrite-buckets.mjs`:
+- `general`, `project-images`, `world-images`, `shots`, `audio-files`, `stage-documents`
+- Override via Env: `SCRIPTONY_STORAGE_BUCKET_*` in `functions/_shared/env.ts`
+
+---
+
 ## Access-Helper Konzept
 
 ```typescript
