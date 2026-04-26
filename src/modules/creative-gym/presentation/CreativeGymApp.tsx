@@ -38,7 +38,7 @@ import {
 } from "../../../components/ui/select";
 import { Badge } from "../../../components/ui/badge";
 import { cn } from "../../../components/ui/utils";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import type {
   ChallengeTemplate,
   CreativeIntent,

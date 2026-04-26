@@ -9,7 +9,7 @@
 
 import { useCallback } from "react";
 import { useDebouncedSave } from "./useDebouncedSave";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export interface EditorSaveOptions {
   sceneId: string;

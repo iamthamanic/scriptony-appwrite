@@ -47,7 +47,7 @@ import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Separator } from "./ui/separator";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 import {

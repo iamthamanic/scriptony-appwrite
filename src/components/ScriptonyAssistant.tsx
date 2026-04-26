@@ -46,7 +46,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar as CalendarComponent } from "./ui/calendar";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import svgPaths from "../imports/svg-s01rzl305m";
 import systemPromptSvg from "../imports/svg-moj859ikvp";
 import BxEdit from "../imports/BxEdit";

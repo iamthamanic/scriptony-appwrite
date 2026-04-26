@@ -8,7 +8,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import type { TimelineData } from "./FilmDropdown";
 import { EditableParagraph } from "./EditableParagraph";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import scriptonyLogo from "../assets/scriptony-logo.png";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 

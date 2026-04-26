@@ -95,6 +95,8 @@ export const BACKEND_FUNCTIONS = {
   /** Puppet-Layer: Blender ingress (sync metadata only). */
   SYNC: "scriptony-sync",
   GYM: "scriptony-gym",
+  /** Asset metadata and upload orchestration. */
+  ASSETS: "scriptony-assets",
   AUTH: "scriptony-auth",
   SUPERADMIN: "scriptony-superadmin",
   STATS: "scriptony-stats",
@@ -265,6 +267,12 @@ const ROUTE_MAP: Record<string, string> = {
   "/rag": BACKEND_FUNCTIONS.ASSISTANT,
   "/mcp": BACKEND_FUNCTIONS.ASSISTANT,
 
+  // scriptony-audio-story (Hörspiel/audiobook tracks, sessions, voices, mixing)
+  "/tracks": BACKEND_FUNCTIONS.AUDIO_STORY,
+  "/sessions": BACKEND_FUNCTIONS.AUDIO_STORY,
+  "/voices": BACKEND_FUNCTIONS.AUDIO_STORY,
+  "/mixing": BACKEND_FUNCTIONS.AUDIO_STORY,
+
   // scriptony-gym
   "/exercises": BACKEND_FUNCTIONS.GYM,
   "/progress": BACKEND_FUNCTIONS.GYM,
@@ -280,6 +288,9 @@ const ROUTE_MAP: Record<string, string> = {
  * Determines which backend function to use for a given route.
  */
 function getBackendFunctionForRoute(route: string): string {
+  // Assets routes must be resolved before /audio or other prefix collisions
+  if (route.startsWith("/assets")) return BACKEND_FUNCTIONS.ASSETS;
+
   // Audio routes live under /shots/... but must hit scriptony-audio, not scriptony-shots.
   if (
     route.includes("/upload-audio") ||

@@ -129,8 +129,12 @@ export default defineConfig(({ mode }) => {
   if (domainMapRaw) {
     try {
       const domainMap: Record<string, string> = JSON.parse(domainMapRaw);
-      for (const [funcName, target] of Object.entries(domainMap)) {
-        if (!funcName || !target) continue;
+      // Sortiere nach Funktionsnamen-Länge absteigend, damit längere Namen
+      // (z.B. scriptony-audio-story) vor kürzeren (scriptony-audio) matchen.
+      const sortedEntries = Object.entries(domainMap)
+        .filter(([funcName, target]) => funcName && target)
+        .sort((a, b) => b[0].length - a[0].length);
+      for (const [funcName, target] of sortedEntries) {
         const cleanTarget = target.replace(/\/+$/, "");
         proxy[`/__dev-proxy/${funcName}`] = {
           target: cleanTarget,

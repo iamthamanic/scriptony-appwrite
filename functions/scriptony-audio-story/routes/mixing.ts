@@ -5,6 +5,11 @@
  *   Mixing-Orchestration, Export-Job-Erstellung, Preview-Queueing.
  *   Technische Engine (FFmpeg, Audio-Processing) ist VERBOTEN hier.
  *   Echte Ausfuehrung liegt bei scriptony-media-worker oder scriptony-audio.
+ *
+ * T08 Implementiert:
+ *   Preview-Mix und Export erzeugen jobs-Eintraege und delegieren
+ *   an scriptony-media-worker. Aktuell: 501 Not Implemented —
+ *   Orchestration-API-Contract definiert, Engine fehlt.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
@@ -16,6 +21,13 @@ import {
   sendMethodNotAllowed,
 } from "../../_shared/http";
 
+function notImplemented(res: ResponseLike, feature: string): void {
+  sendJson(res, 501, {
+    error: "Not Implemented",
+    message: `${feature} is planned for T08 (Audio Production Orchestration). Use a local audio tool until then.`,
+  });
+}
+
 async function createPreviewMix(
   req: RequestLike,
   res: ResponseLike,
@@ -26,18 +38,8 @@ async function createPreviewMix(
     return;
   }
 
-  const body = await readJsonBody<Record<string, unknown>>(req);
-  const { sceneId, trackIds } = body;
-
-  // Hier würde später FFmpeg-WASM Integration kommen
-  sendJson(res, 200, {
-    preview: {
-      sceneId,
-      tracks: trackIds,
-      status: "queued",
-      estimatedDuration: 30,
-    },
-  });
+  // T08: Job erstellen und an scriptony-media-worker delegieren.
+  notImplemented(res, "Preview Mix (T08)");
 }
 
 async function exportChapter(
@@ -50,18 +52,8 @@ async function exportChapter(
     return;
   }
 
-  const body = await readJsonBody<Record<string, unknown>>(req);
-  const { actId, format } = body;
-
-  // Export Job in die Queue stellen
-  sendJson(res, 200, {
-    export: {
-      actId,
-      format: format || "mp3",
-      status: "processing",
-      downloadUrl: null,
-    },
-  });
+  // T08: Export-Job erstellen und an scriptony-media-worker delegieren.
+  notImplemented(res, "Export Chapter (T08)");
 }
 
 async function getMixStatus(
@@ -75,14 +67,8 @@ async function getMixStatus(
     return;
   }
 
-  sendJson(res, 200, {
-    job: {
-      id: jobId,
-      status: "processing",
-      progress: 45,
-      downloadUrl: null,
-    },
-  });
+  // T08: Job-Status aus jobs-Collection lesen.
+  notImplemented(res, "Mix Status (T08)");
 }
 
 export default async function handler(

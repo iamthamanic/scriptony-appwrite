@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { Download, Share2 } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,

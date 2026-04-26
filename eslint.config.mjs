@@ -12,6 +12,9 @@ const IGNORED_PATTERNS = [
   ".appwrite-deploy/**",
   ".deploy-staging/**",
   "starter-for-react/**",
+  "functions/**/index.js",
+  "functions/meta.json",
+  "functions/package-lock.json",
   "src/BEATS_INTEGRATION_SNIPPET.tsx",
   "src/COPY_PASTE_READY_STRUCTURE_BEATS.tsx",
   "src/PASTE_THIS_INTO_PROJECTSPAGE.tsx",
@@ -89,7 +92,7 @@ export default [
     },
   },
   {
-    files: ["functions/_shared/**/*.ts", "local-bridge/**/*.ts"],
+    files: ["functions/**/*.ts", "local-bridge/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

@@ -11,7 +11,7 @@ import {
 } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
 import { useAuth } from "../../hooks/useAuth";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import scriptonyLogo from "../../assets/scriptony-logo.png";
 

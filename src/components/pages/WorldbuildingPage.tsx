@@ -105,7 +105,7 @@ import {
 import { useImagePreview } from "../hooks/useImagePreview";
 import { WorldStatsLogsDialog } from "../WorldStatsLogsDialog";
 import { WorldCarousel } from "../WorldCarousel";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 /** Appwrite/GraphQL can expose `$id` or `id`; without `id`, hash stays `#worldbuilding` (navigate drops segment). */
 function normalizeWorldRow(w: any) {

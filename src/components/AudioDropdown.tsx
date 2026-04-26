@@ -8,6 +8,8 @@
  */
 
 import { useState, useMemo, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   ChevronRight,
   ChevronDown,
@@ -27,6 +29,9 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { useAudioTimeline } from "../hooks/useAudioTimeline";
+import { createAudioTrack } from "../lib/api/audio-story-api";
+import { getAuthToken } from "../lib/auth/getAuthToken";
+import { queryKeys } from "../lib/react-query";
 import type { Act, Sequence, Scene, AudioTrack } from "../lib/types";
 import { cn } from "../lib/utils";
 
@@ -62,6 +67,39 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
   const [localSceneImages, setLocalSceneImages] = useState<
     Record<string, string>
   >({});
+  const queryClient = useQueryClient();
+
+  const createTrackMutation = useMutation({
+    mutationFn: async ({
+      sceneId,
+      type,
+    }: {
+      sceneId: string;
+      type: string;
+    }) => {
+      const token = await getAuthToken();
+      if (!token) throw new Error("Nicht authentifiziert");
+      return createAudioTrack(sceneId, projectId, {
+        type: type as AudioTrack["type"],
+        content: "",
+        startTime: 0,
+        duration: 0,
+      }, token);
+    },
+    onSuccess: () => {
+      toast.success("Track hinzugefügt");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.audioByProject(projectId),
+      });
+    },
+    onError: (err: Error) => {
+      toast.error(`Fehler: ${err.message}`);
+    },
+  });
+
+  const handleAddTrack = (sceneId: string, type: string) => {
+    createTrackMutation.mutate({ sceneId, type });
+  };
 
   const handleSceneImageUpload = async (_sceneId: string, file: File) => {
     setUploadingSceneId(_sceneId);
@@ -186,6 +224,7 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
                       localSceneImages={localSceneImages}
                       uploadingSceneId={uploadingSceneId}
                       onUploadSceneImage={handleSceneImageUpload}
+                      onAddTrack={handleAddTrack}
                     />
                   ))}
                 </div>
@@ -214,6 +253,7 @@ function SequenceCard({
   localSceneImages,
   uploadingSceneId,
   onUploadSceneImage,
+  onAddTrack,
 }: {
   seq: Sequence;
   isExpanded: boolean;
@@ -228,6 +268,7 @@ function SequenceCard({
   localSceneImages: Record<string, string>;
   uploadingSceneId: string | null;
   onUploadSceneImage: (sceneId: string, file: File) => void;
+  onAddTrack: (sceneId: string, type: string) => void;
 }) {
   return (
     <div
@@ -272,6 +313,7 @@ function SequenceCard({
               localImageUrl={localSceneImages[scene.id]}
               isUploading={uploadingSceneId === scene.id}
               onUploadImage={(file) => onUploadSceneImage(scene.id, file)}
+              onAddTrack={(type) => onAddTrack(scene.id, type)}
             />
           ))}
         </div>
@@ -293,6 +335,7 @@ function SceneCard({
   localImageUrl,
   isUploading,
   onUploadImage,
+  onAddTrack,
 }: {
   scene: Scene;
   isExpanded: boolean;
@@ -304,8 +347,12 @@ function SceneCard({
   localImageUrl?: string;
   isUploading: boolean;
   onUploadImage: (file: File) => void;
+  onAddTrack: (type: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newTrackType, setNewTrackType] = useState<
+    "dialog" | "narrator" | "music" | "sfx" | "atmo"
+  >("dialog");
   const imageUrl = localImageUrl || scene.imageUrl;
 
   const grouped = useMemo(() => {
@@ -453,10 +500,27 @@ function SceneCard({
           )}
 
           {/* Add Track Button */}
-          <button className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-pink-100 dark:hover:bg-pink-900/30 rounded-lg border border-dashed border-pink-200 dark:border-pink-700 transition-colors">
-            <Plus className="size-3.5" />
-            Track hinzufügen
-          </button>
+          <div className="flex items-center gap-2 mt-1">
+            <select
+              value={newTrackType}
+              onChange={(e) => setNewTrackType(e.target.value as any)}
+              className="text-xs rounded border border-pink-200 dark:border-pink-700 bg-white dark:bg-black/20 px-2 py-1.5"
+            >
+              <option value="dialog">🎭 Dialog</option>
+              <option value="narrator">📖 Erzähler</option>
+              <option value="music">🎵 Musik</option>
+              <option value="sfx">🔊 SFX</option>
+              <option value="atmo">🌊 Atmo</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => onAddTrack(newTrackType)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-pink-100 dark:hover:bg-pink-900/30 rounded-lg border border-dashed border-pink-200 dark:border-pink-700 transition-colors"
+            >
+              <Plus className="size-3.5" />
+              Track hinzufügen
+            </button>
+          </div>
         </div>
       )}
     </div>

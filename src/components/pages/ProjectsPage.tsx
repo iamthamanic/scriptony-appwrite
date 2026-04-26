@@ -116,7 +116,7 @@ import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { ProjectCarousel } from "../ProjectCarousel";
 import { ProjectSectionFrame } from "../ProjectSectionFrame";
 import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import {
   deleteCharacter as deleteCharacterApi,
   getCharacters,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { isBackendConfigured } from "../lib/env";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";

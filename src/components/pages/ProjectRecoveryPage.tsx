@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { ArrowLeft, AlertTriangle, CheckCircle } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import { Badge } from "../ui/badge";
 import { isBackendConfigured } from "../../lib/env";

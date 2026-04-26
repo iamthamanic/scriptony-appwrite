@@ -20,7 +20,7 @@ import {
 import { Button } from "./ui/button";
 import scriptonyLogo from "../assets/scriptony-logo.png";
 import { useState } from "react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { useIsMobile } from "./ui/use-mobile";
 import * as BeatsAPI from "../lib/api/beats-api";

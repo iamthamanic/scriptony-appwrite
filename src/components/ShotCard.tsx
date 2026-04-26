@@ -16,7 +16,7 @@ import {
   Info,
 } from "lucide-react";
 import { useDrag, useDrop } from "react-dnd";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import shotPlaceholder from "figma:asset/5bbfb6c934162456ce6c992c152322cee414939e.png";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";

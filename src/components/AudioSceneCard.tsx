@@ -46,7 +46,7 @@ import {
   updateAudioTrack,
   deleteAudioTrack,
 } from "../lib/api/audio-story-api";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 type AudioTrackType = "dialog" | "narrator" | "music" | "sfx" | "atmo";
 
@@ -307,15 +307,39 @@ export function AudioSceneCard({
       queryClient.invalidateQueries({ queryKey: ["audio-tracks", scene.id] });
       toast.success("Audio-Track erstellt");
     },
+    onError: (error: Error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
   });
 
-  const handleAddTrack = () => {
-    createMutation.mutate({
-      type: newTrackType,
-      content: "",
-      startTime: 0,
-      duration: 0,
+  const handleAddTrack = async () => {
+    console.log("[AudioSceneCard] handleAddTrack triggered", {
+      sceneId: scene?.id,
+      projectId,
+      newTrackType,
     });
+
+    if (!scene?.id || !projectId) {
+      console.error("[AudioSceneCard] Missing scene.id or projectId");
+      toast.error("Szenen- oder Projekt-ID fehlt");
+      return;
+    }
+
+    try {
+      await createMutation.mutateAsync({
+        type: newTrackType,
+        content: "",
+        startTime: 0,
+        duration: 0,
+      });
+      console.log("[AudioSceneCard] Track created successfully");
+    } catch (err: any) {
+      console.error("[AudioSceneCard] Track creation failed:", err);
+      const msg = err?.message || "Unbekannter Fehler";
+      toast.error(`Fehler: ${msg}`);
+      // Notfall-Fallback falls Toaster nicht funktioniert
+      alert(`Fehler beim Erstellen: ${msg}`);
+    }
   };
 
   return (
@@ -393,9 +417,17 @@ export function AudioSceneCard({
             <SelectItem value="atmo">🌊 Atmo</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={handleAddTrack} disabled={createMutation.isPending}>
-          <Plus className="size-4 mr-1" />
-          Track hinzufügen
+        <Button
+          type="button"
+          onClick={handleAddTrack}
+          disabled={createMutation.isPending}
+        >
+          {createMutation.isPending ? (
+            <span className="inline-block mr-1 animate-spin">⟳</span>
+          ) : (
+            <Plus className="size-4 mr-1" />
+          )}
+          {createMutation.isPending ? "Wird erstellt…" : "Track hinzufügen"}
         </Button>
       </div>
     </div>

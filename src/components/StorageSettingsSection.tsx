@@ -46,7 +46,7 @@ import {
   OAUTH_PROVIDERS,
   type StorageProviderMeta,
 } from "../lib/storage-provider";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import {
   getStorageUsage,

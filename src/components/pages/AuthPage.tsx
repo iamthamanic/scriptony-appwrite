@@ -20,7 +20,7 @@ import {
 import { Alert, AlertDescription } from "../ui/alert";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { Loader2, Mail, AlertCircle, Eye, EyeOff } from "lucide-react";
 import scriptonyLogo from "../../assets/scriptony-logo.png";
 

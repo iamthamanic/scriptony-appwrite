@@ -507,11 +507,12 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Verification Marker:** ARCH-REF-T07-DONE
 - **Changed files:**
   - `docs/backend-domain-map.md` (Audio Production / Technical Audio Boundary Section)
-  - `functions/scriptony-audio-story/routes/voices.ts` (T07 MIGRATION Kommentar)
-  - `functions/scriptony-audio-story/routes/mixing.ts` (Orchestration Boundary)
+  - `functions/scriptony-audio-story/routes/voices.ts` (T07 MIGRATION + TTS_VOICES Konstante)
+  - `functions/scriptony-audio-story/routes/mixing.ts` (501 Not Implemented statt Fake-Daten)
   - `functions/scriptony-audio-story/routes/sessions.ts` (Orchestration Boundary)
-  - `functions/scriptony-audio-story/routes/tracks.ts` (Orchestration Boundary)
+  - `functions/scriptony-audio-story/routes/tracks.ts` (Update Allowlist)
   - `functions/scriptony-audio/index.ts` (Technical Audio Boundary)
+  - `functions/scriptony-audio-story/index.ts` (Dead Code entfernt)
 - **Appwrite collections changed:** keine
 - **Appwrite buckets changed:** keine
 - **Appwrite env vars changed:** keine
@@ -523,7 +524,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - Architecture: OK (keine neuen Zirkel)
 - **Shimwrappercheck command:**
   ```bash
-  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md,functions/scriptony-audio-story/routes/voices.ts,functions/scriptony-audio-story/routes/mixing.ts,functions/scriptony-audio-story/routes/sessions.ts,functions/scriptony-audio-story/routes/tracks.ts,functions/scriptony-audio/index.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md,functions/scriptony-audio-story/routes/voices.ts,functions/scriptony-audio-story/routes/mixing.ts,functions/scriptony-audio-story/routes/sessions.ts,functions/scriptony-audio-story/routes/tracks.ts,functions/scriptony-audio/index.ts,functions/scriptony-audio-story/index.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
   ```
 - **Shimwrappercheck result:** PASSED
 - **AI Review result:** N/A (SKIP_AI_REVIEW=1, Dokumentation/Boundary-Ticket)
@@ -539,6 +540,17 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - JSDoc in jeder Route klarstellt: Orchestration vs. Engine.
   - Domain Map enthaelt jetzt gesonderte Section fuer Audio Production Boundary.
   - T09 wird die Legacy Shot-Audio-Routen in `scriptony-audio` bereinigen.
+- **Review-Findings und Fixes (Nacharbeit):**
+  1. **Dead Code entfernt:** `functions/scriptony-audio-story/index.ts` (Hono-basiert) war zweiter Entrypoint neben `appwrite-entry.ts` mit identischer Routing-Struktur. Deployment nutzt `appwrite-entry.ts`; `index.ts` war Dead Code.
+  2. **Mixing Fake-Daten -> 501:** `createPreviewMix`, `exportChapter`, `getMixStatus` lieferten hartcodierte Fake-Antworten (R5-Verletzung: "keine Fake-Ergebnisse"). Jetzt: `501 Not Implemented` mit Erklaerung, dass T08 die Orchestration implementiert.
+  3. **updateTrack Allowlist:** Der PUT-Handler reichte den kompletten Request-Body als `_set` durch. Jetzt: Whitelist auf `type`, `content`, `character_id`, `start_time`, `duration`, `fade_in`, `fade_out`, `tts_voice_id`, `tts_settings`, `audio_file_id`, `waveform_data`. Felder wie `created_by`, `project_id` koennen nicht ueberschrieben werden.
+  4. **TTS-Voice-Liste als Konstante:** Statt inline Array (KISS) — `TTS_VOICES` als `as const` Konstante oben im File. T09 soll diese an `scriptony-audio` delegieren statt lokal zu duplizieren.
+  5. **Schema-Mismatch dokumentiert:** `audio_sessions` hat kein `project_id`. Access-Checks laufen derzeit nur ueber `scene_id`-Filter, nicht Projekt-Eigentuemer. sessions.ts und mixing.ts nutzen kein `project_id`; tracks.ts und voices.ts nutzen es. Das ist ein bekanntes Schema-Mismatch — T08/T21 Collaboration muessen `audio_sessions.project_id` ergaenzen und Access-Helper einfuehren.
+  6. **Kein Projekt-Access-Check (T21-ready):** Alle 4 Route-Files nutzen nur `requireUserBootstrap` (nur Auth, kein Projekt-Check). T21 Collaboration fuehrt `canReadProject`/`canEditProject`-Checks ein, die `project_id` oder `scene.project_id` pruefen.
+- **Schema-Mismatch (T08/T21):**
+  - `audio_sessions` hat kein `project_id`. Aktuell: Filter nach `scene_id`. Zukunft: `project_id` hinzufuegen oder `scene_id -> scenes.project_id` joinen.
+  - `scene_audio_tracks` hat `project_id` — konsistent.
+  - `character_voice_assignments` hat `project_id` — konsistent.
 
 ---
 

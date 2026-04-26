@@ -29,7 +29,7 @@ import type {
   StyleGuideItemKind,
 } from "../../lib/api/style-guide-api";
 import { extractPaletteFromImageUrl } from "../../lib/extract-palette-client";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Loader2, Pin, Trash2 } from "lucide-react";
 import { useStyleGuideJob } from "../../hooks/useStyleGuideJob";
 import { createReferenceWithRetry } from "../../lib/api/style-guide-retry-api";

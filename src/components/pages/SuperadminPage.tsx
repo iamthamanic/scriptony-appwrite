@@ -28,7 +28,7 @@ import {
 } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useAuth } from "../../hooks/useAuth";
 import { apiGateway } from "../../lib/api-gateway";
 

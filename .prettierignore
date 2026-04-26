@@ -2,7 +2,11 @@ node_modules
 build
 dist
 backend
-functions
+functions/**/index.js
+functions/meta.json
+functions/package-lock.json
+.appwrite-deploy
+.deploy-staging
 local-bridge
 docs
 tickets

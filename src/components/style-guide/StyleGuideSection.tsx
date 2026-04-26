@@ -13,7 +13,7 @@ import type {
   PatchStyleGuidePayload,
 } from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 export interface StyleGuideSectionProps {

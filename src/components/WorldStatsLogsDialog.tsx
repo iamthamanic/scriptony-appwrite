@@ -50,7 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 import {

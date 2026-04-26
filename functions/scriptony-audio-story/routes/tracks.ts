@@ -151,6 +151,24 @@ async function updateTrack(
 
   const body = await readJsonBody<Record<string, unknown>>(req);
 
+  // KISS: Allowlist — nur erlaubte Felder durchreichen.
+  const allowed = [
+    "type",
+    "content",
+    "character_id",
+    "start_time",
+    "duration",
+    "fade_in",
+    "fade_out",
+    "tts_voice_id",
+    "tts_settings",
+    "audio_file_id",
+    "waveform_data",
+  ];
+  const set = Object.fromEntries(
+    Object.entries(body).filter(([k]) => allowed.includes(k)),
+  );
+
   try {
     const data = await requestGraphql<{
       update_scene_audio_tracks_by_pk: Record<string, unknown> | null;
@@ -170,7 +188,7 @@ async function updateTrack(
         }
       }
     `,
-      { id: trackId, set: body },
+      { id: trackId, set },
     );
 
     if (!data.update_scene_audio_tracks_by_pk) {

@@ -68,7 +68,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { StageLayerStylingDialog } from "./StageLayerStylingDialog";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import type { Act, Scene, Sequence, Shot } from "@/lib/types";
 import type {
   Stage2DExportAdapter,
