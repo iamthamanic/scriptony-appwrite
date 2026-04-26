@@ -1,5 +1,10 @@
 /**
  * Batch shot audio route for the Scriptony HTTP API.
+ *
+ * T09 LEGACY: Shot-Audio-Verwaltung ist Asset-/Timeline-Kontext,
+ * keine technische Audiofaehigkeit.
+ * Neue Shot-Audio-Uploads sollten ueber scriptony-assets laufen.
+ * Diese Route bleibt als Compatibility Wrapper bis vollstaendige Migration.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";

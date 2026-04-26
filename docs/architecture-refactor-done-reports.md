@@ -556,4 +556,65 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+## Phase 5 - Audio Production Orchestration
+
+### Done Report: T08 - Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden
+
+- **Date:** 2026-04-26 14:20 CEST
+- **Verification Marker:** ARCH-REF-T08-DONE
+- **Changed files:**
+  - `functions/scriptony-audio-story/_shared/job-service.ts` (JobService-Abstraktion)
+  - `functions/scriptony-audio-story/_shared/snapshot-service.ts` (Snapshot-Persistenz)
+  - `functions/scriptony-audio-story/routes/audio-production.ts` (Generate/Preview/Export/Jobs)
+  - `functions/scriptony-audio-story/appwrite-entry.ts` (Route-Mount + Endpoints-Doku)
+  - `functions/scriptony-jobs-handler/index.ts` (Neue Job-Typen + Lint-Fix)
+  - `functions/_shared/appwrite-db.ts` (C.jobs, C.job_snapshots)
+  - `functions/tools/provision-appwrite-schema.mjs` (jobs + job_snapshots Schema)
+- **Appwrite collections changed:**
+  - `jobs` (neu in provisioning)
+    - Attribute: function_name, status, payload_json, user_id, progress, result_json, error, created_at, updated_at, completed_at
+    - Indexe: function_name, status, user_id, idx_status_created
+  - `job_snapshots` (neu in provisioning)
+    - Attribute: project_id, scene_id, script_id, script_block_ids, snapshot_json, created_by, created_at, updated_at
+    - Indexe: project_id, scene_id, script_id, idx_project_scene
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **Routes added:**
+  - `POST /audio-production/generate` — Snapshot + Job für TTS-Generierung
+  - `POST /audio-production/preview` — Snapshot + Job für Preview-Mix
+  - `POST /audio-production/export` — Snapshot + Job für Export
+  - `GET /audio-production/jobs/:id` — Job-Status lesen
+- **Routes changed:** keine breaking changes
+- **UI/UX checks:** keine (Backend-Orchestration, keine UI-Aenderung)
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend` -> Format ✅, Lint ✅, Build ✅
+  - Gitleaks: ✅
+  - Architecture: ✅ (keine Zirkel, keine neue Abhaengigkeiten)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-audio-story/_shared/job-service.ts,functions/scriptony-audio-story/_shared/snapshot-service.ts,functions/scriptony-audio-story/routes/audio-production.ts,functions/scriptony-audio-story/appwrite-entry.ts,functions/scriptony-jobs-handler/index.ts,functions/_shared/appwrite-db.ts,functions/tools/provision-appwrite-schema.mjs" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** N/A (SKIP_AI_REVIEW=1)
+- **Known risks:**
+  - Echte Audio-Generierung (TTS-Aufrufe, Mixing, Export) kommt in T15 (Media Worker). Aktuell erzeugen die Routes nur Jobs + Snapshots.
+  - `scriptony-audio-story` erhaelt Job-Trigger von `scriptony-jobs-handler` — die eigentliche Verarbeitung ist noch TODO.
+  - Snapshot JSON hat ein 50KB Limit — bei >100 Script-Blocks wird auf minimale Metadaten getruncated.
+  - `generate-from-script` liest Script-Blocks via GraphQL — bei sehr grossen Skripten kann die Query langsam werden.
+- **Rollback plan:**
+  - Job- + Snapshot-Dateien loeschen: `rm functions/scriptony-audio-story/_shared/job-service.ts functions/scriptony-audio-story/_shared/snapshot-service.ts functions/scriptony-audio-story/routes/audio-production.ts`
+  - Schema-Eintraege aus provisioning entfernen
+  - `appwrite-entry.ts` Endpoints + Routing zuruecksetzen
+  - `SUPPORTED_JOBS` Eintraege entfernen
+- **Notes:**
+  - `job-service.ts` nutzt `C.jobs` direkt — kein externer Handler-Call fuer Job-Erstellung (KISS: direkte DB-Erstellung).
+  - `snapshot-service.ts` speichert Referenzen + truncated Content-Preview (<50KB).
+  - `audio-production.ts` nutzt `canEditProject` fuer alle schreibenden Operationen.
+  - `SUPPORTED_JOBS` im `scriptony-jobs-handler` enthaelt audio-production-{generate,preview,export} fuer zukuenftige Worker-Verarbeitung.
+  - Job-Payload enthaelt nur Referenzen (snapshot_id, project_id, etc.), keine Inline-Script-Inhalte.
+  - `buildSnapshotJson` truncates Content auf 500 Zeichen pro Block bei Snapshots >50KB.
+  - Lint-Fix: `\/` -> `/` in `scriptony-jobs-handler/index.ts` RegExp (keine unnoetigen Escapes in String-Literalen).
+
+---
+
 ## Phase 4 - Assets API / Storage Separation

@@ -3,8 +3,11 @@
  *
  * Verantwortung (T07):
  *   Technische Audio-Engine: TTS, STT, Voice Discovery, Audio-Uploads.
- *   Audio-Production-Planung (Sessions, Tracks, Mixing-Orchestration)
- *   ist VERBOTEN hier — gehoert zu scriptony-audio-production.
+ *   Audio-Production-Planung ist VERBOTEN hier — gehoert zu scriptony-audio-production.
+ *
+ * Verantwortung (T09):
+ *   Shot-Audio-Routen sind LEGACY — Asset-/Timeline-Kontext.
+ *   Neue Shot-Audio-Uploads sollten ueber scriptony-assets laufen.
  */
 
 import "../_shared/fetch-polyfill";
