@@ -617,4 +617,44 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+## Phase 5 - Audio Engine Boundary
+
+### Done Report: T09 - `scriptony-audio` auf technische Audiofaehigkeiten begrenzen
+
+- **Date:** 2026-04-26 16:15 CEST
+- **Verification Marker:** ARCH-REF-T09-DONE
+- **Changed files:**
+  - `functions/scriptony-audio/index.ts` (T09 Boundary JSDoc)
+  - `functions/scriptony-audio/shots/[id]/audio.ts` (T09 LEGACY)
+  - `functions/scriptony-audio/shots/[id]/upload-audio.ts` (T09 LEGACY)
+  - `functions/scriptony-audio/shots/audio/[id].ts` (T09 LEGACY)
+  - `functions/scriptony-audio/shots/audio/batch.ts` (T09 LEGACY)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **Routes changed:** keine (nur Dokumentation/Boundary-Klarstellung)
+- **UI/UX checks:** keine (Backend-Dokumentation, keine UI-Aenderung)
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend` -> Format ✅, Lint ✅, Build ✅
+  - Gitleaks: ✅
+  - Architecture: ✅
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-audio/index.ts,functions/scriptony-audio/shots/[id]/audio.ts,functions/scriptony-audio/shots/[id]/upload-audio.ts,functions/scriptony-audio/shots/audio/[id].ts,functions/scriptony-audio/shots/audio/batch.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** N/A (SKIP_AI_REVIEW=1)
+- **Known risks:**
+  - Shot-Audio-Routen bleiben aktiv (Compatibility). Migration zu `scriptony-assets` erfolgt spaeter.
+  - `shot_audio` Collection existiert parallel zu `assets`. Kein automatisches Deduplizieren.
+- **Rollback plan:**
+  - JSDoc entfernen: `git checkout -- functions/scriptony-audio/index.ts functions/scriptony-audio/shots/`
+- **Notes:**
+  - TTS/STT/Voice Discovery bleiben in `scriptony-audio` (technische Engine).
+  - Shot-Audio-Routen sind als T09 LEGACY markiert — Asset-/Timeline-Kontext.
+  - Neue Shot-Audio-Uploads sollten ueber `scriptony-assets` laufen.
+  - Keine funktionale Aenderung — nur Boundary-Dokumentation.
+
+---
+
 ## Phase 4 - Assets API / Storage Separation

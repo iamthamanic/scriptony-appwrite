@@ -133,7 +133,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T06 | 3 | `scriptony-assets` Upload-, Link- und Query-API implementieren | **done** | T05 |
 | T07 | 4 | `scriptony-audio-story` als `scriptony-audio-production` abgrenzen | **done** | T01 |
 | T08 | 5 | Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden | **done** | T04, T06, T07 |
-| T09 | 5 | `scriptony-audio` auf technische Audiofaehigkeiten begrenzen | todo | T06, T08 |
+| T09 | 5 | `scriptony-audio` auf technische Audiofaehigkeiten begrenzen | **done** | T06, T08 |
 | T10 | 6 | `scriptony-image` bereinigen | todo | T01, T02 |
 | T11 | 6 | `scriptony-assistant` bereinigen | todo | T01, T02 |
 | T12 | 7 | `scriptony-editor-readmodel` bauen | todo | T04, T06, T08 |
