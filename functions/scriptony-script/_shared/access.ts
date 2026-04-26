@@ -43,7 +43,9 @@ async function getUserOrganizationIds(userId: string): Promise<string[]> {
     const docs = await databases.listDocuments(DB_ID, "organization_members", [
       Query.equal("user_id", userId),
     ]);
-    return docs.documents.map((d: any) => d.organization_id as string);
+    return docs.documents
+      .map((d) => (d as Record<string, unknown>).organization_id)
+      .filter((v): v is string => typeof v === "string");
   } catch {
     return [];
   }
