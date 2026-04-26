@@ -51,7 +51,8 @@ export function getDatabases(): Databases {
   const endpoint = getAppwriteEndpoint();
   const projectId = getAppwriteProjectId();
   const apiKey = getAppwriteApiKey();
-  const cacheOk = _clientCache &&
+  const cacheOk =
+    _clientCache &&
     _clientCache.endpoint === endpoint &&
     _clientCache.projectId === projectId &&
     _clientCache.apiKey === apiKey;
@@ -76,7 +77,7 @@ export function getDatabases(): Databases {
       elapsedMs: elapsedMs(startedAt),
     });
   }
-  return _clientCache.databases;
+  return _clientCache!.databases;
 }
 
 export function dbId(): string {

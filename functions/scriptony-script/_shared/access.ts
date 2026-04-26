@@ -23,6 +23,14 @@ const databases = new Databases(client);
 const DB_ID = process.env.APPWRITE_DATABASE_ID || "scriptony";
 const PROJECTS_COLLECTION = "projects";
 
+function getString(
+  obj: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = obj[key];
+  return typeof value === "string" ? value : undefined;
+}
+
 export async function getProject(
   projectId: string,
 ): Promise<Record<string, unknown> | null> {
@@ -44,8 +52,8 @@ async function getUserOrganizationIds(userId: string): Promise<string[]> {
       Query.equal("user_id", userId),
     ]);
     return docs.documents
-      .map((d) => (d as Record<string, unknown>).organization_id)
-      .filter((v): v is string => typeof v === "string");
+      .map((d) => getString(d as Record<string, unknown>, "organization_id"))
+      .filter((v): v is string => v !== undefined);
   } catch {
     return [];
   }
@@ -57,17 +65,24 @@ export async function canReadProject(
 ): Promise<boolean> {
   const project = await getProject(projectId);
   if (!project) return false;
-  if (project.created_by === userId) return true;
-  if (project.user_id === userId) return true;
-  if (project.owner_type === "user" && project.owner_id === userId) return true;
-  const orgIds = await getUserOrganizationIds(userId);
+  if (getString(project, "created_by") === userId) return true;
+  if (getString(project, "user_id") === userId) return true;
   if (
-    project.owner_type === "organization" &&
-    orgIds.includes(project.owner_id)
+    getString(project, "owner_type") === "user" &&
+    getString(project, "owner_id") === userId
   ) {
     return true;
   }
-  if (project.organization_id && orgIds.includes(project.organization_id)) {
+  const orgIds = await getUserOrganizationIds(userId);
+  if (
+    getString(project, "owner_type") === "organization" &&
+    getString(project, "owner_id") !== undefined &&
+    orgIds.includes(getString(project, "owner_id")!)
+  ) {
+    return true;
+  }
+  const orgId = getString(project, "organization_id");
+  if (orgId && orgIds.includes(orgId)) {
     return true;
   }
   return false;
@@ -88,8 +103,13 @@ export async function canManageProject(
 ): Promise<boolean> {
   const project = await getProject(projectId);
   if (!project) return false;
-  if (project.created_by === userId) return true;
-  if (project.user_id === userId) return true;
-  if (project.owner_type === "user" && project.owner_id === userId) return true;
+  if (getString(project, "created_by") === userId) return true;
+  if (getString(project, "user_id") === userId) return true;
+  if (
+    getString(project, "owner_type") === "user" &&
+    getString(project, "owner_id") === userId
+  ) {
+    return true;
+  }
   return false;
 }

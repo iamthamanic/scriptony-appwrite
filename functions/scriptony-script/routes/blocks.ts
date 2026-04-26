@@ -107,11 +107,6 @@ router.patch("/:id", async (c) => {
     }
   }
 
-  // Prevent project_id tampering
-  if (data.project_id && data.project_id !== existing.project_id) {
-    return c.json({ error: "project_id cannot be changed" }, 400);
-  }
-
   // Optimistic concurrency check
   if (typeof data.expected_revision === "number") {
     const current = existing.revision ?? 0;
@@ -128,7 +123,7 @@ router.patch("/:id", async (c) => {
   }
 
   // Strip fields that should not be user-updatable
-  const { expected_revision: _er, project_id: _pid, ...update } = data;
+  const { expected_revision: _er, ...update } = data;
   const revision = (existing.revision ?? 0) + 1;
 
   const doc = await databases.updateDocument(DB_ID, BLOCKS_COLLECTION, id, {
