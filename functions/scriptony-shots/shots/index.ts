@@ -1,5 +1,9 @@
 /**
  * Shot collection routes for the Scriptony HTTP API.
+ *
+ * T13 TIMELINE DOMAIN: Shot-CRUD und Reorder.
+ *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Siehe docs/timeline-domain-decision.md
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
@@ -29,8 +33,8 @@ export default async function handler(
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") ||
-        getQuery(req, "projectId");
+      const projectId =
+        getQuery(req, "project_id") || getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;

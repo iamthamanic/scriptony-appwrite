@@ -200,9 +200,9 @@ export default async function handler(
         updatedAt: project.updated_at,
       },
       timeline: {
-        acts: mappedNodes.filter((n: TimelineLevel) => n.level === 1),
-        sequences: mappedNodes.filter((n: TimelineLevel) => n.level === 2),
-        scenes: mappedNodes.filter((n: TimelineLevel) => n.level === 3),
+        acts: mappedNodes.filter((n) => n.level === 1),
+        sequences: mappedNodes.filter((n) => n.level === 2),
+        scenes: mappedNodes.filter((n) => n.level === 3),
       },
       meta: {
         lite,

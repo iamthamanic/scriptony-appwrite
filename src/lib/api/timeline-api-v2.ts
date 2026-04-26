@@ -283,6 +283,12 @@ export async function batchLoadTimeline(
 // ULTRA BATCH LOAD - MAXIMUM PERFORMANCE 🚀🚀🚀
 // =============================================================================
 
+/**
+ * @deprecated Use GET /editor/projects/:projectId/state via apiGateway instead.
+ *   The scriptony-editor-readmodel endpoint provides full aggregation
+ *   (project, nodes, characters, shots, clips, script blocks, audio tracks,
+ *   assets, style) plus lite=true support and size warnings.
+ */
 export async function ultraBatchLoadProject(
   projectId: string,
   token: string,

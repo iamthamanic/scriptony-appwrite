@@ -98,6 +98,8 @@ export const BACKEND_FUNCTIONS = {
   /** Asset metadata and upload orchestration. */
   ASSETS: "scriptony-assets",
   AUTH: "scriptony-auth",
+  /** T12: Read-only editor view-model aggregation. */
+  EDITOR_READMODEL: "scriptony-editor-readmodel",
   SUPERADMIN: "scriptony-superadmin",
   STATS: "scriptony-stats",
   LOGS: "scriptony-logs",
@@ -280,6 +282,9 @@ const ROUTE_MAP: Record<string, string> = {
   "/achievements": BACKEND_FUNCTIONS.GYM,
   "/categories": BACKEND_FUNCTIONS.GYM,
   "/daily-challenge": BACKEND_FUNCTIONS.GYM,
+
+  // scriptony-editor-readmodel (T12: read-only aggregation)
+  "/editor": BACKEND_FUNCTIONS.EDITOR_READMODEL,
 
   // scriptony-superadmin
   "/superadmin": BACKEND_FUNCTIONS.SUPERADMIN,

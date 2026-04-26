@@ -1,158 +1,89 @@
-T08 + T09 Korrigierter Audit (gegen echten Code)                                        
+Now I have a complete picture. Here's the T12 audit:                                    
                                                                                           
-  T08 — Korrekturen zum vorigen Audit                                                     
+  T12 scriptony-editor-readmodel bauen — Audit-Ergebnis                                   
                                                                                           
-  Die drei Haupt-Befunde aus dem letzten Audit sind behoben:                              
+  Akzeptanzkriterien-Check                                                                
                                                                                           
-  ┌──────────────────────────────┬────────────────────────────────────────────────────┐   
-  │      Vorheriger Befund       │                 Korrigierter Stand                 │
-  ├──────────────────────────────┼────────────────────────────────────────────────────┤
-  │ Voice Discovery lokal        │ Falsch — Konstante entfernt,                       │
-  │ dupliziert (TTS_VOICES)      │ listTTSAvailableVoices returnt jetzt 501 mit       │
-  │                              │ Verweis auf scriptony-audio                        │   
-  ├──────────────────────────────┼────────────────────────────────────────────────────┤
-  │ getJob ohne                  │ Falsch — audio-production.ts:391-402 parsed        │   
-  │ Projekt-Zugriffscheck        │ payload_json und prüft canReadProject              │
-  ├──────────────────────────────┼────────────────────────────────────────────────────┤   
-  │ job-service.ts               │ Falsch — getDocument jetzt statisch importiert     │
-  │ inkonsistenter Import        │ (Zeile 15)                                         │   
-  └──────────────────────────────┴────────────────────────────────────────────────────┘
-                                                                                          
-  T08 Akzeptanzkriterien — final                                                          
+  Kriterium: GET /editor/projects/:projectId/state funktioniert                           
+  Status: ✅                                                                           
+  Detail: Route existiert, Handler aggregiert korrekt                                     
+  ────────────────────────────────────────                                             
+  Kriterium: Function ist read-only                                                       
+  Status: ✅                                                                              
+  Detail: Keine createDocument/updateDocument/deleteDocument-Aufrufe im Code (nur
+    JSDoc-Kommentar erwähnt "Verboten"). Imports sind listDocumentsFull, Query,           
+    requestGraphql, requireProjectAccess — alles lesend
+  ────────────────────────────────────────                                                
+  Kriterium: Keine Provider Calls                                                         
+  Status: ✅
+  Detail: Keine OpenAI/Anthropic/etc.-Imports. Kein ai-service-Import                     
+  ────────────────────────────────────────
+  Kriterium: Keine Job-Erstellung                                                         
+  Status: ✅
+  Detail: Keine Job-Referenzen                                                            
+  ────────────────────────────────────────
+  Kriterium: Permissions respektiert                                                      
+  Status: ✅
+  Detail: requireUserBootstrap + requireProjectAccess vor jeder Datenabfrage              
+  ────────────────────────────────────────
+  Kriterium: ultra-batch-load wird nicht mehr erweitert                                   
+  Status: ⚠️ 
+  Detail: ultra-batch-load existiert unberührt in scriptony-project-nodes — kein          
+    Deprecation-Hinweis, kein 410 Gone, kein Kommentar. Das Ticket sagt "wird nicht mehr
+    erweitert", nicht "wird entfernt", also akzeptabel, aber die fehlende Doku ist eine
+    Lücke
+  ────────────────────────────────────────
+  Kriterium: lite-Query-Parameter                                                         
+  Status: ✅
+  Detail: ?lite=true liefert nur Project + Nodes; ?lite=false (default) liefert alles     
+  inkl.           
+    Assets/Tracks/Style
+  ────────────────────────────────────────
+  Kriterium: Response-Größe überwacht                                                     
+  Status: ✅
+  Detail: warning-Feld bei >200 Nodes: "Large project: consider lite=true for faster      
+  loads"          
+  ────────────────────────────────────────
+  Kriterium: Performance-Messung                                                          
+  Status: ✅
+  Detail: elapsedMs in meta-Feld                                                          
+                  
+  KISS/SOLID/DRY-Analyse                                                                  
   
-  ┌─────┬────────────────────────────────────┬────────────────────────────────────────┐   
-  │  #  │             Kriterium             │                 Status                  │
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤   
-  │ 1   │ Reads script_blocks, kopiert sie  │ MET                                     │
-  │     │ nicht als SoT                     │                                         │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤   
-  │ 2   │ TTS über scriptony-audio          │ PARTIALLY MET — Job erstellt, Worker    │   
-  │     │                                   │ fehlt (T15)                             │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤   
-  │ 3   │ Dateien über scriptony-assets     │ PARTIALLY MET — Vertrag dokumentiert,   │
-  │     │                                   │ Code fehlt (T15)                        │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤
-  │ 4   │ Mix/Export erzeugt Job, nicht     │ MET                                     │   
-  │     │ Fake                              │                                         │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤
-  │ 5   │ Job-Payload = Referenz            │ MET                                     │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤
-  │ 6   │ Snapshot in job_snapshots, Jobs < │ MET                                     │   
-  │     │  100KB                            │                                         │
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤   
-  │ 7   │ Voice Discovery nicht dupliziert  │ MET — 501 mit Delegations-Hinweis       │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤
-  │ 8   │ Keine UI-Aenderung                │ MET                                     │   
-  ├─────┼───────────────────────────────────┼─────────────────────────────────────────┤   
-  │ 9   │ Shimwrappercheck                  │ MET                                     │
-  └─────┴───────────────────────────────────┴─────────────────────────────────────────┘   
-                  
-  T08 KISS/SOLID/DRY — verbleibende Issues                                                
-                  
-  1. Mittel: getAudioProductionJob-Returntyp falsch                                       
-                  
-  job-service.ts:46-50 definiert CreatedJob mit nur { id, status, created_at }. Aber      
-  audio-production.ts:394 greift auf payload_json zu via (job as Record<string, 
-  unknown>).payload_json. Der Cast umgeht TypeScript — CreatedJob hat gar kein            
-  payload_json-Feld. Die Funktion gibt tatsächlich das gesamte Dokument zurück, aber der
-  Typ behauptet etwas anderes.
+  KISS — Sehr sauber. 2 Dateien, 1 Route, klare lite/full-Verzweigung. Lokale             
+  Helper-Funktionen (getScriptBlocksForProject, getSceneAudioTracksForProject,
+  getAssetsForProject, getStyleForProject) sind fachlich begründet (Cross-Domain-Reads,   
+  die nirgendwoanders als Helper existieren).
 
-  Fix: Entweder CreatedJob um payload_json?: string erweitern, oder einen eigenen         
-  JobWithPayload-Typ für getJob einführen.
-                                                                                          
-  2. Klein: getJob — canReadProject-Fallback stillschweigend                              
-  
-  audio-production.ts:403-404: Wenn payload_json fehlt oder ungültig ist, wird ohne       
-  Projekt-Check weitergemacht. Ein Job ohne project_id im Payload wäre für jeden
-  authentifizierten User lesbar.                                                          
+  SOLID — SRP erfüllt: Read-Model aggregiert, schreibt nicht. DIP: Nutzt                  
+  _shared/timeline-Mapper und _shared/appwrite-db + _shared/graphql-compat — keine
+  direkten Abhängigkeiten zu Domain-Services.                                             
                   
-  3. Klein: mixing.ts vs. audio-production.ts — Überlappung                               
-  
-  mixing.ts returnt 501 für Preview/Export. audio-production.ts hat die echte             
-  Implementierung. Mixing ist effektiv Dead Code, wird aber noch geroutet
-  (appwrite-entry.ts:69-72).                                                              
-                  
-  4. Info: T08-2 und T08-3 — PARTIALLY MET ist korrekt                                    
-  
-  TTS-Ausführung und Asset-Verlinkung hängen am Media Worker (T15). Das ist kein          
-  T08-Fehler — der Architektur-Hinweis im Ticket sagt explizit: "Die echten Arbeitsobjekte
-   liegen in ihren eigenen Domains."                                                      
-                  
-  ---
-  T09 Akzeptanzkriterien — final
-                                                                                          
-  ┌─────┬─────────────────────────────┬───────────────────────────────────────────────┐
-  │  #  │          Kriterium          │                    Status                     │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤   
-  │ 1   │ TTS funktioniert            │ MET                                           │   
-  │     │ unveraendert                │                                               │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤   
-  │ 2   │ STT funktioniert            │ MET                                           │   
-  │     │ unveraendert                │                                               │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤   
-  │ 3   │ Voice Discovery über        │ MET — listTTSAvailableVoices in audio-story   │
-  │     │ scriptony-audio             │ returnt 501 mit Verweis                       │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤
-  │ 4   │ Shot-Audio-Routen als       │ MET — JSDoc auf allen 4 Dateien + index.ts    │
-  │     │ legacy dokumentiert         │                                               │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤
-  │     │ Neue Shot-Audio-Uploads     │ MET (Modell) — owner_type: "shot",            │   
-  │ 5   │ über scriptony-assets       │ media_type: "audio" unterstützt               │   
-  │     │ abbildbar                   │                                               │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤   
-  │     │ shot_audio Schema-Mismatch  │ PARTIALLY MET — Done Report nennt             │   
-  │ 6   │ dokumentiert                │ Parallelexistenz, aber Appwrite vs.           │
-  │     │                             │ GraphQL-Feld-Differenz nicht dokumentiert     │
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤
-  │ 7   │ Shot-Audio UI bleibt        │ MET                                           │
-  │     │ nutzbar                     │                                               │   
-  ├─────┼─────────────────────────────┼───────────────────────────────────────────────┤
-  │ 8   │ Shimwrappercheck            │ MET                                           │   
-  └─────┴─────────────────────────────┴───────────────────────────────────────────────┘   
-  
-  T09 Schema-Mismatch — was genau fehlt                                                   
-                  
-  Appwrite-Schema (provision-appwrite-schema.mjs): shot_id, file_name, file_size,         
-  bucket_file_id, mime_type, duration_ms, user_id, storage_path
-                                                                                          
-  GraphQL-Schema (in Route-Handlers genutzt): file_url, start_time, end_time, fade_in,    
-  fade_out, waveform_data, audio_duration
-                                                                                          
-  Die beiden Schemas haben fast keine gemeinsamen Felder. Das ist ein signifikanter       
-  Mismatch, der nur als "Collection existiert parallel zu assets" dokumentiert ist — die
-  inhaltliche Diskrepanz fehlt.                                                           
-                  
-  T09 KISS/SOLID/DRY — verbleibende Issues                                                
-  
-  1. Mittel: Shot-Audio-Routen schreiben direkt in shot_audio statt scriptony-assets      
-                  
-  Die LEGACY-Routen nutzen GraphQL-Mutations direkt gegen shot_audio. Kein                
-  Compatibility-Wrapper über scriptony-assets. T09-Akzeptanzkriterium 5 sagt "Neue
-  Shot-Audio-Uploads koennen ueber scriptony-assets abgebildet werden" — das ist als      
-  Möglichkeit formuliert, nicht als Pflicht. Aber die bestehenden Routen müssten
-  mindestens auf scriptony-assets delegieren, um die Domain Map zu erfüllen.
+  DRY — mapNode, mapCharacter, mapShot kommen aus _shared/timeline; mapClip aus           
+  _shared/clips-map. Keine lokale Duplikation. Die 4 lokalen Helper
+  (getScriptBlocksForProject, getSceneAudioTracksForProject, getAssetsForProject,         
+  getStyleForProject) könnten man theoretisch in _shared auslagern, aber da sie
+  spezifische Cross-Domain-Queries sind, die nur hier gebraucht werden, ist die lokale
+  Platzierung KISS-konform.
 
-  2. Klein: index.js Bundle-Artefakt — wie bei T07                                        
+  Offene Punkte                                                                           
   
-  ---                                                                                     
-  Zusammenfassung 
-                 
-  ┌────────┬─────┬───────────────────┬─────┬─────────────────────────────────────────┐ 
-  │        │     │                   │ NOT │                                         │    
-  │ Ticket │ MET │   PARTIALLY MET   │     │              Offene Issues              │ 
-  │        │     │                   │ MET │                                         │    
-  ├────────┼─────┼───────────────────┼─────┼─────────────────────────────────────────┤ 
-  │        │     │ 2 (TTS/Assets —   │     │ Typ-Sicherheitslücke in                 │    
-  │ T08    │ 7   │ hängen an T15)    │ 0   │ getAudioProductionJob, mixing.ts Dead   │ 
-  │        │     │                   │     │ Code                                    │    
-  ├────────┼─────┼───────────────────┼─────┼─────────────────────────────────────────┤
-  │        │     │ 1                 │     │ Appwrite-vs-GraphQL-Feld-Differenz      │    
-  │ T09    │ 6   │ (Schema-Mismatch  │ 0   │ nicht dokumentiert, keine Delegation an │
-  │        │     │ unvollständig)    │     │  scriptony-assets                       │    
-  └────────┴─────┴───────────────────┴─────┴─────────────────────────────────────────┘
-
-  Beide Tickets sind substantiell korrekt umgesetzt. T08 hat eine saubere                 
-  Orchestration-Architektur mit Snapshots, Job-Referenzen und Access-Checks. T09 hat alle
-  Routes korrekt als LEGACY markiert und die Voice-Delegation an scriptony-audio          
-  implementiert. Die offenen Punkte sind Typ-Sicherheit, Schema-Mismatch-Doku und die noch
-   fehlende Bridge zu scriptony-assets.
+  1. Kein T12 Done Report. Die Datei docs/architecture-refactor-done-reports.md enthält   
+  keinen Eintrag für T12. Der Ticket-Marker ARCH-REF-T12-DONE fehlt. Das sollte nachgeholt
+   werden.                                                                                
+  2. ultra-batch-load hat keinen Deprecation-Hinweis. Das Ticket sagt "wird nicht mehr
+  erweitert", nicht "wird entfernt". Das ist OK, aber ein JSDoc-Kommentar wie @deprecated 
+  Use GET /editor/projects/:projectId/state from scriptony-editor-readmodel wäre
+  hilfreich. Der Frontend-Code (timeline-api-v2.ts) nutzt weiterhin ultra-batch-load      
+  direkt — keine Migration auf den neuen Endpunkt erfolgt.
+  3. Kein Frontend-Integration. api-gateway.ts und der gesamte src/-Code haben keine
+  Referenz auf editor-readmodel oder /editor/projects/:projectId/state. Der Endpunkt      
+  existiert im Backend, wird aber vom Frontend noch nicht aufgerufen.
+  4. Keine Package.json / Build-Konfiguration. Das Verzeichnis hat nur index.ts und       
+  routes/editor-state.ts — keine package.json, tsconfig.json oder appwrite.json. Das      
+  deutet darauf hin, dass die Function noch nicht deployed wurde.
+                                                                                          
+  Ergebnis: T12 ist architekturell korrekt umgesetzt (read-only, KISS, SOLID, DRY). Die   
+  Funktion existiert und erfüllt alle fachlichen Akzeptanzkriterien. Es fehlen jedoch: (1)
+   der Done Report, (2) ein Deprecation-Hinweis auf ultra-batch-load, (3) die             
+  Frontend-Integration, und (4) die Build/Deploy-Konfiguration.

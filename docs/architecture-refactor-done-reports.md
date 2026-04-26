@@ -793,4 +793,120 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 
 ---
 
+## Phase 4 - Editor Readmodel
+
+### Done Report: T12 - `scriptony-editor-readmodel` Done Report
+
+- **Date:** 2026-04-26 22:05 CEST
+- **Verification Marker:** ARCH-REF-T12-DONE
+- **Changed files:**
+  - `functions/scriptony-editor-readmodel/index.ts` (bereits vorhanden, Entrypoint)
+  - `functions/scriptony-editor-readmodel/routes/editor-state.ts` (bereits vorhanden, Route)
+  - `functions/scriptony-project-nodes/nodes/ultra-batch-load.ts` (+ `@deprecated` JSDoc)
+  - `src/lib/api/timeline-api-v2.ts` (+ `@deprecated` JSDoc auf `ultraBatchLoadProject`)
+  - `src/lib/api-gateway.ts` (+ `EDITOR_READMODEL` + `/editor` Route)
+  - `scripts/check-appwrite-functions-build.mjs` (Duplikat `scriptony-editor-readmodel` entfernt)
+  - `tsconfig.json` (+ `functions/scriptony-editor-readmodel/**/*.ts` im include)
+  - `functions/_shared/timeline.ts` (Typ-Fix `asArray<JsonRecord>` statt `any` Cast)
+  - `docs/architecture-refactor-done-reports.md` (dieser Done Report)
+- **Routes added/changed:**
+  - `GET /editor/projects/:projectId/state` → `scriptony-editor-readmodel` (via `api-gateway.ts` ROUTE_MAP)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **UI/UX checks:** keine (Backend-Ticket, keine UI-Komponenten geändert)
+- **Tests run:**
+  - `tsc --noEmit` ✅ (keine TypeScript-Fehler nach Typ-Fix in editor-state.ts + timeline.ts)
+  - `npm run build` ✅ (Vite Build erfolgreich)
+  - `npm run test:run` ✅ (151 Tests bestanden)
+  - `functions:build:check` ✅ (alle 27 Functions inkl. `scriptony-editor-readmodel` gebaut)
+  - `scripts/check-appwrite-functions-build.mjs` ✅ (Duplikat bereinigt, Liste konsistent)
+  - Gitleaks: ✅ no leaks found
+  - Architecture (dependency-cruiser): ✅ no violations
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-project-nodes/nodes/ultra-batch-load.ts,functions/scriptony-editor-readmodel/index.ts,functions/scriptony-editor-readmodel/routes/editor-state.ts,src/lib/api-gateway.ts,src/lib/api/timeline-api-v2.ts,scripts/check-appwrite-functions-build.mjs,functions/_shared/timeline.ts,tsconfig.json,docs/architecture-refactor-done-reports.md" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:** ✅ PASSED (Frontend + Backend)
+  - Prettier: ✅
+  - TypeScript: ✅
+  - Vite Build: ✅
+  - Vitest: 151 passed ✅
+  - Appwrite Function Build: ✅ (scriptony-editor-readmodel 1.2mb Bundle)
+  - Gitleaks: no leaks found ✅
+  - Architecture: no violations ✅
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud)
+  - keine blockierenden Findings im Final-Run; frueherer false-positive (behauptete Entfernung aus `KNOWN_FUNCTIONS`) war ein AI-Halluzination — `scriptony-editor-readmodel` ist eindeutig in Zeile 12 vorhanden.
+- **Known risks:**
+  - `scriptony-editor-readmodel` ist noch nicht in Appwrite deployed (nur gebaut). Deploy wird bei Bedarf via `npx shimwrappercheck run --cli appwrite -- functions deploy scriptony-editor-readmodel` durchgeführt.
+  - `ultra-batch-load` bleibt aktiv für Backward-Compatibility, wird aber nicht mehr erweitert.
+  - Frontend-Migration von `ultraBatchLoadProject` auf `GET /editor/projects/:projectId/state` ist ein separates Frontend-Ticket (T19/Board).
+- **Review-Findings und Fixes (Nacharbeit):**
+  1. **Duplikat in `KNOWN_FUNCTIONS`:** `scriptony-editor-readmodel` stand doppelt in `scripts/check-appwrite-functions-build.mjs`. **Fix:** Zweites Vorkommen entfernt.
+  2. **TypeScript-Fehler in `editor-state.ts`:** `mappedNodes.filter((n: TimelineLevel) => ...)` war inkompatibel mit `JsonRecord[]`. **Fix:** Expliziten Typ-Parameter entfernt; `JsonRecord = Record<string, any>` erlaubt `n.level` implizit.
+  3. **TypeScript-Fehler in `timeline.ts`:** `asArray(row.shot_audio).map(mapShotAudio)` inferierte `unknown[]`. **Fix:** Generics explizit mit `asArray<JsonRecord>()` typisiert.
+  4. **AI Review false-positive:** Ollama behauptete wiederholt, `scriptony-editor-readmodel` sei aus `KNOWN_FUNCTIONS` entfernt. Tatsächlich ist die Function in Zeile 12 eindeutig vorhanden. Kein Code-Change erforderlich.
+- **Rollback plan:**
+  - `api-gateway.ts`: `EDITOR_READMODEL` + `/editor` Route entfernen
+  - `tsconfig.json`: `functions/scriptony-editor-readmodel/**/*.ts` aus include entfernen
+  - `scripts/check-appwrite-functions-build.mjs`: Duplikat wiederherstellen (falls gewünscht)
+- **Notes:**
+  - `scriptony-editor-readmodel` Bundle: 1.2mb (vergleichbar mit `scriptony-project-nodes` 1.3mb)
+  - Read-only Function: keine Schreiboperationen, keine Provider-Calls, keine Job-Erstellung
+  - `lite=true` Query-Parameter für schnelle Structure-Only Loads dokumentiert
+  - `warning`-Feld bei >200 Nodes für Performance-Hinweis
+  - Alle Akzeptanzkriterien aus dem T12 Audit erfüllt
+
+---
+
 ## Phase 4 - Assets API / Storage Separation
+
+---
+
+## Phase 8 - Timeline Konsolidierung
+
+### Done Report: T13 - Timeline-Konsolidierung vorbereiten
+
+- **Date:** 2026-04-26 23:00 CEST
+- **Verification Marker:** ARCH-REF-T13-DONE
+- **Changed files:**
+  - `functions/scriptony-shots/appwrite-entry.ts` (+ T13 Timeline Domain JSDoc)
+  - `functions/scriptony-shots/shots/index.ts` (+ T13 Timeline Domain JSDoc)
+  - `functions/scriptony-clips/index.ts` (+ T13 Timeline Domain JSDoc)
+  - `functions/scriptony-clips/clips/index.ts` (+ T13 Timeline Domain JSDoc)
+  - `docs/timeline-domain-decision.md` (neu, ADR)
+  - `docs/backend-domain-map.md` (T13 Status aktualisiert)
+- **Routes added/changed:** keine (Boundary-Dokumentation, keine funktionale Aenderung)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **UI/UX checks:** keine (Backend-Dokumentation, keine UI-Aenderung)
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHANGED_FILES="..." SHIM_CHECKS_ARGS="" npm run checks -- --backend` → Format ✅, Lint ✅, Build ✅
+  - `scriptony-shots` Build: 1.3mb ✅
+  - `scriptony-clips` Build: 1.2mb ✅
+  - Gitleaks: ✅
+  - Architecture: ✅ (keine Zirkel)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-shots/appwrite-entry.ts,functions/scriptony-shots/shots/index.ts,functions/scriptony-clips/index.ts,functions/scriptony-clips/clips/index.ts,docs/timeline-domain-decision.md,docs/backend-domain-map.md" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 600s)
+  - Nacharbeit: Entrypoint-JSDoc von umfangreichem ADR auf Zweck + Link gekuerzt (DRY)
+  - Final: keine Findings
+- **Known risks:**
+  - `timeline_items`-Entscheidung ist `not needed yet`. Bei drag-and-drop ueber Typ-Grenzen oder unified Timeline-View muss neu evaluiert werden.
+  - `scriptony-shots` und `scriptony-clips` bleiben separate Functions bis T21 Collaboration + T14 Jobs + T15 Media Worker abgeschlossen sind.
+- **Rollback plan:**
+  - JSDoc entfernen: `git checkout -- functions/scriptony-shots/appwrite-entry.ts functions/scriptony-shots/shots/index.ts functions/scriptony-clips/index.ts functions/scriptony-clips/clips/index.ts`
+  - ADR loeschen: `rm docs/timeline-domain-decision.md`
+  - Domain Map zuruecksetzen
+- **Notes:**
+  - **SOLID:** Klare Verantwortungsgrenze pro Function. Keine God-Timeline-Function.
+  - **DRY:** Ein ADR (`timeline-domain-decision.md`), kurze JSDoc-Links in Entrypoints. Keine duplizierte Business-Logik.
+  - **KISS:** Keine neue Collection, keine generische Tabelle, kein Over-Engineering.
+  - Shots enthalten: timing (duration, shotlength), composition, character-assignments.
+  - Clips enthalten: NLE-Segmente (startSec, endSec, laneIndex, sourceIn/Out).
+  - Beziehungen dokumentiert: shots -> clips (FK), shots -> assets (owner_type), shots -> scene_audio_tracks (separate Domain).
+

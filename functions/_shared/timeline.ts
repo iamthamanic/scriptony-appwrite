@@ -47,15 +47,17 @@ export function normalizeNodeInput(body: JsonRecord): JsonRecord {
     parent_id: body.parent_id !== undefined ? body.parent_id : body.parentId,
     title: body.title,
     summary: body.description ?? body.summary ?? null,
-    order_index: body.order_index ??
+    order_index:
+      body.order_index ??
       body.orderIndex ??
       body.nodeNumber ??
       body.node_number,
     node_type: body.node_type ?? body.nodeType ?? null,
     scene_id: body.scene_id ?? body.sceneId ?? null,
-    metadata_json: typeof body.metadata === "object"
-      ? JSON.stringify(body.metadata)
-      : (body.metadata_json ?? null),
+    metadata_json:
+      typeof body.metadata === "object"
+        ? JSON.stringify(body.metadata)
+        : (body.metadata_json ?? null),
   });
 }
 
@@ -98,10 +100,10 @@ export function normalizeShotInput(body: JsonRecord): JsonRecord {
     framing: body.framing ?? null,
     lens: body.lens ?? null,
     duration: body.duration ?? null,
-    shotlength_minutes: body.shotlength_minutes ?? body.shotlengthMinutes ??
-      null,
-    shotlength_seconds: body.shotlength_seconds ?? body.shotlengthSeconds ??
-      null,
+    shotlength_minutes:
+      body.shotlength_minutes ?? body.shotlengthMinutes ?? null,
+    shotlength_seconds:
+      body.shotlength_seconds ?? body.shotlengthSeconds ?? null,
     composition: body.composition ?? null,
     lighting_notes: body.lighting_notes ?? body.lightingNotes ?? null,
     image_url: optionalUrlField(body.image_url ?? body.imageUrl),
@@ -172,12 +174,14 @@ export function mapCharacter(row: JsonRecord): JsonRecord {
 }
 
 export function mapNode(row: JsonRecord): JsonRecord {
-  const rawMetadata = typeof row.metadata_json === "string"
-    ? JSON.parse(row.metadata_json || "{}")
-    : (row.metadata_json ?? {});
-  const metadata = rawMetadata && typeof rawMetadata === "object"
-    ? { ...(rawMetadata as JsonRecord) }
-    : {};
+  const rawMetadata =
+    typeof row.metadata_json === "string"
+      ? JSON.parse(row.metadata_json || "{}")
+      : (row.metadata_json ?? {});
+  const metadata =
+    rawMetadata && typeof rawMetadata === "object"
+      ? { ...(rawMetadata as JsonRecord) }
+      : {};
   // Tolerate older typoed metadata keys from legacy initializers / migrated data.
   if (metadata.pct_from === undefined && typeof metadata.pt_from === "number") {
     metadata.pct_from = metadata.pt_from;
@@ -292,11 +296,11 @@ export function mapShot(row: JsonRecord): JsonRecord {
     updated_at: row.updated_at,
     updatedBy: row.user_id ?? undefined,
     user_id: row.user_id ?? undefined,
-    characters: asArray(row.shot_characters).map((entry: any) =>
-      mapCharacter(entry?.character)
+    characters: asArray<JsonRecord>(row.shot_characters).map((entry) =>
+      mapCharacter(entry?.character),
     ),
-    audioFiles: asArray(row.shot_audio).map(mapShotAudio),
-    audio_files: asArray(row.shot_audio).map(mapShotAudio),
+    audioFiles: asArray<JsonRecord>(row.shot_audio).map(mapShotAudio),
+    audio_files: asArray<JsonRecord>(row.shot_audio).map(mapShotAudio),
   };
 }
 

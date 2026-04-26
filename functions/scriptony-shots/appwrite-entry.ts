@@ -1,3 +1,9 @@
+/**
+ * Appwrite function entrypoint: scriptony-shots — T13 Timeline Domain.
+ *   Ziel: scriptony-timeline. Keine neuen Timeline-Features ohne
+ *   Zielentscheidung. Siehe docs/timeline-domain-decision.md
+ */
+
 import {
   createAppwriteHandler,
   getPathname,

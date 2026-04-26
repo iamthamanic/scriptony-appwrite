@@ -1,5 +1,9 @@
 /**
  * Ultra batch timeline load route for the Scriptony HTTP API.
+ *
+ * @deprecated Use GET /editor/projects/:projectId/state from scriptony-editor-readmodel instead.
+ *   ultra-batch-load is frozen; new aggregation fields (script blocks, audio tracks,
+ *   assets, style) are only added to the read-model endpoint.
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
@@ -69,9 +73,10 @@ export default async function handler(
     const mappedNodes = nodes.map(mapNode).map((node) => {
       if (!excludeContent || !node || typeof node !== "object") return node;
       const n = node as Record<string, unknown>;
-      const metadata = n.metadata && typeof n.metadata === "object"
-        ? { ...(n.metadata as Record<string, unknown>) }
-        : undefined;
+      const metadata =
+        n.metadata && typeof n.metadata === "object"
+          ? { ...(n.metadata as Record<string, unknown>) }
+          : undefined;
       if (metadata && "content" in metadata) {
         delete metadata.content;
       }

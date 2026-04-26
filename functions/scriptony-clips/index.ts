@@ -2,6 +2,12 @@
  * Appwrite function entrypoint for the clips service (editorial timeline).
  */
 
+/**
+ * Appwrite function entrypoint: scriptony-clips — T13 Timeline Domain.
+ *   Ziel: scriptony-timeline. Keine neuen Timeline-Features ohne
+ *   Zielentscheidung. Siehe docs/timeline-domain-decision.md
+ */
+
 import clipsCollectionHandler from "./clips/index";
 import clipByIdHandler from "./clips/[id]";
 import {
@@ -13,7 +19,8 @@ import {
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {

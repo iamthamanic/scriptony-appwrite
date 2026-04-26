@@ -1,5 +1,9 @@
 /**
  * Clips CRUD — editorial timeline segments (Phase 1 Clip domain).
+ *
+ * T13 TIMELINE DOMAIN: Clip-CRUD und Timing.
+ *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Siehe docs/timeline-domain-decision.md
  */
 
 import { Query } from "node-appwrite";
@@ -58,12 +62,14 @@ function clipPayloadFromBody(
     scene_id: sceneId.trim(),
     start_sec: startSec,
     end_sec: endSec,
-    lane_index: typeof laneIndex === "number"
-      ? laneIndex
-      : parseInt(String(laneIndex ?? 0), 10) || 0,
-    order_index: typeof orderIndex === "number"
-      ? orderIndex
-      : parseInt(String(orderIndex ?? 0), 10) || 0,
+    lane_index:
+      typeof laneIndex === "number"
+        ? laneIndex
+        : parseInt(String(laneIndex ?? 0), 10) || 0,
+    order_index:
+      typeof orderIndex === "number"
+        ? orderIndex
+        : parseInt(String(orderIndex ?? 0), 10) || 0,
   };
 
   const si = body.source_in_sec ?? body.sourceInSec;
@@ -92,8 +98,8 @@ export default async function handler(
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") ||
-        getQuery(req, "projectId");
+      const projectId =
+        getQuery(req, "project_id") || getQuery(req, "projectId");
       const shotId = getQuery(req, "shot_id") || getQuery(req, "shotId");
 
       if (projectId) {
