@@ -1,192 +1,184 @@
-<div align="center">
-
-<img src="src/assets/scriptony-logo.png" alt="Scriptony" width="120" />
-
 # Scriptony
 
-**Das offene Produktionssystem für Geschichten.**
+![Scriptony Logo](src/assets/scriptony-logo.png)
 
-Vom ersten Satz bis zum finalen Render — in einem einzigen, selbst hostbaren Workspace.
+Das offene Produktionssystem für Filme, Serien, Bücher und Hörbücher.
 
-[🚀 Schnellstart](#schnellstart) • [✨ Features](#was-scriptony-kann) • [🏗 Architektur](#architektur) • [🧑‍💻 Für Entwickler](#für-entwickler)
-
-</div>
+[Getting Started](#getting-started) • [Was Scriptony kann](#was-scriptony-kann) • [Für Entwickler](#für-entwickler) • [Tech Stack](#tech-stack)
 
 ---
 
-## 🎬 Was ist Scriptony? (30-Sekunden-Version)
+## Was ist Scriptony?
 
-Scriptony ist ein **Open-Source-Produktionssystem** für Autoren, Drehbuchautoren, Regisseure und Medienproduktionsteams. Es vereint:
+Scriptony ist ein **offenes Produktionssystem** für Drehbuchautoren, Autoren, Regisseure und Medienproduktionsteams. Statt zwischen Final Draft, Notion, Figma, Blender und Excel hin- und herzuspringen, vereint Scriptony die gesamte Pipeline in einem einzigen Workspace.
 
-- 📝 **Script-Editor** (Drehbuch, Buch, Hörspiel)
-- 🌍 **Worldbuilding** (Orte, Kulturen, Zeitrechnung, Lore)
-- 🎭 **Charakter-System** (Traits, Beziehungen, Voice-Casting)
-- 🎬 **Story-Beats & Timeline** (Save the Cat, Hero's Journey, Shot-Listen)
-- 🤖 **KI-Assistant** (Chat, TTS/STT, Bild- & Video-Generierung)
-- 🎨 **2D/3D Stage & Puppet-Layer** (Storyboard, Style-Guides, Blender-Bridge)
+Vom ersten Logline bis zum finalen Shot — alles in einer Anwendung, alles auf deinem eigenen Server.
 
-Alles in **einer** Anwendung. Alles **selbst hostbar**. Deine Daten, deine Server, deine KI-Provider.
+### Für die Story
+- Drehbuch-Editor mit Block-Struktur (Scene Heading, Action, Dialogue, Narration, Sound Effect)
+- Buch-Editor mit Kapitelhierarchie
+- Hörbuch-Stereo-Timeline mit Voice-Casting und Aufnahmesessions
 
-> *„Vor Scriptony war ich in 7 Tools gleichzeitig: Final Draft, Notion, Photoshop, Blender, Excel, Google Docs und Miro. Jetzt ist alles hier."*
+### Für die Produktion
+- Shot-Listen mit Kamera-Notation (Angle, Movement, Framing, Lens)
+- Timeline mit Clips, Spuren und Ripple-Editing
+- 2D Stage mit Puppet-Layer und Style-Guide-System
+- 3D Stage mit Render-Jobs
 
----
+### Für das Worldbuilding
+- Welten, Orte, Kulturen, Zeitrechnung
+- Charaktere mit Traits, Beziehungen, Avatar und Voice-Casting
+- Lore-Items mit Bildern und Beschreibungen
 
-## 💔 Die Pain Points, die Scriptony löst
-
-| Ohne Scriptony | Mit Scriptony |
-|---|---|
-| 🔴 Script in Final Draft, Welt in Notion, Konzept in Miro — alles fragmentiert | 🟢 **Ein Workspace.** Script, Welt, Charaktere, Shots, Assets — alles verknüpft |
-| 🔴 "Wie hieß nochmal die Schwester von Protagonist X?" — die KI hat keinen Kontext | 🟢 **ARGUS-Assistant** (in Entwicklung) kennt dein gesamtes Projekt und findet Inkonsistenzen |
-| 🔴 Voice-Casting manuell, Audio-Produktion extern, Mixing in einem DAW | 🟢 **TTS/STT + Audio-Sessions** direkt im Projekt — Voice-Casting, Preview-Mix, Export |
-| 🔴 Storyboard in Photoshop, Style-Guide in Figma, Render in Blender — Pipeline-Bruch | 🟢 **Stage 2D/3D + Style-Guide + Blender-Bridge** — visuelle Pipeline in einem Tool |
-| 🔴 „Ich habe die erste Szene umgeschrieben — wo war das noch relevant?" | 🟢 **Impact-Analyse** (ARGUS) zeigt alle betroffenen Szenen, Charaktere und Lore-Einträge |
-| 🔴 Monatliche SaaS-Kosten, Vendor-Lock-in, Daten in der Cloud | 🟢 **Open Source, Self-Hosted.** Läuft auf deinem Laptop, Hetzner-Server oder in der Cloud — du entscheidest |
-
----
-
-## ✨ Was Scriptony kann
-
-### 📝 Core: Das Fundament jeder Geschichte
-
-| Feature | Status | Beschreibung |
-|---------|--------|--------------|
-| **Script-Editor** | ✅ Stabil | Drehbuch, Buch, Hörspiel. Blocks mit Typen (Scene Heading, Action, Dialogue, Narration, Sound Effect). Reorder. Node-Zuordnung. |
-| **Projekte & Templates** | ✅ Stabil | Film, Serie, Buch, Podcast. Templates (Beat-Struktur, Episode Layout, Season Engine). Drag & Drop. |
-| **Story-Beats** | ✅ Stabil | Save the Cat, Hero's Journey, prozentuale Timeline-Position. CapCut-Style Ripple Editing. |
-| **Projektstruktur (Nodes)** | ✅ Stabil | Hierarchische Timeline-Nodes (Acts → Sequences → Scenes). Templates pro Projekttyp. |
-| **Charaktere** | ✅ Stabil | CRUD, Attribute, Traits (JSON), Avatar, Beziehungen. |
-| **Worldbuilding** | ✅ Stabil | Welten, Kategorien (Orte, Kulturen, Zeiten), Items mit Bildern, Beschreibungen. |
-
-### 🎨 Media: Bild, Audio, Video, Stage
-
-| Feature | Status | Beschreibung |
-|---------|--------|--------------|
-| **Asset-Management** | 🚧 In Entwicklung | Zentrale `assets`-Collection. Upload, Link, Query. Owner/Purpose-Matrix (Projekt-Cover, Shot-Storyboard, Character-Avatar, etc.). |
-| **TTS (Text-to-Speech)** | ✅ Stabil | OpenAI, ElevenLabs, Google, Ollama. Voice Discovery. Spricht Script-Blöcke direkt an. |
-| **STT (Speech-to-Text)** | ✅ Stabil | Whisper-basiert. Batch-Transkription. |
-| **Audio-Sessions** | 🚧 Teils stabil | Voice-Casting pro Charakter, Track-Planung, Mixing-Orchestration (noch Fake-Responses in Teilen, siehe T08). |
-| **Bildgenerierung** | ✅ Stabil | OpenAI DALL-E, Midjourney, Stability, Google Imagen. Cover-Generierung, Style-Profile. |
-| **Video-Generierung** | 🚧 Deployable | Runway, Pika, OpenAI Sora. Aktuell keine Frontend-Route (API ready, UI fehlt). |
-| **Stage 2D** | ✅ Stabil | Layer-basierte 2D-Stage mit Puppet-Layer. Render-Jobs, Accept/Reject/Complete. |
-| **Stage 3D** | ✅ Stabil | 3D View-State Endpoints. Three.js/Babylon.js Integration. |
-| **Blender-Bridge** | ✅ Stabil | Blender Addon (legacy + extension). Metadaten-Ingress, Export-Adapter. |
-| **Style-Profile & Style-Guide** | ✅ Stabil | Puppet-Layer Style Profiles, Project Visual Style (Palette, Keywords, Typo). |
-
-### 🤖 AI: KI-Integration & Assistant
-
-| Feature | Status | Beschreibung |
-|---------|--------|--------------|
-| **AI-Assistant (Chat)** | ✅ Stabil | Konversationen, Messages, RAG-Sync. Liest Projekt-Kontext. |
-| **Provider-Auswahl** | ✅ Stabil | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama (lokal + cloud). Pro-Feature Provider/Model. |
-| **API-Key-Verwaltung** | ✅ Stabil | Per-User, per-Feature, per-Provider. Maskierte Keys. BYOK (Bring Your Own Key). |
-| **Creative Gym** | ✅ Stabil | Kreative Übungen, Daily Challenge, Progress, Achievements. |
-| **Model-Discovery** | ✅ Stabil | Live-Modell-Liste pro Provider. Ollama lokal + cloud erkennen. |
-| **MCP (Model Context Protocol)** | ✅ Stabil | Thin HTTP Host für deterministische Tools. `list_tools` + `invoke`. Project Capabilities (get_project_summary, list_scenes, create_scene, rename_project). |
-| **ARGUS (Semantic Search)** | 🔄 Konzeptphase | Vektor-basierte semantische Suche über alle Projektdokumente. Redis Stack als Vector-DB. Impact-Analyse, Lore-Guard, Multi-File Diff. Siehe `docs/scriptony-argus-assistant-extension-concept.md`. |
-
-### 🔧 Platform: Administration, Jobs, Observability
-
-| Feature | Status | Beschreibung |
-|---------|--------|--------------|
-| **Auth & Account** | ✅ Stabil | Signup, Login, OAuth, JWT, Sessions. Appwrite Auth. |
-| **Jobs-System** | 🚧 Konsolidierung | Async Job-Control-Plane. Status, Retry, Cancel. `scriptony-jobs-handler` + Legacy `jobs-handler` werden in T14 konsolidiert. |
-| **Observability** | 🚧 Zukunft | Stats + Logs werden zu `scriptony-observability` zusammengeführt (T16). |
-| **Admin / Superadmin** | 🚧 Zukunft | `scriptony-superadmin` wird zu `scriptony-admin` (T16). |
-| **Collaboration** | 🔄 Konzeptphase | Direkte Projektfreigabe, Rollen (owner/editor/viewer), Organisationen/Workspaces (T21). |
-| **Storage-Provider** | 🔄 Konzeptphase | Google Drive, Dropbox, OneDrive, AWS S3 OAuth (T20). |
+### Für die Kreation
+- Integrierter KI-Assistant, der dein Projekt kennt
+- TTS (Text-to-Speech) für Dialoge
+- STT (Speech-to-Text) für Transkription
+- Bildgenerierung (OpenAI, Midjourney, Stability)
+- Creative Gym mit Kreativübungen
 
 ---
 
-## 🚀 Schnellstart
+## Was Scriptony kann
+
+### ✅ Jetzt nutzbar
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **Film-Projekt** | Drehbuch-Editor, Shots, Clips, Beat-Timeline, Charaktere, Worldbuilding, Style-Guide |
+| **Serien-Projekt** | Staffel-/Episoden-Struktur, sonst identisch zu Film |
+| **Buch-Projekt** | Buch-Editor mit Kapitelhierarchie, Lesedauer-Timeline, Konzeptblöcke |
+| **Hörbuch-Projekt** | Stereo-Audio-Timeline, Voice-Casting, Aufnahmesessions, TTS-Integration |
+| **Projektstruktur** | Hierarchische Knoten: Akt → Sequenz → Szene → Shot → Clip (Film) / Kapitel (Buch) |
+| **Story Beats** | Lite-7, Save the Cat (15 Beats), Hero's Journey (12), Syd Field (3-Act), Seven Point (7) |
+| **Narrative Struktur** | 3-Akt, 4-Akt, 5-Akt (Theater), 3-Teilig (Buch) |
+| **Charaktere** | Erstellen, Traits (JSON), Avatar, Beziehungen, Zuordnung zu Szenen und Shots |
+| **Worldbuilding** | Welten, Kategorien (Orte, Kulturen, Zeiten), Items mit Bildern |
+| **KI-Assistant** | Projekt-Kontext-Chat, Konversationsspeicher, RAG-Synchronisation |
+| **Creative Gym** | Kreativübungen, Daily Challenge, Fortschritt, Achievements |
+| **TTS (Text-to-Speech)** | OpenAI, ElevenLabs, Google, Ollama — mit Voice-Liste und Preview |
+| **STT (Speech-to-Text)** | Whisper-basiert, Batch-Transkription |
+| **Bildgenerierung** | OpenAI DALL-E, Midjourney, Stability, Google Imagen |
+| **Stage 2D** | Layer-basierte 2D-Bühne, Puppet-Layer, Render-Jobs (Accept/Reject/Complete) |
+| **Style-Guide** | Project Visual Style (Palette, Keywords, Typografie), Style-Items mit Bildern |
+| **Projekt-Export** | JSON oder PDF (Scriptony-styled), mit nativem Share auf unterstützten Geräten |
+| **Blender-Bridge** | Addon (Legacy + Extension), Metadaten-Ingress, Export-Adapter |
+| **Self-Hosted Auth** | Registrierung, Login, OAuth, JWT, Sessions via Appwrite |
+
+### 🚧 In Entwicklung
+
+| Feature | Status | Beschreibung |
+|---------|--------|--------------|
+| **Asset-Management** (T05/T06) | Schema deployed, API in Entwicklung | Zentrale Asset-Metadaten per Owner/Purpose-Matrix |
+| **Audio-Produktion** (T08) | Sessions + Tracks stabil, Mixing/Orchestration in Entwicklung | Preview-Mix, Export als Job |
+| **Video-Generierung** | API ready, keine Frontend-Route | Runway, Pika, OpenAI Sora |
+| **Stage 3D** | API stabil, UI in Entwicklung | Three.js / Babylon.js View-State |
+| **ARGUS** | Konzeptphase | Semantische Projekt-Suche, Impact-Analyse, Lore-Guard (siehe `docs/scriptony-argus-*.md`) |
+| **Collaboration** (T21) | Konzeptphase | Projektfreigabe, Rollen, Organisationen/Workspaces |
+| **Externer Storage** (T20) | Konzeptphase | Google Drive, Dropbox, OneDrive OAuth |
+
+### 🎭 Projekttypen im Detail
+
+**Film**
+- Story-Editor (Blocks: Scene Heading, Action, Dialogue, Narration, Stage Direction, Sound Effect)
+- Shot-Liste mit Kamera-Notizen
+- Video-Clip-Timeline
+- Beat-Struktur: Optional Lite-7, Save the Cat, Hero's Journey, Syd Field, Seven Point
+- Hieararchie: Act → Sequence → Scene → Shot → Clip
+
+**Serie**
+- Wie Film, mit Staffel- und Episoden-Ebene
+- Staffel-Engine: Beat-Templated pro Episode
+
+**Buch**
+- Nativer Buch-Editor mit Kapitelhierarchie
+- Lesedauer-Schätzung (WPM, Seitenzählung)
+- Keine Shots/Clips, dafür Konzeptblöcke (Hook, Kernhaken)
+- Keine Bild-/Video-Uploads
+
+**Hörbuch**
+- Stereo-Audio-Timeline pro Szene
+- Voice-Casting: Charakter → Sprecher → TTS-Stimme
+- Aufnahmesessions pro Szene
+- Audio-Tracks zuordnen
+
+---
+
+## Getting Started
 
 ### Voraussetzungen
 
-- [Node.js](https://nodejs.org/) ≥ 18
-- [npm](https://www.npmjs.com/) oder [pnpm](https://pnpm.io/)
-- [Docker](https://www.docker.com/) (für Backend)
+- Node.js ≥ 18
+- Docker (für Self-Hosted Backend)
 
-### 1. Repository klonen
+### 1. Repository klonen und installieren
 
 ```bash
 git clone https://github.com/iamthamanic/scriptony-appwrite.git
 cd scriptony-appwrite
-```
-
-### 2. Frontend-Abhängigkeiten installieren
-
-```bash
 npm install
+cd functions && npm install && cd ..
 ```
 
-### 3. Umgebungsvariablen einrichten
+### 2. Lokales Backend (optional)
 
 ```bash
-# 1. Kopiere das Beispiel
+# Appwrite starten (Docker)
+npm run docker:appwrite:up
+npm run docker:appwrite:verify
+```
+
+Ansonsten: Appwrite Cloud nutzen.
+
+### 3. Env-Variablen
+
+```bash
 cp .env.local.example .env.local
-
-# 2. Fülle die Werte aus:
-# VITE_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1  # oder deine Self-Hosted URL
-# VITE_APPWRITE_PROJECT_ID=dein-projekt-id
-# VITE_BACKEND_API_BASE_URL=https://deine-functions-domain.com
-# VITE_APP_WEB_URL=http://localhost:5173
 ```
 
-> **Hinweis für Self-Hosted:** Du kannst auch Appwrite lokal in Docker betreiben:
-> ```bash
-> npm run docker:appwrite:up
-> npm run docker:appwrite:verify
-> ```
-> Dann `VITE_APPWRITE_ENDPOINT=http://127.0.0.1:8080/v1` setzen.
-
-### 4. Appwrite-Schema provisionieren
+### 4. Schema und Buckets provisionieren
 
 ```bash
-# Benötigt APPWRITE_API_KEY in .env.server.local oder Environment
-cd functions
-npm install
-npm run provision-schema
-cd ..
-```
+# Schema (Collections + Attribute + Indexes)
+npm run appwrite:provision:schema
 
-### 5. Storage-Buckets provisionieren
-
-```bash
+# Storage-Buckets
 npm run appwrite:provision:buckets
 ```
 
-### 6. Backend-Functions deployen
+### 5. Functions deployen
 
 ```bash
-# Wichtigste Functions (mindestens diese, damit die App läuft):
-npm run appwrite:deploy:ai        # AI Control Plane
-npm run appwrite:deploy:assistant  # Chat / Assistant
-npm run appwrite:deploy:auth       # Auth / Account
-npm run appwrite:deploy:projects   # Projekte
-npm run appwrite:deploy:shots      # Shots / Clips
-npm run appwrite:deploy:script     # Script Editor
-npm run appwrite:deploy:style      # Style Profiles
-npm run appwrite:deploy:stage      # Render Jobs
-npm run appwrite:deploy:audio      # TTS / STT
-npm run appwrite:deploy:image      # Bildgenerierung
-npm run appwrite:deploy:mcp        # MCP Tools
+# Mindestens diese für Basis-Betrieb:
+npm run appwrite:deploy:ai
+npm run appwrite:deploy:assistant
+npm run appwrite:deploy:auth
+npm run appwrite:deploy:projects
+npm run appwrite:deploy:script
+npm run appwrite:deploy:shots
+npm run appwrite:deploy:style
+npm run appwrite:deploy:stage
+npm run appwrite:deploy:audio
+npm run appwrite:deploy:image
+npm run appwrite:deploy:mcp
 
-# Optional:
-npm run appwrite:deploy:video      # Video-Generierung
-npm run appwrite:deploy:gym        # Creative Gym
-npm run appwrite:deploy:worldbuilding  # Worldbuilding
-npm run appwrite:deploy:stage2d    # 2D Stage
-npm run appwrite:deploy:stage3d    # 3D Stage
-npm run appwrite:deploy:sync       # Blender Bridge
+# Weitere nach Bedarf:
+npm run appwrite:deploy:clips
+npm run appwrite:deploy:gym
+npm run appwrite:deploy:worldbuilding
+npm run appwrite:deploy:stage2d
+npm run appwrite:deploy:stage3d
+npm run appwrite:deploy:sync
+npm run appwrite:deploy:jobs
 ```
 
-### 7. Function-Domains synchronisieren
+### 6. Domains synchronisieren
 
 ```bash
-# Schreibt die deployten Domains in deine .env.local
 npm run appwrite:sync:function-domains
 ```
 
-### 8. Frontend starten
+### 7. Frontend starten
 
 ```bash
 npm run dev
@@ -194,228 +186,155 @@ npm run dev
 
 Öffne [http://localhost:5173](http://localhost:5173).
 
-> **⚠️ Hinweis:** Erstelle einen Account über die Register-Seite oder logge dich ein. Das Frontend kommuniziert direkt mit Appwrite (Auth) und den deployten Functions (Daten).
-
----
-
-## 🏗 Architektur
-
-Scriptony ist ein **modulares, domain-getriebenes System**. Der Code ist nach Verantwortungsbereichen getrennt — nie gemischte Zuständigkeiten.
-
-```
-┌─────────────────────────────────────────┐
-│           Frontend (React + Vite)       │
-│  React Query  •  Tailwind  •  Radix UI  │
-│  TipTap Editor  •  React Router        │
-│  Capacitor (iOS/Android)               │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-        ┌───────────────────────┐
-        │    API Gateway         │
-        │  (src/lib/api-gateway) │
-        └───────────────────────┘
-                    │
-     ┌──────────────┼──────────────┐
-     ▼              ▼              ▼
-┌────────┐   ┌──────────┐   ┌──────────┐
-│Appwrite│   │ Scriptony│   │  Redis   │
-│ Auth   │   │ Functions│   │  Stack   │
-│ DB     │   │ (Hono)   │   │(Cache/   │
-│Storage │   │          │   │ Vector)  │
-└────────┘   └──────────┘   └──────────┘
-```
-
-### Kernprinzipien
-
-- **Appwrite = Control Plane.** Auth, User, Databases, Storage. Functions greifen mit Server-API-Key zu — nie direkt aus dem Browser.
-- **Functions = Domain Gateway.** Jede Function hat eine eindeutige Verantwortung: `scriptony-script` für Script-Text, `scriptony-audio` für TTS/STT, `scriptony-style` für Style-Profiles.
-- **No Business Logic in Components.** Logik lebt in Hooks (`src/hooks/`) oder Services (`src/lib/api/`).
-- **Strict TypeScript.** Kein `any`. Klare Interfaces für Props und API-Responses.
-- **Checks vor jedem Push.** `npm run checks` läuft über Shimwrappercheck: ESLint, TypeScript, Prettier, Vitest, Vite-Build.
-
-### Backend Domain Map
-
-Eine vollständige Übersicht aller Functions, ihrer Datenmodelle und ihrer Zuständigkeit findest du in [`docs/backend-domain-map.md`](docs/backend-domain-map.md).
-
-### Tech Stack im Detail
-
-| Layer | Technologie |
-|-------|-------------|
-| **Frontend** | React 18, Vite, TypeScript 5, Tailwind CSS, Radix UI Primitives |
-| **State** | React Query (TanStack), React Hook Form |
-| **Editor** | TipTap (ProseMirror), Perfect Freehand (Zeichnen) |
-| **2D/3D** | Konva, Three.js, Babylon.js |
-| **Mobile** | Capacitor (iOS & Android Builds) |
-| **Backend** | Appwrite (Auth, Databases, Storage), 25+ Node.js Functions (Hono) |
-| **Functions** | Hono (Routing), Zod (Validation), node-appwrite (SDK) |
-| **Bundler** | esbuild (pro Function → einzelne `index.js`) |
-| **Database** | Appwrite Databases (MariaDB 10.11) + Redis Stack (Cache, Vector Search) |
-| **AI** | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama, ElevenLabs, Whisper |
-| **DevOps** | Docker Compose, shimwrappercheck (CI/CD mit AI Review) |
-
----
-
-## 🧑‍💻 Für Entwickler
-
-### Projektstruktur
-
-```
-scriptony-appwrite/
-├── src/                    # React Frontend
-│   ├── components/         # UI-Komponenten + Pages
-│   ├── hooks/              # React Hooks (Business Logik)
-│   ├── lib/                # API-Layer, Utils, Types
-│   ├── modules/            # Feature-Module (creative-gym, stage, ...)
-│   └── engines/            # Stage 2D/3D Engines
-├── functions/              # Backend Functions (Appwrite)
-│   ├── _shared/            # Primitive Infrastruktur, Typen, Auth
-│   ├── scriptony-*/        # Domain-Functions (siehe Domain Map)
-│   └── tools/              # Provisioning-Skripte
-├── infra/                  # Docker Compose (Appwrite, MariaDB, Redis Stack)
-├── docs/                   # Architektur-Dokumentation, Tickets, Konzepte
-├── scripts/                # Deploy-, Verify-, Build-Skripte
-└── local-bridge/           # Blender Bridge Server
-```
-
-### Häufige Befehle
+### Verifizierung
 
 ```bash
-# Entwicklung
-npm run dev              # Frontend + Vite DevServer
-npm run dev:vite         # Nur Vite (ohne Bridge)
-
-# Code-Qualität
-npm run lint             # ESLint (Frontend)
-npm run typecheck        # TypeScript Compiler (noEmit)
-npm run format:check     # Prettier Check
-npm run test             # Vitest Unit Tests
-
-# Full Gate (muss passen, bevor du pushst)
-npm run checks           # Shimwrappercheck: lint + typecheck + format + test + build + AI Review
-npm run checks:frontend  # Nur Frontend-Checks
-npm run checks:backend   # Nur Backend-Checks
-
-# Appwrite
-npm run docker:appwrite:up     # Starte lokale Appwrite-Instanz
-npm run docker:appwrite:down   # Stoppe Appwrite
-npm run appwrite:provision:schema   # Schema provisionieren
-npm run appwrite:provision:buckets  # Storage Buckets erstellen
-npm run appwrite:deploy:ai        # AI Function deployen
-# ... weitere deploy:* Befehle siehe package.json
-
-# Blender Addon
-npm run addon:zip:all      # Beide ZIPs bauen (legacy + extension)
-
-# Verifizierung
-npm run verify:test-env           # Env-Variablen prüfen
-npm run verify:functions-cli      # Functions Health-Check
-npm run verify:parity             # Parity-Check Frontend/Backend
-npm run smoke:user-flows          # Smoke Tests
-```
-
-### Weiterführende Dokumentation
-
-| Dokument | Für wen |
-|----------|---------|
-| [`docs/ENTWICKLER_HANDBUCH.md`](docs/ENTWICKLER_HANDBUCH.md) | Neue Entwickler: KISS, DRY, SOLID, Verzeichnis-Landkarte |
-| [`docs/SOURCE_OF_TRUTH.md`](docs/SOURCE_OF_TRUTH.md) | Architektur-Vertrag: Wer kommuniziert wie mit wem |
-| [`docs/backend-domain-map.md`](docs/backend-domain-map.md) | Alle Functions, Datenmodelle, Zuständigkeiten |
-| [`docs/scriptony-architecture-refactor-tickets.md`](docs/scriptony-architecture-refactor-tickets.md) | Aktuelle Refactor-Phasen (T00–T21) |
-| [`docs/scriptony-argus-assistant-extension-concept.md`](docs/scriptony-argus-assistant-extension-concept.md) | ARGUS: Semantic Search, Impact Analysis, Lore-Guard |
-| [`functions/README.md`](functions/README.md) | Backend-Details: Deploy, Provisioning, Env-Vars |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Produktions-Deployment, Vercel, Domain-Setup |
-| [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) | Eigenes Hosting (Hetzner, VPS, etc.) |
-| [`docs/SERVER_ROLLOUT.md`](docs/SERVER_ROLLOUT.md) | Server-Migration, Rollback-Plan |
-
----
-
-## 📱 Mobile
-
-Scriptony nutzt Capacitor für native iOS- und Android-Builds.
-
-```bash
-# iOS
-npm run cap:sync
-npm run cap:open:ios
-
-# Android
-npm run cap:sync
-npm run cap:open:android
-```
-
----
-
-## 🎨 Blender Integration
-
-1. `npm run addon:zip:all` baut beide Distributables.
-2. In Blender: *Edit → Preferences → Add-ons → Install from Disk*
-3. Wähle `scriptony_blender_addon.zip` (legacy) oder `scriptony_blender_extension.zip` (Blender 4.2+)
-4. Öffne den *Scriptony*-Tab in der 3D-View Sidebar.
-5. Trage deine `Cloud Base URL` und `Integration Token` ein.
-
-Metadaten fließen über `scriptony-sync` in die Blender-Pipeline. Stage-Daten werden über den Export-Adapter ausgegeben.
-
----
-
-## 🧪 Tests
-
-```bash
-# Unit Tests
-npm run test
-
-# Spezifischer Test
-npx vitest run functions/_shared/ai-service/model-discovery.test.ts
-
-# Smoke Tests (benötigt deployte Functions)
+npm run verify:test-env
+npm run verify:functions-cli
+npm run verify:parity
 npm run smoke:user-flows
 ```
 
 ---
 
-## 🔒 Sicherheit
+## Fürs lokale Hoster & Docker
 
-- Keine Appwrite-API-Keys oder Secrets werden ans Frontend geleakt. Functions nutzen `APPWRITE_API_KEY` (Server-Only).
-- Alle User-Inputs werden mit Zod validiert.
-- Permissions: `canReadProject` / `canEditProject` / `canManageProject` (T21: zukünftig Multi-User).
-- Self-Hosted = Deine Daten bleiben auf deiner Infrastruktur.
+- `infra/appwrite/docker-compose.yml` startet Appwrite mit MariaDB 10.11, Redis 7.2.4 und Traefik auf Port 8080
+- Port `:8080` ist die Appwrite-Console und API
+- `APPWRITE_API_KEY` braucht Scopes: `databases.read`, `databases.write`, `storage.read`, `storage.write`, `functions.read`, `functions.write`
 
----
-
-## 🗺 Roadmap
-
-| Phase | Thema | Status |
-|-------|-------|--------|
-| **Phase 0–1** | Inventur, Domain Map, Check-Gates | ✅ Done |
-| **Phase 2** | `scriptony-script` — Script als Source of Truth | ✅ Done |
-| **Phase 3** | `scriptony-assets` — Zentrale Asset-Verwaltung | 🔜 Todo |
-| **Phase 4** | `scriptony-audio-production` — Mixing, Export, Voice-Casting | 🔜 Todo |
-| **Phase 5** | `scriptony-audio` — Technische Audio saubern | 🔜 Todo |
-| **Phase 6** | `scriptony-image` + `scriptony-assistant` bereinigen | 🔜 Todo |
-| **Phase 7** | `scriptony-editor-readmodel` — Editor State Aggregation | 🔜 Todo |
-| **Phase 8** | Timeline-Konsolidierung (Shots + Clips) | 🔜 Todo |
-| **Phase 9** | `scriptony-jobs` + `scriptony-media-worker` — Worker-Grenze | 🔜 Todo |
-| **Phase 10** | Observability + Admin konsolidieren | 🔜 Todo |
-| **Phase 11** | Legacy entfernen, Code aufräumen | 🔜 Todo |
-| **Laufend** | `_shared` Logik, UI/UX Prüfung, Storage, Collaboration | 🔜 Todo |
-| **Vision** | **ARGUS** — Omniscient Narrative Engine (Semantic Search, Impact Analysis, Lore-Guard) | 🔄 Konzept |
+Self-Hosted-Anleitung ausführlich: [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md)
 
 ---
 
-## 📄 Lizenz
+## Für Entwickler
 
-Scriptony ist Open Source unter der [MIT License](LICENSE) (Frontend + Functions).
+### Projektstruktur
 
-**Hinweis zu eingesetzter Infrastruktur:**
-- **Appwrite** (Server): BSD-3-Clause
-- **Redis Stack** (Vector Search): SSPL (Server Side Public License) — für Self-Hosted unproblematisch, für SaaS-Angebote bitte prüfen. Eine Zukunftsmigration auf Apache-2.0-kompatible Vector-DBs (z. B. Qdrant) ist über die `VectorStore`-Abstraktion vorgesehen.
+```
+scriptony-appwrite/
+├── src/                    # React + Vite Frontend
+│   ├── components/         # Pages + UI-Komponenten
+│   ├── hooks/              # React Hooks (Business Logik, keine direkten API-Calls in UI)
+│   ├── lib/                # API-Layer, Types, Utils, Auth, Templates
+│   ├── modules/            # Feature-Module (creative-gym, scriptony-ai)
+│   └── engines/            # Stage 2D (Konva), Stage 3D (Three.js/Babylon.js)
+├── functions/              # Appwrite Functions (Hono, Node.js)
+│   ├── _shared/            # Auth, HTTP, DB, Storage Adapter
+│   ├── scriptony-*/        # Domain-Functions (siehe Domain Map unten)
+│   └── tools/              # Provisioning-Skripte
+├── infra/appwrite/         # docker-compose.yml, .env
+├── docs/                   # Architektur-Dokumentation
+├── scripts/                # Deploy, Verify, Build
+└── local-bridge/           # Blender Bridge Server
+```
+
+### Backend Domain Map
+
+Welche Function für was zuständig ist: [`docs/backend-domain-map.md`](docs/backend-domain-map.md)
+
+### Wichtige Dev-Commands
+
+```bash
+# Entwicklung
+npm run dev              # Vite DevServer
+
+# Code-Checks (laufen automatisch beim Push)
+npm run lint             # ESLint
+npm run typecheck        # TypeScript (tsc --noEmit)
+npm run format:check     # Prettier
+npm run test             # Vitest
+
+# Full Gate (muß grün sein)
+npm run checks           # Lint + TypeCheck + Format + Test + Vite-Build + AI-Review
+
+# Appwrite local
+npm run docker:appwrite:up     # Starten
+npm run docker:appwrite:down   # Stoppen
+npm run appwrite:provision:schema
+npm run appwrite:provision:buckets
+
+# Funktionen deployen
+npm run appwrite:deploy:ai       # ... und weitere deploy:* Scripts
+
+# Blender Addon
+npm run addon:zip:all      # Legacy + Extension bauen
+
+# Verifizierung
+npm run verify:test-env
+npm run verify:functions-cli
+npm run smoke:user-flows
+```
+
+### Coding Conventions
+
+- **Max 300 Zeilen** pro Datei, max 150 Zeilen pro Komponente
+- **Keine rohen `fetch` zu Appwrite** in Komponenten — alles über `${src/lib/api/}`
+- **React Query** für Server-State, Hooks für Business-Logik
+- **Tailwind CSS** für Styling, keine hartkodierten Farben
+- **Radix UI** für interaktive Komponenten
+- **Zod** für Input-Validierung in Backend-Routen
+- **Kein `any`** in TypeScript — `unknown` + Type Guards bei Bedarf
 
 ---
 
-<div align="center">
+## Tech Stack
 
-**Built for storytellers, by storytellers.**
+| Layer | Technologie |
+|-------|-------------|
+| **Frontend** | React 18, Vite, TypeScript 5, Tailwind CSS, Radix UI, TipTap, Konva, Three.js |
+| **State** | React Query (TanStack), React Hook Form |
+| **Mobile** | Capacitor (iOS & Android) |
+| **Backend** | Appwrite (Auth, Databases, Storage), 25+ Hono-Funktionen |
+| **Functions** | Hono, Zod, node-appwrite, esbuild (→ `index.js`) |
+| **Database** | MariaDB 10.11 (Appwrite Databases) + Redis 7.2.4 (Caching) |
+| **AI** | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama, ElevenLabs |
+| **DevOps** | Docker Compose, Vitest, shimwrappercheck (mit AI Review) |
 
-[Website](https://scriptony.com) • [Discord](https://discord.gg/scriptony) • [Twitter](https://twitter.com/scriptony)
+---
 
-</div>
+## Dokumentation
+
+| Dokument | Zweck |
+|----------|-------|
+| [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md) | Docker, VPS, Hetzner |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Env-Variablen, Vercel, Domains |
+| [`docs/backend-domain-map.md`](docs/backend-domain-map.md) | Functions, Datenmodelle, Zuständigkeiten |
+| [`docs/scriptony-architecture-refactor-tickets.md`](docs/scriptony-architecture-refactor-tickets.md) | Aktuelle Refactor-Phasen T00–T21 |
+| [`functions/README.md`](functions/README.md) | Deploy, Provisioning, Env-Vars |
+| [`docs/scriptony-argus-assistant-extension-concept.md`](docs/scriptony-argus-assistant-extension-concept.md) | ARGUS: Semantische Suche, Impact-Analyse |
+
+---
+
+## Mobile
+
+iOS und Android über Capacitor:
+
+```bash
+npm run cap:sync
+npm run cap:open:ios
+```
+
+---
+
+## Blender Addon
+
+```bash
+npm run addon:zip:all
+```
+
+In Blender: *Edit → Preferences → Add-ons → Install from Disk* → `scriptony_blender_addon.zip` oder `scriptony_blender_extension.zip` wählen.
+
+---
+
+## Lizenz
+
+Scriptony ist Open Source unter der [MIT License](LICENSE).
+
+**Hinweis zu Third-Party-Lizenzen:**
+- Appwrite (Server): BSD-3-Clause
+- Redis Stack (Vektor-Search-Module): SSPL (Server Side Public License) — für Self-Hosted unproblematisch, bei SaaS-Angeboten bitte prüfen
+
+---
+
+*Built for storytellers, by storytellers.*
