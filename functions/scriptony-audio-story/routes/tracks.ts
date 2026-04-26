@@ -159,6 +159,37 @@ async function updateTrack(
     return;
   }
 
+  // Access-Check: Track project_id holen und pruefen.
+  try {
+    const trackData = await requestGraphql<{
+      scene_audio_tracks_by_pk: { project_id: string } | null;
+    }>(
+      `
+      query GetTrackProject($id: uuid!) {
+        scene_audio_tracks_by_pk(id: $id) { project_id }
+      }
+    `,
+      { id: trackId },
+    );
+    if (!trackData.scene_audio_tracks_by_pk) {
+      sendNotFound(res, "Track not found");
+      return;
+    }
+    if (
+      !(await canEditProject(
+        bootstrap.user.id,
+        trackData.scene_audio_tracks_by_pk.project_id,
+      ))
+    ) {
+      sendUnauthorized(res);
+      return;
+    }
+  } catch (error) {
+    console.error("[Audio Story] Error checking track access:", error);
+    sendServerError(res, error);
+    return;
+  }
+
   const body = await readJsonBody<Record<string, unknown>>(req);
 
   // KISS: Allowlist — nur erlaubte Felder durchreichen.
@@ -221,6 +252,37 @@ async function deleteTrack(
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
+    return;
+  }
+
+  // Access-Check: Track project_id holen und pruefen.
+  try {
+    const trackData = await requestGraphql<{
+      scene_audio_tracks_by_pk: { project_id: string } | null;
+    }>(
+      `
+      query GetTrackProject($id: uuid!) {
+        scene_audio_tracks_by_pk(id: $id) { project_id }
+      }
+    `,
+      { id: trackId },
+    );
+    if (!trackData.scene_audio_tracks_by_pk) {
+      sendNotFound(res, "Track not found");
+      return;
+    }
+    if (
+      !(await canEditProject(
+        bootstrap.user.id,
+        trackData.scene_audio_tracks_by_pk.project_id,
+      ))
+    ) {
+      sendUnauthorized(res);
+      return;
+    }
+  } catch (error) {
+    console.error("[Audio Story] Error checking track access:", error);
+    sendServerError(res, error);
     return;
   }
 
