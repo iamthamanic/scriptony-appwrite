@@ -388,6 +388,22 @@ async function getJob(
     return;
   }
 
+  // SOLID: Projekt-Zugriff pruefen — Job-Payload enthaelt project_id.
+  try {
+    const payload = JSON.parse(
+      (job as Record<string, unknown>).payload_json as string,
+    ) as { project_id?: string };
+    if (
+      payload.project_id &&
+      !(await canReadProject(bootstrap.user.id, payload.project_id))
+    ) {
+      sendUnauthorized(res);
+      return;
+    }
+  } catch {
+    // payload_json fehlt oder ist ungueltig — ohne Projekt-Check weiter
+  }
+
   sendJson(res, 200, { job });
 }
 

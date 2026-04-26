@@ -1,74 +1,27 @@
 /**
  * Mixing & Export Routes — Audio Production Orchestration.
  *
- * Verantwortung (T07):
- *   Mixing-Orchestration, Export-Job-Erstellung, Preview-Queueing.
- *   Technische Engine (FFmpeg, Audio-Processing) ist VERBOTEN hier.
- *   Echte Ausfuehrung liegt bei scriptony-media-worker oder scriptony-audio.
+ * T08 OBSOLETE: Alle Mixing/Export/Preview-Funktionalitaet ist jetzt in
+ * `audio-production.ts` implementiert (POST /audio-production/preview,
+ * POST /audio-production/export, GET /audio-production/jobs/:id).
  *
- * T08 Implementiert:
- *   Preview-Mix und Export erzeugen jobs-Eintraege und delegieren
- *   an scriptony-media-worker. Aktuell: 501 Not Implemented —
- *   Orchestration-API-Contract definiert, Engine fehlt.
+ * Diese Datei bleibt als Compatibility-Stub bis Frontend auf neue Routes
+ * umgestellt ist. Alle Routen liefern 410 Gone.
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
-import { requireUserBootstrap } from "../../_shared/auth";
-import {
-  readJsonBody,
-  sendJson,
-  sendUnauthorized,
-  sendMethodNotAllowed,
-} from "../../_shared/http";
+import { sendJson, sendMethodNotAllowed } from "../../_shared/http";
 
-function notImplemented(res: ResponseLike, feature: string): void {
-  sendJson(res, 501, {
-    error: "Not Implemented",
-    message: `${feature} is planned for T08 (Audio Production Orchestration). Use a local audio tool until then.`,
+function gone(res: ResponseLike, route: string): void {
+  sendJson(res, 410, {
+    error: "Gone",
+    message: `${route} wurde nach /audio-production verschoben (T08).`,
+    new_routes: {
+      preview: "POST /audio-production/preview",
+      export: "POST /audio-production/export",
+      status: "GET /audio-production/jobs/:id",
+    },
   });
-}
-
-async function createPreviewMix(
-  req: RequestLike,
-  res: ResponseLike,
-): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
-
-  // T08: Job erstellen und an scriptony-media-worker delegieren.
-  notImplemented(res, "Preview Mix (T08)");
-}
-
-async function exportChapter(
-  req: RequestLike,
-  res: ResponseLike,
-): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
-
-  // T08: Export-Job erstellen und an scriptony-media-worker delegieren.
-  notImplemented(res, "Export Chapter (T08)");
-}
-
-async function getMixStatus(
-  req: RequestLike,
-  res: ResponseLike,
-  jobId: string,
-): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
-
-  // T08: Job-Status aus jobs-Collection lesen.
-  notImplemented(res, "Mix Status (T08)");
 }
 
 export default async function handler(
@@ -77,22 +30,19 @@ export default async function handler(
 ): Promise<void> {
   const pathname = (req.path || req.url || "/") as string;
 
-  // POST /mixing/preview
   if (req.method === "POST" && pathname.includes("/preview")) {
-    await createPreviewMix(req, res);
+    gone(res, "POST /mixing/preview");
     return;
   }
 
-  // POST /mixing/export/chapter
   if (req.method === "POST" && pathname.includes("/export")) {
-    await exportChapter(req, res);
+    gone(res, "POST /mixing/export");
     return;
   }
 
-  // GET /mixing/status/:jobId
   const statusMatch = pathname.match(/^\/mixing\/status\/([\w-]+)$/);
   if (statusMatch && req.method === "GET") {
-    await getMixStatus(req, res, statusMatch[1]);
+    gone(res, "GET /mixing/status/:jobId");
     return;
   }
 

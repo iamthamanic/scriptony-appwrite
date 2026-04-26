@@ -10,7 +10,12 @@
  */
 
 import { ID } from "node-appwrite";
-import { createDocument, dbId, C } from "../../_shared/appwrite-db";
+import {
+  createDocument,
+  getDocument,
+  dbId,
+  C,
+} from "../../_shared/appwrite-db";
 
 export type JobStatus =
   | "pending"
@@ -97,7 +102,6 @@ export async function getAudioProductionJob(
   jobId: string,
 ): Promise<CreatedJob | null> {
   try {
-    const { getDocument } = await import("../../_shared/appwrite-db");
     const doc = await getDocument(dbId(), C.jobs, jobId);
     return {
       id: doc.$id as string,

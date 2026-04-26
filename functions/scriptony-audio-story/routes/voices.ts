@@ -25,21 +25,6 @@ import {
 import { requestGraphql } from "../../_shared/graphql-compat";
 import { canReadProject, canEditProject } from "../_shared/access";
 
-// T09: Konstanter Voice-Pool — wird an scriptony-audio delegiert.
-const TTS_VOICES = [
-  { id: "alloy", name: "Alloy", provider: "openai", language: "multilingual" },
-  { id: "echo", name: "Echo", provider: "openai", language: "multilingual" },
-  { id: "fable", name: "Fable", provider: "openai", language: "multilingual" },
-  { id: "onyx", name: "Onyx", provider: "openai", language: "multilingual" },
-  { id: "nova", name: "Nova", provider: "openai", language: "multilingual" },
-  {
-    id: "shimmer",
-    name: "Shimmer",
-    provider: "openai",
-    language: "multilingual",
-  },
-] as const;
-
 async function listVoiceAssignments(
   req: RequestLike,
   res: ResponseLike,
@@ -165,16 +150,16 @@ async function assignVoice(req: RequestLike, res: ResponseLike): Promise<void> {
 /**
  * T07 MIGRATION: Diese Route gehoert zu `scriptony-audio` (technische Engine),
  * nicht zu `scriptony-audio-production` (Orchestration).
- * Beim Umbenennen/Restrukturieren nach scriptony-audio-production muss diese
- * Route zu scriptony-audio verschoben werden.
  *
- * T09 TODO: Statt lokaler statischer Liste an scriptony-audio /voices/tts
- * delegieren. Voice Discovery ist technische Audio-Faehigkeit, nicht
- * Production-Planung.
+ * T09: Statt lokaler statischer Liste an scriptony-audio /voices/tts
+ * delegieren. Voice Discovery ist technische Audio-Faehigkeit.
  */
 function listTTSAvailableVoices(req: RequestLike, res: ResponseLike): void {
-  sendJson(res, 200, {
-    ttsVoices: TTS_VOICES,
+  sendJson(res, 501, {
+    error: "Not Implemented",
+    message:
+      "TTS Voice Discovery wurde zu scriptony-audio verschoben. " +
+      "Nutze GET /voices/tts/voices bei scriptony-audio.",
   });
 }
 
