@@ -382,7 +382,6 @@ const SCHEMA = {
    */
   assets: {
     project_id: S(64, true),
-    user_id: S(64),
     owner_type: S(128),
     owner_id: S(64),
     media_type: S(128),

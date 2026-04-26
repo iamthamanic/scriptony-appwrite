@@ -55,7 +55,7 @@ function bufferToUint8Array(
 }
 
 /** Create a File-like duck-typed object that works in Node 16+ (no global File). */
-function makeFileLike(
+export function makeFileLike(
   data: Uint8Array | ArrayBuffer,
   name: string,
   type: string,
@@ -92,11 +92,13 @@ function normalizeIncomingFile(
     );
   }
 
-  const name = candidate.originalname ||
+  const name =
+    candidate.originalname ||
     candidate.filename ||
     candidate.name ||
     fallbackName;
-  const type = candidate.mimetype ||
+  const type =
+    candidate.mimetype ||
     candidate.mimeType ||
     candidate.type ||
     "application/octet-stream";
@@ -201,20 +203,18 @@ export function ensureFile(
   if (options?.maxSizeBytes && file.size > options?.maxSizeBytes) {
     sendBadRequest(
       res,
-      `File too large: ${(file.size / 1024 / 1024).toFixed(2)} MB (max ${
-        (
-          options.maxSizeBytes /
-          1024 /
-          1024
-        ).toFixed(0)
-      } MB)`,
+      `File too large: ${(file.size / 1024 / 1024).toFixed(2)} MB (max ${(
+        options.maxSizeBytes /
+        1024 /
+        1024
+      ).toFixed(0)} MB)`,
     );
     return null;
   }
 
   if (options?.accept?.length) {
     const isAccepted = options.accept.some((prefix) =>
-      file.type.startsWith(prefix)
+      file.type.startsWith(prefix),
     );
     if (!isAccepted) {
       sendBadRequest(res, `Unsupported file type: ${file.type || "unknown"}`);
@@ -242,8 +242,7 @@ export async function uploadFileToStorage(options: {
     [Permission.read(Role.any())],
   );
   const project = getAppwriteProjectId();
-  const url =
-    `${getPublicAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
+  const url = `${getPublicAppwriteEndpoint()}/storage/buckets/${options.bucketId}/files/${created.$id}/view?project=${project}`;
 
   return {
     id: created.$id,

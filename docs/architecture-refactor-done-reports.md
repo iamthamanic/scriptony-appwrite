@@ -369,7 +369,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
 - **Routes added/changed:** keine (T06 baut API)
 - **Appwrite collections changed:**
   - `assets` (neu, in DB `scriptony`)
-    - 19 Attribute: project_id, user_id, owner_type, owner_id, media_type, purpose, file_id, bucket_id, filename, mime_type, size, duration, width, height, status, metadata, created_by, created_at, updated_at
+    - 18 Attribute: project_id, owner_type, owner_id, media_type, purpose, file_id, bucket_id, filename, mime_type, size, duration, width, height, status, metadata, created_by, created_at, updated_at
     - 9 Indexe: idx_project_id, idx_owner_type, idx_owner_id, idx_media_type, idx_purpose, idx_status, idx_file_id, idx_owner_type_owner_id (compound), idx_project_id_status (compound)
 - **Appwrite buckets changed:**
   - `stage-documents` Bucket hinzugefuegt in `functions/tools/provision-appwrite-buckets.mjs`
@@ -396,36 +396,9 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - owner_type wird als Freitext gespeichert (kein Enum-Constraint auf Appwrite-Ebene); Validierung muss in API (T06)
   - purpose wird als Freitext gespeichert (kein Enum-Constraint); Validierung muss in API (T06)
 - **Owner / Purpose Matrix:**
-
-| owner_type | Erlaubte purpose | Beispiel |
-|---|---|---|
-| project | cover, backdrop, reference | Projekt-Cover-Image |
-| shot | storyboard, reference, dialogue_audio | Shot-Dialog-Audio |
-| script | reference, attachment, export_pdf | Script-Anhang |
-| script_block | dialogue_audio, ambience, sfx | Block-Audio |
-| world | reference_map, style_reference | Welt-Referenz |
-| world_item | image, attachment | Item-Image |
-| character | avatar, reference, concept_art | Charakter-Avatar |
-| style_guide | reference, color_palette, font | Styleguide-Referenz |
-| stage | stage_document, prop_image | Stage-Dokument |
-| scene | mood_image, reference | Szenen-Moodboard |
-
-| media_type | Erlaubte purpose |
-|---|---|
-| image | cover, backdrop, reference, storyboard, avatar, concept_art, mood_image, prop_image, color_palette |
-| audio | dialogue_audio, ambience, sfx, music, voiceover |
-| video | reference, clip, animatic |
-| document | attachment, export_pdf, stage_document, script, font |
-
-**Invalid-Beispiele (werden in T06 API abgelehnt):**
-
-| owner_type | media_type | purpose | Warum invalid |
-|---|---|---|---|
-| project | audio | dialogue_audio | Audio gehoert zu Shot/Block, nicht Projekt |
-| character | document | export_pdf | Charakter hat keine Dokument-Exports |
-| script | video | clip | Script ist Text-Domaene, keine Clips |
-| world | audio | voiceover | Welt-Domaene hat keine Voiceover |
-| shot | document | font | Shot hat keine Font-Zuweisung |
+  Single Source of Truth: `functions/scriptony-assets/_shared/validation.ts`
+  (`PURPOSES_BY_OWNER`, `PURPOSES_BY_MEDIA`, `isValidCombination()`).
+  Drift vermeiden: Änderungen nur in validation.ts vornehmen.
 
 - **Delete Policy:**
   - `DELETE /assets/:id` in `scriptony-assets` (T06) entfernt nur das `assets` Document.

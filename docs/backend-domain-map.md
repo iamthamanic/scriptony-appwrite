@@ -113,37 +113,20 @@ obigen Map.
 
 `assets` ist der zentrale Metadaten-Container fuer Dateien. Owner und Purpose verhindern unkontrollierte Ablage.
 
-| owner_type | Erlaubte purpose | Beispiel |
-|---|---|---|
-| project | cover, backdrop, reference | Projekt-Cover-Image |
-| shot | storyboard, reference, dialogue_audio | Shot-Dialog-Audio |
-| script | reference, attachment, export_pdf | Script-Anhang |
-| script_block | dialogue_audio, ambience, sfx | Block-Audio |
-| world | reference_map, style_reference | Welt-Referenz |
-| world_item | image, attachment | Item-Image |
-| character | avatar, reference, concept_art | Charakter-Avatar |
-| style_guide | reference, color_palette, font | Styleguide-Referenz |
-| stage | stage_document, prop_image | Stage-Dokument |
-| scene | mood_image, reference | Szenen-Moodboard |
+> **Single Source of Truth:** Die vollstaendige Owner/Purpose-Matrix lebt in
+> `functions/scriptony-assets/_shared/validation.ts` (`PURPOSES_BY_OWNER`,
+> `PURPOSES_BY_MEDIA`, `isValidCombination()`).
+> Dokumentationen verweisen darauf; die Matrix wird nirgendwo sonst
+> dupliziert, um Drift zu vermeiden.
 
-| media_type | Erlaubte purpose |
-|---|---|
-| image | cover, backdrop, reference, storyboard, avatar, concept_art, mood_image, prop_image, color_palette |
-| audio | dialogue_audio, ambience, sfx, music, voiceover |
-| video | reference, clip, animatic |
-| document | attachment, export_pdf, stage_document, script, font |
+**Uebersicht (read-only, fuer schnelle Orientierung):**
 
-**Verbotene Kombinationen (Invalid-Beispiele):**
+- **owner_type:** project, shot, script, script_block, world, world_item, character, style_guide, stage, scene
+- **media_type:** image, audio, video, document
+- **purpose:** je nach Matrix-Kombination (z.B. cover, backdrop, reference, storyboard, dialogue_audio, attachment, export_pdf, ...)
 
-| owner_type | media_type | purpose | Warum invalid |
-|---|---|---|---|
-| project | audio | dialogue_audio | Audio gehoert zu Shot/Block, nicht Projekt |
-| character | document | export_pdf | Charakter hat keine Dokument-Exports |
-| script | video | clip | Script ist Text-Domaene, keine Clips |
-| world | audio | voiceover | Welt-Domaene hat keine Voiceover |
-| shot | document | font | Shot hat keine Font-Zuweisung |
-
-**Validierung:** API (T06) prueft `owner_type` + `media_type` + `purpose` gegen diese Matrix. Appwrite speichert sie als Freitext (kein Enum-Constraint).
+**Validierung:** API prueft `owner_type` + `media_type` + `purpose` gegen die
+Matrix in `validation.ts`. Appwrite speichert sie als Freitext (kein Enum-Constraint).
 
 **Delete Policy:** `DELETE /assets/:id` entfernt nur Metadaten. Physische Datei bleibt in Storage (Verantwortung: `scriptony-storage` / Cleanup-Job).
 

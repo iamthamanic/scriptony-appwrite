@@ -1,7 +1,5 @@
 import type { AuthUser } from "../../_shared/auth";
 
-export type AppwriteDoc = Record<string, unknown>;
-
 export interface QueryValidationResult {
   projectId: string;
   user: AuthUser;
