@@ -19,7 +19,12 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { Client, Databases, Query } from "node-appwrite";
+import process from "node:process";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
+import { canReadProject } from "./_shared/access";
+import { authMiddleware } from "./_shared/hono-auth";
+import { nodeBlocksQuerySchema } from "./_shared/validation";
 import scriptsRouter from "./routes/scripts";
 import blocksRouter from "./routes/blocks";
 
@@ -52,5 +57,47 @@ app.get("/health", (c) => {
 // Mount routers
 app.route("/scripts", scriptsRouter);
 app.route("/script-blocks", blocksRouter);
+
+// GET /nodes/:nodeId/script-blocks
+app.use("/nodes/*", authMiddleware);
+app.get("/nodes/:nodeId/script-blocks", async (c) => {
+  const user = c.get("user");
+  const nodeId = c.req.param("nodeId");
+  const projectId = c.req.query("project_id");
+
+  const parsed = nodeBlocksQuerySchema.safeParse({
+    nodeId,
+    project_id: projectId,
+  });
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.format() }, 400);
+  }
+
+  const ok = await canReadProject(user.id, parsed.data.project_id);
+  if (!ok) return c.json({ error: "Project not found or access denied" }, 404);
+
+  const client = new Client()
+    .setEndpoint(
+      process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
+        process.env.APPWRITE_ENDPOINT ||
+        "",
+    )
+    .setProject(
+      process.env.APPWRITE_FUNCTION_PROJECT_ID ||
+        process.env.APPWRITE_PROJECT_ID ||
+        "",
+    )
+    .setKey(process.env.APPWRITE_API_KEY || "");
+  const databases = new Databases(client);
+  const DB_ID = process.env.APPWRITE_DATABASE_ID || "scriptony";
+
+  const docs = await databases.listDocuments(DB_ID, "script_blocks", [
+    Query.equal("node_id", parsed.data.nodeId),
+    Query.equal("project_id", parsed.data.project_id),
+    Query.orderAsc("order_index"),
+  ]);
+
+  return c.json({ blocks: docs.documents });
+});
 
 export default createHonoAppwriteHandler(app);

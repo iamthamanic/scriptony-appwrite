@@ -44,6 +44,7 @@ export const updateScriptSchema = z.object({
   node_id: z.string().optional(),
   language: z.string().max(16).optional(),
   revision: z.number().int().min(0).optional(),
+  expected_revision: z.number().int().min(0).optional(),
 });
 
 export const blockTypeSchema = z.enum([
@@ -72,7 +73,6 @@ export const createBlockSchema = z.object({
 
 export const updateBlockSchema = z.object({
   script_id: z.string().optional(),
-  project_id: z.string().optional(),
   node_id: z.string().optional(),
   parent_id: z.string().optional(),
   order_index: z.number().int().min(0).optional(),
@@ -81,10 +81,16 @@ export const updateBlockSchema = z.object({
   speaker_character_id: z.string().optional(),
   notes: z.string().max(8000).optional(),
   revision: z.number().int().min(0).optional(),
+  expected_revision: z.number().int().min(0).optional(),
 });
 
 export const reorderBlockSchema = z.object({
   project_id: z.string().min(1, "project_id is required"),
   script_id: z.string().optional(),
   block_ids: z.array(z.string()).min(1, "block_ids is required"),
+});
+
+export const nodeBlocksQuerySchema = z.object({
+  nodeId: z.string().min(1, "nodeId is required"),
+  project_id: z.string().min(1, "project_id is required"),
 });
