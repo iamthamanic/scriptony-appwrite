@@ -6,15 +6,9 @@
 import { Hono } from "hono";
 import { Client, Databases } from "node-appwrite";
 import process from "node:process";
-import {
-  canEditProject,
-  canReadProject,
-} from "../_shared/access";
+import { canEditProject, canReadProject } from "../_shared/access";
 import { authMiddleware } from "../_shared/hono-auth";
-import {
-  reorderBlockSchema,
-  updateBlockSchema,
-} from "../_shared/validation";
+import { reorderBlockSchema, updateBlockSchema } from "../_shared/validation";
 import {
   validateCharacterInProject,
   validateNodeInProject,
@@ -46,9 +40,9 @@ router.use("*", authMiddleware);
 router.get("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const doc = await databases.getDocument(DB_ID, BLOCKS_COLLECTION, id).catch(
-    () => null,
-  );
+  const doc = await databases
+    .getDocument(DB_ID, BLOCKS_COLLECTION, id)
+    .catch(() => null);
   if (!doc) return c.json({ error: "Block not found" }, 404);
 
   const ok = await canReadProject(user.id, doc.project_id);
@@ -61,11 +55,9 @@ router.get("/:id", async (c) => {
 router.patch("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const existing = await databases.getDocument(
-    DB_ID,
-    BLOCKS_COLLECTION,
-    id,
-  ).catch(() => null);
+  const existing = await databases
+    .getDocument(DB_ID, BLOCKS_COLLECTION, id)
+    .catch(() => null);
   if (!existing) return c.json({ error: "Block not found" }, 404);
 
   const ok = await canEditProject(user.id, existing.project_id);
@@ -151,11 +143,9 @@ router.patch("/:id", async (c) => {
 router.delete("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const existing = await databases.getDocument(
-    DB_ID,
-    BLOCKS_COLLECTION,
-    id,
-  ).catch(() => null);
+  const existing = await databases
+    .getDocument(DB_ID, BLOCKS_COLLECTION, id)
+    .catch(() => null);
   if (!existing) return c.json({ error: "Block not found" }, 404);
 
   const ok = await canEditProject(user.id, existing.project_id);
@@ -179,14 +169,12 @@ router.post("/reorder", async (c) => {
   const ok = await canEditProject(user.id, project_id);
   if (!ok) return c.json({ error: "Project not found or access denied" }, 404);
 
-  const updated: any[] = [];
+  const updated: unknown[] = [];
   for (let i = 0; i < block_ids.length; i++) {
     const blockId = block_ids[i];
-    const existing = await databases.getDocument(
-      DB_ID,
-      BLOCKS_COLLECTION,
-      blockId,
-    ).catch(() => null);
+    const existing = await databases
+      .getDocument(DB_ID, BLOCKS_COLLECTION, blockId)
+      .catch(() => null);
     if (!existing) continue;
     if (existing.project_id !== project_id) continue;
     if (script_id && existing.script_id !== script_id) continue;

@@ -308,7 +308,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   ```bash
   CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-script/,functions/build-appwrite-deploy.mjs" SHIM_CHECKS_ARGS="" npm run checks
   ```
-- **Shimwrappercheck result:** ✅ PASSED
+- **Shimwrappercheck result:** ✅ PASSED (mit `--no-ai-review`, da Ollama Timeout)
   - Frontend TypeScript: ✅
   - Vite Build: ✅
   - Vitest: 140 passed ✅
@@ -317,9 +317,7 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - Shellcheck: skipped (no .sh changes) ✅
   - Gitleaks: no leaks found ✅
   - Architecture (dependency-cruiser): no violations ✅
-- **AI Review result:** (initial bei erstem Commit ACCEPT; Nacharbeit als Follow-Up Commit)
-  - Nacharbeit durchgefuehrt auf Basis initialer Review-Findings
-  - **AI Review 2. Lauf:** Timeout (Ollama unreachable, 300s); Commit mit `--no-ai-review`
+- **AI Review result:** ❌ TIMEOUT (Ollama unreachable, 300s). Nacharbeit-Commit mit `--no-ai-review` durchgefuehrt.
 - **Known risks:**
   - `scriptony-script` ist noch nicht in Appwrite deployed (nur gebaut). Deploy wird spaeter via `npx shimwrappercheck run --cli appwrite -- functions deploy scriptony-script` durchgefuehrt.
   - Access-Helper nutzt initial `created_by`/`user_id`/`owner_type`/`owner_id` — extensible fuer T21 Collaboration

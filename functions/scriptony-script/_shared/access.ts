@@ -25,14 +25,14 @@ const PROJECTS_COLLECTION = "projects";
 
 export async function getProject(
   projectId: string,
-): Promise<Record<string, any> | null> {
+): Promise<Record<string, unknown> | null> {
   try {
     const doc = await databases.getDocument(
       DB_ID,
       PROJECTS_COLLECTION,
       projectId,
     );
-    return doc as Record<string, any>;
+    return doc as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -40,11 +40,9 @@ export async function getProject(
 
 async function getUserOrganizationIds(userId: string): Promise<string[]> {
   try {
-    const docs = await databases.listDocuments(
-      DB_ID,
-      "organization_members",
-      [Query.equal("user_id", userId)],
-    );
+    const docs = await databases.listDocuments(DB_ID, "organization_members", [
+      Query.equal("user_id", userId),
+    ]);
     return docs.documents.map((d: any) => d.organization_id as string);
   } catch {
     return [];

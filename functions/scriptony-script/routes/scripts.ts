@@ -90,7 +90,10 @@ router.post("/", async (c) => {
   if (!ok) return c.json({ error: "Project not found or access denied" }, 404);
 
   if (data.node_id) {
-    const nodeValid = await validateNodeInProject(data.node_id, data.project_id);
+    const nodeValid = await validateNodeInProject(
+      data.node_id,
+      data.project_id,
+    );
     if (!nodeValid) {
       return c.json({ error: "node_id does not belong to project" }, 400);
     }
@@ -109,9 +112,9 @@ router.post("/", async (c) => {
 router.get("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const doc = await databases.getDocument(DB_ID, COLLECTION, id).catch(
-    () => null,
-  );
+  const doc = await databases
+    .getDocument(DB_ID, COLLECTION, id)
+    .catch(() => null);
   if (!doc) return c.json({ error: "Script not found" }, 404);
 
   const ok = await canReadProject(user.id, doc.project_id);
@@ -124,9 +127,9 @@ router.get("/:id", async (c) => {
 router.patch("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const existing = await databases.getDocument(DB_ID, COLLECTION, id).catch(
-    () => null,
-  );
+  const existing = await databases
+    .getDocument(DB_ID, COLLECTION, id)
+    .catch(() => null);
   if (!existing) return c.json({ error: "Script not found" }, 404);
 
   const ok = await canEditProject(user.id, existing.project_id);
@@ -181,9 +184,9 @@ router.patch("/:id", async (c) => {
 router.delete("/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const existing = await databases.getDocument(DB_ID, COLLECTION, id).catch(
-    () => null,
-  );
+  const existing = await databases
+    .getDocument(DB_ID, COLLECTION, id)
+    .catch(() => null);
   if (!existing) return c.json({ error: "Script not found" }, 404);
 
   const ok = await canManageProject(user.id, existing.project_id);
@@ -208,9 +211,9 @@ router.delete("/:id", async (c) => {
 router.get("/:id/blocks", async (c) => {
   const user = c.get("user");
   const scriptId = c.req.param("id");
-  const script = await databases.getDocument(DB_ID, COLLECTION, scriptId).catch(
-    () => null,
-  );
+  const script = await databases
+    .getDocument(DB_ID, COLLECTION, scriptId)
+    .catch(() => null);
   if (!script) return c.json({ error: "Script not found" }, 404);
 
   const ok = await canReadProject(user.id, script.project_id);
@@ -228,9 +231,9 @@ router.get("/:id/blocks", async (c) => {
 router.post("/:id/blocks", async (c) => {
   const user = c.get("user");
   const scriptId = c.req.param("id");
-  const script = await databases.getDocument(DB_ID, COLLECTION, scriptId).catch(
-    () => null,
-  );
+  const script = await databases
+    .getDocument(DB_ID, COLLECTION, scriptId)
+    .catch(() => null);
   if (!script) return c.json({ error: "Script not found" }, 404);
 
   const ok = await canEditProject(user.id, script.project_id);
@@ -245,14 +248,14 @@ router.post("/:id/blocks", async (c) => {
   const data = parsed.data;
 
   if (data.project_id && data.project_id !== script.project_id) {
-    return c.json(
-      { error: "project_id mismatch with parent script" },
-      400,
-    );
+    return c.json({ error: "project_id mismatch with parent script" }, 400);
   }
 
   if (data.node_id) {
-    const nodeValid = await validateNodeInProject(data.node_id, script.project_id);
+    const nodeValid = await validateNodeInProject(
+      data.node_id,
+      script.project_id,
+    );
     if (!nodeValid) {
       return c.json({ error: "node_id does not belong to project" }, 400);
     }

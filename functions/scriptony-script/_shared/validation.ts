@@ -67,7 +67,7 @@ export const createBlockSchema = z.object({
   order_index: z.number().int().min(0).default(0),
   type: blockTypeSchema,
   content: z.string().max(50000).default(""),
-  speaker_character_id: z.string().optional(),
+  speaker_character_id: z.string().nullable().optional(),
   notes: z.string().max(8000).optional(),
 });
 
@@ -78,7 +78,7 @@ export const updateBlockSchema = z.object({
   order_index: z.number().int().min(0).optional(),
   type: blockTypeSchema.optional(),
   content: z.string().max(50000).optional(),
-  speaker_character_id: z.string().optional(),
+  speaker_character_id: z.string().nullable().optional(),
   notes: z.string().max(8000).optional(),
   revision: z.number().int().min(0).optional(),
   expected_revision: z.number().int().min(0).optional(),

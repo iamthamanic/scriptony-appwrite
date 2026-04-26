@@ -25,6 +25,7 @@ import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 import { canReadProject } from "./_shared/access";
 import { authMiddleware } from "./_shared/hono-auth";
 import { nodeBlocksQuerySchema } from "./_shared/validation";
+import { validateNodeInProject } from "./_shared/project-context";
 import scriptsRouter from "./routes/scripts";
 import blocksRouter from "./routes/blocks";
 
@@ -75,6 +76,15 @@ app.get("/nodes/:nodeId/script-blocks", async (c) => {
 
   const ok = await canReadProject(user.id, parsed.data.project_id);
   if (!ok) return c.json({ error: "Project not found or access denied" }, 404);
+
+  // Validate node belongs to project
+  const nodeValid = await validateNodeInProject(
+    parsed.data.nodeId,
+    parsed.data.project_id,
+  );
+  if (!nodeValid) {
+    return c.json({ error: "node_id does not belong to project" }, 400);
+  }
 
   const client = new Client()
     .setEndpoint(

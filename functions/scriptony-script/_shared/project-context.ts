@@ -27,11 +27,7 @@ export async function validateNodeInProject(
   projectId: string,
 ): Promise<boolean> {
   try {
-    const doc = await databases.getDocument(
-      DB_ID,
-      "timeline_nodes",
-      nodeId,
-    );
+    const doc = await databases.getDocument(DB_ID, "timeline_nodes", nodeId);
     return doc.project_id === projectId;
   } catch {
     return false;
