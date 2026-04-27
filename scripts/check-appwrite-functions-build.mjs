@@ -16,7 +16,7 @@ const KNOWN_FUNCTIONS = new Set([
   "scriptony-editor-readmodel",
   "scriptony-gym",
   "scriptony-image",
-  "scriptony-jobs-handler",
+  "scriptony-jobs",
   "scriptony-mcp-appwrite",
   "scriptony-project-nodes",
   "scriptony-projects",

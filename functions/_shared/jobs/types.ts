@@ -18,6 +18,7 @@ export interface Job<T = unknown> {
   result?: T;
   error?: string;
   progress?: number; // 0-100 for progress bars
+  user_id?: string; // T14: Ownership for auth checks
   startedAt?: string;
   completedAt?: string;
   createdAt: string;

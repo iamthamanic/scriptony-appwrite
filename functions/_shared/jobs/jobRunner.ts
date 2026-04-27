@@ -1,7 +1,7 @@
 /**
  * @deprecated T14 — Nutzt jobService (Deno-only, broken in Node).
  *
- * Fuer neue Async-Jobs: nutze scriptony-jobs-handler (Node.js).
+ * Fuer neue Async-Jobs: nutze scriptony-jobs (Node.js).
  * Fuer Worker-Progress-Reporting: nutze _shared/jobs/jobWorker.ts
  */
 

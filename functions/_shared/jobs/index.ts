@@ -6,7 +6,7 @@
  * Sie werden hier nicht mehr exportiert.
  *
  * Worker-Functions nutzen jobWorker für Progress-Reporting.
- * Job-Control-Plane: scriptony-jobs-handler (Node.js).
+ * Job-Control-Plane: scriptony-jobs (Node.js).
  * Job-Schema: docs/job-schema.md
  */
 

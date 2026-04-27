@@ -100,6 +100,8 @@ export const BACKEND_FUNCTIONS = {
   AUTH: "scriptony-auth",
   /** T12: Read-only editor view-model aggregation. */
   EDITOR_READMODEL: "scriptony-editor-readmodel",
+  /** T14: Job queue control plane. */
+  JOBS: "scriptony-jobs",
   SUPERADMIN: "scriptony-superadmin",
   STATS: "scriptony-stats",
   LOGS: "scriptony-logs",
@@ -217,6 +219,9 @@ const ROUTE_MAP: Record<string, string> = {
   // ---------------------------------------------------------------------------
   // Puppet-Layer surfaces (longer prefixes before shorter /ai catch-all)
   // ---------------------------------------------------------------------------
+
+  // scriptony-jobs (T14: job queue control plane)
+  "/v1/jobs": BACKEND_FUNCTIONS.JOBS,
 
   // scriptony-stage: render-job orchestrator + repair dispatch
   "/ai/jobs": BACKEND_FUNCTIONS.STAGE,

@@ -971,3 +971,79 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - SUPPORTED_JOBS Registry in scriptony-jobs-handler: 6 Job-Typen.
   - Neue Job-Typen erfordern: Registry-Eintrag + Ziel-Function-Job-Context-Support.
 
+
+---
+
+## Phase 9 - Jobs Konsolidierung (Nacharbeit)
+
+### Done Report: T14 - `scriptony-jobs` konsolidieren — Rename + Retry/Cancel
+
+- **Date:** 2026-04-27 10:38 CEST
+- **Verification Marker:** ARCH-REF-T14-DONE
+- **Changed files:**
+  - `functions/scriptony-jobs/index.ts` (neu, Router-Only, 87 lines)
+  - `functions/scriptony-jobs/handlers/read.ts` (Create, Status, Result)
+  - `functions/scriptony-jobs/handlers/lifecycle.ts` (Cancel, Retry)
+  - `functions/scriptony-jobs/handlers/cleanup.ts` (Cleanup + Zod)
+  - `functions/scriptony-jobs/_shared/job-service.ts` (Job-CRUD + Trigger)
+  - `functions/scriptony-jobs/config/supported-jobs.ts` (Registry)
+  - `functions/_shared/jobs/types.ts` (+ user_id Feld)
+  - `functions/_shared/jobs/index.ts` (broken Exports entfernt)
+  - `functions/_shared/jobs/jobService.ts` (+ @deprecated)
+  - `functions/_shared/jobs/jobRunner.ts` (+ @deprecated)
+  - `functions/jobs-handler/appwrite-entry.ts` (+ LEGACY)
+  - `functions/build-appwrite-deploy.mjs` (scriptony-jobs)
+  - `scripts/check-appwrite-functions-build.mjs` (scriptony-jobs)
+  - `src/lib/api-gateway.ts` (+ JOBS + /v1/jobs)
+  - `docs/job-schema.md` (Retry/Cancel + Direct-DB-Write Docs)
+  - `docs/backend-domain-map.md` (T14 aktualisiert)
+- **Routes added/changed:**
+  - `POST /v1/jobs/:functionName` — Create (bestehend)
+  - `GET /v1/jobs/:jobId/status` — Status + Ownership (bestehend)
+  - `GET /v1/jobs/:jobId/result` — Result + Ownership (bestehend)
+  - `POST /v1/jobs/:jobId/cancel` — Status: cancelled (neu)
+  - `POST /v1/jobs/:jobId/retry` — Status: pending + Re-trigger (neu)
+  - `POST /v1/jobs/cleanup` — Alte Jobs aufräumen (bestehend)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **UI/UX checks:** keine (Backend-API, keine UI)
+- **Tests run:**
+  - Backend-Checks: Format ✅, Lint ✅, Build ✅
+  - `scriptony-jobs` Build: 1.7mb ✅
+  - Gitleaks: ✅
+  - Architecture: ✅ (keine Zirkel)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-jobs/,functions/_shared/jobs/types.ts,functions/build-appwrite-deploy.mjs,scripts/check-appwrite-functions-build.mjs,src/lib/api-gateway.ts,docs/backend-domain-map.md,docs/job-schema.md" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** ✅ PASSED (AI Review: Ollama 400 — Diff zu gross)
+- **AI Review result:** Manuell nachgeholt (mehrere Runs):
+  - DRY: Health-Check hardcoded → aus `SUPPORTED_JOBS` abgeleitet ✅
+  - DRY: `C` ungenutzt → entfernt ✅
+  - Zod: Cleanup-Body validiert, 400 bei Fehler ✅
+  - Zod: Create-Body validiert ✅
+  - Ownership: Cancel + Retry prüfen `job.user_id` ✅
+  - Cleanup: `{ deleted, failed }` Return, Fehler geloggt ✅
+  - `Deno.env` → `process.env` ✅
+  - SRP: File >300 lines → Split in Handler-Module ✅
+- **Known risks:**
+  - AI Review 400 bei grossem Diff; manuelles Nachholen mit Teil-Scopes
+  - `scriptony-jobs-handler` bleibt in Appwrite als deaktiviert (nicht gelöscht);
+    kann bei Bedarf gelöscht werden
+  - Legacy-Jobs ohne `user_id`: permissive (kein 403). Migration optional.
+- **Rollback plan:**
+  - Verzeichnis zurueckbenennen: `git mv functions/scriptony-jobs functions/scriptony-jobs-handler`
+  - Build-Config reverten
+  - Gateway JOBS entfernen
+- **Notes:**
+  - **SOLID:** SRP erfuellt. index.ts = Router (87 lines). Handler = CRUD/Lifecycle.
+    Service = DB + Trigger. Config = Registry.
+  - **DRY:** Ein Schema (job-schema.md), eine Registry (supported-jobs.ts),
+    ein Service (job-service.ts), ein Health-Check (aus Registry abgeleitet).
+  - **KISS:** Zod fuer Input-Validierung. Fire-and-forget bei Triggers.
+    Kein Over-Engineering.
+  - `scriptony-jobs-handler` → `scriptony-jobs` Rename vollzogen.
+  - Neue Function in Appwrite: `scriptony-jobs` (node-16.0, 1.7mb Bundle).
+  - Alte Function: `scriptony-jobs-handler` (deaktiviert).
+

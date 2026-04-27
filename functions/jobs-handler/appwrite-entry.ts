@@ -4,9 +4,9 @@
  * Dieser Handler nutzt Deno APIs (Deno.serve, Deno.env, npm:hono) und
  * laeuft nicht im Appwrite Node-16 Runtime.
  *
- * Die aktive Job-Control-Plane ist scriptony-jobs-handler (Node.js).
+ * Die aktive Job-Control-Plane ist scriptony-jobs (Node.js).
  * Dieser Code bleibt als Archiv-Referenz. Alle neuen Jobs muessen ueber
- * scriptony-jobs-handler laufen.
+ * scriptony-jobs laufen.
  *
  * Siehe docs/job-schema.md fuer das einheitliche Job-Schema.
  */

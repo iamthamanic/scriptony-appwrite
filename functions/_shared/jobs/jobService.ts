@@ -4,11 +4,11 @@
  * JobService nutzt Deno APIs (Deno.env, npm:node-appwrite@14.2.0) und
  * getDatabaseClient() (nicht existent in _shared/appwrite-db.ts).
  *
- * Die aktive Job-Control-Plane ist scriptony-jobs-handler (Node.js).
+ * Die aktive Job-Control-Plane ist scriptony-jobs (Node.js).
  * Dieser Code bleibt als Archiv-Referenz und wird nicht exportiert.
  *
  * Fuer Worker-Progress-Reporting: nutze _shared/jobs/jobWorker.ts
- * Fuer Job-Status-Abfrage: nutze scriptony-jobs-handler API
+ * Fuer Job-Status-Abfrage: nutze scriptony-jobs API
  */
 
 import { ID, Query } from "npm:node-appwrite@14.2.0";
