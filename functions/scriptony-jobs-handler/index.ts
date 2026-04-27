@@ -1,5 +1,18 @@
 /**
- * Jobs Handler - Central async job queue for long-running operations
+ * T14 ACTIVE JOB CONTROL PLANE — Node.js Appwrite Function.
+ *
+ * Einzige aktive Job-Queue für Scriptony. Erzeugt, verwaltet und
+ * tracked async Jobs. Worker-Functions reporten Fortschritt via
+ * _shared/jobs/jobWorker.ts.
+ *
+ * Schema: docs/job-schema.md
+ * Legacy: jobs-handler/ (Deno-only, nicht deployed)
+ *
+ * Endpoints:
+ *   POST /v1/jobs/:functionName   — Job erstellen
+ *   GET  /v1/jobs/:jobId/status   — Status abfragen
+ *   GET  /v1/jobs/:jobId/result   — Ergebnis holen
+ *   POST /v1/jobs/cleanup         — Alte Jobs aufräumen
  */
 
 import { ID, Query } from "node-appwrite";

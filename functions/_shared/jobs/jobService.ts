@@ -1,6 +1,14 @@
 /**
- * Job Service - DRY: Centralized job queue operations
- * All long-running functions use this service
+ * @deprecated T14 — Deno-only, nicht Node-kompatibel.
+ *
+ * JobService nutzt Deno APIs (Deno.env, npm:node-appwrite@14.2.0) und
+ * getDatabaseClient() (nicht existent in _shared/appwrite-db.ts).
+ *
+ * Die aktive Job-Control-Plane ist scriptony-jobs-handler (Node.js).
+ * Dieser Code bleibt als Archiv-Referenz und wird nicht exportiert.
+ *
+ * Fuer Worker-Progress-Reporting: nutze _shared/jobs/jobWorker.ts
+ * Fuer Job-Status-Abfrage: nutze scriptony-jobs-handler API
  */
 
 import { ID, Query } from "npm:node-appwrite@14.2.0";
@@ -51,66 +59,46 @@ export class JobService {
    * Mark job as processing and start execution
    */
   async startJob(jobId: string): Promise<void> {
-    await this.db.updateDocument(
-      DATABASE_ID,
-      JOBS_COLLECTION_ID,
-      jobId,
-      {
-        status: "processing",
-        startedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    );
+    await this.db.updateDocument(DATABASE_ID, JOBS_COLLECTION_ID, jobId, {
+      status: "processing",
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   /**
    * Update job progress (0-100)
    */
   async updateProgress(jobId: string, progress: number): Promise<void> {
-    await this.db.updateDocument(
-      DATABASE_ID,
-      JOBS_COLLECTION_ID,
-      jobId,
-      {
-        progress: Math.min(100, Math.max(0, progress)),
-        updatedAt: new Date().toISOString(),
-      },
-    );
+    await this.db.updateDocument(DATABASE_ID, JOBS_COLLECTION_ID, jobId, {
+      progress: Math.min(100, Math.max(0, progress)),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   /**
    * Complete job with result
    */
   async completeJob(jobId: string, result: unknown): Promise<void> {
-    await this.db.updateDocument(
-      DATABASE_ID,
-      JOBS_COLLECTION_ID,
-      jobId,
-      {
-        status: "completed",
-        result: JSON.stringify(result),
-        progress: 100,
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    );
+    await this.db.updateDocument(DATABASE_ID, JOBS_COLLECTION_ID, jobId, {
+      status: "completed",
+      result: JSON.stringify(result),
+      progress: 100,
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   /**
    * Mark job as failed
    */
   async failJob(jobId: string, error: string): Promise<void> {
-    await this.db.updateDocument(
-      DATABASE_ID,
-      JOBS_COLLECTION_ID,
-      jobId,
-      {
-        status: "failed",
-        error: error.slice(0, 2000), // Limit error size
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    );
+    await this.db.updateDocument(DATABASE_ID, JOBS_COLLECTION_ID, jobId, {
+      status: "failed",
+      error: error.slice(0, 2000), // Limit error size
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   /**

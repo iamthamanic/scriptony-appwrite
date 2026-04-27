@@ -910,3 +910,64 @@ Fuer T21 muessen zusaetzlich dokumentiert werden:
   - Clips enthalten: NLE-Segmente (startSec, endSec, laneIndex, sourceIn/Out).
   - Beziehungen dokumentiert: shots -> clips (FK), shots -> assets (owner_type), shots -> scene_audio_tracks (separate Domain).
 
+
+---
+
+## Phase 9 - Jobs Konsolidierung
+
+### Done Report: T14 - `scriptony-jobs` konsolidieren
+
+- **Date:** 2026-04-27 08:18 CEST
+- **Verification Marker:** ARCH-REF-T14-DONE
+- **Changed files:**
+  - `functions/jobs-handler/appwrite-entry.ts` (+ T14 LEGACY JSDoc)
+  - `functions/_shared/jobs/jobService.ts` (+ T14 @deprecated JSDoc)
+  - `functions/_shared/jobs/jobRunner.ts` (+ T14 @deprecated JSDoc)
+  - `functions/_shared/jobs/index.ts` (Exporte bereinigt, T14 Doku)
+  - `functions/scriptony-jobs-handler/index.ts` (+ T14 Active Control-Plane JSDoc)
+  - `docs/job-schema.md` (neu, einheitliches Schema)
+  - `docs/backend-domain-map.md` (T14 Status aktualisiert)
+- **Routes added/changed:** keine (Dokumentation/Boundary, keine funktionale Aenderung)
+- **Appwrite collections changed:** keine
+- **Appwrite buckets changed:** keine
+- **Appwrite env vars changed:** keine
+- **UI/UX checks:** keine (Backend-Ticket, keine UI-Aenderung)
+- **Tests run:**
+  - Backend-Checks: `CHECK_MODE=snippet SHIM_CHANGED_FILES="..." SHIM_CHECKS_ARGS="" npm run checks -- --backend` → Format ✅, Lint ✅, Build ✅
+  - `scriptony-jobs-handler` Build: 1.2mb ✅
+  - Verifikation: `grep -r "getJobStatus\|runAsJob" functions/` → nur in `jobs-handler/` (Deno-Legacy) ✅
+  - Gitleaks: ✅
+  - Architecture: ✅ (keine Zirkel)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/jobs-handler/appwrite-entry.ts,functions/_shared/jobs/jobService.ts,functions/_shared/jobs/jobRunner.ts,functions/_shared/jobs/index.ts,functions/scriptony-jobs-handler/index.ts,docs/job-schema.md,docs/backend-domain-map.md" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Shimwrappercheck result:** ✅ PASSED
+- **AI Review result:** ✅ ACCEPT (Ollama, kimi-k2.6:cloud, timeout 600s)
+  - low: Export-Entfernung in `_shared/jobs/index.ts` pruefen, ob Consumer existieren.
+    Verifiziert: Kein Node-Consumer; nur `jobs-handler` (Deno-Legacy) importiert direkt
+    aus `jobRunner.ts`, nicht ueber `index.ts`. Keine Code-Aenderung erforderlich.
+- **Known risks:**
+  - `jobs-handler` (Deno) ist nicht deployed; bei zukuenftiger Deno-Unterstuetzung in Appwrite
+    koennte es theoretisch laufen, sollte aber nie aktiviert werden.
+  - Field-Namen-Mischung: Node-Schema ist snake_case, Legacy-Deno-Interfaces sind camelCase.
+    Konvention fuer neue DB-Fields: immer snake_case.
+- **Rollback plan:**
+  - JSDoc entfernen: `git checkout -- functions/jobs-handler/appwrite-entry.ts functions/_shared/jobs/ functions/scriptony-jobs-handler/index.ts`
+  - `docs/job-schema.md` loeschen
+  - Domain Map zuruecksetzen
+- **Notes:**
+  - **SOLID:** Eindeutige Verantwortung. scriptony-jobs-handler = Control-Plane.
+    jobWorker.ts = Worker-Helpers (nur von scriptony-style-guide genutzt).
+    jobService/jobRunner = Legacy (Deno-only).
+  - **DRY:** Ein Schema-Dokument (job-schema.md) statt verteilter Wahrheit.
+    Keine duplizierte Job-Erstellungslogik.
+  - **KISS:** Keine neue Function, kein Umbau, keine Breaking Changes.
+    Nur Markierung + Dokumentation.
+  - Active Function: `scriptony-jobs-handler` (node-16.0, 1.2mb Bundle).
+  - Legacy: `jobs-handler` (Deno, `Deno.serve`, `npm:hono`, nicht Node-kompatibel).
+  - Available Worker-Helpers: `_shared/jobs/jobWorker.ts` (extractJobContext,
+    reportJobProgress, completeJob, failJob, wrapWithJobReporting).
+  - SUPPORTED_JOBS Registry in scriptony-jobs-handler: 6 Job-Typen.
+  - Neue Job-Typen erfordern: Registry-Eintrag + Ziel-Function-Job-Context-Support.
+

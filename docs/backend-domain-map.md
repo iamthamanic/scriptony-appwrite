@@ -73,8 +73,8 @@ die Map erweitert oder eine Ticket-Diskussion gefuehrt werden.
 |---|---|---|---|---|---|---|---|---|
 | `scriptony-ai` | `scriptony-ai` | `keep` | Provider Registry, Feature Routing, API Keys, Model Config | Chat, Conversations, Generierung | `ai_providers`, `ai_features`, `api_keys` | `projects` | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama | — |
 | `scriptony-assistant` | `scriptony-assistant` | `keep` | Chat, Conversations, Messages, Prompt Handling, RAG | AI Settings, Gym, MCP | `conversations`, `messages`, `rag_chunks` | `projects` | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama | — |
-| `scriptony-jobs-handler` | `scriptony-jobs` | `rename` | Job-Status, Retry, Cancel, Cleanup, Result-Struktur | Worker-Execution, Produktlogik | `jobs` | `projects` | — | Einheitliche Job-Control-Plane (T14) |
-| `jobs-handler` | `scriptony-jobs` / `legacy` | `legacy` | — | — | — | — | — | Duplikat zu `scriptony-jobs-handler`. Nicht erweitern. (T14/T17) |
+| `scriptony-jobs-handler` | `scriptony-jobs` | `rename` | Job-Status, Retry, Cancel, Cleanup, Result-Struktur | Worker-Execution, Produktlogik | `jobs` | `projects` | — | T14: Active Control-Plane. Schema: docs/job-schema.md. Rename zu `scriptony-jobs` bei Gelegenheit. |
+| `jobs-handler` | `scriptony-jobs` / `legacy` | `legacy` | — | — | — | — | — | T14 LEGACY_DO_NOT_EXTEND — Deno-only, nicht deployed, nicht Node-kompatibel. Siehe docs/job-schema.md. |
 | `scriptony-observability` | `scriptony-observability` | `new` | Stats, Logs, Health-Checks (read-only) | Admin-Schreiboperationen | *(read-only views)* | `projects`, `functions` | — | Neu bauen; `scriptony-stats` + `scriptony-logs` konsolidieren (T16) |
 | `scriptony-admin` | `scriptony-admin` | `new` | Superadmin, Globale Kennzahlen, Benutzerverwaltung | Produktlogik, Observability | `admin_logs` | `users`, `projects`, `organizations` | — | Neu bauen; `scriptony-superadmin` konsolidieren (T16) |
 | `scriptony-mcp-appwrite` | `scriptony-mcp-appwrite` | `keep` | MCP Tool Registry, Thin HTTP Entry | AI Control, Chat | `mcp_tools` | `projects` | — | — |

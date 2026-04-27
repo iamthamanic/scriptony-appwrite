@@ -1,11 +1,14 @@
 /**
- * Jobs Handler - Central entry point for all async job operations
- * Replaces direct function calls for long-running operations
+ * @deprecated T14 LEGACY_DO_NOT_EXTEND — Deno-only, nicht Node-kompatibel.
  *
- * Endpoints:
- * POST /v1/jobs/:functionName - Create new job
- * GET  /v1/jobs/:jobId/status  - Check job status
- * GET  /v1/jobs/:jobId/result  - Get final result (if completed)
+ * Dieser Handler nutzt Deno APIs (Deno.serve, Deno.env, npm:hono) und
+ * laeuft nicht im Appwrite Node-16 Runtime.
+ *
+ * Die aktive Job-Control-Plane ist scriptony-jobs-handler (Node.js).
+ * Dieser Code bleibt als Archiv-Referenz. Alle neuen Jobs muessen ueber
+ * scriptony-jobs-handler laufen.
+ *
+ * Siehe docs/job-schema.md fuer das einheitliche Job-Schema.
  */
 
 import { Hono } from "npm:hono";
@@ -56,12 +59,15 @@ app.post("/v1/jobs/:functionName", async (c: Context) => {
   // This would call the specific function endpoint
   triggerFunctionExecution(functionName, jobId, payload).catch(console.error);
 
-  return c.json({
-    jobId: job.$id,
-    status: "pending",
-    message: `Job queued for ${functionName}`,
-    createdAt: job.createdAt,
-  }, 202);
+  return c.json(
+    {
+      jobId: job.$id,
+      status: "pending",
+      message: `Job queued for ${functionName}`,
+      createdAt: job.createdAt,
+    },
+    202,
+  );
 });
 
 /**
@@ -96,20 +102,26 @@ app.get("/v1/jobs/:jobId/result", async (c: Context) => {
   }
 
   if (status.status === "pending" || status.status === "processing") {
-    return c.json({
-      success: false,
-      error: "Job still processing",
-      status: status.status,
-      progress: status.progress,
-    }, 202);
+    return c.json(
+      {
+        success: false,
+        error: "Job still processing",
+        status: status.status,
+        progress: status.progress,
+      },
+      202,
+    );
   }
 
   if (status.status === "failed") {
-    return c.json({
-      success: false,
-      error: status.error || "Job failed",
-      status: "failed",
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: status.error || "Job failed",
+        status: "failed",
+      },
+      500,
+    );
   }
 
   return c.json({
@@ -145,7 +157,8 @@ async function triggerFunctionExecution(
   // 2. Use Appwrite's executeFunction
   // 3. Queue in Redis/SQS for worker processing
 
-  const endpoint = Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
+  const endpoint =
+    Deno.env.get("SCRIPTONY_APPWRITE_API_ENDPOINT") ||
     Deno.env.get("APPWRITE_FUNCTION_API_ENDPOINT") ||
     "http://appwrite/v1";
 

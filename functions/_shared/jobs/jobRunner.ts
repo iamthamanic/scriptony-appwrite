@@ -1,6 +1,8 @@
 /**
- * Job Runner - KISS: Simple wrapper for async job execution
- * Usage: Wrap any long-running function with this
+ * @deprecated T14 — Nutzt jobService (Deno-only, broken in Node).
+ *
+ * Fuer neue Async-Jobs: nutze scriptony-jobs-handler (Node.js).
+ * Fuer Worker-Progress-Reporting: nutze _shared/jobs/jobWorker.ts
  */
 
 import { jobService } from "./jobService.ts";
@@ -47,9 +49,8 @@ export async function runAsJob<TPayload, TResult>(
       // Mark as complete
       await jobService.completeJob(job.$id, result);
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       await jobService.failJob(job.$id, errorMessage);
     }
   };
