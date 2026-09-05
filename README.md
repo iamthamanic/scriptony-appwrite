@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-08-10** — Desktop Workspace-Gate verdrahtet: `FirstRunWorkspaceGate` + Settings → Speicher → Lokal; Projekt-Create mit `restoreWorkspaceScope` und klarer Fehlermeldung (local desktop)
 - **2026-07-14** — Structure Timeline Film (#51): Clip/Musik/SFX als Row-Pairs; parallele Film-Label-Spalte entfernt (local desktop) DAW-Lanes als Row-Pairs (Header, jede Spur sidebar+content, Footer) statt paralleler Label-/Scroll-Listen (local desktop)
 - **2026-07-14** — MVE line render instruct (#59): `compilePerformanceInstruct` kombiniert Voice-Identity + LineDirection; Voicebox `/generate` erhält `instruct` für designed/cloned Profile (local desktop)
 - **2026-07-14** — MVE Voice Materialize (#57): `POST /voice-design/materialize`, WAV → Projekt-Asset, Voicebox Qwen Base Clone, `MveVoiceProfile` Identity-Felder (local desktop)
@@ -377,18 +378,6 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 - **2026-07-12** — MVE Dialog-Audio: Audiolänge ersetzt WPM im Header bei gebundenem Clip; Waveform-Peaks beim Upload/Record persistiert (local desktop)
 - **2026-07-12** — Voicebox Auto-Start auf macOS für Charakterstimmen-Vorschau + aktualisierte Banner-Copy (local desktop)
 - **2026-07-12** — MVE Dialog-Clips: kompakte Lane (210px), scrollbarer Text, WPM-/Audio-Dauer-Chips, Contenteditable-Editor mit Tag-Chips (local desktop, #49)
-- **2026-07-10** — Desktop: Voicebox als Standard-TTS (Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro`), MVE Multi-Textblock-Reihenfolge + Scene-Shell-Sync, Visual Editor (embedded, dev)
-- **2026-07-05** — Structure Timeline: Row-Pair-Layout mit sticky Labels (CapCut-Stil), Playhead/Scrub über Content-Origin-Anker (#49, local desktop)
-- **2026-06-27** — MVE 0.4 (#16): Voice Studio UI — Generate/Clone/Tune aktiv im Charakterstimme-Modal
-- **2026-06-27** — MVE 0.4 (#14): Voice Clone Request — lifecycle, consent-gated start, `/voices/clone` route
-- **2026-06-27** — MVE 0.4 (#15): Voice Tune — non-destructives Preset-Profil (`type=tuned`, local desktop)
-- **2026-06-27** — MVE 0.4 (#13): Voice-Clone Consent + Referenz-Audio-Upload (`assets/voice-refs/`, local desktop)
-- **2026-06-27** — MVE 0.4 (#12): Stimme aus Beschreibung via Kokoro-Attribut-Matching im Voice-Modal (local desktop)
-- **2026-06-27** — MVE 0.4 (#11): VoiceConsent + Voice-Operation Zod-Schemas, SQLite v6, Consent-Reads via mve-adapter (local desktop)
-- **2026-06-26** — T32: MVE-Textblock per Drag & Drop zwischen Szenen verschieben (Audio folgt, local desktop)
-- **2026-06-26** — T31: Metronom-Count-in vor Audio-Aufnahme (BPM/Takt einstellbar, local desktop)
-- **2026-06-26** — T30: Lane-Link-Icon + hierarchischer Act/Sequence/Scene-Modal für MVE-Dialog-Spuren (local desktop)
-- **2026-06-26** — T29: Szene verlängert sich per Ripple, wenn MVE-Textblock-Audio länger als die Szene ist (local desktop)
 
 ---
 

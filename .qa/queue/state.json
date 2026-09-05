@@ -8,14 +8,14 @@
   "prUrl": null,
   "prUrls": {
     "58": "https://github.com/iamthamanic/scriptony-multihost/pull/65",
-    "59": "https://github.com/iamthamanic/scriptony-multihost/pull/66"
+    "59": "https://github.com/iamthamanic/scriptony-multihost/pull/66",
+    "50": "https://github.com/iamthamanic/scriptony-multihost/pull/67",
+    "51": "https://github.com/iamthamanic/scriptony-multihost/pull/68"
   },
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [
-    50
-  ],
+  "queue": [],
   "completedIssues": [
     3,
     4,
@@ -43,7 +43,9 @@
     61,
     62,
     63,
-    64
+    64,
+    50,
+    51
   ],
   "mergedIssues": [
     54,
@@ -55,7 +57,9 @@
     61,
     62,
     63,
-    64
+    64,
+    50,
+    51
   ],
   "skippedIssues": [
     60
@@ -76,5 +80,5 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 3,
-  "updatedAt": "2026-07-14T15:19:41.000Z"
+  "updatedAt": "2026-07-14T15:37:48.000Z"
 }

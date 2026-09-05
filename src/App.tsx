@@ -4,6 +4,7 @@ import { AppContent } from "./components/AppContent";
 import { RuntimeProvider } from "./runtime";
 import { BackendProvider } from "./backend";
 import { LocalProjectProvider } from "./hooks/useLocalProject";
+import { LocalWorkspaceProvider } from "./hooks/useLocalWorkspace";
 import { AuthProvider } from "./hooks/useAuth";
 import { CloudLoginProvider } from "./hooks/useCloudSession";
 import { TranslationProvider } from "./hooks/useTranslation";
@@ -64,21 +65,23 @@ export default function App() {
 
   return (
     <RuntimeProvider>
-      <LocalProjectProvider>
-        <BackendProvider>
-          <TranslationProvider>
-            <AuthProvider>
-              <CloudLoginProvider>
-                <QueryClientProvider client={queryClient}>
-                  <GlobalLoadingProgressProvider>
-                    <AppContent />
-                  </GlobalLoadingProgressProvider>
-                </QueryClientProvider>
-              </CloudLoginProvider>
-            </AuthProvider>
-          </TranslationProvider>
-        </BackendProvider>
-      </LocalProjectProvider>
+      <LocalWorkspaceProvider>
+        <LocalProjectProvider>
+          <BackendProvider>
+            <TranslationProvider>
+              <AuthProvider>
+                <CloudLoginProvider>
+                  <QueryClientProvider client={queryClient}>
+                    <GlobalLoadingProgressProvider>
+                      <AppContent />
+                    </GlobalLoadingProgressProvider>
+                  </QueryClientProvider>
+                </CloudLoginProvider>
+              </AuthProvider>
+            </TranslationProvider>
+          </BackendProvider>
+        </LocalProjectProvider>
+      </LocalWorkspaceProvider>
     </RuntimeProvider>
   );
 }

@@ -1,6 +1,7 @@
 import { useAuth } from "../hooks/useAuth";
 import { useRouter, normalizePage } from "../hooks/useRouter";
 import { useTheme } from "../hooks/useTheme";
+import { useLocalWorkspaceOptional } from "../hooks/useLocalWorkspace";
 import { useRuntime } from "../runtime";
 import { useIsMobile } from "../components/ui/use-mobile";
 import { Toaster } from "../components/ui/sonner";
@@ -12,6 +13,7 @@ import { Suspense, lazy, useCallback, useEffect } from "react";
 // Eager: only lightweight helpers needed for routing/auth decision
 import { ResetPasswordPage } from "../components/pages/ResetPasswordPage";
 import { BackendNotConfiguredBanner } from "../components/settings/BackendNotConfiguredBanner";
+import { FirstRunWorkspaceGate } from "./desktop/FirstRunWorkspaceGate";
 
 // Lazy: all heavy UI components deferred after first paint
 const Navigation = lazy(() =>
@@ -176,6 +178,7 @@ function AppSectionFallback() {
 export function AppContent() {
   const { user, loading: authLoading } = useAuth();
   const runtime = useRuntime();
+  const workspace = useLocalWorkspaceOptional();
   const { state: router, navigate } = useRouter();
   const onNavigate = useCallback(
     (page: string, id?: string, categoryId?: string) => {
@@ -189,6 +192,8 @@ export function AppContent() {
     router.page === "stage" ||
     router.page === "create" ||
     router.page === "present";
+  const needsLocalWorkspace =
+    runtime.profile === "local" && runtime.isDesktop && workspace !== null;
 
   // Setup undo/redo keyboard shortcuts
   useEffect(() => {
@@ -207,6 +212,30 @@ export function AppContent() {
             className="w-full h-full object-contain animate-pulse"
           />
         </div>
+      </div>
+    );
+  }
+
+  // Local desktop: wait for workspace hydrate, then gate until a folder is chosen (T44/T59).
+  if (needsLocalWorkspace && workspace.isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-16 h-16">
+          <img
+            src={scriptonyLogo}
+            alt="Scriptony Logo"
+            className="w-full h-full object-contain animate-pulse"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (needsLocalWorkspace && !workspace.workspaceRoot) {
+    return (
+      <div className="min-h-screen bg-background">
+        <FirstRunWorkspaceGate />
+        <Toaster position="top-center" />
       </div>
     );
   }

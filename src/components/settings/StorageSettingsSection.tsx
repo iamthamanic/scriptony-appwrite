@@ -54,6 +54,10 @@ import {
   formatBytes,
   STORAGE_LIMIT_BYTES,
 } from "../../utils/storage";
+import { LocalStorageProviderPanel } from "./LocalStorageProviderPanel";
+import { useLocalWorkspaceOptional } from "@/hooks/useLocalWorkspace";
+import { isDesktopShell } from "@/runtime/detect-runtime";
+import { useRuntime } from "@/runtime";
 
 const providerIcons: Record<string, React.ReactNode> = {
   scriptony_cloud: <Cloud className="size-4" />,
@@ -81,6 +85,10 @@ function filterProvidersBySearch(
 
 export function StorageSettingsSection() {
   const { user } = useAuth();
+  const runtime = useRuntime();
+  const workspace = useLocalWorkspaceOptional();
+  const showLocalWorkspacePanel =
+    runtime.profile === "local" && isDesktopShell() && workspace !== null;
   const [selectedId, setSelectedId] = useState<string>(() =>
     getSelectedStorageProviderId(),
   );
@@ -204,6 +212,9 @@ export function StorageSettingsSection() {
                 storagePercentage={
                   provider.id === "scriptony_cloud" ? storagePercentage : 0
                 }
+                showLocalWorkspacePanel={
+                  provider.id === "local" && showLocalWorkspacePanel
+                }
               />
             ))
           )}
@@ -221,6 +232,7 @@ function ProviderRowExpandable({
   onSelect,
   storageUsage,
   storagePercentage,
+  showLocalWorkspacePanel,
 }: {
   provider: StorageProviderMeta;
   isSelected: boolean;
@@ -229,6 +241,7 @@ function ProviderRowExpandable({
   onSelect: (e: React.MouseEvent) => void;
   storageUsage: { totalSize: number; fileCount: number } | null;
   storagePercentage: number;
+  showLocalWorkspacePanel: boolean;
 }) {
   const icon = providerIcons[provider.id] ?? <Cloud className="size-4" />;
   const disabled = provider.comingSoon;
@@ -295,7 +308,10 @@ function ProviderRowExpandable({
               storageUsage={storageUsage}
               storagePercentage={storagePercentage}
             />
-            <ProviderConnectionBlock provider={provider} />
+            <ProviderConnectionBlock
+              provider={provider}
+              showLocalWorkspacePanel={showLocalWorkspacePanel}
+            />
           </div>
         </CollapsibleContent>
       </div>
@@ -345,8 +361,10 @@ function ProviderUsageBlock({
 
 function ProviderConnectionBlock({
   provider,
+  showLocalWorkspacePanel,
 }: {
   provider: StorageProviderMeta;
+  showLocalWorkspacePanel: boolean;
 }) {
   const isScriptonyCloud = provider.id === "scriptony_cloud";
   const isHetzner = provider.id === "hetzner";
@@ -354,6 +372,10 @@ function ProviderConnectionBlock({
   const [hetznerBucket, setHetznerBucket] = useState("");
   const [hetznerAccessKey, setHetznerAccessKey] = useState("");
   const [hetznerSecretKey, setHetznerSecretKey] = useState("");
+
+  if (provider.id === "local" && showLocalWorkspacePanel) {
+    return <LocalStorageProviderPanel />;
+  }
 
   if (isScriptonyCloud) {
     return (

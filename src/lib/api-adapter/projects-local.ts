@@ -183,6 +183,8 @@ export async function createLocalProject(
       "Kein Workspace-Ordner gewählt. Bitte unter Einstellungen → Speicher einen Workspace festlegen.",
     );
   }
+  // Re-apply Rust fs_scope for the trusted workspace root (same as listLocalProjects).
+  await restoreWorkspaceScope();
   const { title, projectType, description } = parseCreatePayload(project);
   const ctx = await LocalProjectContext.create({
     parentDir: root,

@@ -11,9 +11,9 @@
 - [x] verify-ui — Playwright alignment 3/3
 - [x] review — scoped pass
 - [x] ecc-check — READY
-- [ ] commit-pr-safe
-- [ ] babysit
-- [ ] pr-merge-safe merge
+- [x] commit-pr-safe
+- [x] babysit
+- [x] pr-merge-safe merge — PR #67
 
 ## Notes
 - Replaces parallel audio label/scroll columns with per-lane row pairs.

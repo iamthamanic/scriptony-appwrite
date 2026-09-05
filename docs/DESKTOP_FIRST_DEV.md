@@ -17,7 +17,7 @@ npm run dev:desktop
 | Step | Action |
 |------|--------|
 | 1 | Wait for Tauri window (Vite serves UI on `:3000` **inside** the shell only). |
-| 2 | Choose **workspace folder** if prompted (Settings → Speicher). |
+| 2 | On first run without a workspace: **Workspace einrichten** (`FirstRunWorkspaceGate`) — pick a folder. Later: Settings → Speicher → **Lokal** → Workspace wählen/wechseln. |
 | 3 | Open or create a **`.scriptony`** project for `LocalBackend` (SQLite, structure, scripts). |
 | 4 | Keep runtime **Lokal** in Settings unless testing cloud. |
 
@@ -118,7 +118,9 @@ Also: `ScriptonyAssistant`, many `lib/jobs/*`, cloud sync activation.
 | `workspace-fs` | `read_dir` on workspace root (after Rust `allow_directory`) |
 | `local-project-fs` | Read/write under `**/*.scriptony/**` |
 
-Configured in `src-tauri/tauri.conf.json`. Before scanning, code should call `restoreWorkspaceScope()` (see `projects-local.ts`, `useLocalWorkspace.tsx`).
+Configured in `src-tauri/tauri.conf.json`. Before scanning **or creating** a project, code should call `restoreWorkspaceScope()` (see `projects-local.ts`, `useLocalWorkspace.tsx`).
+
+**First run:** `LocalWorkspaceProvider` + `FirstRunWorkspaceGate` require a trusted workspace folder before Projekte. Change later under Settings → Speicher → Lokal.
 
 **Error `fs.read_dir not allowed`:** missing capability, workspace not registered, or Docker/web dev instead of Tauri.
 

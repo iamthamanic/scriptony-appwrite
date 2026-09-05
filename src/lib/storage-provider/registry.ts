@@ -60,7 +60,7 @@ const PROVIDERS: StorageProviderMeta[] = [
     description:
       "Projekte nur auf diesem Gerät speichern – z. B. in einem Ordner deiner Wahl.",
     backendSupported: false,
-    comingSoon: true,
+    comingSoon: false,
   },
 ];
 

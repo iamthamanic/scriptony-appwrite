@@ -19,6 +19,7 @@ const {
   mockGetWorkspaceRoot,
   mockListWorkspaceProjects,
   mockInvoke,
+  mockRestoreWorkspaceScope,
 } = vi.hoisted(() => ({
   mockCreate: vi.fn(async () => ({
     projectId: "local_new",
@@ -43,13 +44,14 @@ const {
       }>,
   ),
   mockInvoke: vi.fn(async () => undefined),
+  mockRestoreWorkspaceScope: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/local/workspace", () => ({
   getWorkspaceRoot: mockGetWorkspaceRoot,
   createTauriWorkspaceFs: vi.fn(),
   listWorkspaceProjects: mockListWorkspaceProjects,
-  restoreWorkspaceScope: vi.fn(async () => undefined),
+  restoreWorkspaceScope: mockRestoreWorkspaceScope,
 }));
 
 vi.mock("@/backend/local/LocalProjectContext", () => ({
@@ -81,6 +83,8 @@ describe("projectsApiAdapter", () => {
     mockGetWorkspaceRoot.mockReset();
     mockListWorkspaceProjects.mockReset();
     mockInvoke.mockClear();
+    mockRestoreWorkspaceScope.mockClear();
+    mockCreate.mockClear();
   });
 
   it("lists projects from workspace scan when profile is local", async () => {
@@ -101,6 +105,18 @@ describe("projectsApiAdapter", () => {
     expect(list[0]?.localDirPath).toBe("/workspace/Test.scriptony");
   });
 
+  it("rejects create when no workspace root is set", async () => {
+    mockGetWorkspaceRoot.mockResolvedValueOnce(null);
+    await expect(
+      projectsApiAdapter.create({
+        title: "Neues Projekt",
+        type: "film",
+      }),
+    ).rejects.toThrow(/Workspace-Ordner/);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockRestoreWorkspaceScope).not.toHaveBeenCalled();
+  });
+
   it("creates a local project with localDirPath when workspace is set", async () => {
     mockGetWorkspaceRoot.mockResolvedValueOnce("/workspace");
     const created = await projectsApiAdapter.create({
@@ -108,6 +124,7 @@ describe("projectsApiAdapter", () => {
       type: "film",
       logline: "Logline",
     });
+    expect(mockRestoreWorkspaceScope).toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         parentDir: "/workspace",

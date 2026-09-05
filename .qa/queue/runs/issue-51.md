@@ -8,4 +8,4 @@
 - [x] implement — StructureTimelineFilmProductionRowPairs
 - [x] verify — npm run verify --frontend green
 - [x] verify-ui — Playwright 3/3
-- [ ] commit-pr-safe / merge
+- [x] commit-pr-safe / merge — PR #68 merged da7f2874

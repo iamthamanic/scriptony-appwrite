@@ -1025,7 +1025,11 @@ export function ProjectsPage({
       toast.success("Projekt erfolgreich erstellt!");
     } catch (error) {
       console.error("Error creating project:", error);
-      toast.error("Fehler beim Erstellen des Projekts");
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Fehler beim Erstellen des Projekts",
+      );
     }
   };
 
